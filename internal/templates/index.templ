@@ -7,6 +7,7 @@ templ Index(v IndexView) {
 		<h1>Schmetterpause</h1>
 		@Session(v.Session)
 		if v.ShowMatch {
+			@PendingList(v.Pending)
 			@MatchForm(v.Match)
 		}
 		<h2>Spieler</h2>

@@ -33,6 +33,7 @@ type IndexView struct {
 	Session SessionView
 	Players PlayerListView
 	Match   MatchFormView
+	Pending PendingListView
 	// ShowMatch hides result entry from anyone who is not recognised yet —
 	// a match has to be attributable to whoever reported it.
 	ShowMatch bool
@@ -61,6 +62,10 @@ type PlayerListView struct {
 // PlayerListEntry is one player in the list.
 type PlayerListEntry struct {
 	DisplayName string
+	// TTR is the current rating. Shown so a confirmation visibly does
+	// something; games played and the win/loss record turn this into a real
+	// ranking in AP6.
+	TTR int
 	// IsSelf marks the viewer, so the list answers "am I in here?" at a glance.
 	IsSelf bool
 }
@@ -111,4 +116,45 @@ type MatchRecordedView struct {
 	// that is who is reading it.
 	OwnSets, OpponentSets int
 	Won                   bool
+}
+
+// PendingListView is the set of results waiting on the viewer.
+type PendingListView struct {
+	Matches []PendingMatchView
+}
+
+// PendingMatchView is one result awaiting a decision, seen from the side of
+// the player who has to make it — they read "3:1 für dich", not "home 3:1".
+type PendingMatchView struct {
+	ID           string
+	ReporterName string
+	OwnSets      int
+	OpponentSets int
+	Sets         []SetScore
+	// Won is what the reported result claims for the viewer.
+	Won bool
+}
+
+// SetScore is one set, again from the viewer's side.
+type SetScore struct {
+	Own, Opponent int
+}
+
+// SettledView confirms that a result now counts, and by how much.
+type SettledView struct {
+	// ID identifies the list entry this replaces.
+	ID           string
+	OpponentName string
+	Won          bool
+	OwnSets      int
+	OpponentSets int
+	// Delta is the viewer's rating change, NewTTR where it left them.
+	Delta  int
+	NewTTR int
+}
+
+// DisputedView reports a contested result.
+type DisputedView struct {
+	ID           string
+	ReporterName string
 }

@@ -1,5 +1,7 @@
 package templates
 
+import "strconv"
+
 // PlayerList renders the roster. The out-of-band variant lets a successful
 // join refresh the list in the same response that replaces the form, without
 // a second request and without a line of JavaScript.
@@ -23,6 +25,7 @@ templ playerItems(v PlayerListView) {
 	for _, p := range v.Players {
 		<li>
 			{ p.DisplayName }
+			<span class="ttr">{ strconv.Itoa(p.TTR) }</span>
 			if p.IsSelf {
 				<span class="muted">(du)</span>
 			}

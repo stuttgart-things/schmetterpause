@@ -23,6 +23,7 @@ type memStore struct {
 	players    *memPlayers
 	identities *memIdentities
 	matches    *memMatches
+	history    *memHistory
 	pingErr    error
 }
 
@@ -32,13 +33,15 @@ func newMemStore() *memStore {
 		players:    players,
 		identities: &memIdentities{players: players},
 		matches:    &memMatches{},
+		history:    &memHistory{},
 	}
 }
 
-func (m *memStore) Ping(context.Context) error                { return m.pingErr }
-func (m *memStore) Players() repository.PlayerRepository      { return m.players }
-func (m *memStore) Identities() repository.IdentityRepository { return m.identities }
-func (m *memStore) Matches() repository.MatchRepository       { return m.matches }
+func (m *memStore) Ping(context.Context) error                  { return m.pingErr }
+func (m *memStore) Players() repository.PlayerRepository        { return m.players }
+func (m *memStore) Identities() repository.IdentityRepository   { return m.identities }
+func (m *memStore) Matches() repository.MatchRepository         { return m.matches }
+func (m *memStore) TTRHistory() repository.TTRHistoryRepository { return m.history }
 
 // InTx runs fn against the same store. There is no rollback here, which is
 // fine for handler tests — that transactions actually hold is covered against
@@ -89,6 +92,19 @@ func (p *memPlayers) List(context.Context) ([]domain.Player, error) {
 	defer p.mu.Unlock()
 
 	return append([]domain.Player(nil), p.rows...), nil
+}
+
+func (p *memPlayers) UpdateTTR(_ context.Context, id uuid.UUID, ttr int) error {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
+	for i := range p.rows {
+		if p.rows[i].ID == id {
+			p.rows[i].TTR = ttr
+			return nil
+		}
+	}
+	return domain.ErrNotFound
 }
 
 func (p *memPlayers) Count(context.Context) (int, error) {
@@ -160,4 +176,86 @@ func (m *memMatches) all() []domain.Match {
 	defer m.mu.Unlock()
 
 	return append([]domain.Match(nil), m.rows...)
+}
+
+func (m *memMatches) ByID(_ context.Context, id uuid.UUID) (domain.Match, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	for _, row := range m.rows {
+		if row.ID == id {
+			return row, nil
+		}
+	}
+	return domain.Match{}, domain.ErrNotFound
+}
+
+// PendingFor mirrors the Postgres query: pending, the player is in it, and
+// somebody else reported it.
+func (m *memMatches) PendingFor(_ context.Context, playerID uuid.UUID) ([]domain.Match, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	var out []domain.Match
+	for _, row := range m.rows {
+		involved := row.HomeID == playerID || row.AwayID == playerID
+		if row.Status == domain.MatchPending && involved && row.ReportedBy != playerID {
+			out = append(out, row)
+		}
+	}
+	return out, nil
+}
+
+func (m *memMatches) SetStatus(_ context.Context, id uuid.UUID, status domain.MatchStatus, confirmedAt *time.Time) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	for i := range m.rows {
+		if m.rows[i].ID != id {
+			continue
+		}
+		m.rows[i].Status = status
+		m.rows[i].ConfirmedAt = confirmedAt
+		return nil
+	}
+	return domain.ErrNotFound
+}
+
+type memHistory struct {
+	repository.TTRHistoryRepository
+	mu   sync.Mutex
+	rows []domain.TTRChange
+}
+
+func (h *memHistory) Append(_ context.Context, changes []domain.TTRChange) error {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+
+	// Mirrors ttr_history_player_match_key: one entry per player and match,
+	// which is what stops a rating being settled twice.
+	for _, c := range changes {
+		for _, existing := range h.rows {
+			if existing.PlayerID == c.PlayerID && existing.MatchID == c.MatchID {
+				return domain.ErrConflict
+			}
+		}
+	}
+	h.rows = append(h.rows, changes...)
+	return nil
+}
+
+func (h *memHistory) ForPlayer(_ context.Context, playerID uuid.UUID, limit int) ([]domain.TTRChange, error) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+
+	var out []domain.TTRChange
+	for _, c := range h.rows {
+		if c.PlayerID == playerID {
+			out = append(out, c)
+		}
+		if len(out) == limit {
+			break
+		}
+	}
+	return out, nil
 }

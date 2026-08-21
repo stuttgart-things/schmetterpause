@@ -43,6 +43,14 @@ func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 		}
 		view.Match = templates.NewMatchFormView(opponents)
 		view.ShowMatch = true
+
+		pending, err := s.pendingListView(r.Context(), self)
+		if err != nil {
+			s.log.ErrorContext(r.Context(), "loading the pending matches failed", "error", err)
+			http.Error(w, "Offene Ergebnisse nicht verfügbar", http.StatusInternalServerError)
+			return
+		}
+		view.Pending = pending
 	}
 
 	s.render(w, r, templates.Index(view))
@@ -152,6 +160,7 @@ func (s *Server) playerListView(ctx context.Context) (templates.PlayerListView, 
 	for _, p := range players {
 		view.Players = append(view.Players, templates.PlayerListEntry{
 			DisplayName: p.DisplayName,
+			TTR:         p.TTR,
 			IsSelf:      p.ID == self && self != uuid.Nil,
 		})
 	}

@@ -1,0 +1,115 @@
+package templates
+
+import "strconv"
+
+// PendingList shows the results waiting on the viewer's word.
+//
+// Only the opponent can decide, never whoever entered the result — that is
+// the whole point of the step, and the reason it is the app's real defence
+// against a joke score rather than the login is.
+templ PendingList(v PendingListView) {
+	<section id="pending" class="pending">
+		<h2>Zu bestätigen</h2>
+		@pendingItems(v)
+	</section>
+}
+
+// PendingListOOB is PendingList marked for an out-of-band swap, so an action
+// elsewhere on the page can refresh it in the same response.
+templ PendingListOOB(v PendingListView) {
+	<section id="pending" class="pending" hx-swap-oob="true">
+		<h2>Zu bestätigen</h2>
+		@pendingItems(v)
+	</section>
+}
+
+templ pendingItems(v PendingListView) {
+	if len(v.Matches) == 0 {
+		<p class="muted">Nichts zu bestätigen.</p>
+	} else {
+		<ul class="pending-list">
+			for _, m := range v.Matches {
+				<li id={ "pending-" + m.ID }>
+					@PendingMatch(m)
+				</li>
+			}
+		</ul>
+	}
+}
+
+templ PendingMatch(m PendingMatchView) {
+	<div class="pending-match">
+		<p>
+			<strong>{ m.ReporterName }</strong> hat eingetragen:
+			if m.Won {
+				{ strconv.Itoa(m.OwnSets) }:{ strconv.Itoa(m.OpponentSets) } für dich
+			} else {
+				{ strconv.Itoa(m.OpponentSets) }:{ strconv.Itoa(m.OwnSets) } für { m.ReporterName }
+			}
+		</p>
+		<p class="sets-line muted">
+			for i, s := range m.Sets {
+				if i > 0 {
+					{ ", " }
+				}
+				{ strconv.Itoa(s.Own) }:{ strconv.Itoa(s.Opponent) }
+			}
+		</p>
+		<div class="actions">
+			<button
+				hx-post={ "/matches/" + m.ID + "/confirm" }
+				hx-target={ "#pending-" + m.ID }
+				hx-swap="outerHTML"
+			>
+				Stimmt
+			</button>
+			<button
+				class="secondary"
+				hx-post={ "/matches/" + m.ID + "/dispute" }
+				hx-target={ "#pending-" + m.ID }
+				hx-swap="outerHTML"
+			>
+				Stimmt nicht
+			</button>
+		</div>
+	</div>
+}
+
+// Settled replaces a list entry once the result counts.
+templ Settled(v SettledView) {
+	<li id={ "pending-" + v.ID } class="settled">
+		<p>
+			Bestätigt:
+			if v.Won {
+				<strong>Gewonnen</strong>
+			} else {
+				<strong>Verloren</strong>
+			}
+			gegen { v.OpponentName } mit
+			{ strconv.Itoa(v.OwnSets) }:{ strconv.Itoa(v.OpponentSets) } Sätzen.
+		</p>
+		<p>
+			if v.Delta > 0 {
+				<span class="gain">+{ strconv.Itoa(v.Delta) }</span>
+			} else {
+				<span class="loss">{ strconv.Itoa(v.Delta) }</span>
+			}
+			TTR, jetzt { strconv.Itoa(v.NewTTR) }.
+		</p>
+	</li>
+}
+
+// Disputed replaces a list entry once the result has been contested. The MVP
+// has no interface for resolving one — that is issue #18, and the honest
+// answer until it has happened often enough to be worth building.
+templ Disputed(v DisputedView) {
+	<li id={ "pending-" + v.ID } class="disputed">
+		<p>
+			Widersprochen. Das Ergebnis zählt nicht.
+		</p>
+		<p class="muted">
+			Klärt es mit { v.ReporterName }; ein neues Ergebnis kann er
+			danach eintragen.
+		</p>
+	</li>
+}

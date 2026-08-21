@@ -167,3 +167,40 @@ button:hover { filter: brightness(1.08); }
 .players li { margin: 0.15rem 0; }
 
 .fail { color: var(--accent); font-weight: 600; }
+
+/* --- Zu bestätigen ---------------------------------------------------- */
+
+.pending { margin: 1.5rem 0 0; padding: 1rem 1.25rem; border: 1px solid var(--line); border-radius: 0.5rem; }
+.pending h2 { margin-top: 0; font-size: 1.1rem; }
+
+.pending-list { list-style: none; margin: 0; padding: 0; }
+
+.pending-list > li {
+	padding: 0.75rem 0;
+	border-top: 1px solid var(--line);
+}
+
+.pending-list > li:first-child { border-top: none; }
+
+.pending-match p { margin: 0.15rem 0; }
+
+.sets-line { font-variant-numeric: tabular-nums; font-size: 0.9rem; }
+
+.actions { display: flex; gap: 0.5rem; margin-top: 0.5rem; }
+.actions button { margin-top: 0; }
+
+button.secondary {
+	background: transparent;
+	color: var(--fg);
+	border-color: var(--line);
+}
+
+.gain { color: var(--ok); font-weight: 600; }
+.loss { color: var(--accent); font-weight: 600; }
+
+.ttr {
+	color: var(--muted);
+	font-variant-numeric: tabular-nums;
+}
+
+.settled, .disputed { padding: 0.75rem 0; }
