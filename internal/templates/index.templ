@@ -1,0 +1,38 @@
+package templates
+
+import "strconv"
+
+templ Index() {
+	@Layout("Start") {
+		<h1>Schmetterpause</h1>
+		<p>
+			Das Gerüst steht. Ergebniserfassung, Bestätigung und Rangliste
+			folgen mit den nächsten Arbeitspaketen.
+		</p>
+		<section
+			id="status"
+			hx-get="/fragments/status"
+			hx-trigger="load, every 10s"
+			hx-swap="innerHTML"
+		>
+			<p class="muted">Status wird geladen …</p>
+		</section>
+	}
+}
+
+// Status ist das per HTMX nachgeladene Fragment. Es beweist den Weg
+// Handler -> Repository -> Datenbank und zurück ins Template.
+templ Status(v StatusView) {
+	<dl class="status">
+		<dt>Datenbank</dt>
+		if v.DatabaseReachable {
+			<dd class="ok">erreichbar</dd>
+		} else {
+			<dd class="fail">nicht erreichbar</dd>
+		}
+		<dt>Spieler</dt>
+		<dd>{ strconv.Itoa(v.Players) }</dd>
+		<dt>Version</dt>
+		<dd>{ v.Version }</dd>
+	</dl>
+}

@@ -1,0 +1,49 @@
+# Lokale Entwicklungsumgebung: App und Postgres, sonst nichts.
+#
+# Kein Redis — siehe docs/adr/0002. Die App liest ihre gesamte Konfiguration
+# aus SP_*-Variablen; dasselbe Image laeuft ohne Aenderung auch in K8s und ACA.
+
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: schmetterpause
+      POSTGRES_PASSWORD: schmetterpause
+      POSTGRES_DB: schmetterpause
+      PGDATA: /var/lib/postgresql/data/pgdata
+    ports:
+      # Nur an Loopback, damit die Entwicklungsdatenbank nicht im Netz haengt.
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U schmetterpause -d schmetterpause"]
+      interval: 2s
+      timeout: 3s
+      retries: 20
+
+  app:
+    build:
+      context: .
+      args:
+        VERSION: ${VERSION:-dev}
+    environment:
+      SP_DATABASE_URL: postgres://schmetterpause:schmetterpause@db:5432/schmetterpause?sslmode=disable
+      SP_LOG_LEVEL: ${SP_LOG_LEVEL:-debug}
+    ports:
+      - "127.0.0.1:8080:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      # Das distroless-Image hat keine Shell und kein curl — das Binary bringt
+      # den Check selbst mit.
+      test: ["CMD", "/usr/local/bin/schmetterpause", "healthcheck"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    restart: unless-stopped
+
+volumes:
+  pgdata:

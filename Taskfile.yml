@@ -1,0 +1,146 @@
+# Task ist die Einstiegsschicht fuer Menschen: jeder Befehl, den jemand tippt,
+# ist ein Task. Die Build-Logik steckt nicht hier, sondern in Dagger — deshalb
+# rufen lint, build, verify und ci nur "dagger call" auf.
+version: '3'
+
+vars:
+  MODULE: github.com/stuttgart-things/schmetterpause
+  # DSN fuer die Compose-Datenbank, wenn Werkzeuge vom Host aus zugreifen.
+  DSN: postgres://schmetterpause:schmetterpause@127.0.0.1:5432/schmetterpause?sslmode=disable
+  VERSION:
+    sh: git describe --tags --always --dirty 2>/dev/null || echo dev
+
+tasks:
+  default:
+    desc: "Verfügbare Tasks anzeigen"
+    cmds:
+      - task --list
+    silent: true
+
+  # ---------------------------------------------------------------- Betrieb
+
+  up:
+    desc: "Compose-Umgebung starten (App + Postgres)"
+    cmds:
+      - docker compose up --build --wait
+      - 'echo "Schmetterpause läuft auf http://127.0.0.1:8080"'
+
+  down:
+    desc: "Compose-Umgebung stoppen und die Entwicklungsdaten verwerfen"
+    cmds:
+      - docker compose down --volumes --remove-orphans
+
+  logs:
+    desc: "Logs der App verfolgen"
+    cmds:
+      - docker compose logs --follow app
+
+  run:
+    desc: "App lokal gegen die Compose-Datenbank starten (ohne App-Container)"
+    deps: [generate]
+    env:
+      SP_DATABASE_URL: '{{.DSN}}'
+      SP_LOG_LEVEL: debug
+    cmds:
+      - docker compose up --detach --wait db
+      - go run ./cmd/schmetterpause serve
+
+  psql:
+    desc: "psql-Sitzung auf der Entwicklungsdatenbank"
+    interactive: true
+    cmds:
+      - docker compose exec db psql -U schmetterpause -d schmetterpause
+
+  # ------------------------------------------------------------- Entwicklung
+
+  generate:
+    desc: "templ-Templates generieren"
+    sources:
+      - internal/templates/*.templ
+    generates:
+      - internal/templates/*_templ.go
+    cmds:
+      - go generate ./...
+
+  fmt:
+    desc: "Quellen formatieren"
+    cmds:
+      - go tool templ fmt .
+      - gofmt -w cmd internal web db
+      - go mod tidy
+
+  migrate:
+    desc: "Migrations gegen die lokale Datenbank anwenden"
+    env:
+      SP_DATABASE_URL: '{{.DSN}}'
+    cmds:
+      - docker compose up --detach --wait db
+      - go run ./cmd/schmetterpause migrate up
+
+  migrate:status:
+    desc: "Stand der Migrations anzeigen"
+    env:
+      SP_DATABASE_URL: '{{.DSN}}'
+    cmds:
+      - go run ./cmd/schmetterpause migrate status
+
+  test:
+    desc: "Unit-Tests lokal, schnell"
+    deps: [generate]
+    cmds:
+      - go test -race -cover ./...
+
+  test:integration:
+    desc: "Repository-Tests gegen die lokale Datenbank — leert dabei alle Tabellen"
+    deps: [generate]
+    env:
+      SP_TEST_DATABASE_URL: '{{.DSN}}'
+    cmds:
+      - docker compose up --detach --wait db
+      - go test -race -count=1 ./internal/repository/...
+
+  # ------------------------------------------------------------------ Dagger
+  # Diese Tasks rufen dieselbe Pipeline auf, die auch in der CI laeuft.
+
+  lint:
+    desc: "Dagger-Lint: Format, Generat-Stand, go vet, golangci-lint"
+    deps: [dagger:check]
+    cmds:
+      - dagger call lint --source=.
+
+  build:
+    desc: "Dagger-Build: Binary und Image, Ausgabe als OCI-Artefakt"
+    deps: [dagger:check]
+    cmds:
+      - mkdir -p build
+      - dagger call build --source=. --version={{.VERSION}} export --path=build/schmetterpause-oci.tar
+      - 'echo "OCI-Artefakt: build/schmetterpause-oci.tar"'
+
+  verify:
+    desc: "Dagger-Verify: gebautes Image gegen frisches Postgres"
+    deps: [dagger:check]
+    cmds:
+      - dagger call verify --source=. --version={{.VERSION}}
+
+  ci:
+    desc: "lint + build + verify — identisch zur Pipeline"
+    deps: [dagger:check]
+    cmds:
+      - dagger call ci --source=. --version={{.VERSION}}
+
+  dagger:develop:
+    desc: "Generierte Teile des Dagger-Moduls erzeugen (einmalig nötig)"
+    deps: [dagger:check]
+    cmds:
+      - dagger develop
+
+  dagger:check:
+    internal: true
+    preconditions:
+      - sh: command -v dagger >/dev/null
+        msg: |
+          Die Dagger-CLI fehlt. Sie enthält die Pipeline-Logik, deshalb laufen
+          lint, build, verify und ci nicht ohne sie.
+          Installation: https://docs.dagger.io/install
+      - sh: docker info >/dev/null 2>&1
+        msg: "Docker läuft nicht — Dagger braucht eine Container-Runtime."

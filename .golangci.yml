@@ -1,0 +1,48 @@
+version: "2"
+
+run:
+  timeout: 5m
+
+linters:
+  default: standard
+  enable:
+    # Fehler werden gewrappt, nicht verschluckt (CLAUDE.md, "Konventionen").
+    - errorlint
+    - bodyclose
+    # misspell ist bewusst aus: es kennt nur englische Woerter und meldet die
+    # deutschsprachigen Kommentare dieses Projekts als Tippfehler.
+    - unconvert
+    - revive
+  settings:
+    errcheck:
+      check-type-assertions: true
+    revive:
+      rules:
+        - name: exported
+        - name: error-strings
+        - name: context-as-argument
+  exclusions:
+    generated: lax
+    paths:
+      # Von templ erzeugt; wird nicht von Hand gepflegt.
+      - ".*_templ\\.go$"
+      # Von Dagger erzeugt.
+      - "dagger/internal"
+    rules:
+      - path: _test\.go
+        linters:
+          - errcheck
+
+formatters:
+  enable:
+    - gofmt
+    - goimports
+  settings:
+    goimports:
+      local-prefixes:
+        - github.com/stuttgart-things/schmetterpause
+  exclusions:
+    generated: lax
+    paths:
+      - ".*_templ\\.go$"
+      - "dagger/internal"

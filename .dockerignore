@@ -1,0 +1,14 @@
+.git
+.github
+.task
+build/
+docs/
+compose.yaml
+Dockerfile
+README.md
+CLAUDE.md
+*.md
+
+# Dagger-Generate: gehoert nicht in den App-Build.
+dagger/internal/
+dagger/dagger.gen.go

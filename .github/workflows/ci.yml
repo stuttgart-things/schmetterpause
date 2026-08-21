@@ -1,0 +1,41 @@
+# Bewusst duenn: Dieses Workflow installiert die Dagger-CLI und ruft dieselbe
+# Funktion auf, die lokal hinter "task ci" steckt. Es enthaelt keine
+# Build-Logik — die steht in dagger/main.go und laeuft hier und lokal gleich.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  DAGGER_VERSION: "0.21.8"
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Version aus git describe: braucht Tags und Historie.
+          fetch-depth: 0
+
+      - name: Dagger-CLI installieren
+        run: |
+          curl -fsSL https://dl.dagger.io/dagger/install.sh \
+            | DAGGER_VERSION="${DAGGER_VERSION}" BIN_DIR=/usr/local/bin sudo -E sh
+          dagger version
+
+      - name: lint, build, verify
+        run: |
+          dagger call ci \
+            --source=. \
+            --version="$(git describe --tags --always --dirty)"
