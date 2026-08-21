@@ -56,6 +56,8 @@ func (s *Server) routes() http.Handler {
 	page.HandleFunc("GET /fragments/status", s.handleStatusFragment)
 	page.HandleFunc("GET /fragments/players", s.handlePlayersFragment)
 	page.HandleFunc("POST /players", s.handleJoin)
+	page.HandleFunc("GET /fragments/match", s.handleMatchForm)
+	page.HandleFunc("POST /matches", s.handleRecordMatch)
 	mux.Handle("/", auth.Middleware(s.auth, s.log)(page))
 
 	return recoverer(s.log)(requestLogger(s.log)(mux))

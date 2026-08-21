@@ -1,0 +1,103 @@
+package templates
+
+import "strconv"
+
+// MatchForm renders result entry. The mode controls come pre-set to
+// best-of-five to eleven, so the common case costs no interaction at all —
+// the budget in AP7 is three from scanning the code to a submitted result.
+templ MatchForm(v MatchFormView) {
+	<section id="match" class="match">
+		<h2>Ergebnis eintragen</h2>
+		if len(v.Opponents) == 0 {
+			<p class="muted">
+				Sobald jemand anderes mitspielt, kannst du hier ein Ergebnis
+				eintragen.
+			</p>
+		} else {
+			<form hx-post="/matches" hx-target="#match" hx-swap="outerHTML">
+				<div class="row">
+					<label for="opponent">Gegner</label>
+					<select id="opponent" name="opponent_id" required>
+						<option value="">bitte wählen</option>
+						for _, o := range v.Opponents {
+							<option value={ o.ID } selected?={ o.Selected }>{ o.DisplayName }</option>
+						}
+					</select>
+				</div>
+				<div class="row">
+					<label for="best-of">Modus</label>
+					<select id="best-of" name="best_of">
+						for _, n := range []int{3, 5, 7} {
+							<option value={ strconv.Itoa(n) } selected?={ v.BestOf == n }>
+								Best of { strconv.Itoa(n) }
+							</option>
+						}
+					</select>
+					<select id="points-to-win" name="points_to_win" aria-label="Punkte pro Satz">
+						for _, p := range []int{11, 21} {
+							<option value={ strconv.Itoa(p) } selected?={ v.PointsToWin == p }>
+								bis { strconv.Itoa(p) }
+							</option>
+						}
+					</select>
+				</div>
+				<fieldset class="sets">
+					<legend>Sätze</legend>
+					<p class="muted">Nicht gespielte Sätze leer lassen.</p>
+					for i, s := range v.Sets {
+						<div class="set">
+							<span class="set-no">{ strconv.Itoa(i + 1) }.</span>
+							<input
+								type="number"
+								name={ "set_home_" + strconv.Itoa(i+1) }
+								value={ s.Home }
+								min="0"
+								inputmode="numeric"
+								aria-label={ "Satz " + strconv.Itoa(i+1) + ", eigene Punkte" }
+							/>
+							<span class="colon">:</span>
+							<input
+								type="number"
+								name={ "set_away_" + strconv.Itoa(i+1) }
+								value={ s.Away }
+								min="0"
+								inputmode="numeric"
+								aria-label={ "Satz " + strconv.Itoa(i+1) + ", Punkte des Gegners" }
+							/>
+						</div>
+					}
+				</fieldset>
+				<button type="submit">Eintragen</button>
+				if v.Error != "" {
+					<p class="fail" role="alert">{ v.Error }</p>
+				}
+			</form>
+		}
+	</section>
+}
+
+// MatchRecorded confirms the entry and says what happens next. It is
+// deliberately explicit that the result does not count yet: an unconfirmed
+// match changes no rating, and hiding that would make the ranking look wrong
+// rather than incomplete.
+templ MatchRecorded(v MatchRecordedView) {
+	<section id="match" class="match">
+		<h2>Eingetragen</h2>
+		<p>
+			if v.Won {
+				<strong>Gewonnen</strong>
+			} else {
+				<strong>Verloren</strong>
+			}
+			gegen { v.OpponentName } mit
+			{ strconv.Itoa(v.OwnSets) }:{ strconv.Itoa(v.OpponentSets) } Sätzen.
+		</p>
+		<p class="muted">
+			{ v.OpponentName } muss das Ergebnis noch bestätigen. Bis dahin
+			zählt es nicht für die Wertung.
+		</p>
+		<button hx-get="/fragments/match" hx-target="#match" hx-swap="outerHTML">
+			Noch ein Ergebnis
+		</button>
+	</section>
+}

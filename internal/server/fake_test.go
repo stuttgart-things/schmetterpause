@@ -22,17 +22,23 @@ type memStore struct {
 	repository.Store
 	players    *memPlayers
 	identities *memIdentities
+	matches    *memMatches
 	pingErr    error
 }
 
 func newMemStore() *memStore {
 	players := &memPlayers{}
-	return &memStore{players: players, identities: &memIdentities{players: players}}
+	return &memStore{
+		players:    players,
+		identities: &memIdentities{players: players},
+		matches:    &memMatches{},
+	}
 }
 
 func (m *memStore) Ping(context.Context) error                { return m.pingErr }
 func (m *memStore) Players() repository.PlayerRepository      { return m.players }
 func (m *memStore) Identities() repository.IdentityRepository { return m.identities }
+func (m *memStore) Matches() repository.MatchRepository       { return m.matches }
 
 // InTx runs fn against the same store. There is no rollback here, which is
 // fine for handler tests — that transactions actually hold is covered against
@@ -125,4 +131,33 @@ func (i *memIdentities) PlayerBy(ctx context.Context, provider domain.Provider, 
 		return domain.Player{}, domain.ErrNotFound
 	}
 	return i.players.ByID(ctx, id)
+}
+
+type memMatches struct {
+	repository.MatchRepository
+	mu   sync.Mutex
+	rows []domain.Match
+}
+
+func (m *memMatches) Create(_ context.Context, in domain.Match) (domain.Match, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	in.ID = uuid.New()
+	if in.PlayedAt.IsZero() {
+		in.PlayedAt = time.Now()
+	}
+	if in.Status == "" {
+		in.Status = domain.MatchPending
+	}
+	m.rows = append(m.rows, in)
+	return in, nil
+}
+
+// all returns a copy of the stored matches, for assertions.
+func (m *memMatches) all() []domain.Match {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	return append([]domain.Match(nil), m.rows...)
 }

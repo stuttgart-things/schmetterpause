@@ -2,16 +2,15 @@ package templates
 
 import "strconv"
 
-templ Index(session SessionView, players PlayerListView) {
+templ Index(v IndexView) {
 	@Layout("Start") {
 		<h1>Schmetterpause</h1>
-		<p>
-			Ergebniserfassung, Bestätigung und Rangliste folgen mit den
-			nächsten Arbeitspaketen.
-		</p>
-		@Session(session)
+		@Session(v.Session)
+		if v.ShowMatch {
+			@MatchForm(v.Match)
+		}
 		<h2>Spieler</h2>
-		@PlayerList(players)
+		@PlayerList(v.Players)
 		<section
 			id="status"
 			hx-get="/fragments/status"

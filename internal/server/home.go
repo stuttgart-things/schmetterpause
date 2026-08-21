@@ -20,9 +20,9 @@ import (
 // browser and is not a rule.
 const maxDisplayNameLen = 40
 
-// handleIndex renders the start page with the current session and the roster.
+// handleIndex renders the start page: session, result entry and the roster.
 func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
-	session := s.sessionView(r.Context())
+	view := templates.IndexView{Session: s.sessionView(r.Context())}
 
 	players, err := s.playerListView(r.Context())
 	if err != nil {
@@ -30,8 +30,22 @@ func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Spielerliste nicht verfügbar", http.StatusInternalServerError)
 		return
 	}
+	view.Players = players
 
-	s.render(w, r, templates.Index(session, players))
+	// Result entry needs somebody to attribute the report to, so it appears
+	// only once the browser is recognised.
+	if self, ok := auth.PlayerID(r.Context()); ok {
+		opponents, err := s.opponentOptions(r.Context(), self, uuid.Nil)
+		if err != nil {
+			s.log.ErrorContext(r.Context(), "loading the opponents failed", "error", err)
+			http.Error(w, "Gegnerliste nicht verfügbar", http.StatusInternalServerError)
+			return
+		}
+		view.Match = templates.NewMatchFormView(opponents)
+		view.ShowMatch = true
+	}
+
+	s.render(w, r, templates.Index(view))
 }
 
 // handleJoin creates a player and starts a session for them.

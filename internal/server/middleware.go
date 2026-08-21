@@ -3,6 +3,7 @@ package server
 import (
 	"log/slog"
 	"net/http"
+	"runtime/debug"
 	"time"
 )
 
@@ -59,7 +60,13 @@ func recoverer(log *slog.Logger) func(http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			defer func() {
 				if v := recover(); v != nil {
-					log.Error("handler panic", "path", r.URL.Path, "panic", v)
+					// Without the stack a recovered panic says only that
+					// something went wrong somewhere, which costs more time
+					// to chase than the log line saves.
+					log.Error("handler panic",
+						"path", r.URL.Path,
+						"panic", v,
+						"stack", string(debug.Stack()))
 					// User-facing text stays German; see CLAUDE.md.
 					http.Error(w, "Interner Fehler", http.StatusInternalServerError)
 				}

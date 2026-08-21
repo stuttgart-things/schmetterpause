@@ -80,3 +80,90 @@ h1 { font-size: 1.6rem; margin: 0 0 0.5rem; }
 }
 
 .footer a { color: var(--muted); }
+
+/* --- Formulare ------------------------------------------------------- */
+
+form {
+	margin: 0.75rem 0 0;
+}
+
+label {
+	display: inline-block;
+	min-width: 5.5rem;
+	color: var(--muted);
+}
+
+input, select, button {
+	font: inherit;
+	padding: 0.4rem 0.55rem;
+	border: 1px solid var(--line);
+	border-radius: 0.35rem;
+	background: var(--bg);
+	color: var(--fg);
+}
+
+button {
+	margin-top: 0.75rem;
+	background: var(--accent);
+	border-color: var(--accent);
+	color: #fff;
+	cursor: pointer;
+}
+
+button:hover { filter: brightness(1.08); }
+
+.session, .match {
+	margin: 1.5rem 0 0;
+	padding: 1rem 1.25rem;
+	border: 1px solid var(--line);
+	border-radius: 0.5rem;
+}
+
+.match h2, .session h2 { margin-top: 0; font-size: 1.1rem; }
+
+.row {
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+	margin-bottom: 0.6rem;
+	flex-wrap: wrap;
+}
+
+.sets {
+	border: none;
+	padding: 0;
+	margin: 0.5rem 0 0;
+}
+
+.sets legend { color: var(--muted); padding: 0; }
+
+.set {
+	display: flex;
+	align-items: center;
+	gap: 0.4rem;
+	margin-bottom: 0.3rem;
+}
+
+/* Tabular numerals so the score column does not jitter while typing. */
+.set input {
+	width: 4.5rem;
+	text-align: center;
+	font-variant-numeric: tabular-nums;
+}
+
+.set-no {
+	width: 1.5rem;
+	color: var(--muted);
+	text-align: right;
+}
+
+.colon { color: var(--muted); }
+
+.players {
+	margin: 0.5rem 0 0;
+	padding-left: 1.2rem;
+}
+
+.players li { margin: 0.15rem 0; }
+
+.fail { color: var(--accent); font-weight: 600; }
