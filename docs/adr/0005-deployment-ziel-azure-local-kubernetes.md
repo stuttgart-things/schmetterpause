@@ -30,13 +30,26 @@ eine Arc-Frage.
 2. **Wie viele Stages?** Mindestens dev/prod plausibel. Kargo lohnt sich erst
    ab mindestens zwei Stufen mit echter Promotion dazwischen — bei nur einer
    Stage reicht Argo CD allein.
-3. **Registry:** In `docs/mvp-plan.md` unter "Offene Punkte" bereits als
-   "erst relevant, wenn über Compose hinaus deployt wird" vermerkt. Wird hier
-   relevant.
+3. ~~**Registry**~~ — **entschieden** (Issue #20, 2026-08-21): `ttl.sh` für
+   Wegwerf-Builds, `ghcr.io/stuttgart-things/schmetterpause` für alles
+   Bleibende. Multi-Arch (amd64+arm64), Push bei jedem `main`-Merge als
+   Snapshot, `latest` bewegt sich nur bei echten Tags (`dagger/main.go`,
+   `Release`-Funktion). Für dieses ADR heißt das: Die Arc/Argo-CD-Extension
+   zieht Images von GHCR — bei privatem Package braucht der Azure-Local-
+   Cluster ein `imagePullSecret`, bei öffentlichem nicht. Muss noch geprüft
+   werden, wie das GHCR-Package aktuell sichtbar ist.
 4. **Skalierung / Redis-Trigger:** ADR-0002 nennt "mehr als eine Replica +
    SSE" als Auslöser für Redis. Sobald das Deployment-Ziel feststeht, prüfen,
    ob Azure Local mit mehr als einer Replica geplant ist — das zieht ADR-0002
    nach vorne.
+
+## Hinweis zur Form
+
+Das Team trackt "Offene Punkte" aus `docs/mvp-plan.md` inzwischen als
+GitHub-Issues statt als ADR-Prosa (#17–#20) — ADRs sind für Entscheidungen mit
+Bestand, Issues für Fragen, die noch offen sind. Die vier Punkte oben in
+diesem ADR sind Kandidaten für denselben Schnitt, sobald das Deployment-Ziel
+näher rückt: eigene Issues statt Unterpunkte hier drin.
 
 ## Entscheidung
 
