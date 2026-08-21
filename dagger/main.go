@@ -538,6 +538,36 @@ curl -fsS -b "$cookies" -X POST http://app:8080/matches \
 	exit 1
 }
 
+echo "== confirmation: only the opponent settles a result =="
+mid=$(curl -fsS -b "$second" http://app:8080/fragments/pending \
+	| tr "<" "\n" | grep "li id=\"pending-" | head -1 \
+	| sed "s/.*pending-\([0-9a-f-]*\)\".*/\1/")
+[ -n "$mid" ] || {
+	echo "the opponent was shown nothing to confirm"
+	exit 1
+}
+
+# Anna entered it, so Anna cannot confirm it. A result confirmed by whoever
+# reported it is not confirmed at all, which is the point of the step.
+code=$(curl -sS -o /dev/null -w "%{http_code}" -b "$cookies" \
+	-X POST "http://app:8080/matches/$mid/confirm")
+[ "$code" = "403" ] || {
+	echo "the reporter was allowed to confirm their own result: $code"
+	exit 1
+}
+
+curl -fsS -b "$second" -X POST "http://app:8080/matches/$mid/confirm" \
+	| grep -q "Bestätigt" || {
+	echo "confirming did not settle the match"
+	exit 1
+}
+
+# 11:9 and 12:10 from equal ratings is +8, so the roster has to have moved.
+curl -fsS -b "$second" http://app:8080/fragments/players | grep -q "1008" || {
+	echo "the rating did not move after the confirmation"
+	exit 1
+}
+
 echo
 echo "verify: all checks passed"
 `
