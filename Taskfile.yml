@@ -128,6 +128,33 @@ tasks:
     cmds:
       - dagger call ci --source=. --version={{.VERSION}}
 
+  publish:
+    desc: "Push the image to ttl.sh so somebody can look at it — expires by itself"
+    deps: [dagger:check]
+    vars:
+      TTL: '{{.TTL | default "1h"}}'
+    cmds:
+      - dagger call publish --source=. --version={{.VERSION}} --ttl={{.TTL}}
+      - 'echo "Expires in {{.TTL}}. ttl.sh is public — pull it, do not store anything in it."'
+
+  release:
+    desc: "Push the image to GHCR — needs GITHUB_TOKEN and GITHUB_USER"
+    deps: [dagger:check]
+    preconditions:
+      - sh: '[ -n "$GITHUB_TOKEN" ]'
+        msg: |
+          GITHUB_TOKEN is not set. It needs write access to the package
+          (scope write:packages, or the job token with packages: write).
+      - sh: '[ -n "$GITHUB_USER" ]'
+        msg: "GITHUB_USER is not set. Use the account the token belongs to."
+    cmds:
+      - >
+        dagger call release
+        --source=.
+        --version={{.VERSION}}
+        --registry-token=env:GITHUB_TOKEN
+        --username="$GITHUB_USER"
+
   dagger:develop:
     desc: "Generate the Dagger module scaffolding (needed once)"
     deps: [dagger:check]
