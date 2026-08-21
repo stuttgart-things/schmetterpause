@@ -134,7 +134,7 @@ tasks:
       - dagger call verify --source=. --version={{.VERSION}}
 
   ci:
-    desc: "lint + build + verify, identical to the pipeline"
+    desc: "lint + test + build + verify, identical to the pipeline"
     deps: [dagger:check]
     cmds:
       - dagger call ci --source=. --version={{.VERSION}}
