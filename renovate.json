@@ -2,5 +2,18 @@
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": [
     "config:recommended"
+  ],
+  "customManagers": [
+    {
+      "customType": "regex",
+      "description": "Container images pinned as Go constants in the Dagger pipeline module. Renovate's docker manager only sees Dockerfiles and compose files, so without this the pipeline images drift behind the ones it does see.",
+      "managerFilePatterns": [
+        "/^dagger/main\\.go$/"
+      ],
+      "matchStrings": [
+        "Image\\s*=\\s*\"(?<depName>[^\":\\s]+):(?<currentValue>[^\"\\s]+)\""
+      ],
+      "datasourceTemplate": "docker"
+    }
   ]
 }
