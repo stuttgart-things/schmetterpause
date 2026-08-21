@@ -150,11 +150,27 @@ TTR-Verlauf.
 
 ### AP7 — QR-Eingabe
 
-Statische QR-Codes pro Platte, Ziel-URL springt direkt in die Erfassung mit
-vorbelegter Platte. Druckbare Vorlage zum Aushängen.
+Druckbarer Aushang unter `/qr`, dessen QR-Code direkt in die Ergebniserfassung
+springt.
 
 *Fertig, wenn:* Vom Scannen bis zum abgeschickten Ergebnis sind es höchstens
 drei Interaktionen.
+
+**Es gibt nur eine Platte.** Damit entfällt der ursprünglich vorgesehene
+Code *pro* Platte samt Vorbelegung — es gibt nichts vorzubelegen, keine
+Kennung in der URL und keine `tables`-Tabelle, die das Slot-Modell eines
+späteren Meilensteins vorwegnehmen würde. Kommt eine zweite Platte dazu, ist
+das eine eigene Entscheidung mit eigenem Schemaschritt.
+
+**Der Code wird im Binary erzeugt**, nicht als Bilddatei mitgeliefert. Ein
+QR-Code enthält eine absolute URL; eine mitgelieferte Datei müsste einen Host
+einbacken und würde Invariante 2 verletzen. Die Adresse stammt deshalb aus dem
+Request — `SP_PUBLIC_BASE_URL` überschreibt sie dort, wo ein Proxy davorsteht
+und der Request die öffentliche Adresse nicht mehr kennt.
+
+**Das Ziel ist der Anker `#match` auf der Startseite**, nicht eine zweite
+Seite mit demselben Formular. Wer noch nicht erkannt ist, landet oben bei der
+Namenseingabe — genau die richtige Reihenfolge beim ersten Scan.
 
 ### Reihenfolge
 
