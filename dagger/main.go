@@ -21,7 +21,7 @@ const (
 	golangciLintImage = "golangci/golangci-lint:v2.6.0-alpine"
 	postgresImage     = "postgres:17-alpine"
 	runtimeImage      = "gcr.io/distroless/static-debian12:nonroot"
-	toolingImage      = "alpine:3.21"
+	toolingImage      = "alpine:3.24"
 
 	// defaultArch is the target architecture when none is given.
 	defaultArch = "amd64"
