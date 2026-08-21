@@ -44,10 +44,10 @@ type QRSheetView struct {
 // IndexView is everything the start page renders. Bundled rather than passed
 // as four parameters so adding a section later does not touch every caller.
 type IndexView struct {
-	Session SessionView
-	Players PlayerListView
-	Match   MatchFormView
-	Pending PendingListView
+	Session   SessionView
+	Standings StandingsView
+	Match     MatchFormView
+	Pending   PendingListView
 	// ShowMatch hides result entry from anyone who is not recognised yet —
 	// a match has to be attributable to whoever reported it.
 	ShowMatch bool
@@ -67,22 +67,6 @@ type SessionView struct {
 
 // SignedIn reports whether a player is recognised.
 func (v SessionView) SignedIn() bool { return v.DisplayName != "" }
-
-// PlayerListView is the list of players. Not a ranking — that is AP6.
-type PlayerListView struct {
-	Players []PlayerListEntry
-}
-
-// PlayerListEntry is one player in the list.
-type PlayerListEntry struct {
-	DisplayName string
-	// TTR is the current rating. Shown so a confirmation visibly does
-	// something; games played and the win/loss record turn this into a real
-	// ranking in AP6.
-	TTR int
-	// IsSelf marks the viewer, so the list answers "am I in here?" at a glance.
-	IsSelf bool
-}
 
 // MaxSetRows is how many set rows the entry form offers. Best-of-seven is the
 // longest mode, so seven rows can hold any legal result.
@@ -171,4 +155,73 @@ type SettledView struct {
 type DisputedView struct {
 	ID           string
 	ReporterName string
+}
+
+// StandingsView is the ranking.
+type StandingsView struct {
+	Rows []StandingRow
+}
+
+// StandingRow is one line of the ranking.
+type StandingRow struct {
+	ID   string
+	Rank int
+	// Shared marks a rank more than one player holds, so two identical
+	// numbers do not have to explain themselves.
+	Shared      bool
+	DisplayName string
+	TTR         int
+	Played      int
+	Won, Lost   int
+	IsSelf      bool
+}
+
+// ProfileView is one player's page.
+type ProfileView struct {
+	DisplayName string
+	TTR         int
+	Rank        int
+	Shared      bool
+	Played      int
+	Won, Lost   int
+	// Delta is the last rating change; HasDelta is false before the first
+	// confirmed match, where "±0" would claim something that never happened.
+	Delta    int
+	HasDelta bool
+	Spark    SparkView
+	Matches  []ProfileMatchView
+}
+
+// SparkView is the rating history as ready-to-draw geometry. The arithmetic
+// happens in Go: a template is the wrong place to compute coordinates.
+type SparkView struct {
+	// Show is false with fewer than two points, where a line would be a dot
+	// pretending to be a trend.
+	Show bool
+	// Points is the polyline, "x,y x,y …" in the viewBox.
+	Points string
+	// LastX and LastY mark the current rating, drawn in the accent while the
+	// line stays recessive.
+	LastX, LastY string
+	// Width and Height are the viewBox.
+	Width, Height int
+	// Low and High label the range. The baseline is not zero — ratings sit
+	// around 1000, and a zero baseline would flatten every match into noise —
+	// so the range has to be stated rather than assumed.
+	Low, High int
+}
+
+// ProfileMatchView is one match on a profile, from that player's side.
+type ProfileMatchView struct {
+	PlayedAt     string
+	OpponentName string
+	Won          bool
+	OwnSets      int
+	OpponentSets int
+	Sets         []SetScore
+	// Pending and Disputed mark a result that does not count yet, or at all.
+	Pending  bool
+	Disputed bool
+	Delta    int
+	HasDelta bool
 }

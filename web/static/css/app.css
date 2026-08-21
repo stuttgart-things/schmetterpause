@@ -205,6 +205,67 @@ button.secondary {
 
 .settled, .disputed { padding: 0.75rem 0; }
 
+/* --- Rangliste und Profil --------------------------------------------- */
+
+.standings { margin: 1.5rem 0 0; padding: 1rem 1.25rem; border: 1px solid var(--line); border-radius: 0.5rem; }
+.standings h2 { margin-top: 0; font-size: 1.1rem; }
+
+table {
+	width: 100%;
+	border-collapse: collapse;
+}
+
+th, td {
+	padding: 0.35rem 0.5rem;
+	text-align: left;
+	border-bottom: 1px solid var(--line);
+}
+
+th {
+	font-weight: 600;
+	font-size: 0.85rem;
+	color: var(--muted);
+}
+
+tbody tr:last-child td { border-bottom: none; }
+
+/* Tabular figures keep the columns aligned while ratings move. The big
+   number on a profile deliberately does not use them. */
+.num { text-align: right; font-variant-numeric: tabular-nums; }
+
+tr.self td { background: color-mix(in srgb, var(--accent) 7%, transparent); }
+
+.matches .when { color: var(--muted); font-size: 0.9rem; white-space: nowrap; }
+
+.back { margin: 0 0 0.5rem; font-size: 0.9rem; }
+.summary { color: var(--muted); }
+
+/* --- Stat-Kachel mit Verlauf ------------------------------------------ */
+
+.stat {
+	margin: 1rem 0 0;
+	padding: 1rem 1.25rem;
+	border: 1px solid var(--line);
+	border-radius: 0.5rem;
+}
+
+.stat-label { margin: 0; color: var(--muted); font-size: 0.85rem; }
+
+/* Proportional figures: tabular ones give every digit the width of a zero,
+   which reads loose at this size. */
+.stat-value { margin: 0.1rem 0 0; font-size: 2.5rem; font-weight: 600; line-height: 1.1; }
+
+.stat-delta { margin: 0.2rem 0 0; font-size: 0.9rem; }
+
+.spark { margin: 0.75rem 0 0; }
+.spark svg { display: block; max-width: 100%; height: auto; }
+
+/* The line is context; only the current rating carries the accent. */
+.spark-line { stroke: var(--muted); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.spark-now { fill: var(--accent); }
+
+.spark figcaption { margin-top: 0.25rem; font-size: 0.8rem; }
+
 /* --- QR-Aushang -------------------------------------------------------- */
 
 .sheet { text-align: center; }

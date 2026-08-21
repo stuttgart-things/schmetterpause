@@ -20,7 +20,7 @@ generierten Teile des Pipeline-Moduls.
 
 ```sh
 task up        # Compose-Umgebung starten (App + Postgres)
-task ci        # lint, build, verify — identisch zur Pipeline
+task ci        # lint, test, build, verify — identisch zur Pipeline
 ```
 
 Alle Befehle laufen über [Task](https://taskfile.dev/). Die eigentliche

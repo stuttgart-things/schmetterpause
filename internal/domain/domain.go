@@ -54,6 +54,15 @@ type Player struct {
 	CreatedAt   time.Time
 }
 
+// PlayerRecord is a player with their confirmed match tally. Only confirmed
+// matches count — a pending or disputed one changes nothing until somebody
+// agrees it happened.
+type PlayerRecord struct {
+	Player Player
+	// Played, Won and Lost cover confirmed matches only.
+	Played, Won, Lost int
+}
+
 // Identity links a provider's proof to a player. A player can hold several
 // identities.
 type Identity struct {

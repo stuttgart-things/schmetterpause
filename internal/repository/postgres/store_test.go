@@ -129,6 +129,87 @@ func TestPlayerRepository(t *testing.T) {
 	}
 }
 
+// TestPlayerRecords covers the aggregate behind the ranking. Two things it
+// has to get right and neither is visible from the Go side: only confirmed
+// matches count, and the winner comes from the set scores rather than from
+// the rating change — a strong favourite who wins can move by zero points.
+func TestPlayerRecords(t *testing.T) {
+	store, ctx := newStore(t)
+
+	anna := mustPlayer(ctx, t, store, "Anna", 1100)
+	bodo := mustPlayer(ctx, t, store, "Bodo", 1000)
+	mustPlayer(ctx, t, store, "Cleo", 900)
+
+	// Anna beats Bodo, confirmed.
+	confirmed, err := store.Matches().Create(ctx, domain.Match{
+		HomeID: anna.ID, AwayID: bodo.ID, BestOf: 3, PointsToWin: 11,
+		Status: domain.MatchPending, ReportedBy: bodo.ID,
+		Sets: []domain.MatchSet{{SetNo: 1, HomePoints: 11, AwayPoints: 9}, {SetNo: 2, HomePoints: 11, AwayPoints: 7}},
+	})
+	if err != nil {
+		t.Fatalf("create the confirmed match: %v", err)
+	}
+	now := time.Now()
+	if err := store.Matches().SetStatus(ctx, confirmed.ID, domain.MatchConfirmed, &now); err != nil {
+		t.Fatalf("SetStatus(): %v", err)
+	}
+
+	// One pending and one disputed, neither of which may count.
+	pending, err := store.Matches().Create(ctx, domain.Match{
+		HomeID: anna.ID, AwayID: bodo.ID, BestOf: 3, PointsToWin: 11,
+		Status: domain.MatchPending, ReportedBy: anna.ID,
+		Sets: []domain.MatchSet{{SetNo: 1, HomePoints: 11, AwayPoints: 0}, {SetNo: 2, HomePoints: 11, AwayPoints: 0}},
+	})
+	if err != nil {
+		t.Fatalf("create the pending match: %v", err)
+	}
+	_ = pending
+
+	disputed, err := store.Matches().Create(ctx, domain.Match{
+		HomeID: bodo.ID, AwayID: anna.ID, BestOf: 3, PointsToWin: 11,
+		Status: domain.MatchPending, ReportedBy: anna.ID,
+		Sets: []domain.MatchSet{{SetNo: 1, HomePoints: 11, AwayPoints: 0}, {SetNo: 2, HomePoints: 11, AwayPoints: 0}},
+	})
+	if err != nil {
+		t.Fatalf("create the disputed match: %v", err)
+	}
+	if err := store.Matches().SetStatus(ctx, disputed.ID, domain.MatchDisputed, nil); err != nil {
+		t.Fatalf("SetStatus(): %v", err)
+	}
+
+	records, err := store.Players().Records(ctx)
+	if err != nil {
+		t.Fatalf("Records(): %v", err)
+	}
+	if len(records) != 3 {
+		t.Fatalf("%d records, want 3", len(records))
+	}
+
+	// Ordered by rating, best first — the same order List uses.
+	wantOrder := []string{"Anna", "Bodo", "Cleo"}
+	for i, want := range wantOrder {
+		if got := records[i].Player.DisplayName; got != want {
+			t.Errorf("record %d is %s, want %s", i, got, want)
+		}
+	}
+
+	want := map[string][3]int{
+		// played, won, lost
+		"Anna": {1, 1, 0},
+		"Bodo": {1, 0, 1},
+		// A player with no matches must come back as a row of zeroes, not
+		// vanish from the ranking.
+		"Cleo": {0, 0, 0},
+	}
+	for _, record := range records {
+		got := [3]int{record.Played, record.Won, record.Lost}
+		if got != want[record.Player.DisplayName] {
+			t.Errorf("%s: played/won/lost = %v, want %v",
+				record.Player.DisplayName, got, want[record.Player.DisplayName])
+		}
+	}
+}
+
 func TestIdentityRepository(t *testing.T) {
 	store, ctx := newStore(t)
 	ids := store.Identities()

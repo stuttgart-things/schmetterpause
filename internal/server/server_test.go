@@ -220,7 +220,7 @@ func TestJoinCreatesAPlayerAndStartsASession(t *testing.T) {
 	// The roster is refreshed out of band in the same response, so a
 	// successful join needs no second request and no JavaScript.
 	if !strings.Contains(rec.Body.String(), `hx-swap-oob="true"`) {
-		t.Errorf("the response does not refresh the roster out of band: %s", rec.Body.String())
+		t.Errorf("the response does not refresh the ranking out of band: %s", rec.Body.String())
 	}
 	if c := sessionCookie(t, rec); c.Value == "" {
 		t.Error("the session cookie is empty")
@@ -337,31 +337,31 @@ func TestJoinRejectsATakenName(t *testing.T) {
 	}
 }
 
-func TestPlayerListFragment(t *testing.T) {
-	rec := get(t, newHandler(storeWithPlayers(t, 3)), "/fragments/players")
+func TestStandingsFragment(t *testing.T) {
+	rec := get(t, newHandler(storeWithPlayers(t, 3)), "/fragments/standings")
 
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d, want 200", rec.Code)
 	}
 	for _, want := range []string{"Spieler 1", "Spieler 2", "Spieler 3"} {
 		if !strings.Contains(rec.Body.String(), want) {
-			t.Errorf("the roster does not contain %q", want)
+			t.Errorf("the ranking does not contain %q", want)
 		}
 	}
 }
 
-func TestPlayerListMarksTheViewer(t *testing.T) {
+func TestStandingsMarksTheViewer(t *testing.T) {
 	store := newMemStore()
 	h := newHandlerWith(store, auth.NewCookieAuthenticator(store.Identities(), testSessionKey, false))
 
 	cookie := sessionCookie(t, join(t, h, "Anna"))
 
-	r := httptest.NewRequest(http.MethodGet, "/fragments/players", nil)
+	r := httptest.NewRequest(http.MethodGet, "/fragments/standings", nil)
 	r.AddCookie(cookie)
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, r)
 
 	if !strings.Contains(rec.Body.String(), "(du)") {
-		t.Errorf("the roster does not mark the viewer: %s", rec.Body.String())
+		t.Errorf("the ranking does not mark the viewer: %s", rec.Body.String())
 	}
 }

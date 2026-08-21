@@ -10,8 +10,7 @@ templ Index(v IndexView) {
 			@PendingList(v.Pending)
 			@MatchForm(v.Match)
 		}
-		<h2>Spieler</h2>
-		@PlayerList(v.Players)
+		@Standings(v.Standings)
 		<section
 			id="status"
 			hx-get="/fragments/status"

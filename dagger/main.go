@@ -105,10 +105,14 @@ func (m *Schmetterpause) Lint(
 
 // Test runs unit and repository tests against a fresh Postgres.
 //
-// Not part of Ci: the MVP plan defines the pipeline as lint, build, verify
-// and keeps "task test" alongside as its own fast step. Whether that should
-// change is tracked in issue #15. As a standalone call it still runs in the
-// same environment as CI.
+// Part of Ci, and second in it: a failing unit test should not have to wait
+// for an image build to be reported. It is also still callable on its own,
+// which is what "task test" does.
+//
+// Verify does not make it redundant. Verify drives the built image through
+// one end-to-end path and can only see what that path touches; these tests
+// reach the cases a browser cannot reasonably be walked through — a rejected
+// result for every rejection kind, a rollback, a rating that moves by zero.
 func (m *Schmetterpause) Test(
 	ctx context.Context,
 	// +defaultPath="/"
@@ -251,9 +255,10 @@ func (m *Schmetterpause) Verify(
 	return out, nil
 }
 
-// Ci runs lint, build and verify in that order. Verify depends on the build
-// artefact, not on the source; if a step fails, the following ones are
-// skipped.
+// Ci runs lint, test, build and verify in that order. The two source-level
+// steps come first because they are the cheap ones; verify depends on the
+// build artefact rather than on the source, so it comes last. If a step
+// fails, the following ones are skipped.
 func (m *Schmetterpause) Ci(
 	ctx context.Context,
 	// +defaultPath="/"
@@ -268,6 +273,11 @@ func (m *Schmetterpause) Ci(
 		return "", err
 	}
 
+	testOut, err := m.Test(ctx, source)
+	if err != nil {
+		return "", err
+	}
+
 	if _, err := m.Image(source, version, defaultArch).Sync(ctx); err != nil {
 		return "", fmt.Errorf("build: %w", err)
 	}
@@ -277,8 +287,9 @@ func (m *Schmetterpause) Ci(
 		return "", err
 	}
 
-	return fmt.Sprintf("== lint ==\n%s\n== build ==\nimage built (version %s)\n\n== verify ==\n%s",
-		lintOut, version, verifyOut), nil
+	return fmt.Sprintf(
+		"== lint ==\n%s\n== test ==\n%s\n== build ==\nimage built (version %s)\n\n== verify ==\n%s",
+		lintOut, testOut, version, verifyOut), nil
 }
 
 // Publish pushes the runtime image to ttl.sh so it can be handed to somebody
@@ -565,9 +576,36 @@ curl -fsS -b "$second" -X POST "http://app:8080/matches/$mid/confirm" \
 	exit 1
 }
 
-# 11:9 and 12:10 from equal ratings is +8, so the roster has to have moved.
-curl -fsS -b "$second" http://app:8080/fragments/players | grep -q "1008" || {
+# 11:9 and 12:10 from equal ratings is +8, so the ranking has to have moved.
+curl -fsS -b "$second" http://app:8080/fragments/standings > /tmp/standings
+grep -q "1008" /tmp/standings || {
 	echo "the rating did not move after the confirmation"
+	cat /tmp/standings
+	exit 1
+}
+# One played, one won: the tally counts confirmed matches, and there is
+# exactly one of those.
+grep -q "1:0" /tmp/standings || {
+	echo "the ranking does not show the win/loss record"
+	cat /tmp/standings
+	exit 1
+}
+
+echo "== profile: the rating history is drawn =="
+pid=$(tr "<" "\n" < /tmp/standings | grep "a href=\"/players/" | head -1 \
+	| sed "s|.*players/\([0-9a-f-]*\)\".*|\1|")
+[ -n "$pid" ] || {
+	echo "the ranking links to no profile"
+	exit 1
+}
+curl -fsS -b "$cookies" "http://app:8080/players/$pid" > /tmp/profile
+grep -q "<polyline" /tmp/profile || {
+	echo "the profile shows no rating history"
+	exit 1
+}
+# The baseline is not zero, so the range has to be stated next to the chart.
+grep -q "Verlauf" /tmp/profile || {
+	echo "the chart does not state its range"
 	exit 1
 }
 

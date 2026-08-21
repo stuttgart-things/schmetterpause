@@ -201,11 +201,11 @@ und nur dort kaputtgeht.
 | `task up` / `task down` | Compose-Umgebung starten und stoppen |
 | `task generate` | templ-Templates und Query-Code generieren |
 | `task migrate` | Migrations gegen die lokale DB anwenden |
-| `task test` | Unit-Tests lokal, schnell |
+| `task test` | Unit- und Repository-Tests, einzeln aufrufbar |
 | `task lint` | Dagger-Lint |
 | `task build` | Dagger-Build, erzeugt Binary und Image |
-| `task verify` | Dagger-Verify: Integrationstests gegen frisches Postgres |
-| `task ci` | lint + build + verify, wie in der Pipeline |
+| `task verify` | Dagger-Verify: End-to-End gegen das gebaute Image |
+| `task ci` | lint + test + build + verify, wie in der Pipeline |
 
 ### Dagger-Funktionen
 
@@ -228,11 +228,19 @@ Templates, die im Container nicht eingebettet sind.
 ### Reihenfolge in `task ci`
 
 ```
-lint  →  build  →  verify
+lint  →  test  →  build  →  verify
 ```
 
-Verify hängt vom Build-Artefakt ab, nicht vom Quellcode. Wenn ein Schritt
-scheitert, brechen die folgenden ab.
+Die beiden quellcodenahen Schritte laufen zuerst, weil sie die billigen sind:
+ein fehlgeschlagener Unit-Test soll nicht erst auf einen Image-Bau warten.
+Verify hängt vom Build-Artefakt ab, nicht vom Quellcode, und steht deshalb am
+Ende. Wenn ein Schritt scheitert, brechen die folgenden ab.
+
+**`test` und `verify` messen nicht dasselbe.** Verify fährt genau einen Pfad
+durch das gebaute Image und sieht nur, was dieser Pfad berührt. Die Tests
+erreichen die Fälle, durch die sich ein Browser nicht sinnvoll führen lässt —
+jede einzelne Ablehnungsart bei der Ergebniseingabe, ein Rollback, eine
+Wertung, die sich um null bewegt.
 
 ## Offene Punkte
 
