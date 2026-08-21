@@ -17,8 +17,10 @@ import (
 )
 
 const (
-	// goImage must carry at least the Go version from go.mod.
-	goImage           = "golang:1.25-alpine"
+	// goImage must carry at least the Go version from go.mod, and must match
+	// the builder stage in the Dockerfile — otherwise the pipeline verifies an
+	// image built by a different compiler than the one the Dockerfile uses.
+	goImage           = "golang:1.27-alpine"
 	golangciLintImage = "golangci/golangci-lint:v2.6.0-alpine"
 	postgresImage     = "postgres:18-alpine"
 	runtimeImage      = "gcr.io/distroless/static-debian12:nonroot"
@@ -43,9 +45,6 @@ const (
 	// releaseRegistry holds the artefacts meant to last. Same account as the
 	// repository, so GITHUB_TOKEN with packages:write is all it needs.
 	releaseRegistry = "ghcr.io"
-
-	// defaultReleaseImage is the repository under releaseRegistry.
-	defaultReleaseImage = "ghcr.io/stuttgart-things/schmetterpause"
 
 	// releasePlatforms are the architectures a release covers. Compose and
 	// Azure Container Apps are amd64; arm64 is there so the image also runs
@@ -317,6 +316,8 @@ func (m *Schmetterpause) Release(
 	version string,
 	// Token with write access to the package.
 	registryToken *dagger.Secret,
+	// The repository to push to. A "+default" pragma takes a literal, so
+	// this string is the single place the release repository is named.
 	// +optional
 	// +default="ghcr.io/stuttgart-things/schmetterpause"
 	image string,
