@@ -30,7 +30,7 @@ templ standingsBody(v StandingsView) {
 		<table>
 			<thead>
 				<tr>
-					<th scope="col" class="num">#</th>
+					<th scope="col">#</th>
 					<th scope="col">Spieler</th>
 					<th scope="col" class="num">TTR</th>
 					<th scope="col" class="num">Spiele</th>
@@ -40,11 +40,13 @@ templ standingsBody(v StandingsView) {
 			<tbody>
 				for _, row := range v.Rows {
 					<tr class={ templ.KV("self", row.IsSelf) }>
-						<td class="num">
+						<td class="rank-cell">
 							if row.Shared {
-								<span title="geteilter Platz">{ strconv.Itoa(row.Rank) }.</span>
+								<span class={ rankClass(row.Rank, true) } title="geteilter Platz">
+									{ strconv.Itoa(row.Rank) }
+								</span>
 							} else {
-								{ strconv.Itoa(row.Rank) }.
+								<span class={ rankClass(row.Rank, false) }>{ strconv.Itoa(row.Rank) }</span>
 							}
 						</td>
 						<td>

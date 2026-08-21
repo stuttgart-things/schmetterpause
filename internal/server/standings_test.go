@@ -56,7 +56,9 @@ func TestTheRankingIsOrderedAndNumbered(t *testing.T) {
 	if annaAt < 0 || bodoAt < 0 || annaAt > bodoAt {
 		t.Errorf("the winner is not listed first: %s", body)
 	}
-	if !strings.Contains(body, "1.") || !strings.Contains(body, "2.") {
+	// The place is a chip, so the assertion is on the chip rather than on a
+	// digit that could come from any column.
+	if !strings.Contains(body, `class="rank rank-1"`) || !strings.Contains(body, `class="rank rank-2"`) {
 		t.Errorf("the ranking is not numbered: %s", body)
 	}
 }
@@ -68,7 +70,7 @@ func TestLevelPlayersShareARank(t *testing.T) {
 
 	body := fragment(t, h, "/fragments/standings", anna).Body.String()
 
-	if strings.Contains(body, "2.") {
+	if strings.Contains(body, "rank-2") {
 		t.Errorf("two players on the same rating were ranked apart: %s", body)
 	}
 	if !strings.Contains(body, "geteilter Platz") {

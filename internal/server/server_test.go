@@ -140,16 +140,26 @@ func TestStatusFragmentWithoutDatabase(t *testing.T) {
 
 func TestStaticAssetsAreEmbedded(t *testing.T) {
 	// Catches exactly the fault the verify step later looks for in the image:
-	// assets that did not make it into the container.
+	// assets that did not make it into the container. The fonts are in here
+	// because a missing one degrades silently — the page still renders, in
+	// the wrong typeface, on whichever machine nobody checked.
 	h := newHandler(newMemStore())
 
-	rec := get(t, h, "/static/js/htmx.min.js")
+	for _, asset := range []string{
+		"/static/js/htmx.min.js",
+		"/static/css/app.css",
+		"/static/fonts/space-grotesk-latin.woff2",
+		"/static/fonts/jetbrains-mono-latin.woff2",
+	} {
+		rec := get(t, h, asset)
 
-	if rec.Code != http.StatusOK {
-		t.Fatalf("status = %d, want 200", rec.Code)
-	}
-	if rec.Body.Len() == 0 {
-		t.Error("htmx.min.js is empty")
+		if rec.Code != http.StatusOK {
+			t.Errorf("%s: status = %d, want 200", asset, rec.Code)
+			continue
+		}
+		if rec.Body.Len() == 0 {
+			t.Errorf("%s is empty", asset)
+		}
 	}
 }
 
