@@ -56,6 +56,13 @@ lesen. Eine Entscheidung, die einem ADR widerspricht, braucht ein neues ADR mit
 - Handler geben HTML-Fragmente zurück, keine JSON-APIs, solange kein externer
   Konsument existiert.
 - Fehler werden gewrappt (`fmt.Errorf("...: %w", err)`), nicht verschluckt.
+- **Commits folgen Conventional Commits.** Der Ablauf steht in
+  `.claude/skills/conventional-commits`: kleine Commits, jeweils eine logische
+  Änderung, Nachricht als `typ(scope): beschreibung` im Imperativ.
+- **Branches tragen denselben Typ als Präfix** wie der Commit, der sie prägt —
+  `feat/`, `fix/`, `refactor/`, `ci/`, `docs/`, `chore/`, gefolgt von einem
+  kurzen Bezeichner. `feat/ttr-package`, nicht `wip` und nicht der Name dessen,
+  der ihn angelegt hat.
 - **Code ist englisch, Dokumentation und Oberfläche sind deutsch.** Kommentare,
   Bezeichner, Log- und Fehlermeldungen im Code, Commit-Nachrichten, Issues und
   Pull Requests auf Englisch. `CLAUDE.md`, `docs/` und alle Texte, die ein
