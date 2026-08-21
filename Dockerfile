@@ -1,19 +1,19 @@
 # syntax=docker/dockerfile:1
 
-# Multi-Stage-Build zu einem distroless-Laufzeitimage.
+# Multi-stage build producing a distroless runtime image.
 #
-# Ein Binary, ein Image (Invariante 1): dieses Image laeuft unveraendert in
-# Docker Compose, Kubernetes und Azure Container Apps. Es enthaelt keine
-# Config-Datei; alles Umgebungsabhaengige kommt ueber SP_*-Variablen
-# (Invariante 2). Templates, statische Assets und Migrations sind ins Binary
-# eingebettet — das Image braucht kein Volume.
+# One binary, one image (invariant 1): this image runs unchanged in Docker
+# Compose, Kubernetes and Azure Container Apps. It contains no config file;
+# everything environment-dependent arrives through SP_* variables
+# (invariant 2). Templates, static assets and migrations are embedded in the
+# binary — the image needs no volume.
 
 FROM --platform=$BUILDPLATFORM golang:1.25-alpine AS build
 
 WORKDIR /src
 
-# Abhaengigkeiten zuerst: die Schicht bleibt gueltig, solange sich go.mod und
-# go.sum nicht aendern.
+# Dependencies first: this layer stays valid as long as go.mod and go.sum do
+# not change.
 COPY go.mod go.sum ./
 RUN --mount=type=cache,target=/go/pkg/mod \
     go mod download
@@ -39,8 +39,8 @@ COPY --from=build /out/schmetterpause /usr/local/bin/schmetterpause
 
 USER nonroot:nonroot
 
-# Nur Metadaten. Der tatsaechliche Port kommt aus SP_HTTP_ADDR; der Default im
-# Code ist ":8080".
+# Metadata only. The actual port comes from SP_HTTP_ADDR; the default in code
+# is ":8080".
 EXPOSE 8080
 
 ENTRYPOINT ["/usr/local/bin/schmetterpause"]

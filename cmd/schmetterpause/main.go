@@ -1,9 +1,9 @@
-// Command schmetterpause ist das einzige Binary des Projekts.
+// Command schmetterpause is the project's only binary.
 //
-// Es enthaelt den HTTP-Server, die eingebetteten Templates und Assets sowie
-// die Datenbank-Migrations. Dasselbe Binary und dasselbe Image laufen in
-// Docker Compose, Kubernetes und Azure Container Apps (Invariante 1); was sich
-// unterscheidet, sind ausschliesslich Environment-Variablen (Invariante 2).
+// It contains the HTTP server, the embedded templates and assets, and the
+// database migrations. The same binary and the same image run in Docker
+// Compose, Kubernetes and Azure Container Apps (invariant 1); the only thing
+// that differs between them is environment variables (invariant 2).
 package main
 
 import (
@@ -24,28 +24,27 @@ import (
 	"github.com/stuttgart-things/schmetterpause/internal/server"
 )
 
-// version wird beim Build via -ldflags gesetzt (Git-Tag bzw. Commit-SHA).
+// version is set at build time via -ldflags (git tag or commit SHA).
 var version = "dev"
 
-const usage = `schmetterpause — Büro-Tischtennis
+const usage = `schmetterpause — office table tennis
 
-Aufrufe:
-  schmetterpause serve            HTTP-Server starten (Vorgabe)
-  schmetterpause migrate up       Ausstehende Migrations anwenden
-  schmetterpause migrate down     Letzte Migration zurücknehmen (nur lokal)
-  schmetterpause migrate status   Stand der Migrations anzeigen
-  schmetterpause healthcheck      Eigene Readiness prüfen (für Container-Healthchecks)
-  schmetterpause version          Version ausgeben
+Usage:
+  schmetterpause serve            start the HTTP server (default)
+  schmetterpause migrate up       apply pending migrations
+  schmetterpause migrate down     roll back the last migration (local only)
+  schmetterpause migrate status   show the migration state
+  schmetterpause healthcheck      probe own readiness (for container health checks)
+  schmetterpause version          print the version
 
-Konfiguration ausschließlich über Environment-Variablen:
-  SP_DATABASE_URL       Postgres-DSN (erforderlich)
-  SP_HTTP_ADDR          Bind-Adresse, Vorgabe ":8080"
-  SP_LOG_LEVEL          debug | info | warn | error, Vorgabe "info"
-  SP_AUTO_MIGRATE       Migrations beim Start anwenden, Vorgabe "true"
-  SP_SHUTDOWN_TIMEOUT   Frist für laufende Requests, Vorgabe "15s"
-  SP_READINESS_TIMEOUT  Frist für den Datenbank-Check, Vorgabe "2s"
-  SP_DB_CONNECT_TIMEOUT Frist, bis die Datenbank beim Start da sein muss,
-                        Vorgabe "30s"
+Configuration comes exclusively from environment variables:
+  SP_DATABASE_URL       Postgres DSN (required)
+  SP_HTTP_ADDR          bind address, default ":8080"
+  SP_LOG_LEVEL          debug | info | warn | error, default "info"
+  SP_AUTO_MIGRATE       apply migrations at startup, default "true"
+  SP_SHUTDOWN_TIMEOUT   grace period for in-flight requests, default "15s"
+  SP_READINESS_TIMEOUT  bound on the database check, default "2s"
+  SP_DB_CONNECT_TIMEOUT how long startup waits for the database, default "30s"
 `
 
 func main() {
@@ -53,7 +52,7 @@ func main() {
 	defer stop()
 
 	if err := run(ctx, os.Args[1:]); err != nil {
-		// Der Logger steht an dieser Stelle nicht zwingend, deshalb stderr.
+		// The logger is not guaranteed to exist at this point, so stderr.
 		fmt.Fprintf(os.Stderr, "schmetterpause: %v\n", err)
 		os.Exit(1)
 	}
@@ -79,7 +78,7 @@ func run(ctx context.Context, args []string) error {
 		fmt.Print(usage)
 		return nil
 	default:
-		return fmt.Errorf("unbekannter Aufruf %q\n\n%s", command, usage)
+		return fmt.Errorf("unknown command %q\n\n%s", command, usage)
 	}
 }
 
@@ -102,20 +101,20 @@ func serve(ctx context.Context) error {
 	}
 
 	if cfg.AutoMigrate {
-		log.InfoContext(ctx, "migrations werden angewendet")
+		log.InfoContext(ctx, "applying migrations")
 		if err := postgres.Migrate(ctx, cfg.DatabaseURL); err != nil {
 			return err
 		}
 	}
 
-	// Im Geruest erkennt niemand einen Spieler. AP2 ersetzt Anonymous durch
-	// die Cookie-Wiedererkennung, ohne dass ein Handler sich aendert.
+	// In the scaffolding nobody is recognised. AP2 replaces Anonymous with
+	// cookie-based recognition without any handler changing.
 	srv := server.New(cfg, store, log, auth.Anonymous{}, version)
 
 	if err := srv.Run(ctx); err != nil {
 		return err
 	}
-	log.Info("server beendet")
+	log.Info("server stopped")
 	return nil
 }
 
@@ -138,16 +137,16 @@ func migrate(ctx context.Context, args []string) error {
 	case "status":
 		return postgres.MigrationStatus(ctx, cfg.DatabaseURL)
 	default:
-		return errors.New(`migrate erwartet "up", "down" oder "status"`)
+		return errors.New(`migrate expects "up", "down" or "status"`)
 	}
 }
 
-// waitForDatabase wartet, bis die Datenbank Verbindungen annimmt.
+// waitForDatabase waits until the database accepts connections.
 //
-// Ohne diese Schleife startet die Anwendung nur dort zuverlaessig, wo die
-// Startreihenfolge erzwungen werden kann — in Compose ueber depends_on. In
-// Kubernetes und Azure Container Apps gibt es das nicht; dort ist eine kurz
-// spaeter bereite Datenbank der Normalfall und kein Fehler.
+// Without this loop the application starts reliably only where the startup
+// order can be enforced — in Compose, through depends_on. Kubernetes and
+// Azure Container Apps have no such thing; there, a database that becomes
+// ready moments later is the normal case and not a fault.
 func waitForDatabase(ctx context.Context, store *postgres.Store, timeout time.Duration, log *slog.Logger) error {
 	ctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
@@ -162,21 +161,21 @@ func waitForDatabase(ctx context.Context, store *postgres.Store, timeout time.Du
 		err := store.Ping(ctx)
 		if err == nil {
 			if attempt > 1 {
-				log.Info("datenbank erreichbar", "versuche", attempt)
+				log.Info("database reachable", "attempts", attempt)
 			}
 			return nil
 		}
 
 		if ctx.Err() != nil {
-			return fmt.Errorf("datenbank binnen %s nicht erreichbar: %w", timeout, err)
+			return fmt.Errorf("database not reachable within %s: %w", timeout, err)
 		}
 
-		log.Warn("datenbank noch nicht erreichbar, neuer versuch",
-			"versuch", attempt, "wartezeit", delay, "fehler", err)
+		log.Warn("database not reachable yet, retrying",
+			"attempt", attempt, "delay", delay, "error", err)
 
 		select {
 		case <-ctx.Done():
-			return fmt.Errorf("datenbank binnen %s nicht erreichbar: %w", timeout, err)
+			return fmt.Errorf("database not reachable within %s: %w", timeout, err)
 		case <-time.After(delay):
 		}
 
@@ -184,11 +183,11 @@ func waitForDatabase(ctx context.Context, store *postgres.Store, timeout time.Du
 	}
 }
 
-// healthcheck fragt die eigene Readiness-Probe ueber Loopback ab.
+// healthcheck probes the application's own readiness endpoint over loopback.
 //
-// Das distroless-Laufzeitimage hat weder Shell noch curl. Damit Compose und
-// andere Runtimes den Zustand trotzdem pruefen koennen, bringt das Binary den
-// Check selbst mit — ohne ein zweites Werkzeug ins Image zu holen.
+// The distroless runtime image has neither a shell nor curl. So that Compose
+// and other runtimes can still check the state, the binary brings the check
+// along itself rather than pulling a second tool into the image.
 func healthcheck(ctx context.Context) error {
 	addr := os.Getenv("SP_HTTP_ADDR")
 	if addr == "" {
@@ -197,9 +196,9 @@ func healthcheck(ctx context.Context) error {
 
 	host, port, err := net.SplitHostPort(addr)
 	if err != nil {
-		return fmt.Errorf("SP_HTTP_ADDR %q ist keine Bind-Adresse: %w", addr, err)
+		return fmt.Errorf("SP_HTTP_ADDR %q is not a bind address: %w", addr, err)
 	}
-	// Eine Wildcard-Bindung wird fuer den Selbstaufruf zu Loopback.
+	// A wildcard binding becomes loopback for the self-call.
 	if host == "" || host == "0.0.0.0" || host == "::" {
 		host = "127.0.0.1"
 	}
@@ -210,17 +209,17 @@ func healthcheck(ctx context.Context) error {
 	url := "http://" + net.JoinHostPort(host, port) + "/readyz"
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
-		return fmt.Errorf("healthcheck-anfrage bauen: %w", err)
+		return fmt.Errorf("build healthcheck request: %w", err)
 	}
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		return fmt.Errorf("healthcheck gegen %s: %w", url, err)
+		return fmt.Errorf("healthcheck against %s: %w", url, err)
 	}
 	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("readyz meldet %s", resp.Status)
+		return fmt.Errorf("readyz reports %s", resp.Status)
 	}
 	return nil
 }

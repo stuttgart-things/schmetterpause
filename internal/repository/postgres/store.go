@@ -1,6 +1,6 @@
-// Package postgres implementiert die Repository-Schnittstellen auf Postgres.
+// Package postgres implements the repository interfaces on Postgres.
 //
-// Das ist die einzige Stelle im Projekt, an der SQL steht (Invariante 5).
+// This is the only place in the project that contains SQL (invariant 5).
 package postgres
 
 import (
@@ -15,61 +15,61 @@ import (
 	"github.com/stuttgart-things/schmetterpause/internal/repository"
 )
 
-// queryer ist die gemeinsame Teilmenge von *pgxpool.Pool und pgx.Tx. Die
-// Repositories arbeiten nur dagegen und wissen dadurch nicht, ob sie gerade
-// innerhalb einer Transaktion laufen.
+// queryer is the subset shared by *pgxpool.Pool and pgx.Tx. The repositories
+// work against this alone and therefore do not know whether they are
+// currently running inside a transaction.
 type queryer interface {
 	Query(ctx context.Context, sql string, args ...any) (pgx.Rows, error)
 	QueryRow(ctx context.Context, sql string, args ...any) pgx.Row
 	Exec(ctx context.Context, sql string, args ...any) (pgconn.CommandTag, error)
 }
 
-// Store ist die Postgres-Implementierung von repository.Store.
+// Store is the Postgres implementation of repository.Store.
 type Store struct {
-	// pool ist nil, wenn dieser Store an eine laufende Transaktion gebunden ist.
+	// pool is nil when this Store is bound to a running transaction.
 	pool *pgxpool.Pool
 	q    queryer
 }
 
 var _ repository.Store = (*Store)(nil)
 
-// Open baut einen Verbindungspool auf. Die DSN kommt ausschliesslich aus der
-// Umgebung (Invariante 2); dieses Package kennt keine Default-Hosts.
+// Open builds a connection pool. The DSN comes exclusively from the
+// environment (invariant 2); this package knows no default hosts.
 func Open(ctx context.Context, dsn string) (*Store, error) {
 	cfg, err := pgxpool.ParseConfig(dsn)
 	if err != nil {
-		return nil, fmt.Errorf("datenbank-dsn parsen: %w", err)
+		return nil, fmt.Errorf("parse database dsn: %w", err)
 	}
 
 	pool, err := pgxpool.NewWithConfig(ctx, cfg)
 	if err != nil {
-		return nil, fmt.Errorf("verbindungspool aufbauen: %w", err)
+		return nil, fmt.Errorf("build connection pool: %w", err)
 	}
 
 	return &Store{pool: pool, q: pool}, nil
 }
 
-// Close gibt den Verbindungspool frei.
+// Close releases the connection pool.
 func (s *Store) Close() {
 	if s.pool != nil {
 		s.pool.Close()
 	}
 }
 
-// Ping prueft die Erreichbarkeit der Datenbank. Ziel ist /readyz.
+// Ping checks that the database is reachable. Its consumer is /readyz.
 func (s *Store) Ping(ctx context.Context) error {
 	if s.pool == nil {
-		// Innerhalb einer Transaktion ist die Verbindung per Definition da.
+		// Inside a transaction the connection exists by definition.
 		return nil
 	}
 	if err := s.pool.Ping(ctx); err != nil {
-		return fmt.Errorf("datenbank nicht erreichbar: %w", err)
+		return fmt.Errorf("database unreachable: %w", err)
 	}
 	return nil
 }
 
-// InTx fuehrt fn in einer Transaktion aus. Ist dieser Store bereits an eine
-// Transaktion gebunden, laeuft fn in derselben Transaktion weiter.
+// InTx runs fn inside a transaction. If this Store is already bound to a
+// transaction, fn continues in that same transaction.
 func (s *Store) InTx(ctx context.Context, fn func(repository.Store) error) error {
 	if s.pool == nil {
 		return fn(s)
@@ -77,7 +77,7 @@ func (s *Store) InTx(ctx context.Context, fn func(repository.Store) error) error
 
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
-		return fmt.Errorf("transaktion beginnen: %w", err)
+		return fmt.Errorf("begin transaction: %w", err)
 	}
 
 	if err := fn(&Store{q: tx}); err != nil {
@@ -88,19 +88,19 @@ func (s *Store) InTx(ctx context.Context, fn func(repository.Store) error) error
 	}
 
 	if err := tx.Commit(ctx); err != nil {
-		return fmt.Errorf("transaktion abschliessen: %w", err)
+		return fmt.Errorf("commit transaction: %w", err)
 	}
 	return nil
 }
 
-// Players liefert das Spieler-Repository.
+// Players returns the player repository.
 func (s *Store) Players() repository.PlayerRepository { return playerRepo{s.q} }
 
-// Identities liefert das Identitaeten-Repository.
+// Identities returns the identity repository.
 func (s *Store) Identities() repository.IdentityRepository { return identityRepo{s.q} }
 
-// Matches liefert das Match-Repository.
+// Matches returns the match repository.
 func (s *Store) Matches() repository.MatchRepository { return matchRepo{s.q} }
 
-// TTRHistory liefert das Historien-Repository.
+// TTRHistory returns the rating history repository.
 func (s *Store) TTRHistory() repository.TTRHistoryRepository { return ttrHistoryRepo{s.q} }

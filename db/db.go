@@ -1,14 +1,14 @@
-// Package db bettet die Datenbank-Migrations in das Binary ein.
+// Package db embeds the database migrations into the binary.
 //
-// Die Migrations gehoeren ins Image, nicht in ein Sidecar: Invariante 1 aus
-// CLAUDE.md verlangt ein Binary und ein Image fuer alle Zielumgebungen, und der
-// Verify-Schritt der Pipeline prueft genau, dass das gebaute Image seine
-// Migrations selbst mitbringt.
+// The migrations belong in the image, not in a sidecar: invariant 1 in
+// CLAUDE.md calls for one binary and one image across all target
+// environments, and the pipeline's verify step checks exactly that — a built
+// image that brings its own migrations along.
 package db
 
 import "embed"
 
-// Migrations enthaelt die goose-Migrations aus db/migrations.
+// Migrations holds the goose migrations from db/migrations.
 //
 //go:embed migrations/*.sql
 var Migrations embed.FS

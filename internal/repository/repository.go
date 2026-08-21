@@ -1,9 +1,8 @@
-// Package repository definiert den Datenzugriff als Schnittstelle.
+// Package repository defines data access as an interface.
 //
-// Invariante 5 aus CLAUDE.md: kein SQL in Handlern. Das haelt den in
-// docs/adr/0001 beschriebenen Wechselpfad (Postgres -> SQLite, falls das
-// Portabilitaetsziel je entfaellt) offen und macht Handler ohne Datenbank
-// testbar.
+// Invariant 5 in CLAUDE.md: no SQL in handlers. That keeps open the migration
+// path described in docs/adr/0001 (Postgres to SQLite, should the portability
+// goal ever be dropped) and makes handlers testable without a database.
 package repository
 
 import (
@@ -15,67 +14,66 @@ import (
 	"github.com/stuttgart-things/schmetterpause/internal/domain"
 )
 
-// Store buendelt die Repositories und die Transaktionsklammer.
+// Store bundles the repositories and the transaction boundary.
 type Store interface {
 	Players() PlayerRepository
 	Identities() IdentityRepository
 	Matches() MatchRepository
 	TTRHistory() TTRHistoryRepository
 
-	// InTx fuehrt fn in einer Transaktion aus. Der uebergebene Store schreibt
-	// auf dieselbe Transaktion; gibt fn einen Fehler zurueck, wird
-	// zurueckgerollt. Notwendig fuer AP5: TTR schreiben, Historie anlegen und
-	// Match bestaetigen muessen zusammen gelingen oder zusammen scheitern.
+	// InTx runs fn inside a transaction. The Store handed to fn writes on
+	// that same transaction; if fn returns an error, everything rolls back.
+	// Needed for AP5: writing the rating, appending the history and
+	// confirming the match must all succeed or all fail.
 	InTx(ctx context.Context, fn func(Store) error) error
 
-	// Ping prueft die Erreichbarkeit des Backends. Ziel ist /readyz.
+	// Ping checks that the backend is reachable. Its consumer is /readyz.
 	Ping(ctx context.Context) error
 }
 
-// PlayerRepository verwaltet Spieler.
+// PlayerRepository manages players.
 type PlayerRepository interface {
 	Create(ctx context.Context, displayName string, initialTTR int) (domain.Player, error)
 	ByID(ctx context.Context, id uuid.UUID) (domain.Player, error)
-	// List liefert alle Spieler, absteigend nach TTR — die Reihenfolge der
-	// Rangliste aus AP6.
+	// List returns all players by descending rating — the order the ranking
+	// in AP6 needs.
 	List(ctx context.Context) ([]domain.Player, error)
 	Count(ctx context.Context) (int, error)
 	UpdateTTR(ctx context.Context, id uuid.UUID, ttr int) error
 }
 
-// IdentityRepository verknuepft Provider-Nachweise mit Spielern.
-// Ausserhalb dieses Interfaces und des auth-Packages kennt niemand die
-// konkreten Provider (Invariante 4).
+// IdentityRepository links provider proofs to players. Outside this interface
+// and the auth package, nobody knows the concrete providers (invariant 4).
 type IdentityRepository interface {
-	// Link legt die Verknuepfung an. Existiert sie bereits fuer denselben
-	// Spieler, ist der Aufruf ein No-op.
+	// Link records the association. If it already exists for the same player,
+	// the call is a no-op.
 	Link(ctx context.Context, provider domain.Provider, subject string, playerID uuid.UUID) error
-	// PlayerBy liefert den Spieler hinter einem Nachweis. Ist keiner
-	// verknuepft, ist der Fehler domain.ErrNotFound.
+	// PlayerBy returns the player behind a proof. When none is linked, the
+	// error is domain.ErrNotFound.
 	PlayerBy(ctx context.Context, provider domain.Provider, subject string) (domain.Player, error)
 	ForPlayer(ctx context.Context, playerID uuid.UUID) ([]domain.Identity, error)
 }
 
-// MatchRepository verwaltet Begegnungen samt Saetzen.
+// MatchRepository manages encounters along with their sets.
 type MatchRepository interface {
-	// Create legt Match und Saetze gemeinsam an und liefert den
-	// persistierten Stand inklusive vergebener ID zurueck.
+	// Create stores match and sets together and returns the persisted state,
+	// including the assigned ID.
 	Create(ctx context.Context, m domain.Match) (domain.Match, error)
 	ByID(ctx context.Context, id uuid.UUID) (domain.Match, error)
-	// PendingFor liefert die Matches, die auf die Bestaetigung durch diesen
-	// Spieler warten — also solche, die jemand anderes eingetragen hat.
+	// PendingFor returns the matches waiting on this player's confirmation —
+	// that is, the ones somebody else recorded.
 	PendingFor(ctx context.Context, playerID uuid.UUID) ([]domain.Match, error)
-	// RecentFor liefert die juengsten Matches eines Spielers.
+	// RecentFor returns a player's most recent matches.
 	RecentFor(ctx context.Context, playerID uuid.UUID, limit int) ([]domain.Match, error)
-	// SetStatus schreibt den Bestaetigungsstand. confirmedAt ist genau dann
-	// gesetzt, wenn status domain.MatchConfirmed ist.
+	// SetStatus writes the confirmation state. confirmedAt is set exactly
+	// when status is domain.MatchConfirmed.
 	SetStatus(ctx context.Context, id uuid.UUID, status domain.MatchStatus, confirmedAt *time.Time) error
 }
 
-// TTRHistoryRepository schreibt und liest die Ratinghistorie.
+// TTRHistoryRepository writes and reads the rating history.
 type TTRHistoryRepository interface {
-	// Append schreibt die Eintraege einer Wertung. Aufrufer nutzen InTx,
-	// damit Historie und Spielerrating nicht auseinanderlaufen koennen.
+	// Append writes the entries of one rating event. Callers use InTx so the
+	// history and the player rating cannot drift apart.
 	Append(ctx context.Context, changes []domain.TTRChange) error
 	ForPlayer(ctx context.Context, playerID uuid.UUID, limit int) ([]domain.TTRChange, error)
 }

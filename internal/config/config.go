@@ -1,8 +1,8 @@
-// Package config liest die Laufzeitkonfiguration aus der Umgebung.
+// Package config reads the runtime configuration from the environment.
 //
-// Invariante 2 aus CLAUDE.md: Konfiguration ausschliesslich ueber
-// Environment-Variablen. Es gibt keine Config-Datei im Image, und Defaults
-// stehen hier im Code — nicht in einer mitgelieferten Datei.
+// Invariant 2 in CLAUDE.md: configuration comes exclusively from environment
+// variables. There is no config file in the image, and defaults live here in
+// code rather than in a shipped file.
 package config
 
 import (
@@ -15,41 +15,41 @@ import (
 	"time"
 )
 
-// envPrefix haelt die Variablen dieser Anwendung von fremden auseinander.
+// envPrefix keeps this application's variables apart from anyone else's.
 const envPrefix = "SP_"
 
-// DefaultHTTPAddr ist die Bind-Adresse, wenn SP_HTTP_ADDR nicht gesetzt ist.
-// Sie steht hier und nicht in einer Config-Datei oder im Dockerfile
-// (Invariante 2) und wird ausserdem vom healthcheck-Aufruf gebraucht.
+// DefaultHTTPAddr is the bind address used when SP_HTTP_ADDR is unset. It
+// lives here rather than in a config file or the Dockerfile (invariant 2),
+// and the healthcheck subcommand needs it too.
 const DefaultHTTPAddr = ":8080"
 
-// Config ist die vollstaendige Laufzeitkonfiguration.
+// Config is the complete runtime configuration.
 type Config struct {
-	// HTTPAddr ist die Bind-Adresse des Servers, etwa ":8080".
+	// HTTPAddr is the server's bind address, for example ":8080".
 	HTTPAddr string
-	// DatabaseURL ist die Postgres-DSN. Ohne sie startet die Anwendung nicht;
-	// ein Default waere ein hartkodierter Host und damit ein Invariantenbruch.
+	// DatabaseURL is the Postgres DSN. Without it the application refuses to
+	// start; a default would mean a hardcoded host and break invariant 2.
 	DatabaseURL string
-	// LogLevel steuert den strukturierten Logger.
+	// LogLevel drives the structured logger.
 	LogLevel slog.Level
-	// AutoMigrate wendet ausstehende Migrations beim Start an. Praktisch in
-	// Compose und fuer Einzel-Replica-Deployments; bei mehreren Replicas
-	// besser abschalten und "schmetterpause migrate up" als eigenen Schritt
-	// fahren.
+	// AutoMigrate applies pending migrations at startup. Convenient in
+	// Compose and for single-replica deployments; with several replicas,
+	// prefer turning it off and running "schmetterpause migrate up" as its
+	// own step.
 	AutoMigrate bool
-	// ShutdownTimeout ist die Frist fuer laufende Requests beim Beenden.
+	// ShutdownTimeout is how long in-flight requests get when stopping.
 	ShutdownTimeout time.Duration
-	// ReadinessTimeout begrenzt den Datenbank-Check hinter /readyz.
+	// ReadinessTimeout bounds the database check behind /readyz.
 	ReadinessTimeout time.Duration
-	// DatabaseConnectTimeout ist die Frist, die der Start der Datenbank
-	// einraeumt, bevor er aufgibt. Compose kann ueber depends_on auf einen
-	// gesunden Postgres warten, Kubernetes und Azure Container Apps koennen
-	// das nicht — dort wuerde die App sonst in einen Crash-Loop laufen, nur
-	// weil die Datenbank ein paar Sekunden spaeter bereit ist.
+	// DatabaseConnectTimeout is how long startup waits for the database
+	// before giving up. Compose can wait for a healthy Postgres through
+	// depends_on; Kubernetes and Azure Container Apps cannot — there the
+	// application would crash-loop merely because the database is ready a few
+	// seconds later.
 	DatabaseConnectTimeout time.Duration
 }
 
-// Load liest die Konfiguration aus der Umgebung und validiert sie.
+// Load reads the configuration from the environment and validates it.
 func Load() (Config, error) {
 	cfg := Config{
 		HTTPAddr:               env("HTTP_ADDR", DefaultHTTPAddr),
@@ -71,7 +71,7 @@ func Load() (Config, error) {
 	if raw, ok := lookup("AUTO_MIGRATE"); ok {
 		v, err := strconv.ParseBool(raw)
 		if err != nil {
-			errs = append(errs, fmt.Errorf("%sAUTO_MIGRATE=%q ist kein boolescher Wert: %w", envPrefix, raw, err))
+			errs = append(errs, fmt.Errorf("%sAUTO_MIGRATE=%q is not a boolean: %w", envPrefix, raw, err))
 		}
 		cfg.AutoMigrate = v
 	}
@@ -90,25 +90,25 @@ func Load() (Config, error) {
 		}
 		v, err := time.ParseDuration(raw)
 		if err != nil {
-			errs = append(errs, fmt.Errorf("%s%s=%q ist keine Dauer: %w", envPrefix, d.key, raw, err))
+			errs = append(errs, fmt.Errorf("%s%s=%q is not a duration: %w", envPrefix, d.key, raw, err))
 			continue
 		}
 		if v <= 0 {
-			errs = append(errs, fmt.Errorf("%s%s muss positiv sein, ist %s", envPrefix, d.key, v))
+			errs = append(errs, fmt.Errorf("%s%s must be positive, got %s", envPrefix, d.key, v))
 			continue
 		}
 		*d.target = v
 	}
 
 	if cfg.HTTPAddr == "" {
-		errs = append(errs, fmt.Errorf("%sHTTP_ADDR darf nicht leer sein", envPrefix))
+		errs = append(errs, fmt.Errorf("%sHTTP_ADDR must not be empty", envPrefix))
 	}
 	if cfg.DatabaseURL == "" {
-		errs = append(errs, fmt.Errorf("%sDATABASE_URL ist erforderlich", envPrefix))
+		errs = append(errs, fmt.Errorf("%sDATABASE_URL is required", envPrefix))
 	}
 
 	if err := errors.Join(errs...); err != nil {
-		return Config{}, fmt.Errorf("konfiguration aus der umgebung lesen: %w", err)
+		return Config{}, fmt.Errorf("read configuration from the environment: %w", err)
 	}
 	return cfg, nil
 }
@@ -116,7 +116,7 @@ func Load() (Config, error) {
 func parseLevel(raw string) (slog.Level, error) {
 	var level slog.Level
 	if err := level.UnmarshalText([]byte(strings.ToUpper(raw))); err != nil {
-		return slog.LevelInfo, fmt.Errorf("%sLOG_LEVEL=%q ist kein gueltiger Level: %w", envPrefix, raw, err)
+		return slog.LevelInfo, fmt.Errorf("%sLOG_LEVEL=%q is not a valid level: %w", envPrefix, raw, err)
 	}
 	return level, nil
 }

@@ -1,7 +1,7 @@
-# Lokale Entwicklungsumgebung: App und Postgres, sonst nichts.
+# Local development environment: application and Postgres, nothing else.
 #
-# Kein Redis — siehe docs/adr/0002. Die App liest ihre gesamte Konfiguration
-# aus SP_*-Variablen; dasselbe Image laeuft ohne Aenderung auch in K8s und ACA.
+# No Redis — see docs/adr/0002. The application reads its entire configuration
+# from SP_* variables; the same image runs unchanged in K8s and ACA.
 
 services:
   db:
@@ -12,7 +12,7 @@ services:
       POSTGRES_DB: schmetterpause
       PGDATA: /var/lib/postgresql/data/pgdata
     ports:
-      # Nur an Loopback, damit die Entwicklungsdatenbank nicht im Netz haengt.
+      # Loopback only, so the development database is not exposed to the network.
       - "127.0.0.1:5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
@@ -36,8 +36,8 @@ services:
       db:
         condition: service_healthy
     healthcheck:
-      # Das distroless-Image hat keine Shell und kein curl — das Binary bringt
-      # den Check selbst mit.
+      # The distroless image has no shell and no curl — the binary brings the
+      # check along itself.
       test: ["CMD", "/usr/local/bin/schmetterpause", "healthcheck"]
       interval: 5s
       timeout: 5s

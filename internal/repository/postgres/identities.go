@@ -14,9 +14,9 @@ import (
 type identityRepo struct{ q queryer }
 
 func (r identityRepo) Link(ctx context.Context, provider domain.Provider, subject string, playerID uuid.UUID) error {
-	// Ein erneuter Link auf denselben Spieler ist ein No-op; ein Link auf einen
-	// anderen Spieler bleibt bewusst ein Konflikt: das Zusammenfuehren zweier
-	// Spieler ist laut docs/adr/0003 eine eigene, bewusste Operation.
+	// Linking the same player again is a no-op; linking a different player
+	// stays a conflict on purpose: merging two players is a separate,
+	// deliberate operation per docs/adr/0003.
 	const q = `
 		insert into identities (provider, subject, player_id)
 		values ($1, $2, $3)
@@ -24,16 +24,16 @@ func (r identityRepo) Link(ctx context.Context, provider domain.Provider, subjec
 
 	tag, err := r.q.Exec(ctx, q, string(provider), subject, playerID)
 	if err != nil {
-		return fmt.Errorf("identitaet %s/%s verknuepfen: %w", provider, subject, err)
+		return fmt.Errorf("link identity %s/%s: %w", provider, subject, err)
 	}
 	if tag.RowsAffected() == 0 {
 		existing, err := r.PlayerBy(ctx, provider, subject)
 		if err != nil {
-			return fmt.Errorf("bestehende identitaet %s/%s pruefen: %w", provider, subject, err)
+			return fmt.Errorf("check existing identity %s/%s: %w", provider, subject, err)
 		}
 		if existing.ID != playerID {
 			return fmt.Errorf(
-				"identitaet %s/%s gehoert bereits zu spieler %s", provider, subject, existing.ID)
+				"identity %s/%s already belongs to player %s", provider, subject, existing.ID)
 		}
 	}
 	return nil
@@ -51,9 +51,9 @@ func (r identityRepo) PlayerBy(ctx context.Context, provider domain.Provider, su
 		Scan(&p.ID, &p.DisplayName, &p.TTR, &p.CreatedAt)
 	switch {
 	case errors.Is(err, pgx.ErrNoRows):
-		return domain.Player{}, fmt.Errorf("identitaet %s/%s: %w", provider, subject, domain.ErrNotFound)
+		return domain.Player{}, fmt.Errorf("identity %s/%s: %w", provider, subject, domain.ErrNotFound)
 	case err != nil:
-		return domain.Player{}, fmt.Errorf("spieler zu identitaet %s/%s laden: %w", provider, subject, err)
+		return domain.Player{}, fmt.Errorf("load player for identity %s/%s: %w", provider, subject, err)
 	}
 	return p, nil
 }
@@ -67,7 +67,7 @@ func (r identityRepo) ForPlayer(ctx context.Context, playerID uuid.UUID) ([]doma
 
 	rows, err := r.q.Query(ctx, q, playerID)
 	if err != nil {
-		return nil, fmt.Errorf("identitaeten von spieler %s laden: %w", playerID, err)
+		return nil, fmt.Errorf("load identities of player %s: %w", playerID, err)
 	}
 	defer rows.Close()
 
@@ -78,13 +78,13 @@ func (r identityRepo) ForPlayer(ctx context.Context, playerID uuid.UUID) ([]doma
 			provider string
 		)
 		if err := rows.Scan(&provider, &id.Subject, &id.PlayerID, &id.CreatedAt); err != nil {
-			return nil, fmt.Errorf("identitaet lesen: %w", err)
+			return nil, fmt.Errorf("read identity: %w", err)
 		}
 		id.Provider = domain.Provider(provider)
 		identities = append(identities, id)
 	}
 	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("identitaeten lesen: %w", err)
+		return nil, fmt.Errorf("read identities: %w", err)
 	}
 	return identities, nil
 }

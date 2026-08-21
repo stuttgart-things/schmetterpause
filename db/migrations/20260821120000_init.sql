@@ -1,6 +1,6 @@
 -- +goose Up
--- Initiales Schema nach docs/mvp-plan.md, Abschnitt "Datenmodell (MVP-Umfang)".
--- Identitaeten liegen bewusst in einer eigenen Tabelle, siehe docs/adr/0003.
+-- Initial schema per docs/mvp-plan.md, section "Datenmodell (MVP-Umfang)".
+-- Identities live in a table of their own on purpose, see docs/adr/0003.
 
 create table players (
     id           uuid        primary key default gen_random_uuid(),
@@ -39,7 +39,7 @@ create table matches (
     constraint matches_best_of_valid check (best_of in (3, 5, 7)),
     constraint matches_points_to_win_positive check (points_to_win > 0),
     constraint matches_status_valid check (status in ('pending', 'confirmed', 'disputed')),
-    -- confirmed_at ist genau dann gesetzt, wenn der Status 'confirmed' ist.
+    -- confirmed_at is set exactly when the status is 'confirmed'.
     constraint matches_confirmed_at_matches_status check (
         (status = 'confirmed') = (confirmed_at is not null)
     )
@@ -61,8 +61,8 @@ create table match_sets (
     constraint match_sets_no_draw check (home_points <> away_points)
 );
 
--- Pflicht im MVP: ohne Historie ist eine fehlerhafte Berechnung nicht
--- nachvollziehbar und ein TTR-Verlauf nicht rekonstruierbar.
+-- Mandatory in the MVP: without history a faulty calculation cannot be
+-- traced and a rating chart cannot be reconstructed.
 create table ttr_history (
     id         uuid        primary key default gen_random_uuid(),
     player_id  uuid        not null references players (id) on delete cascade,

@@ -56,3 +56,7 @@ lesen. Eine Entscheidung, die einem ADR widerspricht, braucht ein neues ADR mit
 - Handler geben HTML-Fragmente zurück, keine JSON-APIs, solange kein externer
   Konsument existiert.
 - Fehler werden gewrappt (`fmt.Errorf("...: %w", err)`), nicht verschluckt.
+- **Code ist englisch, Dokumentation und Oberfläche sind deutsch.** Kommentare,
+  Bezeichner, Log- und Fehlermeldungen im Code, Commit-Nachrichten, Issues und
+  Pull Requests auf Englisch. `CLAUDE.md`, `docs/` und alle Texte, die ein
+  Spieler im Browser sieht, bleiben deutsch.

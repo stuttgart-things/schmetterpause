@@ -1,9 +1,9 @@
-// Package auth kapselt die Authentifizierung hinter einer Schnittstelle.
+// Package auth keeps authentication behind an interface.
 //
-// Invariante 4 aus CLAUDE.md: Kein Handler kennt GitLab, GitHub oder WebAuthn
-// direkt. Alles ausserhalb dieses Packages arbeitet mit einer player_id, die
-// per Context weitergereicht wird. Welcher Provider sie geliefert hat, ist
-// jenseits dieser Grenze unsichtbar (docs/adr/0003).
+// Invariant 4 in CLAUDE.md: no handler knows about GitLab, GitHub or WebAuthn
+// directly. Everything outside this package works with a player_id passed
+// through the request context. Which provider produced it is invisible beyond
+// that boundary (docs/adr/0003).
 package auth
 
 import (
@@ -13,40 +13,40 @@ import (
 	"github.com/google/uuid"
 )
 
-// Authenticator ermittelt den Spieler hinter einer Anfrage.
+// Authenticator determines the player behind a request.
 //
-// Im MVP gibt es genau eine Implementierung: die Wiedererkennung ueber ein
-// signiertes Cookie (AP2). OIDC und WebAuthn kommen als weitere
-// Implementierungen dazu, ohne dass ein Handler sich aendert.
+// The MVP has exactly one implementation: recognition through a signed cookie
+// (AP2). OIDC and WebAuthn arrive as further implementations without any
+// handler changing.
 type Authenticator interface {
-	// Identify liefert die player_id zur Anfrage. Ist niemand angemeldet,
-	// ist der zweite Rueckgabewert false — das ist kein Fehler.
+	// Identify returns the player_id for a request. When nobody is signed in,
+	// the second return value is false — which is not an error.
 	Identify(r *http.Request) (uuid.UUID, bool)
 }
 
-// Anonymous erkennt niemanden. Platzhalter fuer AP1, damit der Server ohne
-// Login-Implementierung lauffaehig ist.
+// Anonymous recognises nobody. Placeholder for the scaffolding, so the server
+// runs without a login implementation.
 type Anonymous struct{}
 
-// Identify erkennt niemanden.
+// Identify recognises nobody.
 func (Anonymous) Identify(*http.Request) (uuid.UUID, bool) { return uuid.Nil, false }
 
 type contextKey struct{}
 
-// WithPlayerID hinterlegt die player_id im Context.
+// WithPlayerID stores the player_id in the context.
 func WithPlayerID(ctx context.Context, id uuid.UUID) context.Context {
 	return context.WithValue(ctx, contextKey{}, id)
 }
 
-// PlayerID liest die player_id aus dem Context. Der zweite Rueckgabewert ist
-// false, wenn die Anfrage keinem Spieler zugeordnet ist.
+// PlayerID reads the player_id from the context. The second return value is
+// false when the request is not attributed to any player.
 func PlayerID(ctx context.Context) (uuid.UUID, bool) {
 	id, ok := ctx.Value(contextKey{}).(uuid.UUID)
 	return id, ok && id != uuid.Nil
 }
 
-// Middleware legt die erkannte player_id in den Context. Sie weist niemanden
-// ab — das entscheidet der jeweilige Handler ueber RequirePlayer.
+// Middleware puts the identified player_id into the context. It turns nobody
+// away — that is each handler's decision, via RequirePlayer.
 func Middleware(a Authenticator) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -58,10 +58,11 @@ func Middleware(a Authenticator) func(http.Handler) http.Handler {
 	}
 }
 
-// RequirePlayer laesst nur Anfragen durch, denen ein Spieler zugeordnet ist.
+// RequirePlayer lets through only requests attributed to a player.
 func RequirePlayer(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if _, ok := PlayerID(r.Context()); !ok {
+			// User-facing text stays German; see CLAUDE.md.
 			http.Error(w, "Kein Spieler zugeordnet", http.StatusUnauthorized)
 			return
 		}

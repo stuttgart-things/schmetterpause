@@ -31,8 +31,8 @@ go.work.sum
 # .idea/
 # .vscode/
 
-# Build-Artefakte
+# Build artefacts
 /build/
 
-# Task-Statusdateien
+# Task state files
 /.task/

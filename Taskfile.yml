@@ -1,42 +1,42 @@
-# Task ist die Einstiegsschicht fuer Menschen: jeder Befehl, den jemand tippt,
-# ist ein Task. Die Build-Logik steckt nicht hier, sondern in Dagger — deshalb
-# rufen lint, build, verify und ci nur "dagger call" auf.
+# Task is the entry layer for humans: every command someone types is a task.
+# The build logic does not live here but in Dagger — which is why lint, build,
+# verify and ci do nothing but call "dagger call".
 version: '3'
 
 vars:
   MODULE: github.com/stuttgart-things/schmetterpause
-  # DSN fuer die Compose-Datenbank, wenn Werkzeuge vom Host aus zugreifen.
+  # DSN for the Compose database when tools reach it from the host.
   DSN: postgres://schmetterpause:schmetterpause@127.0.0.1:5432/schmetterpause?sslmode=disable
   VERSION:
     sh: git describe --tags --always --dirty 2>/dev/null || echo dev
 
 tasks:
   default:
-    desc: "Verfügbare Tasks anzeigen"
+    desc: "List the available tasks"
     cmds:
       - task --list
     silent: true
 
-  # ---------------------------------------------------------------- Betrieb
+  # ------------------------------------------------------------- Operations
 
   up:
-    desc: "Compose-Umgebung starten (App + Postgres)"
+    desc: "Start the Compose environment (app + Postgres)"
     cmds:
       - docker compose up --build --wait
-      - 'echo "Schmetterpause läuft auf http://127.0.0.1:8080"'
+      - 'echo "Schmetterpause is running on http://127.0.0.1:8080"'
 
   down:
-    desc: "Compose-Umgebung stoppen und die Entwicklungsdaten verwerfen"
+    desc: "Stop the Compose environment and discard the development data"
     cmds:
       - docker compose down --volumes --remove-orphans
 
   logs:
-    desc: "Logs der App verfolgen"
+    desc: "Follow the application logs"
     cmds:
       - docker compose logs --follow app
 
   run:
-    desc: "App lokal gegen die Compose-Datenbank starten (ohne App-Container)"
+    desc: "Run the app locally against the Compose database (no app container)"
     deps: [generate]
     env:
       SP_DATABASE_URL: '{{.DSN}}'
@@ -46,15 +46,15 @@ tasks:
       - go run ./cmd/schmetterpause serve
 
   psql:
-    desc: "psql-Sitzung auf der Entwicklungsdatenbank"
+    desc: "psql session on the development database"
     interactive: true
     cmds:
       - docker compose exec db psql -U schmetterpause -d schmetterpause
 
-  # ------------------------------------------------------------- Entwicklung
+  # ------------------------------------------------------------ Development
 
   generate:
-    desc: "templ-Templates generieren"
+    desc: "Generate the templ templates"
     sources:
       - internal/templates/*.templ
     generates:
@@ -63,14 +63,14 @@ tasks:
       - go generate ./...
 
   fmt:
-    desc: "Quellen formatieren"
+    desc: "Format the sources"
     cmds:
       - go tool templ fmt .
       - gofmt -w cmd internal web db
       - go mod tidy
 
   migrate:
-    desc: "Migrations gegen die lokale Datenbank anwenden"
+    desc: "Apply migrations to the local database"
     env:
       SP_DATABASE_URL: '{{.DSN}}'
     cmds:
@@ -78,20 +78,20 @@ tasks:
       - go run ./cmd/schmetterpause migrate up
 
   migrate:status:
-    desc: "Stand der Migrations anzeigen"
+    desc: "Show the migration state"
     env:
       SP_DATABASE_URL: '{{.DSN}}'
     cmds:
       - go run ./cmd/schmetterpause migrate status
 
   test:
-    desc: "Unit-Tests lokal, schnell"
+    desc: "Unit tests, local and fast"
     deps: [generate]
     cmds:
       - go test -race -cover ./...
 
   test:integration:
-    desc: "Repository-Tests gegen die lokale Datenbank — leert dabei alle Tabellen"
+    desc: "Repository tests against the local database, empties every table"
     deps: [generate]
     env:
       SP_TEST_DATABASE_URL: '{{.DSN}}'
@@ -100,36 +100,36 @@ tasks:
       - go test -race -count=1 ./internal/repository/...
 
   # ------------------------------------------------------------------ Dagger
-  # Diese Tasks rufen dieselbe Pipeline auf, die auch in der CI laeuft.
+  # These tasks invoke the same pipeline that runs in CI.
 
   lint:
-    desc: "Dagger-Lint: Format, Generat-Stand, go vet, golangci-lint"
+    desc: "Dagger lint: formatting, generated-code state, go vet, golangci-lint"
     deps: [dagger:check]
     cmds:
       - dagger call lint --source=.
 
   build:
-    desc: "Dagger-Build: Binary und Image, Ausgabe als OCI-Artefakt"
+    desc: "Dagger build: binary and image, emitted as an OCI artefact"
     deps: [dagger:check]
     cmds:
       - mkdir -p build
       - dagger call build --source=. --version={{.VERSION}} export --path=build/schmetterpause-oci.tar
-      - 'echo "OCI-Artefakt: build/schmetterpause-oci.tar"'
+      - 'echo "OCI artefact: build/schmetterpause-oci.tar"'
 
   verify:
-    desc: "Dagger-Verify: gebautes Image gegen frisches Postgres"
+    desc: "Dagger verify: the built image against a fresh Postgres"
     deps: [dagger:check]
     cmds:
       - dagger call verify --source=. --version={{.VERSION}}
 
   ci:
-    desc: "lint + build + verify — identisch zur Pipeline"
+    desc: "lint + build + verify, identical to the pipeline"
     deps: [dagger:check]
     cmds:
       - dagger call ci --source=. --version={{.VERSION}}
 
   dagger:develop:
-    desc: "Generierte Teile des Dagger-Moduls erzeugen (einmalig nötig)"
+    desc: "Generate the Dagger module scaffolding (needed once)"
     deps: [dagger:check]
     cmds:
       - dagger develop
@@ -139,8 +139,8 @@ tasks:
     preconditions:
       - sh: command -v dagger >/dev/null
         msg: |
-          Die Dagger-CLI fehlt. Sie enthält die Pipeline-Logik, deshalb laufen
-          lint, build, verify und ci nicht ohne sie.
-          Installation: https://docs.dagger.io/install
+          The Dagger CLI is missing. It holds the pipeline logic, so lint,
+          build, verify and ci do not run without it.
+          Install: https://docs.dagger.io/install
       - sh: docker info >/dev/null 2>&1
-        msg: "Docker läuft nicht — Dagger braucht eine Container-Runtime."
+        msg: "Docker is not running, and Dagger needs a container runtime."

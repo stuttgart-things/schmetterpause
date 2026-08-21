@@ -6,16 +6,16 @@ import (
 	"github.com/a-h/templ"
 )
 
-// render schreibt ein templ-Component als HTML.
+// render writes a templ component as HTML.
 //
-// Ein Fehler beim Rendern kommt praktisch nur vor, wenn die Verbindung
-// abbricht. Dann sind die Header schon raus und ein http.Error waere
-// wirkungslos — deshalb wird nur geloggt.
+// A rendering error happens in practice only when the connection drops. By
+// then the headers are out and an http.Error would have no effect, so this
+// only logs.
 func (s *Server) render(w http.ResponseWriter, r *http.Request, c templ.Component) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 
 	if err := c.Render(r.Context(), w); err != nil {
-		s.log.ErrorContext(r.Context(), "template rendern fehlgeschlagen",
-			"path", r.URL.Path, "fehler", err)
+		s.log.ErrorContext(r.Context(), "rendering template failed",
+			"path", r.URL.Path, "error", err)
 	}
 }

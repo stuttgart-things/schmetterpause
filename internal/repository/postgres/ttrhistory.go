@@ -18,7 +18,7 @@ func (r ttrHistoryRepo) Append(ctx context.Context, changes []domain.TTRChange) 
 
 	for _, c := range changes {
 		if _, err := r.q.Exec(ctx, q, c.PlayerID, c.MatchID, c.TTRBefore, c.TTRAfter); err != nil {
-			return fmt.Errorf("ttr-historie fuer spieler %s, match %s schreiben: %w",
+			return fmt.Errorf("write ttr history for player %s, match %s: %w",
 				c.PlayerID, c.MatchID, err)
 		}
 	}
@@ -35,7 +35,7 @@ func (r ttrHistoryRepo) ForPlayer(ctx context.Context, playerID uuid.UUID, limit
 
 	rows, err := r.q.Query(ctx, q, playerID, limit)
 	if err != nil {
-		return nil, fmt.Errorf("ttr-historie von spieler %s laden: %w", playerID, err)
+		return nil, fmt.Errorf("load ttr history of player %s: %w", playerID, err)
 	}
 	defer rows.Close()
 
@@ -43,12 +43,12 @@ func (r ttrHistoryRepo) ForPlayer(ctx context.Context, playerID uuid.UUID, limit
 	for rows.Next() {
 		var c domain.TTRChange
 		if err := rows.Scan(&c.ID, &c.PlayerID, &c.MatchID, &c.TTRBefore, &c.TTRAfter, &c.CreatedAt); err != nil {
-			return nil, fmt.Errorf("ttr-eintrag lesen: %w", err)
+			return nil, fmt.Errorf("read ttr entry: %w", err)
 		}
 		changes = append(changes, c)
 	}
 	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("ttr-historie lesen: %w", err)
+		return nil, fmt.Errorf("read ttr history: %w", err)
 	}
 	return changes, nil
 }
