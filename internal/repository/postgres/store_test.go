@@ -114,6 +114,13 @@ func TestPlayerRepository(t *testing.T) {
 		t.Errorf("Bodo is not first after the rating update: %+v", list)
 	}
 
+	// The unique index is case- and whitespace-insensitive, and the driver's
+	// SQLSTATE has to arrive as domain.ErrConflict — otherwise a taken name
+	// reaches the player as a 500 instead of a message saying it is taken.
+	if _, err := players.Create(ctx, "  ANNA  ", domain.DefaultTTR); !errors.Is(err, domain.ErrConflict) {
+		t.Errorf("Create() with a taken name = %v, want domain.ErrConflict", err)
+	}
+
 	if _, err := players.ByID(ctx, uuid.New()); !errors.Is(err, domain.ErrNotFound) {
 		t.Errorf("ByID() for an unknown player = %v, want domain.ErrNotFound", err)
 	}

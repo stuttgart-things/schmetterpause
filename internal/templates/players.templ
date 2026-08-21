@@ -1,0 +1,31 @@
+package templates
+
+// PlayerList renders the roster. The out-of-band variant lets a successful
+// join refresh the list in the same response that replaces the form, without
+// a second request and without a line of JavaScript.
+templ PlayerList(v PlayerListView) {
+	<ul id="player-list" class="players">
+		@playerItems(v)
+	</ul>
+}
+
+// PlayerListOOB is PlayerList marked for an HTMX out-of-band swap.
+templ PlayerListOOB(v PlayerListView) {
+	<ul id="player-list" class="players" hx-swap-oob="true">
+		@playerItems(v)
+	</ul>
+}
+
+templ playerItems(v PlayerListView) {
+	if len(v.Players) == 0 {
+		<li class="muted">Noch niemand da.</li>
+	}
+	for _, p := range v.Players {
+		<li>
+			{ p.DisplayName }
+			if p.IsSelf {
+				<span class="muted">(du)</span>
+			}
+		</li>
+	}
+}

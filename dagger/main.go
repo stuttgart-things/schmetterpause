@@ -55,6 +55,10 @@ const (
 	// verifyDSN is the address at which the application reaches the Postgres
 	// service during verify. It applies only inside the pipeline.
 	verifyDSN = "postgres://schmetterpause:schmetterpause@db:5432/schmetterpause?sslmode=disable"
+
+	// verifySessionKey signs cookies inside the pipeline only. It never
+	// leaves the ephemeral verify containers.
+	verifySessionKey = "pipeline-only-session-key-0123456789abcdef"
 )
 
 // Schmetterpause bundles the pipeline functions.
@@ -205,9 +209,11 @@ func (m *Schmetterpause) Postgres() *dagger.Service {
 // that "go test" never sees — migrations missing from the image, broken env
 // defaults, templates or assets that did not get embedded.
 //
-// The end-to-end path from the MVP plan (create two players, record a match,
-// confirm it, check the ranking) arrives once AP4 and AP5 land. Tracked in
-// issue #16.
+// The session check covers the Definition of Done of AP2 against the built
+// image: join, keep the cookie, be recognised on the next request.
+//
+// The rest of the end-to-end path from the MVP plan (record a match, confirm
+// it, check the ranking) arrives once AP4 and AP5 land. Tracked in issue #16.
 func (m *Schmetterpause) Verify(
 	ctx context.Context,
 	// +defaultPath="/"
@@ -220,6 +226,11 @@ func (m *Schmetterpause) Verify(
 	app := m.Image(source, version, defaultArch).
 		WithEnvVariable("SP_DATABASE_URL", verifyDSN).
 		WithEnvVariable("SP_LOG_LEVEL", "debug").
+		WithEnvVariable("SP_SESSION_KEY", verifySessionKey).
+		// No TLS in front of the service, so a Secure cookie would never
+		// come back and the session check below would pass for the wrong
+		// reason.
+		WithEnvVariable("SP_COOKIE_SECURE", "false").
 		WithServiceBinding("db", m.Postgres()).
 		AsService(dagger.ContainerAsServiceOpts{UseEntrypoint: true})
 
@@ -466,6 +477,27 @@ echo "== HTMX fragment: handler, repository and database =="
 curl -fsS http://app:8080/fragments/status | grep -q ">erreichbar<" || {
 	echo "status fragment does not report the database as reachable"
 	curl -sS http://app:8080/fragments/status || true
+	exit 1
+}
+
+echo "== session: a browser is recognised again =="
+cookies=$(mktemp)
+
+curl -fsS -c "$cookies" -X POST http://app:8080/players \
+	--data-urlencode "display_name=Verify Anna" | grep -q "Verify Anna" || {
+	echo "joining did not name the player back"
+	exit 1
+}
+
+grep -q schmetterpause_session "$cookies" || {
+	echo "no session cookie was set"
+	exit 1
+}
+
+# The point of AP2: the same browser maps to the same player on a later
+# request, through nothing but the cookie it kept.
+curl -fsS -b "$cookies" http://app:8080/ | grep -q "Angemeldet als" || {
+	echo "the returning request was not recognised"
 	exit 1
 }
 

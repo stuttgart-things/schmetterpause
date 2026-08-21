@@ -18,6 +18,11 @@ import (
 // envPrefix keeps this application's variables apart from anyone else's.
 const envPrefix = "SP_"
 
+// minSessionKeyLen is the shortest session key accepted. HMAC-SHA256 keys
+// shorter than the hash are not worth the trouble of attacking, but they are
+// also not worth accepting when generating a longer one is one command.
+const minSessionKeyLen = 32
+
 // DefaultHTTPAddr is the bind address used when SP_HTTP_ADDR is unset. It
 // lives here rather than in a config file or the Dockerfile (invariant 2),
 // and the healthcheck subcommand needs it too.
@@ -41,6 +46,16 @@ type Config struct {
 	ShutdownTimeout time.Duration
 	// ReadinessTimeout bounds the database check behind /readyz.
 	ReadinessTimeout time.Duration
+	// SessionKey signs the recognition cookie. It has no default: a
+	// hardcoded fallback would let anyone forge a session, and a random one
+	// per start would make every player a stranger after a deployment —
+	// which is precisely what the cookie exists to prevent.
+	SessionKey []byte
+	// CookieSecure marks the session cookie HTTPS-only. Defaults to true, so
+	// a forgotten setting fails closed: the cookie is simply not sent over
+	// plain HTTP, rather than travelling over it in the clear. Local
+	// development over http://localhost sets it to false.
+	CookieSecure bool
 	// DatabaseConnectTimeout is how long startup waits for the database
 	// before giving up. Compose can wait for a healthy Postgres through
 	// depends_on; Kubernetes and Azure Container Apps cannot — there the
@@ -55,6 +70,7 @@ func Load() (Config, error) {
 		HTTPAddr:               env("HTTP_ADDR", DefaultHTTPAddr),
 		DatabaseURL:            env("DATABASE_URL", ""),
 		AutoMigrate:            true,
+		CookieSecure:           true,
 		ShutdownTimeout:        15 * time.Second,
 		ReadinessTimeout:       2 * time.Second,
 		DatabaseConnectTimeout: 30 * time.Second,
@@ -68,12 +84,23 @@ func Load() (Config, error) {
 	}
 	cfg.LogLevel = level
 
-	if raw, ok := lookup("AUTO_MIGRATE"); ok {
+	for _, b := range []struct {
+		key    string
+		target *bool
+	}{
+		{"AUTO_MIGRATE", &cfg.AutoMigrate},
+		{"COOKIE_SECURE", &cfg.CookieSecure},
+	} {
+		raw, ok := lookup(b.key)
+		if !ok {
+			continue
+		}
 		v, err := strconv.ParseBool(raw)
 		if err != nil {
-			errs = append(errs, fmt.Errorf("%sAUTO_MIGRATE=%q is not a boolean: %w", envPrefix, raw, err))
+			errs = append(errs, fmt.Errorf("%s%s=%q is not a boolean: %w", envPrefix, b.key, raw, err))
+			continue
 		}
-		cfg.AutoMigrate = v
+		*b.target = v
 	}
 
 	for _, d := range []struct {
@@ -105,6 +132,18 @@ func Load() (Config, error) {
 	}
 	if cfg.DatabaseURL == "" {
 		errs = append(errs, fmt.Errorf("%sDATABASE_URL is required", envPrefix))
+	}
+
+	switch key := env("SESSION_KEY", ""); {
+	case key == "":
+		errs = append(errs, fmt.Errorf(
+			"%sSESSION_KEY is required; generate one with: openssl rand -base64 32", envPrefix))
+	case len(key) < minSessionKeyLen:
+		errs = append(errs, fmt.Errorf(
+			"%sSESSION_KEY is %d characters, at least %d are required",
+			envPrefix, len(key), minSessionKeyLen))
+	default:
+		cfg.SessionKey = []byte(key)
 	}
 
 	if err := errors.Join(errs...); err != nil {

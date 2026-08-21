@@ -104,3 +104,13 @@ func (s *Store) Matches() repository.MatchRepository { return matchRepo{s.q} }
 
 // TTRHistory returns the rating history repository.
 func (s *Store) TTRHistory() repository.TTRHistoryRepository { return ttrHistoryRepo{s.q} }
+
+// uniqueViolation is the SQLSTATE Postgres reports for a broken unique
+// constraint. Kept here so no caller has to know it.
+const uniqueViolation = "23505"
+
+// isUniqueViolation reports whether err came from a unique constraint.
+func isUniqueViolation(err error) bool {
+	var pgErr *pgconn.PgError
+	return errors.As(err, &pgErr) && pgErr.Code == uniqueViolation
+}

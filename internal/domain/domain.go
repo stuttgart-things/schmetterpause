@@ -16,6 +16,12 @@ import (
 // implementations wrap it; callers check with errors.Is.
 var ErrNotFound = errors.New("not found")
 
+// ErrConflict reports that a record collides with one that already exists —
+// a display name someone else has taken, for instance. Repositories wrap it
+// so handlers can answer with a readable message instead of a 500, without
+// learning anything about SQL error codes.
+var ErrConflict = errors.New("already exists")
+
 // DefaultTTR is the starting rating for newly created players.
 //
 // Whether 1000 spreads well across an office group is an open question in the
