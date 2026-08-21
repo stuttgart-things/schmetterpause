@@ -1,0 +1,43 @@
+package templates
+
+import "strconv"
+
+// QRSheet is the printable sheet for the wall next to the table.
+//
+// No print button: that would need JavaScript for something every browser
+// already has a menu entry and a keyboard shortcut for (invariant 7). The
+// print rules live in the stylesheet instead.
+templ QRSheet(v QRSheetView) {
+	@Layout("QR-Aushang") {
+		<article class="sheet">
+			<h1>Ergebnis eintragen</h1>
+			<p class="sheet-lead">Scannen. Gegner wählen. Sätze eintragen.</p>
+			<figure class="qr">
+				<svg
+					viewBox={ "0 0 " + strconv.Itoa(v.Size) + " " + strconv.Itoa(v.Size) }
+					role="img"
+					aria-label={ "QR-Code für " + v.Target }
+					shape-rendering="crispEdges"
+				>
+					<title>{ "QR-Code für " + v.Target }</title>
+					// Black on white whatever the theme is: a scanner wants the
+					// contrast the specification assumes, and the sheet is made
+					// to be printed.
+					<rect width={ strconv.Itoa(v.Size) } height={ strconv.Itoa(v.Size) } fill="#fff"></rect>
+					<path d={ v.Path } fill="#000"></path>
+				</svg>
+				<figcaption>{ v.Target }</figcaption>
+			</figure>
+			<ol class="sheet-steps">
+				<li>Code mit der Handykamera scannen.</li>
+				<li>Beim ersten Mal einmalig den eigenen Namen eintragen.</li>
+				<li>Gegner wählen, Sätze eintragen, <strong>Eintragen</strong> drücken.</li>
+			</ol>
+			<p class="sheet-note muted">
+				Danach bestätigt der Gegner das Ergebnis — erst dann zählt es
+				für die Wertung.
+			</p>
+			<p class="sheet-back no-print"><a href="/">Zurück zur Startseite</a></p>
+		</article>
+	}
+}

@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"net/url"
 	"os"
 	"strconv"
 	"strings"
@@ -66,6 +67,13 @@ type Config struct {
 	// application would crash-loop merely because the database is ready a few
 	// seconds later.
 	DatabaseConnectTimeout time.Duration
+	// PublicBaseURL is the address a phone has to reach, scheme and host and
+	// nothing else. Empty by default: the QR sheet then reads the address off
+	// the request, which is right wherever the application is reached
+	// directly. Set it where a proxy terminates TLS or rewrites the host,
+	// because there the incoming request no longer says where the code should
+	// point.
+	PublicBaseURL string
 }
 
 // Load reads the configuration from the environment and validates it.
@@ -140,6 +148,14 @@ func Load() (Config, error) {
 
 	cfg.SessionKey = []byte(env("SESSION_KEY", ""))
 
+	if raw := env("PUBLIC_BASE_URL", ""); raw != "" {
+		base, err := parseBaseURL(raw)
+		if err != nil {
+			errs = append(errs, err)
+		}
+		cfg.PublicBaseURL = base
+	}
+
 	if err := errors.Join(errs...); err != nil {
 		return Config{}, fmt.Errorf("read configuration from the environment: %w", err)
 	}
@@ -160,6 +176,29 @@ func (c Config) ValidateForServe() error {
 			envPrefix, len(c.SessionKey), minSessionKeyLen)
 	}
 	return nil
+}
+
+// parseBaseURL accepts an absolute http or https address without a path.
+//
+// A path prefix is rejected rather than half-supported: every link in this
+// application is root-absolute, so a code pointing at /schmetterpause/ would
+// scan fine and send the first click after it to the wrong place.
+func parseBaseURL(raw string) (string, error) {
+	u, err := url.Parse(raw)
+	if err != nil {
+		return "", fmt.Errorf("%sPUBLIC_BASE_URL=%q is not a URL: %w", envPrefix, raw, err)
+	}
+
+	switch {
+	case u.Scheme != "http" && u.Scheme != "https":
+		return "", fmt.Errorf("%sPUBLIC_BASE_URL=%q needs an http:// or https:// scheme", envPrefix, raw)
+	case u.Host == "":
+		return "", fmt.Errorf("%sPUBLIC_BASE_URL=%q has no host", envPrefix, raw)
+	case strings.Trim(u.Path, "/") != "", u.RawQuery != "", u.Fragment != "":
+		return "", fmt.Errorf("%sPUBLIC_BASE_URL=%q must be scheme and host only, without a path",
+			envPrefix, raw)
+	}
+	return u.Scheme + "://" + u.Host, nil
 }
 
 func parseLevel(raw string) (slog.Level, error) {
