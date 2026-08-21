@@ -119,7 +119,10 @@ func (m *Schmetterpause) Test(
 		WithServiceBinding("db", m.Postgres()).
 		// Set so the repository tests do not skip themselves.
 		WithEnvVariable("SP_TEST_DATABASE_URL", verifyDSN).
-		WithExec([]string{"go", "test", "-cover", "-count=1", "./..."}).
+		// -p 1: the repository and scoring suites share this database and
+		// empty it between tests, so running their packages concurrently has
+		// them migrating and truncating over each other.
+		WithExec([]string{"go", "test", "-cover", "-count=1", "-p", "1", "./..."}).
 		Stdout(ctx)
 	if err != nil {
 		return "", fmt.Errorf("go test: %w", err)

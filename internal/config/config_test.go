@@ -41,23 +41,47 @@ func TestLoadDefaults(t *testing.T) {
 	}
 }
 
-func TestLoadRequiresSessionKey(t *testing.T) {
+// TestLoadWithoutASessionKey covers the commands that never sign anything.
+// "schmetterpause migrate" must not need the cookie secret — requiring it
+// would mean handing that secret to a migration job for nothing.
+func TestLoadWithoutASessionKey(t *testing.T) {
 	t.Setenv("SP_DATABASE_URL", "postgres://user:pw@db:5432/schmetterpause")
 	t.Setenv("SP_SESSION_KEY", "")
 
-	if _, err := config.Load(); err == nil {
-		t.Fatal("Load() without SP_SESSION_KEY returned no error")
+	cfg, err := config.Load()
+	if err != nil {
+		t.Fatalf("Load() without SP_SESSION_KEY: %v", err)
+	}
+	if err := cfg.ValidateForServe(); err == nil {
+		t.Error("ValidateForServe() without a session key returned no error")
 	}
 }
 
-func TestLoadRejectsShortSessionKey(t *testing.T) {
+func TestValidateForServeRejectsAShortKey(t *testing.T) {
 	// A short key would sign cookies that are cheap to forge, so it is
 	// refused rather than accepted with a warning nobody reads.
 	t.Setenv("SP_DATABASE_URL", "postgres://user:pw@db:5432/schmetterpause")
 	t.Setenv("SP_SESSION_KEY", "tooshort")
 
-	if _, err := config.Load(); err == nil {
-		t.Fatal("Load() with a short SP_SESSION_KEY returned no error")
+	cfg, err := config.Load()
+	if err != nil {
+		t.Fatalf("Load(): %v", err)
+	}
+	if err := cfg.ValidateForServe(); err == nil {
+		t.Error("ValidateForServe() with a short key returned no error")
+	}
+}
+
+func TestValidateForServeAcceptsAProperKey(t *testing.T) {
+	t.Setenv("SP_DATABASE_URL", "postgres://user:pw@db:5432/schmetterpause")
+	t.Setenv("SP_SESSION_KEY", testKey)
+
+	cfg, err := config.Load()
+	if err != nil {
+		t.Fatalf("Load(): %v", err)
+	}
+	if err := cfg.ValidateForServe(); err != nil {
+		t.Errorf("ValidateForServe(): %v", err)
 	}
 }
 

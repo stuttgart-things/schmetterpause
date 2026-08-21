@@ -24,7 +24,8 @@ tasks:
   up:
     desc: "Start the Compose environment (app + Postgres)"
     cmds:
-      - docker compose up --build --wait
+      - task: compose:up
+        vars: { SERVICES: "" }
       - 'echo "Schmetterpause is running on http://127.0.0.1:8080"'
 
   down:
@@ -46,7 +47,8 @@ tasks:
       SP_SESSION_KEY: '{{.DEV_SESSION_KEY}}'
       SP_COOKIE_SECURE: "false"
     cmds:
-      - docker compose up --detach --wait db
+      - task: compose:up
+        vars: { SERVICES: db }
       - go run ./cmd/schmetterpause serve
 
   psql:
@@ -78,7 +80,8 @@ tasks:
     env:
       SP_DATABASE_URL: '{{.DSN}}'
     cmds:
-      - docker compose up --detach --wait db
+      - task: compose:up
+        vars: { SERVICES: db }
       - go run ./cmd/schmetterpause migrate up
 
   migrate:status:
@@ -100,8 +103,12 @@ tasks:
     env:
       SP_TEST_DATABASE_URL: '{{.DSN}}'
     cmds:
-      - docker compose up --detach --wait db
-      - go test -race -count=1 ./internal/repository/...
+      - task: compose:up
+        vars: { SERVICES: db }
+      # -p 1: both suites talk to the same database and empty it between
+      # tests, so running the packages concurrently has them migrating and
+      # truncating over each other.
+      - go test -race -count=1 -p 1 ./internal/repository/... ./internal/scoring/...
 
   # ------------------------------------------------------------------ Dagger
   # These tasks invoke the same pipeline that runs in CI.
@@ -164,6 +171,36 @@ tasks:
     deps: [dagger:check]
     cmds:
       - dagger develop
+
+  compose:up:
+    internal: true
+    # Without this, task echoes the whole diagnostic block on every start,
+    # which is precisely the noise it exists to remove.
+    silent: true
+    # "docker compose --wait" reports only that a container exited, never
+    # why. The reason is one command away in the logs, which is one command
+    # too many when a service refuses to start — so it is printed here.
+    cmds:
+      - |
+        if docker compose up --build --detach --wait {{.SERVICES}}; then
+          exit 0
+        fi
+
+        echo >&2
+        echo "A service did not come up:" >&2
+        echo >&2
+        docker compose logs --no-log-prefix --tail 25 {{.SERVICES}} >&2
+        echo >&2
+
+        if docker compose logs {{.SERVICES}} 2>&1 | grep -q "incompatible with server"; then
+          echo "The database volume was created by an older major version of" >&2
+          echo "Postgres, which refuses to start on it. The development data is" >&2
+          echo "throwaway data:" >&2
+          echo >&2
+          echo "    task down && task up" >&2
+          echo >&2
+        fi
+        exit 1
 
   dagger:check:
     internal: true

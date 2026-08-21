@@ -15,5 +15,20 @@
       ],
       "datasourceTemplate": "docker"
     }
+  ],
+  "packageRules": [
+    {
+      "description": "A major Postgres bump refuses to start on any data directory an older major version created, so every existing development volume dies with it. Requiring approval on the dashboard turns that from a surprise into a decision \u2014 it does not block the upgrade, it just stops it arriving unannounced.",
+      "matchDatasources": [
+        "docker"
+      ],
+      "matchPackageNames": [
+        "postgres"
+      ],
+      "matchUpdateTypes": [
+        "major"
+      ],
+      "dependencyDashboardApproval": true
+    }
   ]
 }
