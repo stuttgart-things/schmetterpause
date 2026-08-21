@@ -24,13 +24,13 @@ const maxDisplayNameLen = 40
 func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 	view := templates.IndexView{Session: s.sessionView(r.Context())}
 
-	players, err := s.playerListView(r.Context())
+	table, err := s.standingsView(r.Context())
 	if err != nil {
-		s.log.ErrorContext(r.Context(), "loading the player list failed", "error", err)
-		http.Error(w, "Spielerliste nicht verfügbar", http.StatusInternalServerError)
+		s.log.ErrorContext(r.Context(), "loading the standings failed", "error", err)
+		http.Error(w, "Rangliste nicht verfügbar", http.StatusInternalServerError)
 		return
 	}
-	view.Players = players
+	view.Standings = table
 
 	// Result entry needs somebody to attribute the report to, so it appears
 	// only once the browser is recognised.
@@ -100,26 +100,15 @@ func (s *Server) handleJoin(w http.ResponseWriter, r *http.Request) {
 
 	s.auth.SetCookie(w, subject)
 
-	players, err := s.playerListView(auth.WithPlayerID(r.Context(), created.ID))
+	table, err := s.standingsView(auth.WithPlayerID(r.Context(), created.ID))
 	if err != nil {
-		// The player exists and is signed in; only the roster is missing.
+		// The player exists and is signed in; only the ranking is missing.
 		// Saying so beats discarding a successful join.
-		s.log.ErrorContext(r.Context(), "loading the player list failed", "error", err)
+		s.log.ErrorContext(r.Context(), "loading the standings failed", "error", err)
 	}
 
 	s.render(w, r, templates.Session(templates.SessionView{DisplayName: created.DisplayName}))
-	s.render(w, r, templates.PlayerListOOB(players))
-}
-
-// handlePlayersFragment serves the roster on its own.
-func (s *Server) handlePlayersFragment(w http.ResponseWriter, r *http.Request) {
-	players, err := s.playerListView(r.Context())
-	if err != nil {
-		s.log.ErrorContext(r.Context(), "loading the player list failed", "error", err)
-		http.Error(w, "Spielerliste nicht verfügbar", http.StatusInternalServerError)
-		return
-	}
-	s.render(w, r, templates.PlayerList(players))
+	s.render(w, r, templates.StandingsOOB(table))
 }
 
 // rejectJoin re-renders the form with the reason, keeping what was typed.
@@ -146,25 +135,6 @@ func (s *Server) sessionView(ctx context.Context) templates.SessionView {
 		return templates.SessionView{}
 	}
 	return templates.SessionView{DisplayName: player.DisplayName}
-}
-
-func (s *Server) playerListView(ctx context.Context) (templates.PlayerListView, error) {
-	players, err := s.store.Players().List(ctx)
-	if err != nil {
-		return templates.PlayerListView{}, err
-	}
-
-	self, _ := auth.PlayerID(ctx)
-
-	view := templates.PlayerListView{Players: make([]templates.PlayerListEntry, 0, len(players))}
-	for _, p := range players {
-		view.Players = append(view.Players, templates.PlayerListEntry{
-			DisplayName: p.DisplayName,
-			TTR:         p.TTR,
-			IsSelf:      p.ID == self && self != uuid.Nil,
-		})
-	}
-	return view, nil
 }
 
 // validateDisplayName reports whether a name is usable, and why not if it is

@@ -28,11 +28,12 @@ type memStore struct {
 }
 
 func newMemStore() *memStore {
-	players := &memPlayers{}
+	matches := &memMatches{}
+	players := &memPlayers{matches: matches}
 	return &memStore{
 		players:    players,
 		identities: &memIdentities{players: players},
-		matches:    &memMatches{},
+		matches:    matches,
 		history:    &memHistory{},
 	}
 }
@@ -50,8 +51,52 @@ func (m *memStore) InTx(_ context.Context, fn func(repository.Store) error) erro
 
 type memPlayers struct {
 	repository.PlayerRepository
-	mu   sync.Mutex
-	rows []domain.Player
+	// matches lets Records count confirmed results, the same join the
+	// Postgres implementation does in one statement.
+	matches *memMatches
+	mu      sync.Mutex
+	rows    []domain.Player
+}
+
+// Records mirrors the Postgres aggregate: confirmed matches only, and the
+// winner from the set scores rather than from the rating change.
+func (p *memPlayers) Records(ctx context.Context) ([]domain.PlayerRecord, error) {
+	players, err := p.List(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	records := make([]domain.PlayerRecord, 0, len(players))
+	for _, player := range players {
+		record := domain.PlayerRecord{Player: player}
+
+		for _, m := range p.matches.all() {
+			if m.Status != domain.MatchConfirmed {
+				continue
+			}
+			atHome := m.HomeID == player.ID
+			if !atHome && m.AwayID != player.ID {
+				continue
+			}
+
+			var home, away int
+			for _, set := range m.Sets {
+				if set.HomePoints > set.AwayPoints {
+					home++
+				} else {
+					away++
+				}
+			}
+
+			record.Played++
+			if (atHome && home > away) || (!atHome && away > home) {
+				record.Won++
+			}
+		}
+		record.Lost = record.Played - record.Won
+		records = append(records, record)
+	}
+	return records, nil
 }
 
 func (p *memPlayers) Create(_ context.Context, displayName string, ttr int) (domain.Player, error) {
@@ -201,6 +246,25 @@ func (m *memMatches) PendingFor(_ context.Context, playerID uuid.UUID) ([]domain
 		involved := row.HomeID == playerID || row.AwayID == playerID
 		if row.Status == domain.MatchPending && involved && row.ReportedBy != playerID {
 			out = append(out, row)
+		}
+	}
+	return out, nil
+}
+
+// RecentFor mirrors the Postgres query: every match the player is in, newest
+// first, whatever its status.
+func (m *memMatches) RecentFor(_ context.Context, playerID uuid.UUID, limit int) ([]domain.Match, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	var out []domain.Match
+	for i := len(m.rows) - 1; i >= 0; i-- {
+		row := m.rows[i]
+		if row.HomeID == playerID || row.AwayID == playerID {
+			out = append(out, row)
+		}
+		if len(out) == limit {
+			break
 		}
 	}
 	return out, nil

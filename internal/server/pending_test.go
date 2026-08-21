@@ -143,7 +143,7 @@ func TestConfirmingSettlesTheMatch(t *testing.T) {
 	// A confirmation changes the roster, so it comes back in the same
 	// response rather than leaving a stale rating on screen.
 	if !strings.Contains(body, `hx-swap-oob="true"`) {
-		t.Errorf("the response does not refresh the roster out of band: %s", body)
+		t.Errorf("the response does not refresh the ranking out of band: %s", body)
 	}
 
 	if got := ttrOfPlayer(t, store, "Anna"); got != 1008 {

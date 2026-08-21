@@ -565,9 +565,36 @@ curl -fsS -b "$second" -X POST "http://app:8080/matches/$mid/confirm" \
 	exit 1
 }
 
-# 11:9 and 12:10 from equal ratings is +8, so the roster has to have moved.
-curl -fsS -b "$second" http://app:8080/fragments/players | grep -q "1008" || {
+# 11:9 and 12:10 from equal ratings is +8, so the ranking has to have moved.
+curl -fsS -b "$second" http://app:8080/fragments/standings > /tmp/standings
+grep -q "1008" /tmp/standings || {
 	echo "the rating did not move after the confirmation"
+	cat /tmp/standings
+	exit 1
+}
+# One played, one won: the tally counts confirmed matches, and there is
+# exactly one of those.
+grep -q "1:0" /tmp/standings || {
+	echo "the ranking does not show the win/loss record"
+	cat /tmp/standings
+	exit 1
+}
+
+echo "== profile: the rating history is drawn =="
+pid=$(tr "<" "\n" < /tmp/standings | grep "a href=\"/players/" | head -1 \
+	| sed "s|.*players/\([0-9a-f-]*\)\".*|\1|")
+[ -n "$pid" ] || {
+	echo "the ranking links to no profile"
+	exit 1
+}
+curl -fsS -b "$cookies" "http://app:8080/players/$pid" > /tmp/profile
+grep -q "<polyline" /tmp/profile || {
+	echo "the profile shows no rating history"
+	exit 1
+}
+# The baseline is not zero, so the range has to be stated next to the chart.
+grep -q "Verlauf" /tmp/profile || {
+	echo "the chart does not state its range"
 	exit 1
 }
 

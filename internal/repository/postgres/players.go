@@ -71,6 +71,60 @@ func (r playerRepo) List(ctx context.Context) ([]domain.Player, error) {
 	return players, nil
 }
 
+// Records counts confirmed matches per player in one statement.
+//
+// The winner comes from the set scores rather than from the rating history:
+// a strong favourite who wins can move by zero points, so "did the rating go
+// up" is not the same question as "did they win".
+func (r playerRepo) Records(ctx context.Context) ([]domain.PlayerRecord, error) {
+	const q = `
+		with decided as (
+			select m.id,
+			       m.home_id,
+			       m.away_id,
+			       count(*) filter (where s.home_points > s.away_points) as home_sets,
+			       count(*) filter (where s.away_points > s.home_points) as away_sets
+			from matches m
+			join match_sets s on s.match_id = m.id
+			where m.status = 'confirmed'
+			group by m.id
+		),
+		per_player as (
+			select home_id as player_id, home_sets > away_sets as won from decided
+			union all
+			select away_id as player_id, away_sets > home_sets as won from decided
+		)
+		select p.id, p.display_name, p.ttr, p.created_at,
+		       count(pp.player_id) as played,
+		       count(*) filter (where pp.won) as won
+		from players p
+		left join per_player pp on pp.player_id = p.id
+		group by p.id, p.display_name, p.ttr, p.created_at
+		order by p.ttr desc, lower(btrim(p.display_name))`
+
+	rows, err := r.q.Query(ctx, q)
+	if err != nil {
+		return nil, fmt.Errorf("load player records: %w", err)
+	}
+	defer rows.Close()
+
+	var records []domain.PlayerRecord
+	for rows.Next() {
+		var rec domain.PlayerRecord
+		err := rows.Scan(&rec.Player.ID, &rec.Player.DisplayName, &rec.Player.TTR,
+			&rec.Player.CreatedAt, &rec.Played, &rec.Won)
+		if err != nil {
+			return nil, fmt.Errorf("read player record: %w", err)
+		}
+		rec.Lost = rec.Played - rec.Won
+		records = append(records, rec)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("read player records: %w", err)
+	}
+	return records, nil
+}
+
 func (r playerRepo) Count(ctx context.Context) (int, error) {
 	var n int
 	if err := r.q.QueryRow(ctx, `select count(*) from players`).Scan(&n); err != nil {
