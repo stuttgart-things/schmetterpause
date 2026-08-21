@@ -9,6 +9,8 @@ vars:
   DSN: postgres://schmetterpause:schmetterpause@127.0.0.1:5432/schmetterpause?sslmode=disable
   VERSION:
     sh: git describe --tags --always --dirty 2>/dev/null || echo dev
+  # Development only. Fixed so a restart keeps recognising the same browser.
+  DEV_SESSION_KEY: development-session-key-not-for-production
 
 tasks:
   default:
@@ -41,6 +43,8 @@ tasks:
     env:
       SP_DATABASE_URL: '{{.DSN}}'
       SP_LOG_LEVEL: debug
+      SP_SESSION_KEY: '{{.DEV_SESSION_KEY}}'
+      SP_COOKIE_SECURE: "false"
     cmds:
       - docker compose up --detach --wait db
       - go run ./cmd/schmetterpause serve

@@ -30,6 +30,12 @@ services:
     environment:
       SP_DATABASE_URL: postgres://schmetterpause:schmetterpause@db:5432/schmetterpause?sslmode=disable
       SP_LOG_LEVEL: ${SP_LOG_LEVEL:-debug}
+      # Fixed so a restart does not turn every player into a stranger. A
+      # development value on purpose — anything real belongs in a secret.
+      SP_SESSION_KEY: ${SP_SESSION_KEY:-development-session-key-not-for-production}
+      # No HTTPS on http://localhost, so the browser would never send a
+      # cookie marked Secure.
+      SP_COOKIE_SECURE: "false"
     ports:
       - "127.0.0.1:8080:8080"
     depends_on:
