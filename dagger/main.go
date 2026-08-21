@@ -609,6 +609,38 @@ grep -q "Verlauf" /tmp/profile || {
 	exit 1
 }
 
+echo "== QR sheet: the code points back at this host =="
+sheet=$(mktemp)
+curl -fsS -b "$cookies" http://app:8080/qr > "$sheet"
+
+grep -q "http://app:8080/#match" "$sheet" || {
+	echo "the sheet does not print the address it was reached at"
+	cat "$sheet"
+	exit 1
+}
+
+# A path with more than a handful of runs. An empty or one-run path would
+# still be valid SVG and would not be a QR code.
+runs=$(tr "M" "\n" < "$sheet" | grep -c "^[0-9]* [0-9]*h[0-9]*v1h-[0-9]*z" || true)
+[ "$runs" -gt 20 ] || {
+	echo "the sheet drew $runs module runs, which is not a QR code"
+	exit 1
+}
+
+# The anchor the code carries has to exist on the page it lands on.
+curl -fsS -b "$cookies" http://app:8080/ | grep -q "id=\"match\"" || {
+	echo "the start page has no #match for a scan to land on"
+	exit 1
+}
+
+# Behind a TLS-terminating proxy the connection is plain and the printed
+# address must not be.
+curl -fsS -H "X-Forwarded-Proto: https" http://app:8080/qr \
+	| grep -q "https://app:8080/#match" || {
+	echo "the sheet ignored the forwarded scheme"
+	exit 1
+}
+
 echo
 echo "verify: all checks passed"
 `

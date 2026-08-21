@@ -36,6 +36,10 @@ services:
       # No HTTPS on http://localhost, so the browser would never send a
       # cookie marked Secure.
       SP_COOKIE_SECURE: "false"
+      # SP_PUBLIC_BASE_URL is deliberately unset: the QR sheet reads the
+      # address off the request, which is right wherever the application is
+      # reached directly. Set it where a proxy terminates TLS or rewrites the
+      # host, because there the request no longer says where a phone has to go.
     ports:
       - "127.0.0.1:8080:8080"
     depends_on:

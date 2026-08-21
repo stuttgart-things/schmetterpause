@@ -134,3 +134,46 @@ func TestLoadRejectsInvalidValues(t *testing.T) {
 		t.Fatal("Load() with invalid values returned no error")
 	}
 }
+
+func TestPublicBaseURL(t *testing.T) {
+	tests := []struct {
+		name  string
+		raw   string
+		want  string
+		valid bool
+	}{
+		{"unset", "", "", true},
+		{"host and scheme", "https://tt.example.org", "https://tt.example.org", true},
+		{"with a port", "http://192.168.1.5:8080", "http://192.168.1.5:8080", true},
+		{"trailing slash", "https://tt.example.org/", "https://tt.example.org", true},
+		{"no scheme", "tt.example.org", "", false},
+		{"wrong scheme", "ftp://tt.example.org", "", false},
+		{"no host", "https://", "", false},
+		// Every link in the application is root-absolute, so a prefix would
+		// scan fine and break the first click after the scan.
+		{"path prefix", "https://tt.example.org/schmetterpause", "", false},
+		{"query", "https://tt.example.org/?x=1", "", false},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Setenv("SP_DATABASE_URL", "postgres://user:pw@db:5432/schmetterpause")
+			t.Setenv("SP_SESSION_KEY", testKey)
+			t.Setenv("SP_PUBLIC_BASE_URL", tc.raw)
+
+			cfg, err := config.Load()
+			switch {
+			case tc.valid && err != nil:
+				t.Fatalf("Load(): %v", err)
+			case !tc.valid && err == nil:
+				t.Fatalf("Load() accepted %q", tc.raw)
+			case !tc.valid:
+				return
+			}
+
+			if cfg.PublicBaseURL != tc.want {
+				t.Errorf("PublicBaseURL = %q, want %q", cfg.PublicBaseURL, tc.want)
+			}
+		})
+	}
+}

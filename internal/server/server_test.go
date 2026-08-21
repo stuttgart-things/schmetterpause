@@ -29,14 +29,23 @@ func newHandler(store repository.Store) http.Handler {
 
 // newHandlerWith wires a server with the given authenticator.
 func newHandlerWith(store repository.Store, a auth.SessionAuthenticator) http.Handler {
-	cfg := config.Config{
+	return newHandlerConfig(testConfig(), store, a)
+}
+
+// newHandlerConfig wires a server with a configuration of the caller's own.
+func newHandlerConfig(cfg config.Config, store repository.Store, a auth.SessionAuthenticator) http.Handler {
+	log := slog.New(slog.NewTextHandler(io.Discard, &slog.HandlerOptions{Level: slog.LevelError}))
+	return server.New(cfg, store, log, a, "test").Handler()
+}
+
+// testConfig is the configuration the handler tests run against.
+func testConfig() config.Config {
+	return config.Config{
 		HTTPAddr:         ":0",
 		DatabaseURL:      "postgres://test",
 		ShutdownTimeout:  time.Second,
 		ReadinessTimeout: time.Second,
 	}
-	log := slog.New(slog.NewTextHandler(io.Discard, &slog.HandlerOptions{Level: slog.LevelError}))
-	return server.New(cfg, store, log, a, "test").Handler()
 }
 
 func get(t *testing.T, h http.Handler, path string) *httptest.ResponseRecorder {

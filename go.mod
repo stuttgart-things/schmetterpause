@@ -3,14 +3,15 @@ module github.com/stuttgart-things/schmetterpause
 go 1.25.7
 
 require (
+	github.com/a-h/templ v0.3.1020
 	github.com/google/uuid v1.6.0
 	github.com/jackc/pgx/v5 v5.10.0
 	github.com/pressly/goose/v3 v3.27.3
+	rsc.io/qr v0.2.0
 )
 
 require (
 	github.com/a-h/parse v0.0.0-20250122154542-74294addb73e // indirect
-	github.com/a-h/templ v0.3.1020 // indirect
 	github.com/andybalholm/brotli v1.2.2 // indirect
 	github.com/cenkalti/backoff/v4 v4.3.0 // indirect
 	github.com/cli/browser v1.3.0 // indirect

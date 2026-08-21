@@ -27,6 +27,20 @@ type StatusView struct {
 	Version string
 }
 
+// QRSheetView is the printable sheet.
+//
+// The geometry is computed before the template sees it: a template is the
+// wrong place to walk a module grid.
+type QRSheetView struct {
+	// Target is the absolute URL the code encodes. It is printed as text as
+	// well, so the sheet still works for a phone whose camera will not scan.
+	Target string
+	// Path is SVG path data, one unit per module.
+	Path string
+	// Size is the viewBox side length in modules, quiet zone included.
+	Size int
+}
+
 // IndexView is everything the start page renders. Bundled rather than passed
 // as four parameters so adding a section later does not touch every caller.
 type IndexView struct {

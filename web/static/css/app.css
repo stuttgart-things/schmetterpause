@@ -265,3 +265,57 @@ tr.self td { background: color-mix(in srgb, var(--accent) 7%, transparent); }
 .spark-now { fill: var(--accent); }
 
 .spark figcaption { margin-top: 0.25rem; font-size: 0.8rem; }
+
+/* --- QR-Aushang -------------------------------------------------------- */
+
+.sheet { text-align: center; }
+.sheet h1 { font-size: 2rem; margin-bottom: 0.25rem; }
+
+.sheet-lead { font-size: 1.05rem; color: var(--muted); margin: 0 0 1.5rem; }
+
+.qr { margin: 0 0 1.5rem; }
+
+.qr svg {
+	width: min(72vw, 18rem);
+	height: auto;
+	border: 1px solid var(--line);
+	border-radius: 0.5rem;
+}
+
+.qr figcaption {
+	margin-top: 0.6rem;
+	font-size: 0.9rem;
+	color: var(--muted);
+	overflow-wrap: anywhere;
+}
+
+/* Left-aligned text in a centred column: the steps are read in order, and
+   centred list items make that harder than it needs to be. */
+.sheet-steps {
+	display: inline-block;
+	text-align: left;
+	margin: 0;
+	padding-left: 1.4rem;
+}
+
+.sheet-steps li { margin: 0.25rem 0; }
+
+.sheet-note { margin: 1rem 0 0; }
+.sheet-back { margin: 2rem 0 0; font-size: 0.9rem; }
+
+/* The sheet exists to be printed, so print is the case that has to look
+   right. Everything that only works on screen goes away, the colours stop
+   depending on the reader's theme, and the code gets a size that scans from
+   arm's length. */
+@media print {
+	.topbar, .footer, .no-print { display: none; }
+
+	body { background: #fff; color: #000; }
+	main { max-width: none; padding: 0; }
+
+	.sheet h1 { font-size: 28pt; }
+	.sheet-lead, .sheet-note, .qr figcaption { color: #000; }
+	.sheet-lead { font-size: 14pt; }
+
+	.qr svg { width: 12cm; border: none; }
+}
