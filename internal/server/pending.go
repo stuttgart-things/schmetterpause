@@ -130,15 +130,15 @@ func (s *Server) reportRulingError(w http.ResponseWriter, r *http.Request, err e
 	}
 }
 
-// refreshAfterRuling swaps the roster and the pending list out of band, since
-// a ruling changes both.
+// refreshAfterRuling swaps the ranking and the pending list out of band,
+// since a ruling changes both.
 func (s *Server) refreshAfterRuling(w http.ResponseWriter, r *http.Request, self uuid.UUID) {
-	players, err := s.playerListView(r.Context())
+	table, err := s.standingsView(r.Context())
 	if err != nil {
-		s.log.ErrorContext(r.Context(), "loading the player list failed", "error", err)
+		s.log.ErrorContext(r.Context(), "loading the standings failed", "error", err)
 		return
 	}
-	s.render(w, r, templates.PlayerListOOB(players))
+	s.render(w, r, templates.StandingsOOB(table))
 
 	pending, err := s.pendingListView(r.Context(), self)
 	if err != nil {

@@ -1,0 +1,70 @@
+package templates
+
+import "strconv"
+
+// Standings renders the ranking.
+//
+// A table, not a chart: this is a handful of rows people scan for their own
+// name and the one above it. Numbers get tabular figures so the columns line
+// up while ratings move.
+templ Standings(v StandingsView) {
+	<section id="standings" class="standings">
+		<h2>Rangliste</h2>
+		@standingsBody(v)
+	</section>
+}
+
+// StandingsOOB is Standings marked for an out-of-band swap, so a confirmation
+// can refresh the ranking in the same response that settles the match.
+templ StandingsOOB(v StandingsView) {
+	<section id="standings" class="standings" hx-swap-oob="true">
+		<h2>Rangliste</h2>
+		@standingsBody(v)
+	</section>
+}
+
+templ standingsBody(v StandingsView) {
+	if len(v.Rows) == 0 {
+		<p class="muted">Noch niemand da.</p>
+	} else {
+		<table>
+			<thead>
+				<tr>
+					<th scope="col" class="num">#</th>
+					<th scope="col">Spieler</th>
+					<th scope="col" class="num">TTR</th>
+					<th scope="col" class="num">Spiele</th>
+					<th scope="col" class="num">Bilanz</th>
+				</tr>
+			</thead>
+			<tbody>
+				for _, row := range v.Rows {
+					<tr class={ templ.KV("self", row.IsSelf) }>
+						<td class="num">
+							if row.Shared {
+								<span title="geteilter Platz">{ strconv.Itoa(row.Rank) }.</span>
+							} else {
+								{ strconv.Itoa(row.Rank) }.
+							}
+						</td>
+						<td>
+							<a href={ templ.SafeURL("/players/" + row.ID) }>{ row.DisplayName }</a>
+							if row.IsSelf {
+								<span class="muted">(du)</span>
+							}
+						</td>
+						<td class="num">{ strconv.Itoa(row.TTR) }</td>
+						<td class="num">{ strconv.Itoa(row.Played) }</td>
+						<td class="num">
+							if row.Played == 0 {
+								<span class="muted">–</span>
+							} else {
+								{ strconv.Itoa(row.Won) }:{ strconv.Itoa(row.Lost) }
+							}
+						</td>
+					</tr>
+				}
+			</tbody>
+		</table>
+	}
+}

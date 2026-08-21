@@ -1,0 +1,121 @@
+package templates
+
+import "strconv"
+
+// Profile is one player's page: where they stand now, how they got there, and
+// the matches behind it.
+templ Profile(v ProfileView) {
+	@Layout(v.DisplayName) {
+		<p class="back"><a href="/">&larr; Rangliste</a></p>
+		<h1>{ v.DisplayName }</h1>
+		<section class="stat">
+			<p class="stat-label">TTR</p>
+			<p class="stat-value">{ strconv.Itoa(v.TTR) }</p>
+			if v.HasDelta {
+				<p class="stat-delta">
+					if v.Delta > 0 {
+						<span class="gain">+{ strconv.Itoa(v.Delta) }</span>
+					} else if v.Delta < 0 {
+						<span class="loss">{ strconv.Itoa(v.Delta) }</span>
+					} else {
+						<span class="muted">±0</span>
+					}
+					<span class="muted">im letzten Match</span>
+				</p>
+			}
+			@Spark(v.Spark, v.DisplayName)
+		</section>
+		<p class="summary">
+			Platz { strconv.Itoa(v.Rank) }
+			if v.Shared {
+				<span class="muted">(geteilt)</span>
+			}
+			&middot;
+			if v.Played == 1 {
+				{ strconv.Itoa(v.Played) + " Spiel" }
+			} else {
+				{ strconv.Itoa(v.Played) + " Spiele" }
+			}
+			if v.Played > 0 {
+				&middot; { strconv.Itoa(v.Won) }:{ strconv.Itoa(v.Lost) }
+			}
+		</p>
+		<h2>Letzte Matches</h2>
+		if len(v.Matches) == 0 {
+			<p class="muted">Noch keine Matches.</p>
+		} else {
+			<table class="matches">
+				<thead>
+					<tr>
+						<th scope="col">Wann</th>
+						<th scope="col">Gegner</th>
+						<th scope="col" class="num">Sätze</th>
+						<th scope="col">Verlauf</th>
+						<th scope="col" class="num">TTR</th>
+					</tr>
+				</thead>
+				<tbody>
+					for _, m := range v.Matches {
+						<tr>
+							<td class="when">{ m.PlayedAt }</td>
+							<td>{ m.OpponentName }</td>
+							<td class="num">
+								{ strconv.Itoa(m.OwnSets) }:{ strconv.Itoa(m.OpponentSets) }
+							</td>
+							<td class="sets-line">
+								for i, s := range m.Sets {
+									if i > 0 {
+										{ ", " }
+									}
+									{ strconv.Itoa(s.Own) }:{ strconv.Itoa(s.Opponent) }
+								}
+							</td>
+							<td class="num">
+								if m.Disputed {
+									<span class="muted" title="Widersprochen, zählt nicht">strittig</span>
+								} else if m.Pending {
+									<span class="muted" title="Wartet auf Bestätigung">offen</span>
+								} else if m.HasDelta && m.Delta > 0 {
+									<span class="gain">+{ strconv.Itoa(m.Delta) }</span>
+								} else if m.HasDelta && m.Delta < 0 {
+									<span class="loss">{ strconv.Itoa(m.Delta) }</span>
+								} else {
+									<span class="muted">±0</span>
+								}
+							</td>
+						</tr>
+					}
+				</tbody>
+			</table>
+		}
+	}
+}
+
+// Spark draws the rating history.
+//
+// One series, so no legend — the label above it names what the line is. The
+// line stays recessive and only the current rating carries the accent, which
+// is the point a reader is looking for. The table underneath is the same data
+// in numbers, for anyone the line does not serve.
+templ Spark(v SparkView, name string) {
+	if v.Show {
+		<figure class="spark">
+			<svg
+				viewBox={ "0 0 " + strconv.Itoa(v.Width) + " " + strconv.Itoa(v.Height) }
+				width={ strconv.Itoa(v.Width) }
+				height={ strconv.Itoa(v.Height) }
+				role="img"
+				aria-label={ "TTR-Verlauf von " + name + ", von " + strconv.Itoa(v.Low) + " bis " + strconv.Itoa(v.High) }
+			>
+				<title>
+					{ "TTR-Verlauf von " + name }
+				</title>
+				<polyline class="spark-line" points={ v.Points } fill="none"></polyline>
+				<circle class="spark-now" cx={ v.LastX } cy={ v.LastY } r="4"></circle>
+			</svg>
+			<figcaption class="muted">
+				Verlauf { strconv.Itoa(v.Low) } bis { strconv.Itoa(v.High) }
+			</figcaption>
+		</figure>
+	}
+}
