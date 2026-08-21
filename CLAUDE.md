@@ -62,7 +62,9 @@ lesen. Eine Entscheidung, die einem ADR widerspricht, braucht ein neues ADR mit
 - **Branches tragen denselben Typ als Präfix** wie der Commit, der sie prägt —
   `feat/`, `fix/`, `refactor/`, `ci/`, `docs/`, `chore/`, gefolgt von einem
   kurzen Bezeichner. `feat/ttr-package`, nicht `wip` und nicht der Name dessen,
-  der ihn angelegt hat.
+  der ihn angelegt hat. Welche Namen für Release-Branches reserviert sind und
+  wie die Merge-Strategie die Versionierung beeinflusst, steht in
+  `.claude/skills/branch-naming`.
 - **Code ist englisch, Dokumentation und Oberfläche sind deutsch.** Kommentare,
   Bezeichner, Log- und Fehlermeldungen im Code, Commit-Nachrichten, Issues und
   Pull Requests auf Englisch. `CLAUDE.md`, `docs/` und alle Texte, die ein
