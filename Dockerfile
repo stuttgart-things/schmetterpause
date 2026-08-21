@@ -8,7 +8,7 @@
 # (Invariante 2). Templates, statische Assets und Migrations sind ins Binary
 # eingebettet — das Image braucht kein Volume.
 
-FROM --platform=$BUILDPLATFORM golang:1.25-alpine AS build
+FROM --platform=$BUILDPLATFORM golang:1.27-alpine AS build
 
 WORKDIR /src
 
