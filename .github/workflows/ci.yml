@@ -39,7 +39,7 @@ jobs:
             | DAGGER_VERSION="${DAGGER_VERSION}" BIN_DIR=/usr/local/bin sudo -E sh
           dagger version
 
-      - name: lint, build, verify
+      - name: lint, test, build, verify
         run: |
           dagger call ci \
             --source=. \

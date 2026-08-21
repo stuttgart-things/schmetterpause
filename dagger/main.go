@@ -105,10 +105,14 @@ func (m *Schmetterpause) Lint(
 
 // Test runs unit and repository tests against a fresh Postgres.
 //
-// Not part of Ci: the MVP plan defines the pipeline as lint, build, verify
-// and keeps "task test" alongside as its own fast step. Whether that should
-// change is tracked in issue #15. As a standalone call it still runs in the
-// same environment as CI.
+// Part of Ci, and second in it: a failing unit test should not have to wait
+// for an image build to be reported. It is also still callable on its own,
+// which is what "task test" does.
+//
+// Verify does not make it redundant. Verify drives the built image through
+// one end-to-end path and can only see what that path touches; these tests
+// reach the cases a browser cannot reasonably be walked through — a rejected
+// result for every rejection kind, a rollback, a rating that moves by zero.
 func (m *Schmetterpause) Test(
 	ctx context.Context,
 	// +defaultPath="/"
@@ -251,9 +255,10 @@ func (m *Schmetterpause) Verify(
 	return out, nil
 }
 
-// Ci runs lint, build and verify in that order. Verify depends on the build
-// artefact, not on the source; if a step fails, the following ones are
-// skipped.
+// Ci runs lint, test, build and verify in that order. The two source-level
+// steps come first because they are the cheap ones; verify depends on the
+// build artefact rather than on the source, so it comes last. If a step
+// fails, the following ones are skipped.
 func (m *Schmetterpause) Ci(
 	ctx context.Context,
 	// +defaultPath="/"
@@ -268,6 +273,11 @@ func (m *Schmetterpause) Ci(
 		return "", err
 	}
 
+	testOut, err := m.Test(ctx, source)
+	if err != nil {
+		return "", err
+	}
+
 	if _, err := m.Image(source, version, defaultArch).Sync(ctx); err != nil {
 		return "", fmt.Errorf("build: %w", err)
 	}
@@ -277,8 +287,9 @@ func (m *Schmetterpause) Ci(
 		return "", err
 	}
 
-	return fmt.Sprintf("== lint ==\n%s\n== build ==\nimage built (version %s)\n\n== verify ==\n%s",
-		lintOut, version, verifyOut), nil
+	return fmt.Sprintf(
+		"== lint ==\n%s\n== test ==\n%s\n== build ==\nimage built (version %s)\n\n== verify ==\n%s",
+		lintOut, testOut, version, verifyOut), nil
 }
 
 // Publish pushes the runtime image to ttl.sh so it can be handed to somebody
