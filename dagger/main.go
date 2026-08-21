@@ -501,6 +501,43 @@ curl -fsS -b "$cookies" http://app:8080/ | grep -q "Angemeldet als" || {
 	exit 1
 }
 
+echo "== match entry: an impossible result is refused, a real one is stored =="
+second=$(mktemp)
+curl -fsS -c "$second" -X POST http://app:8080/players \
+	--data-urlencode "display_name=Verify Bodo" >/dev/null
+
+# The opponent id is only reachable through the rendered picker, which is
+# also the point: it checks that the form offers a usable opponent at all.
+opponent=$(curl -fsS -b "$cookies" http://app:8080/fragments/match \
+	| tr "<" "\n" | grep "option value=\"" | grep -v "value=\"\"" | head -1 \
+	| sed "s/.*value=\"\([^\"]*\)\".*/\1/")
+[ -n "$opponent" ] || {
+	echo "the entry form offered no opponent"
+	exit 1
+}
+
+# 11:10 is one clear point, not two. The Definition of Done is that the
+# refusal says why, so the status alone is not enough to check.
+refusal=$(mktemp)
+code=$(curl -sS -b "$cookies" -o "$refusal" -w "%{http_code}" -X POST http://app:8080/matches \
+	--data "opponent_id=$opponent&best_of=3&points_to_win=11&set_home_1=11&set_away_1=10")
+[ "$code" = "422" ] || {
+	echo "an impossible result was answered with $code, expected 422"
+	exit 1
+}
+grep -q "zwei Punkte Vorsprung" "$refusal" || {
+	echo "the refusal does not say why"
+	cat "$refusal"
+	exit 1
+}
+
+curl -fsS -b "$cookies" -X POST http://app:8080/matches \
+	--data "opponent_id=$opponent&best_of=3&points_to_win=11&set_home_1=11&set_away_1=9&set_home_2=12&set_away_2=10" \
+	| grep -q "bestätigen" || {
+	echo "a valid result was not stored as pending confirmation"
+	exit 1
+}
+
 echo
 echo "verify: all checks passed"
 `
