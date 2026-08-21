@@ -26,3 +26,30 @@ type StatusView struct {
 	// Version is the version of the running binary.
 	Version string
 }
+
+// SessionView drives the join form and the signed-in notice. Both render into
+// the same #session region, so the form can replace itself with the result.
+type SessionView struct {
+	// DisplayName is set once a player is recognised.
+	DisplayName string
+	// Name is the value put back into the form after a rejected attempt, so
+	// nobody has to type their name twice.
+	Name string
+	// Error explains why the last attempt was rejected. Empty on success.
+	Error string
+}
+
+// SignedIn reports whether a player is recognised.
+func (v SessionView) SignedIn() bool { return v.DisplayName != "" }
+
+// PlayerListView is the list of players. Not a ranking — that is AP6.
+type PlayerListView struct {
+	Players []PlayerListEntry
+}
+
+// PlayerListEntry is one player in the list.
+type PlayerListEntry struct {
+	DisplayName string
+	// IsSelf marks the viewer, so the list answers "am I in here?" at a glance.
+	IsSelf bool
+}

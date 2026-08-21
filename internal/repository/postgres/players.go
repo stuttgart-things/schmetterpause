@@ -23,6 +23,9 @@ func (r playerRepo) Create(ctx context.Context, displayName string, initialTTR i
 	err := r.q.QueryRow(ctx, q, displayName, initialTTR).
 		Scan(&p.ID, &p.DisplayName, &p.TTR, &p.CreatedAt)
 	if err != nil {
+		if isUniqueViolation(err) {
+			return domain.Player{}, fmt.Errorf("create player %q: %w", displayName, domain.ErrConflict)
+		}
 		return domain.Player{}, fmt.Errorf("create player %q: %w", displayName, err)
 	}
 	return p, nil

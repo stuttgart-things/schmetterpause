@@ -45,6 +45,9 @@ Configuration comes exclusively from environment variables:
   SP_SHUTDOWN_TIMEOUT   grace period for in-flight requests, default "15s"
   SP_READINESS_TIMEOUT  bound on the database check, default "2s"
   SP_DB_CONNECT_TIMEOUT how long startup waits for the database, default "30s"
+  SP_SESSION_KEY        key that signs the recognition cookie (required,
+                        at least 32 characters; openssl rand -base64 32)
+  SP_COOKIE_SECURE      send the cookie over HTTPS only, default "true"
 `
 
 func main() {
@@ -107,9 +110,12 @@ func serve(ctx context.Context) error {
 		}
 	}
 
-	// In the scaffolding nobody is recognised. AP2 replaces Anonymous with
-	// cookie-based recognition without any handler changing.
-	srv := server.New(cfg, store, log, auth.Anonymous{}, version)
+	// The only provider in the MVP. OIDC and WebAuthn arrive as further
+	// implementations of the same interface, without a handler changing
+	// (docs/adr/0003).
+	sessions := auth.NewCookieAuthenticator(store.Identities(), cfg.SessionKey, cfg.CookieSecure)
+
+	srv := server.New(cfg, store, log, sessions, version)
 
 	if err := srv.Run(ctx); err != nil {
 		return err

@@ -24,14 +24,14 @@ type Server struct {
 	cfg     config.Config
 	store   repository.Store
 	log     *slog.Logger
-	auth    auth.Authenticator
+	auth    auth.SessionAuthenticator
 	version string
 	handler http.Handler
 }
 
 // New wires up the server. The authenticator is an interface so that later
 // providers (OIDC, WebAuthn) take effect without touching any handler.
-func New(cfg config.Config, store repository.Store, log *slog.Logger, a auth.Authenticator, version string) *Server {
+func New(cfg config.Config, store repository.Store, log *slog.Logger, a auth.SessionAuthenticator, version string) *Server {
 	s := &Server{cfg: cfg, store: store, log: log, auth: a, version: version}
 	s.handler = s.routes()
 	return s
@@ -54,7 +54,9 @@ func (s *Server) routes() http.Handler {
 	page := http.NewServeMux()
 	page.HandleFunc("GET /{$}", s.handleIndex)
 	page.HandleFunc("GET /fragments/status", s.handleStatusFragment)
-	mux.Handle("/", auth.Middleware(s.auth)(page))
+	page.HandleFunc("GET /fragments/players", s.handlePlayersFragment)
+	page.HandleFunc("POST /players", s.handleJoin)
+	mux.Handle("/", auth.Middleware(s.auth, s.log)(page))
 
 	return recoverer(s.log)(requestLogger(s.log)(mux))
 }
