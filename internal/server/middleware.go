@@ -6,7 +6,7 @@ import (
 	"time"
 )
 
-// statusRecorder merkt sich den geschriebenen Statuscode fuers Logging.
+// statusRecorder remembers the written status code for logging.
 type statusRecorder struct {
 	http.ResponseWriter
 	status int
@@ -24,8 +24,8 @@ func (w *statusRecorder) Write(b []byte) (int, error) {
 	return w.ResponseWriter.Write(b)
 }
 
-// requestLogger schreibt eine Zeile pro Anfrage. Health-Checks landen auf
-// Debug, damit sie das Log nicht fluten.
+// requestLogger writes one line per request. Health checks drop to debug so
+// they do not flood the log.
 func requestLogger(log *slog.Logger) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -46,20 +46,21 @@ func requestLogger(log *slog.Logger) func(http.Handler) http.Handler {
 				slog.String("method", r.Method),
 				slog.String("path", r.URL.Path),
 				slog.Int("status", rec.status),
-				slog.Duration("dauer", time.Since(start)),
+				slog.Duration("duration", time.Since(start)),
 			)
 		})
 	}
 }
 
-// recoverer faengt Panics in Handlern ab, damit ein Fehler in einem Handler
-// nicht den ganzen Prozess beendet.
+// recoverer catches panics in handlers so that a fault in one handler does
+// not take down the whole process.
 func recoverer(log *slog.Logger) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			defer func() {
 				if v := recover(); v != nil {
-					log.Error("handler-panic", "path", r.URL.Path, "panic", v)
+					log.Error("handler panic", "path", r.URL.Path, "panic", v)
+					// User-facing text stays German; see CLAUDE.md.
 					http.Error(w, "Interner Fehler", http.StatusInternalServerError)
 				}
 			}()

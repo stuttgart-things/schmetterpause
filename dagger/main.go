@@ -1,11 +1,11 @@
-// Package main enthaelt die Pipeline von Schmetterpause.
+// Package main holds the Schmetterpause pipeline.
 //
-// Die Pipeline-Logik steht hier und nicht in einem CI-YAML: lokal und in der
-// CI laeuft derselbe Go-Code in denselben Containern, "task ci" ist deshalb
-// kein Naeherungswert an die Pipeline, sondern die Pipeline.
+// The pipeline logic lives here rather than in a CI YAML: the same Go code
+// runs in the same containers locally and in CI, which is why "task ci" is
+// not an approximation of the pipeline but the pipeline itself.
 //
-// Die generierten Teile des Moduls (internal/dagger, dagger.gen.go, go.mod)
-// erzeugt "dagger develop" beim ersten Aufruf; sie sind nicht eingecheckt.
+// The generated parts of the module (internal/dagger, dagger.gen.go, go.mod)
+// are produced by "dagger develop" on first use; they are not checked in.
 package main
 
 import (
@@ -16,32 +16,32 @@ import (
 )
 
 const (
-	// goImage muss mindestens die Go-Version aus go.mod mitbringen.
+	// goImage must carry at least the Go version from go.mod.
 	goImage           = "golang:1.25-alpine"
 	golangciLintImage = "golangci/golangci-lint:v2.6.0-alpine"
 	postgresImage     = "postgres:17-alpine"
 	runtimeImage      = "gcr.io/distroless/static-debian12:nonroot"
 	toolingImage      = "alpine:3.21"
 
-	// defaultArch ist die Zielarchitektur, wenn keine angegeben wird.
+	// defaultArch is the target architecture when none is given.
 	defaultArch = "amd64"
 
-	// nonrootUID ist der Benutzer des distroless-Images.
+	// nonrootUID is the distroless image's user.
 	nonrootUID = "65532:65532"
 
-	// verifyDSN ist die Adresse, unter der die App im Verify-Schritt den
-	// Postgres-Service erreicht. Sie gilt nur innerhalb der Pipeline.
+	// verifyDSN is the address at which the application reaches the Postgres
+	// service during verify. It applies only inside the pipeline.
 	verifyDSN = "postgres://schmetterpause:schmetterpause@db:5432/schmetterpause?sslmode=disable"
 )
 
-// Schmetterpause buendelt die Pipeline-Funktionen.
+// Schmetterpause bundles the pipeline functions.
 type Schmetterpause struct{}
 
-// Lint prueft Formatierung, den Stand der generierten Dateien und die
-// statische Analyse.
+// Lint checks formatting, the state of the generated files and static
+// analysis.
 //
-// Der Generat-Check ist der eigentliche Punkt: er faengt vergessene
-// templ-Regenerierung, die sonst erst im Browser auffaellt.
+// The generated-code check is the real point: it catches forgotten templ
+// regeneration, which otherwise only shows up in the browser.
 func (m *Schmetterpause) Lint(
 	ctx context.Context,
 	// +defaultPath="/"
@@ -57,7 +57,7 @@ func (m *Schmetterpause) Lint(
 		WithExec([]string{"go", "vet", "./..."}).
 		Stdout(ctx)
 	if err != nil {
-		return "", fmt.Errorf("formatierung, generat und go vet: %w", err)
+		return "", fmt.Errorf("formatting, generated code and go vet: %w", err)
 	}
 
 	lintOut, err := dag.Container().
@@ -73,14 +73,15 @@ func (m *Schmetterpause) Lint(
 		return "", fmt.Errorf("golangci-lint: %w", err)
 	}
 
-	return vetOut + lintOut + "lint: bestanden\n", nil
+	return vetOut + lintOut + "lint: passed\n", nil
 }
 
-// Test fuehrt Unit- und Repository-Tests gegen ein frisches Postgres aus.
+// Test runs unit and repository tests against a fresh Postgres.
 //
-// Nicht Teil von Ci: der MVP-Plan definiert die Pipeline als lint, build,
-// verify und haelt "task test" als eigenen, schnellen Schritt daneben. Als
-// eigener Aufruf laeuft er hier trotzdem in derselben Umgebung wie in der CI.
+// Not part of Ci: the MVP plan defines the pipeline as lint, build, verify
+// and keeps "task test" alongside as its own fast step. Whether that should
+// change is tracked in issue #15. As a standalone call it still runs in the
+// same environment as CI.
 func (m *Schmetterpause) Test(
 	ctx context.Context,
 	// +defaultPath="/"
@@ -89,7 +90,7 @@ func (m *Schmetterpause) Test(
 ) (string, error) {
 	out, err := m.goBase(source).
 		WithServiceBinding("db", m.Postgres()).
-		// Gesetzt, damit die Repository-Tests nicht uebersprungen werden.
+		// Set so the repository tests do not skip themselves.
 		WithEnvVariable("SP_TEST_DATABASE_URL", verifyDSN).
 		WithExec([]string{"go", "test", "-cover", "-count=1", "./..."}).
 		Stdout(ctx)
@@ -99,8 +100,8 @@ func (m *Schmetterpause) Test(
 	return out, nil
 }
 
-// Binary baut das statisch gelinkte Binary. CGO ist aus, damit es im
-// distroless-Image ohne libc laeuft.
+// Binary builds the statically linked binary. CGO is off so it runs in the
+// distroless image without libc.
 func (m *Schmetterpause) Binary(
 	// +defaultPath="/"
 	// +ignore=["**/.git", "build", ".task", "dagger/internal", "dagger/dagger.gen.go"]
@@ -126,8 +127,8 @@ func (m *Schmetterpause) Binary(
 		File("/out/schmetterpause")
 }
 
-// Image baut das Laufzeitimage. Es entspricht dem Dockerfile: dasselbe Image
-// fuer Compose, Kubernetes und Azure Container Apps (Invariante 1).
+// Image builds the runtime image. It matches the Dockerfile: the same image
+// for Compose, Kubernetes and Azure Container Apps (invariant 1).
 func (m *Schmetterpause) Image(
 	// +defaultPath="/"
 	// +ignore=["**/.git", "build", ".task", "dagger/internal", "dagger/dagger.gen.go"]
@@ -148,7 +149,7 @@ func (m *Schmetterpause) Image(
 		WithDefaultArgs([]string{"serve"})
 }
 
-// Build gibt das Laufzeitimage als OCI-Tarball aus.
+// Build emits the runtime image as an OCI tarball.
 func (m *Schmetterpause) Build(
 	// +defaultPath="/"
 	// +ignore=["**/.git", "build", ".task", "dagger/internal", "dagger/dagger.gen.go"]
@@ -163,7 +164,7 @@ func (m *Schmetterpause) Build(
 	return m.Image(source, version, goarch).AsTarball()
 }
 
-// Postgres startet eine frische Datenbank als Dagger-Service.
+// Postgres starts a fresh database as a Dagger service.
 func (m *Schmetterpause) Postgres() *dagger.Service {
 	return dag.Container().
 		From(postgresImage).
@@ -175,14 +176,15 @@ func (m *Schmetterpause) Postgres() *dagger.Service {
 		AsService(dagger.ContainerAsServiceOpts{UseEntrypoint: true})
 }
 
-// Verify prueft das gebaute Image gegen ein frisches Postgres.
+// Verify checks the built image against a fresh Postgres.
 //
-// Der Schritt testet bewusst das Image und nicht den Quellcode: Er faellt auf
-// Fehler herein, die "go test" nie sieht — fehlende Migrations im Image,
-// kaputte Env-Defaults, Templates oder Assets, die nicht eingebettet wurden.
+// The step deliberately tests the image and not the source: it catches faults
+// that "go test" never sees — migrations missing from the image, broken env
+// defaults, templates or assets that did not get embedded.
 //
-// Der End-to-End-Pfad aus dem MVP-Plan (zwei Spieler anlegen, Match eintragen,
-// bestaetigen, Rangliste pruefen) kommt hinzu, sobald AP4 und AP5 stehen.
+// The end-to-end path from the MVP plan (create two players, record a match,
+// confirm it, check the ranking) arrives once AP4 and AP5 land. Tracked in
+// issue #16.
 func (m *Schmetterpause) Verify(
 	ctx context.Context,
 	// +defaultPath="/"
@@ -202,19 +204,19 @@ func (m *Schmetterpause) Verify(
 		From(toolingImage).
 		WithExec([]string{"apk", "add", "--no-cache", "curl"}).
 		WithServiceBinding("app", app).
-		// Zwingt eine Neuauswertung, wenn sich die Version aendert.
+		// Forces re-evaluation when the version changes.
 		WithEnvVariable("SP_VERIFY_VERSION", version).
 		WithExec([]string{"sh", "-c", verifyScript}).
 		Stdout(ctx)
 	if err != nil {
-		return "", fmt.Errorf("verify gegen das gebaute image: %w", err)
+		return "", fmt.Errorf("verify against the built image: %w", err)
 	}
 	return out, nil
 }
 
-// Ci fuehrt lint, build und verify in dieser Reihenfolge aus. Verify haengt am
-// Build-Artefakt, nicht am Quellcode; scheitert ein Schritt, brechen die
-// folgenden ab.
+// Ci runs lint, build and verify in that order. Verify depends on the build
+// artefact, not on the source; if a step fails, the following ones are
+// skipped.
 func (m *Schmetterpause) Ci(
 	ctx context.Context,
 	// +defaultPath="/"
@@ -238,39 +240,39 @@ func (m *Schmetterpause) Ci(
 		return "", err
 	}
 
-	return fmt.Sprintf("== lint ==\n%s\n== build ==\nimage gebaut (version %s)\n\n== verify ==\n%s",
+	return fmt.Sprintf("== lint ==\n%s\n== build ==\nimage built (version %s)\n\n== verify ==\n%s",
 		lintOut, version, verifyOut), nil
 }
 
-// goBase ist der gemeinsame Build-Container mit warmen Modul- und Build-Caches.
+// goBase is the shared build container with warm module and build caches.
 func (m *Schmetterpause) goBase(source *dagger.Directory) *dagger.Container {
 	return dag.Container().
 		From(goImage).
 		WithMountedCache("/go/pkg/mod", dag.CacheVolume("schmetterpause-go-mod")).
 		WithMountedCache("/root/.cache/go-build", dag.CacheVolume("schmetterpause-go-build")).
-		// Ohne .git im Kontext wuerde -buildvcs sonst fehlschlagen.
+		// Without .git in the context, -buildvcs would otherwise fail.
 		WithEnvVariable("GOFLAGS", "-buildvcs=false").
 		WithDirectory("/src", source).
 		WithWorkdir("/src").
 		WithExec([]string{"go", "mod", "download"})
 }
 
-// checksumCmd bildet den Stand aller templ-Quellen und -Generate ab.
+// checksumCmd captures the state of all templ sources and generated files.
 const checksumCmd = `find . -path ./dagger -prune -o \( -name '*.templ' -o -name '*_templ.go' \) -print0 | sort -z | xargs -0 sha256sum`
 
-// generatedUpToDateCmd bricht ab, wenn templ fmt oder go generate etwas
-// veraendert haben.
+// generatedUpToDateCmd fails when templ fmt or go generate changed
+// anything.
 const generatedUpToDateCmd = `
 if ! diff -u /tmp/before /tmp/after; then
 	echo
-	echo "Generierte Dateien sind nicht aktuell."
-	echo "Lokal 'task generate' ausfuehren und die Aenderungen einchecken."
+	echo "Generated files are out of date."
+	echo "Run 'task generate' locally and commit the changes."
 	exit 1
 fi
-echo "generat: aktuell"
+echo "generated code: up to date"
 `
 
-// verifyScript ist der End-to-End-Pfad gegen das laufende Image.
+// verifyScript is the end-to-end path against the running image.
 const verifyScript = `
 set -eu
 
@@ -283,7 +285,7 @@ while [ $i -lt 60 ]; do
 done
 curl -fsS http://app:8080/healthz
 
-echo "== /readyz: Migrations gelaufen, Datenbank erreichbar =="
+echo "== /readyz: migrations applied, database reachable =="
 i=0
 while [ $i -lt 60 ]; do
 	curl -fsS http://app:8080/readyz >/dev/null 2>&1 && break
@@ -291,31 +293,31 @@ while [ $i -lt 60 ]; do
 	sleep 1
 done
 if ! curl -fsS http://app:8080/readyz; then
-	echo "readyz wurde nicht bereit"
+	echo "readyz never became ready"
 	curl -sS -i http://app:8080/readyz || true
 	exit 1
 fi
 
-echo "== Startseite: Templates sind eingebettet =="
+echo "== start page: templates are embedded =="
 curl -fsS http://app:8080/ | grep -q "Schmetterpause" || {
-	echo "Startseite ohne erwarteten Inhalt"
+	echo "start page missing expected content"
 	exit 1
 }
 
-echo "== statische Assets: HTMX ist eingebettet =="
+echo "== static assets: HTMX is embedded =="
 size=$(curl -fsS http://app:8080/static/js/htmx.min.js | wc -c)
 [ "$size" -gt 1000 ] || {
-	echo "htmx.min.js fehlt oder ist leer ($size Bytes)"
+	echo "htmx.min.js missing or empty ($size bytes)"
 	exit 1
 }
 
-echo "== HTMX-Fragment: Handler, Repository und Datenbank =="
+echo "== HTMX fragment: handler, repository and database =="
 curl -fsS http://app:8080/fragments/status | grep -q ">erreichbar<" || {
-	echo "Statusfragment meldet die Datenbank nicht als erreichbar"
+	echo "status fragment does not report the database as reachable"
 	curl -sS http://app:8080/fragments/status || true
 	exit 1
 }
 
 echo
-echo "verify: alle Pruefungen bestanden"
+echo "verify: all checks passed"
 `

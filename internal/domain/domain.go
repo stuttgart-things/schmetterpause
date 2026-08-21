@@ -1,8 +1,8 @@
-// Package domain enthaelt die fachlichen Typen der Anwendung.
+// Package domain holds the application's business types.
 //
-// Das Package haengt bewusst weder von der Datenbank noch von HTTP ab, damit
-// Fachlogik (TTR-Berechnung, Tabellen, Brackets) ohne Infrastruktur testbar
-// bleibt — siehe Abschnitt "Konventionen" in CLAUDE.md.
+// The package deliberately depends on neither the database nor HTTP, so that
+// domain logic (rating calculation, tables, brackets) stays testable without
+// infrastructure — see the "Konventionen" section in CLAUDE.md.
 package domain
 
 import (
@@ -12,35 +12,35 @@ import (
 	"github.com/google/uuid"
 )
 
-// ErrNotFound meldet, dass ein angefragter Datensatz nicht existiert.
-// Repository-Implementierungen wrappen ihn, Aufrufer pruefen mit errors.Is.
-var ErrNotFound = errors.New("nicht gefunden")
+// ErrNotFound reports that a requested record does not exist. Repository
+// implementations wrap it; callers check with errors.Is.
+var ErrNotFound = errors.New("not found")
 
-// DefaultTTR ist der Startwert fuer neu angelegte Spieler.
+// DefaultTTR is the starting rating for newly created players.
 //
-// Ob 1000 fuer eine Buerogruppe gut streut, ist eine offene Frage des
-// MVP-Plans und wird erst mit echten Daten beantwortet.
+// Whether 1000 spreads well across an office group is an open question in the
+// MVP plan and will only be answered with real data.
 const DefaultTTR = 1000
 
-// Provider benennt das Verfahren, ueber das eine Identitaet nachgewiesen wurde.
-// Neue Verfahren sind ein Datensatz, kein Schema-Change (docs/adr/0003).
+// Provider names the method by which an identity was proven. New methods are
+// a row, not a schema change (docs/adr/0003).
 type Provider string
 
 const (
-	// ProviderLocal ist die Wiedererkennung ueber ein signiertes Cookie ohne
-	// echte Authentifizierung. Im MVP der einzige Provider.
+	// ProviderLocal is recognition through a signed cookie without real
+	// authentication. The only provider in the MVP.
 	ProviderLocal Provider = "local"
-	// ProviderGitLab ist OIDC gegen das Firmen-GitLab. Noch nicht umgesetzt.
+	// ProviderGitLab is OIDC against the company GitLab. Not implemented yet.
 	ProviderGitLab Provider = "gitlab"
-	// ProviderGitHub ist OIDC gegen GitHub. Noch nicht umgesetzt.
+	// ProviderGitHub is OIDC against GitHub. Not implemented yet.
 	ProviderGitHub Provider = "github"
-	// ProviderPasskey ist WebAuthn. Speichert nur Public Key und
-	// Signaturzaehler, niemals biometrische Merkmale (docs/adr/0004).
+	// ProviderPasskey is WebAuthn. Stores only a public key and a signature
+	// counter, never biometric data (docs/adr/0004).
 	ProviderPasskey Provider = "passkey"
 )
 
-// Player ist ein Spieler. Die Struktur enthaelt ausschliesslich fachliche
-// Daten; wie ein Spieler authentifiziert wurde, steht in Identity.
+// Player is a player. The struct carries business data only; how a player was
+// authenticated is recorded in Identity.
 type Player struct {
 	ID          uuid.UUID
 	DisplayName string
@@ -48,8 +48,8 @@ type Player struct {
 	CreatedAt   time.Time
 }
 
-// Identity verknuepft einen Nachweis eines Providers mit einem Spieler.
-// Ein Spieler kann mehrere Identitaeten haben.
+// Identity links a provider's proof to a player. A player can hold several
+// identities.
 type Identity struct {
 	Provider  Provider
 	Subject   string
@@ -57,22 +57,22 @@ type Identity struct {
 	CreatedAt time.Time
 }
 
-// MatchStatus ist der Bestaetigungsstand eines Matches. Nur ein Match im
-// Status MatchConfirmed geht in die TTR-Wertung ein.
+// MatchStatus is a match's confirmation state. Only a match in state
+// MatchConfirmed enters the rating.
 type MatchStatus string
 
 const (
-	// MatchPending ist eingetragen, aber vom Gegner noch nicht bestaetigt.
+	// MatchPending has been recorded but not yet confirmed by the opponent.
 	MatchPending MatchStatus = "pending"
-	// MatchConfirmed ist vom Gegner bestaetigt und wird gewertet.
+	// MatchConfirmed has been confirmed by the opponent and counts.
 	MatchConfirmed MatchStatus = "confirmed"
-	// MatchDisputed ist vom Gegner bestritten und blockiert die Wertung.
-	// Im MVP nur manuell aufloesbar.
+	// MatchDisputed has been contested by the opponent and blocks rating.
+	// Resolvable only by hand in the MVP.
 	MatchDisputed MatchStatus = "disputed"
 )
 
-// Match ist eine Einzelbegegnung zwischen zwei Spielern. Doppel zaehlen nicht
-// fuer TTR und brauchen, falls sie kommen, eine eigene Wertung.
+// Match is a singles encounter between two players. Doubles do not count
+// towards TTR and would need a rating of their own if they ever arrive.
 type Match struct {
 	ID          uuid.UUID
 	HomeID      uuid.UUID
@@ -82,20 +82,20 @@ type Match struct {
 	Status      MatchStatus
 	ReportedBy  uuid.UUID
 	PlayedAt    time.Time
-	// ConfirmedAt ist genau dann gesetzt, wenn Status MatchConfirmed ist.
+	// ConfirmedAt is set exactly when Status is MatchConfirmed.
 	ConfirmedAt *time.Time
 	Sets        []MatchSet
 }
 
-// MatchSet ist ein einzelner Satz innerhalb eines Matches.
+// MatchSet is a single set within a match.
 type MatchSet struct {
 	SetNo      int
 	HomePoints int
 	AwayPoints int
 }
 
-// TTRChange ist ein Eintrag der TTR-Historie: die Veraenderung eines
-// Spielerratings durch genau ein gewertetes Match.
+// TTRChange is one entry in the rating history: the change to a player's
+// rating caused by exactly one rated match.
 type TTRChange struct {
 	ID        uuid.UUID
 	PlayerID  uuid.UUID
@@ -105,5 +105,5 @@ type TTRChange struct {
 	CreatedAt time.Time
 }
 
-// Delta ist die Ratingaenderung dieses Eintrags.
+// Delta is the rating change recorded by this entry.
 func (c TTRChange) Delta() int { return c.TTRAfter - c.TTRBefore }

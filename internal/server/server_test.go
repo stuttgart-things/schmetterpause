@@ -17,10 +17,10 @@ import (
 	"github.com/stuttgart-things/schmetterpause/internal/server"
 )
 
-// fakeStore erfuellt repository.Store, ohne eine Datenbank zu brauchen.
-// Genau dafuer existieren die Repository-Interfaces (Invariante 5): Handler
-// sind ohne Postgres testbar. Nicht ueberschriebene Methoden sind nil und
-// wuerden beim Aufruf panicken — das ist gewollt, es faellt sofort auf.
+// fakeStore satisfies repository.Store without needing a database. This is
+// what the repository interfaces are for (invariant 5): handlers are testable
+// without Postgres. Methods that are not overridden stay nil and would panic
+// when called — which is intended, it surfaces immediately.
 type fakeStore struct {
 	repository.Store
 	players repository.PlayerRepository
@@ -57,17 +57,17 @@ func get(t *testing.T, h http.Handler, path string) *httptest.ResponseRecorder {
 }
 
 func TestHealthzIgnoresDatabase(t *testing.T) {
-	// Liveness darf nicht von der Datenbank abhaengen: ein DB-Ausfall soll
-	// keinen Container-Neustart ausloesen.
-	h := newHandler(fakeStore{pingErr: errors.New("db weg")})
+	// Liveness must not depend on the database: an outage should not trigger
+	// a container restart.
+	h := newHandler(fakeStore{pingErr: errors.New("database gone")})
 
 	rec := get(t, h, "/healthz")
 
 	if rec.Code != http.StatusOK {
-		t.Fatalf("Status = %d, erwartet 200", rec.Code)
+		t.Fatalf("status = %d, want 200", rec.Code)
 	}
 	if got := strings.TrimSpace(rec.Body.String()); got != "ok" {
-		t.Errorf("Body = %q, erwartet \"ok\"", got)
+		t.Errorf("body = %q, want \"ok\"", got)
 	}
 }
 
@@ -77,8 +77,8 @@ func TestReadyz(t *testing.T) {
 		pingErr error
 		want    int
 	}{
-		{"datenbank erreichbar", nil, http.StatusOK},
-		{"datenbank weg", errors.New("db weg"), http.StatusServiceUnavailable},
+		{"database reachable", nil, http.StatusOK},
+		{"database gone", errors.New("database gone"), http.StatusServiceUnavailable},
 	}
 
 	for _, tc := range tests {
@@ -86,7 +86,7 @@ func TestReadyz(t *testing.T) {
 			rec := get(t, newHandler(fakeStore{pingErr: tc.pingErr}), "/readyz")
 
 			if rec.Code != tc.want {
-				t.Errorf("Status = %d, erwartet %d", rec.Code, tc.want)
+				t.Errorf("status = %d, want %d", rec.Code, tc.want)
 			}
 		})
 	}
@@ -98,58 +98,58 @@ func TestIndexRendersLayout(t *testing.T) {
 	rec := get(t, h, "/")
 
 	if rec.Code != http.StatusOK {
-		t.Fatalf("Status = %d, erwartet 200", rec.Code)
+		t.Fatalf("status = %d, want 200", rec.Code)
 	}
 	body := rec.Body.String()
 	for _, want := range []string{"Schmetterpause", "/static/js/htmx.min.js", `hx-get="/fragments/status"`} {
 		if !strings.Contains(body, want) {
-			t.Errorf("Seite enthaelt %q nicht", want)
+			t.Errorf("page does not contain %q", want)
 		}
 	}
 }
 
-func TestStatusFragmentZeigtSpielerzahl(t *testing.T) {
+func TestStatusFragmentShowsPlayerCount(t *testing.T) {
 	h := newHandler(fakeStore{players: fakePlayers{count: 7}})
 
 	rec := get(t, h, "/fragments/status")
 
 	if rec.Code != http.StatusOK {
-		t.Fatalf("Status = %d, erwartet 200", rec.Code)
+		t.Fatalf("status = %d, want 200", rec.Code)
 	}
 	body := rec.Body.String()
 	if !strings.Contains(body, ">7<") {
-		t.Errorf("Fragment nennt die Spielerzahl nicht: %s", body)
+		t.Errorf("fragment does not state the player count: %s", body)
 	}
 	if !strings.Contains(body, "erreichbar") {
-		t.Errorf("Fragment nennt den Datenbankstatus nicht: %s", body)
+		t.Errorf("fragment does not state the database status: %s", body)
 	}
 }
 
-func TestStatusFragmentOhneDatenbank(t *testing.T) {
-	// Ohne Datenbank bleibt die Seite bedienbar und sagt, was fehlt.
-	h := newHandler(fakeStore{pingErr: errors.New("db weg")})
+func TestStatusFragmentWithoutDatabase(t *testing.T) {
+	// Without a database the page stays usable and says what is missing.
+	h := newHandler(fakeStore{pingErr: errors.New("database gone")})
 
 	rec := get(t, h, "/fragments/status")
 
 	if rec.Code != http.StatusOK {
-		t.Fatalf("Status = %d, erwartet 200", rec.Code)
+		t.Fatalf("status = %d, want 200", rec.Code)
 	}
 	if !strings.Contains(rec.Body.String(), "nicht erreichbar") {
-		t.Errorf("Fragment meldet den Ausfall nicht: %s", rec.Body.String())
+		t.Errorf("fragment does not report the outage: %s", rec.Body.String())
 	}
 }
 
-func TestStaticAssetsSindEingebettet(t *testing.T) {
-	// Faengt genau den Fehler, den der Verify-Schritt spaeter im Image sucht:
-	// Assets, die im Container nicht mitkommen.
+func TestStaticAssetsAreEmbedded(t *testing.T) {
+	// Catches exactly the fault the verify step later looks for in the image:
+	// assets that did not make it into the container.
 	h := newHandler(fakeStore{})
 
 	rec := get(t, h, "/static/js/htmx.min.js")
 
 	if rec.Code != http.StatusOK {
-		t.Fatalf("Status = %d, erwartet 200", rec.Code)
+		t.Fatalf("status = %d, want 200", rec.Code)
 	}
 	if rec.Body.Len() == 0 {
-		t.Error("htmx.min.js ist leer")
+		t.Error("htmx.min.js is empty")
 	}
 }

@@ -57,8 +57,8 @@ func Index() templ.Component {
 	})
 }
 
-// Status ist das per HTMX nachgeladene Fragment. Es beweist den Weg
-// Handler -> Repository -> Datenbank und zurück ins Template.
+// Status is the fragment loaded by HTMX. It proves the path
+// handler -> repository -> database and back into the template.
 func Status(v StatusView) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context

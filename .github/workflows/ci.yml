@@ -1,6 +1,6 @@
-# Bewusst duenn: Dieses Workflow installiert die Dagger-CLI und ruft dieselbe
-# Funktion auf, die lokal hinter "task ci" steckt. Es enthaelt keine
-# Build-Logik — die steht in dagger/main.go und laeuft hier und lokal gleich.
+# Deliberately thin: this workflow installs the Dagger CLI and calls the same
+# function that "task ci" runs locally. It holds no build logic — that lives in
+# dagger/main.go and behaves identically here and on a developer machine.
 name: CI
 
 on:
@@ -25,7 +25,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
-          # Version aus git describe: braucht Tags und Historie.
+          # Version comes from git describe: needs tags and history.
           fetch-depth: 0
 
       - name: Dagger-CLI installieren

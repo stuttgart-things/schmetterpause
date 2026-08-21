@@ -9,6 +9,6 @@ README.md
 CLAUDE.md
 *.md
 
-# Dagger-Generate: gehoert nicht in den App-Build.
+# Dagger generated code: does not belong in the app build.
 dagger/internal/
 dagger/dagger.gen.go

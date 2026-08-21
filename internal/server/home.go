@@ -6,21 +6,21 @@ import (
 	"github.com/stuttgart-things/schmetterpause/internal/templates"
 )
 
-// handleIndex rendert die Startseite.
+// handleIndex renders the start page.
 func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 	s.render(w, r, templates.Index())
 }
 
-// handleStatusFragment liefert das per HTMX nachgeladene Statusfragment.
+// handleStatusFragment serves the status fragment loaded by HTMX.
 //
-// Im Geruest ist das der Nachweis, dass Handler, Repository, Datenbank und
-// Template zusammenspielen — genau der Pfad, den der Verify-Schritt der
-// Pipeline gegen das gebaute Image prueft.
+// In the scaffolding this is the proof that handler, repository, database and
+// template work together — exactly the path the pipeline's verify step checks
+// against the built image.
 func (s *Server) handleStatusFragment(w http.ResponseWriter, r *http.Request) {
 	view := templates.StatusView{Version: s.version}
 
 	if err := s.store.Ping(r.Context()); err != nil {
-		s.log.WarnContext(r.Context(), "status: datenbank nicht erreichbar", "fehler", err)
+		s.log.WarnContext(r.Context(), "status: database unreachable", "error", err)
 		s.render(w, r, templates.Status(view))
 		return
 	}
@@ -28,7 +28,8 @@ func (s *Server) handleStatusFragment(w http.ResponseWriter, r *http.Request) {
 
 	count, err := s.store.Players().Count(r.Context())
 	if err != nil {
-		s.log.ErrorContext(r.Context(), "status: spieler zaehlen fehlgeschlagen", "fehler", err)
+		s.log.ErrorContext(r.Context(), "status: counting players failed", "error", err)
+		// User-facing text stays German; see CLAUDE.md.
 		http.Error(w, "Status nicht ermittelbar", http.StatusInternalServerError)
 		return
 	}

@@ -35,7 +35,7 @@ func (r matchRepo) Create(ctx context.Context, m domain.Match) (domain.Match, er
 	created, err := scanMatch(r.q.QueryRow(ctx, insertMatch,
 		m.HomeID, m.AwayID, m.BestOf, m.PointsToWin, string(status), m.ReportedBy, playedAt))
 	if err != nil {
-		return domain.Match{}, fmt.Errorf("match anlegen: %w", err)
+		return domain.Match{}, fmt.Errorf("create match: %w", err)
 	}
 
 	const insertSet = `
@@ -44,7 +44,7 @@ func (r matchRepo) Create(ctx context.Context, m domain.Match) (domain.Match, er
 
 	for _, s := range m.Sets {
 		if _, err := r.q.Exec(ctx, insertSet, created.ID, s.SetNo, s.HomePoints, s.AwayPoints); err != nil {
-			return domain.Match{}, fmt.Errorf("satz %d von match %s anlegen: %w", s.SetNo, created.ID, err)
+			return domain.Match{}, fmt.Errorf("create set %d of match %s: %w", s.SetNo, created.ID, err)
 		}
 	}
 	created.Sets = m.Sets
@@ -59,7 +59,7 @@ func (r matchRepo) ByID(ctx context.Context, id uuid.UUID) (domain.Match, error)
 	case errors.Is(err, pgx.ErrNoRows):
 		return domain.Match{}, fmt.Errorf("match %s: %w", id, domain.ErrNotFound)
 	case err != nil:
-		return domain.Match{}, fmt.Errorf("match %s laden: %w", id, err)
+		return domain.Match{}, fmt.Errorf("load match %s: %w", id, err)
 	}
 
 	sets, err := r.setsFor(ctx, []uuid.UUID{id})
@@ -71,7 +71,7 @@ func (r matchRepo) ByID(ctx context.Context, id uuid.UUID) (domain.Match, error)
 }
 
 func (r matchRepo) PendingFor(ctx context.Context, playerID uuid.UUID) ([]domain.Match, error) {
-	// Zu bestaetigen ist, was jemand anderes eingetragen hat.
+	// What needs confirming is what somebody else recorded.
 	const q = `
 		select ` + matchColumns + `
 		from matches
@@ -99,7 +99,7 @@ func (r matchRepo) SetStatus(ctx context.Context, id uuid.UUID, status domain.Ma
 
 	tag, err := r.q.Exec(ctx, q, id, string(status), confirmedAt)
 	if err != nil {
-		return fmt.Errorf("status von match %s auf %s setzen: %w", id, status, err)
+		return fmt.Errorf("set status of match %s to %s: %w", id, status, err)
 	}
 	if tag.RowsAffected() == 0 {
 		return fmt.Errorf("match %s: %w", id, domain.ErrNotFound)
@@ -110,7 +110,7 @@ func (r matchRepo) SetStatus(ctx context.Context, id uuid.UUID, status domain.Ma
 func (r matchRepo) list(ctx context.Context, query string, args ...any) ([]domain.Match, error) {
 	rows, err := r.q.Query(ctx, query, args...)
 	if err != nil {
-		return nil, fmt.Errorf("matches laden: %w", err)
+		return nil, fmt.Errorf("load matches: %w", err)
 	}
 	defer rows.Close()
 
@@ -121,13 +121,13 @@ func (r matchRepo) list(ctx context.Context, query string, args ...any) ([]domai
 	for rows.Next() {
 		m, err := scanMatch(rows)
 		if err != nil {
-			return nil, fmt.Errorf("match lesen: %w", err)
+			return nil, fmt.Errorf("read match: %w", err)
 		}
 		matches = append(matches, m)
 		ids = append(ids, m.ID)
 	}
 	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("matches lesen: %w", err)
+		return nil, fmt.Errorf("read matches: %w", err)
 	}
 	if len(ids) == 0 {
 		return matches, nil
@@ -143,7 +143,7 @@ func (r matchRepo) list(ctx context.Context, query string, args ...any) ([]domai
 	return matches, nil
 }
 
-// setsFor laedt die Saetze zu mehreren Matches in einer Abfrage.
+// setsFor loads the sets for several matches in a single query.
 func (r matchRepo) setsFor(ctx context.Context, ids []uuid.UUID) (map[uuid.UUID][]domain.MatchSet, error) {
 	const q = `
 		select match_id, set_no, home_points, away_points
@@ -153,7 +153,7 @@ func (r matchRepo) setsFor(ctx context.Context, ids []uuid.UUID) (map[uuid.UUID]
 
 	rows, err := r.q.Query(ctx, q, ids)
 	if err != nil {
-		return nil, fmt.Errorf("saetze laden: %w", err)
+		return nil, fmt.Errorf("load sets: %w", err)
 	}
 	defer rows.Close()
 
@@ -164,17 +164,17 @@ func (r matchRepo) setsFor(ctx context.Context, ids []uuid.UUID) (map[uuid.UUID]
 			s       domain.MatchSet
 		)
 		if err := rows.Scan(&matchID, &s.SetNo, &s.HomePoints, &s.AwayPoints); err != nil {
-			return nil, fmt.Errorf("satz lesen: %w", err)
+			return nil, fmt.Errorf("read set: %w", err)
 		}
 		sets[matchID] = append(sets[matchID], s)
 	}
 	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("saetze lesen: %w", err)
+		return nil, fmt.Errorf("read sets: %w", err)
 	}
 	return sets, nil
 }
 
-// scanMatch liest eine Match-Zeile in der Reihenfolge von matchColumns.
+// scanMatch reads one match row in the order given by matchColumns.
 func scanMatch(row pgx.Row) (domain.Match, error) {
 	var (
 		m      domain.Match

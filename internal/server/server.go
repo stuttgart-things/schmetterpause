@@ -1,8 +1,8 @@
-// Package server enthaelt HTTP-Routing, Middleware und Handler.
+// Package server holds HTTP routing, middleware and handlers.
 //
-// Handler kennen weder SQL (Invariante 5) noch Auth-Provider (Invariante 4):
-// Datenzugriff laeuft ueber repository.Store, die Identitaet kommt als
-// player_id aus dem Context.
+// Handlers know neither SQL (invariant 5) nor auth providers (invariant 4):
+// data access goes through repository.Store, and identity arrives as a
+// player_id on the request context.
 package server
 
 import (
@@ -19,7 +19,7 @@ import (
 	"github.com/stuttgart-things/schmetterpause/internal/repository"
 )
 
-// Server buendelt Konfiguration, Abhaengigkeiten und Routing.
+// Server bundles configuration, dependencies and routing.
 type Server struct {
 	cfg     config.Config
 	store   repository.Store
@@ -29,23 +29,23 @@ type Server struct {
 	handler http.Handler
 }
 
-// New verdrahtet den Server. Der Authenticator ist eine Schnittstelle, damit
-// spaetere Provider (OIDC, WebAuthn) ohne Aenderung an Handlern greifen.
+// New wires up the server. The authenticator is an interface so that later
+// providers (OIDC, WebAuthn) take effect without touching any handler.
 func New(cfg config.Config, store repository.Store, log *slog.Logger, a auth.Authenticator, version string) *Server {
 	s := &Server{cfg: cfg, store: store, log: log, auth: a, version: version}
 	s.handler = s.routes()
 	return s
 }
 
-// Handler liefert den fertig verdrahteten HTTP-Handler.
+// Handler returns the fully wired HTTP handler.
 func (s *Server) Handler() http.Handler { return s.handler }
 
 func (s *Server) routes() http.Handler {
 	mux := http.NewServeMux()
 
-	// Liveness und Readiness bleiben bewusst ausserhalb der Auth-Middleware
-	// und rendern kein Template: sie muessen auch dann antworten, wenn die
-	// Anwendung sonst nichts mehr kann.
+	// Liveness and readiness stay outside the auth middleware and render no
+	// template on purpose: they must answer even when the application can do
+	// nothing else.
 	mux.HandleFunc("GET /healthz", s.handleHealthz)
 	mux.HandleFunc("GET /readyz", s.handleReadyz)
 
@@ -59,7 +59,7 @@ func (s *Server) routes() http.Handler {
 	return recoverer(s.log)(requestLogger(s.log)(mux))
 }
 
-// Run startet den Server und beendet ihn geordnet, sobald ctx abgebrochen wird.
+// Run starts the server and stops it gracefully once ctx is cancelled.
 func (s *Server) Run(ctx context.Context) error {
 	srv := &http.Server{
 		Addr:              s.cfg.HTTPAddr,
@@ -71,9 +71,9 @@ func (s *Server) Run(ctx context.Context) error {
 
 	errCh := make(chan error, 1)
 	go func() {
-		s.log.Info("server gestartet", "addr", s.cfg.HTTPAddr, "version", s.version)
+		s.log.Info("server started", "addr", s.cfg.HTTPAddr, "version", s.version)
 		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			errCh <- fmt.Errorf("http-server: %w", err)
+			errCh <- fmt.Errorf("http server: %w", err)
 			return
 		}
 		errCh <- nil
@@ -85,13 +85,13 @@ func (s *Server) Run(ctx context.Context) error {
 	case <-ctx.Done():
 	}
 
-	s.log.Info("server wird beendet", "frist", s.cfg.ShutdownTimeout)
+	s.log.Info("shutting down", "grace", s.cfg.ShutdownTimeout)
 
 	shutdownCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), s.cfg.ShutdownTimeout)
 	defer cancel()
 
 	if err := srv.Shutdown(shutdownCtx); err != nil {
-		return fmt.Errorf("server beenden: %w", err)
+		return fmt.Errorf("shut down server: %w", err)
 	}
 	return <-errCh
 }
