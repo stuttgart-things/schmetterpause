@@ -6,6 +6,9 @@ name: CI
 on:
   push:
     branches: [main]
+    # Tags trigger the release job below; without this, "latest" would never
+    # move and the tag would never reach the registry.
+    tags: ["v*"]
   pull_request:
 
 permissions:
@@ -13,7 +16,9 @@ permissions:
 
 concurrency:
   group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  # Superseding a branch build is fine. Cancelling a tag build is not: it can
+  # leave a half-pushed manifest in the registry.
+  cancel-in-progress: ${{ github.ref_type != 'tag' }}
 
 env:
   DAGGER_VERSION: "0.21.8"
@@ -39,3 +44,46 @@ jobs:
           dagger call ci \
             --source=. \
             --version="$(git describe --tags --always --dirty)"
+
+  # Artefacts that are meant to last go to GHCR. Only on a push — a pull
+  # request from a fork must not be able to write to the package, and there is
+  # nothing to keep from a branch that may never merge. See issue #20.
+  release:
+    if: github.event_name == 'push'
+    needs: ci
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Install the Dagger CLI
+        run: |
+          curl -fsSL https://dl.dagger.io/dagger/install.sh \
+            | DAGGER_VERSION="${DAGGER_VERSION}" BIN_DIR=/usr/local/bin sudo -E sh
+          dagger version
+
+      - name: Publish to GHCR
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          version="$(git describe --tags --always --dirty)"
+
+          # Only a tag moves "latest". A push to main is a snapshot, and
+          # pointing latest at one would make it mean "most recent build"
+          # rather than "most recent release".
+          latest=false
+          if [ "${GITHUB_REF_TYPE}" = "tag" ]; then
+            latest=true
+          fi
+
+          dagger call release \
+            --source=. \
+            --version="${version}" \
+            --registry-token=env:GITHUB_TOKEN \
+            --username="${GITHUB_ACTOR}" \
+            --latest="${latest}"

@@ -11,13 +11,16 @@ package main
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"dagger/schmetterpause/internal/dagger"
 )
 
 const (
-	// goImage must carry at least the Go version from go.mod.
-	goImage           = "golang:1.25-alpine"
+	// goImage must carry at least the Go version from go.mod, and must match
+	// the builder stage in the Dockerfile — otherwise the pipeline verifies an
+	// image built by a different compiler than the one the Dockerfile uses.
+	goImage           = "golang:1.27-alpine"
 	golangciLintImage = "golangci/golangci-lint:v2.6.0-alpine"
 	postgresImage     = "postgres:18-alpine"
 	runtimeImage      = "gcr.io/distroless/static-debian12:nonroot"
@@ -28,6 +31,26 @@ const (
 
 	// nonrootUID is the distroless image's user.
 	nonrootUID = "65532:65532"
+
+	// ephemeralRegistry is ttl.sh: no account, no token, and images expire on
+	// their own. For handing a build to someone before it is merged.
+	//
+	// It is public and anonymous — anyone who guesses the name can pull, and
+	// anyone can push over it. That is acceptable for what goes in: a static
+	// binary plus embedded CSS and HTMX, no credentials and no data. If the
+	// image ever gains something that should not be world-readable, ttl.sh
+	// stops being an option. See issue #20.
+	ephemeralRegistry = "ttl.sh"
+
+	// releaseRegistry holds the artefacts meant to last. Same account as the
+	// repository, so GITHUB_TOKEN with packages:write is all it needs.
+	releaseRegistry = "ghcr.io"
+
+	// releasePlatforms are the architectures a release covers. Compose and
+	// Azure Container Apps are amd64; arm64 is there so the image also runs
+	// on an Apple-silicon laptop and on arm nodes.
+	releasePlatformAmd64 = "amd64"
+	releasePlatformArm64 = "arm64"
 
 	// verifyDSN is the address at which the application reaches the Postgres
 	// service during verify. It applies only inside the pipeline.
@@ -242,6 +265,134 @@ func (m *Schmetterpause) Ci(
 
 	return fmt.Sprintf("== lint ==\n%s\n== build ==\nimage built (version %s)\n\n== verify ==\n%s",
 		lintOut, version, verifyOut), nil
+}
+
+// Publish pushes the runtime image to ttl.sh so it can be handed to somebody
+// for a look.
+//
+// Needs no account and no token. The tag *is* the lifetime: ttl.sh deletes
+// the image once it expires, so nothing has to be cleaned up afterwards.
+// Accepted values run from a few minutes up to 24h.
+//
+// Returns the reference the image was pushed to.
+func (m *Schmetterpause) Publish(
+	ctx context.Context,
+	// +defaultPath="/"
+	// +ignore=["**/.git", "build", ".task", "dagger/internal", "dagger/dagger.gen.go"]
+	source *dagger.Directory,
+	// +optional
+	// +default="dev"
+	version string,
+	// +optional
+	// +default="1h"
+	ttl string,
+	// +optional
+	// +default="amd64"
+	goarch string,
+) (string, error) {
+	ref := fmt.Sprintf("%s/schmetterpause-%s:%s", ephemeralRegistry, imageNameSafe(version), ttl)
+
+	published, err := m.Image(source, version, goarch).Publish(ctx, ref)
+	if err != nil {
+		return "", fmt.Errorf("publish to %s: %w", ephemeralRegistry, err)
+	}
+	return published, nil
+}
+
+// Release pushes the runtime image to the registry that keeps it, tagged with
+// version and covering both architectures in one manifest.
+//
+// registryToken is a token with write access to the package — in Actions the
+// job's GITHUB_TOKEN with packages:write is enough.
+//
+// Returns the reference the image was pushed to.
+func (m *Schmetterpause) Release(
+	ctx context.Context,
+	// +defaultPath="/"
+	// +ignore=["**/.git", "build", ".task", "dagger/internal", "dagger/dagger.gen.go"]
+	source *dagger.Directory,
+	// The version to tag. No default on purpose: an artefact tagged "dev"
+	// in a registry that keeps things is worse than no artefact.
+	version string,
+	// Token with write access to the package.
+	registryToken *dagger.Secret,
+	// The repository to push to. A "+default" pragma takes a literal, so
+	// this string is the single place the release repository is named.
+	// +optional
+	// +default="ghcr.io/stuttgart-things/schmetterpause"
+	image string,
+	// The account the token belongs to.
+	username string,
+	// +optional
+	// Also move the "latest" tag to this image.
+	latest bool,
+) (string, error) {
+	if version == "" || version == "dev" {
+		return "", fmt.Errorf("release needs a real version, got %q", version)
+	}
+
+	variants := []*dagger.Container{
+		m.Image(source, version, releasePlatformAmd64),
+		m.Image(source, version, releasePlatformArm64),
+	}
+
+	authed := dag.Container().
+		WithRegistryAuth(releaseRegistry, username, registryToken)
+
+	published, err := authed.Publish(ctx, image+":"+imageTagSafe(version),
+		dagger.ContainerPublishOpts{PlatformVariants: variants})
+	if err != nil {
+		return "", fmt.Errorf("publish %s to %s: %w", version, releaseRegistry, err)
+	}
+
+	if latest {
+		if _, err := authed.Publish(ctx, image+":latest",
+			dagger.ContainerPublishOpts{PlatformVariants: variants}); err != nil {
+			return "", fmt.Errorf("move the latest tag: %w", err)
+		}
+	}
+
+	return published, nil
+}
+
+// imageNameSafe turns a version into something usable as a repository name.
+// "git describe" happily produces "v0.2.0-3-gab12cd-dirty", and a registry
+// accepts only lowercase alphanumerics with single separators.
+func imageNameSafe(version string) string {
+	return trimSeparators(strings.Map(func(r rune) rune {
+		switch {
+		case r >= 'a' && r <= 'z', r >= '0' && r <= '9':
+			return r
+		case r >= 'A' && r <= 'Z':
+			return r + ('a' - 'A')
+		default:
+			return '-'
+		}
+	}, version))
+}
+
+// imageTagSafe keeps a version usable as a tag. Tags allow more than
+// repository names do — upper case, dots and underscores are fine — so a
+// "v1.2.3" survives unchanged.
+func imageTagSafe(version string) string {
+	return trimSeparators(strings.Map(func(r rune) rune {
+		switch {
+		case r >= 'a' && r <= 'z', r >= 'A' && r <= 'Z', r >= '0' && r <= '9':
+			return r
+		case r == '.', r == '_', r == '-':
+			return r
+		default:
+			return '-'
+		}
+	}, version))
+}
+
+func trimSeparators(s string) string {
+	s = strings.Trim(s, "-._")
+	if s == "" {
+		return "unversioned"
+	}
+	return s
 }
 
 // goBase is the shared build container with warm module and build caches.
