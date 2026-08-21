@@ -5,7 +5,7 @@
 
 services:
   db:
-    image: postgres:17-alpine
+    image: postgres:18-alpine
     environment:
       POSTGRES_USER: schmetterpause
       POSTGRES_PASSWORD: schmetterpause
