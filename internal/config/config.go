@@ -50,6 +50,10 @@ type Config struct {
 	// hardcoded fallback would let anyone forge a session, and a random one
 	// per start would make every player a stranger after a deployment —
 	// which is precisely what the cookie exists to prevent.
+	//
+	// Load does not insist on it, because only serve signs anything.
+	// Requiring it everywhere would mean handing the cookie secret to a
+	// migration job that never uses it. ValidateForServe is where it counts.
 	SessionKey []byte
 	// CookieSecure marks the session cookie HTTPS-only. Defaults to true, so
 	// a forgotten setting fails closed: the cookie is simply not sent over
@@ -134,22 +138,28 @@ func Load() (Config, error) {
 		errs = append(errs, fmt.Errorf("%sDATABASE_URL is required", envPrefix))
 	}
 
-	switch key := env("SESSION_KEY", ""); {
-	case key == "":
-		errs = append(errs, fmt.Errorf(
-			"%sSESSION_KEY is required; generate one with: openssl rand -base64 32", envPrefix))
-	case len(key) < minSessionKeyLen:
-		errs = append(errs, fmt.Errorf(
-			"%sSESSION_KEY is %d characters, at least %d are required",
-			envPrefix, len(key), minSessionKeyLen))
-	default:
-		cfg.SessionKey = []byte(key)
-	}
+	cfg.SessionKey = []byte(env("SESSION_KEY", ""))
 
 	if err := errors.Join(errs...); err != nil {
 		return Config{}, fmt.Errorf("read configuration from the environment: %w", err)
 	}
 	return cfg, nil
+}
+
+// ValidateForServe reports whether the configuration is complete enough to
+// serve HTTP. Everything it checks is needed only by the server, so the other
+// commands are spared it.
+func (c Config) ValidateForServe() error {
+	switch {
+	case len(c.SessionKey) == 0:
+		return fmt.Errorf(
+			"%sSESSION_KEY is required to serve; generate one with: openssl rand -base64 32",
+			envPrefix)
+	case len(c.SessionKey) < minSessionKeyLen:
+		return fmt.Errorf("%sSESSION_KEY is %d characters, at least %d are required",
+			envPrefix, len(c.SessionKey), minSessionKeyLen)
+	}
+	return nil
 }
 
 func parseLevel(raw string) (slog.Level, error) {

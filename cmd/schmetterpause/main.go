@@ -45,8 +45,9 @@ Configuration comes exclusively from environment variables:
   SP_SHUTDOWN_TIMEOUT   grace period for in-flight requests, default "15s"
   SP_READINESS_TIMEOUT  bound on the database check, default "2s"
   SP_DB_CONNECT_TIMEOUT how long startup waits for the database, default "30s"
-  SP_SESSION_KEY        key that signs the recognition cookie (required,
-                        at least 32 characters; openssl rand -base64 32)
+  SP_SESSION_KEY        key that signs the recognition cookie; required by
+                        serve, at least 32 characters
+                        (openssl rand -base64 32)
   SP_COOKIE_SECURE      send the cookie over HTTPS only, default "true"
 `
 
@@ -88,6 +89,9 @@ func run(ctx context.Context, args []string) error {
 func serve(ctx context.Context) error {
 	cfg, err := config.Load()
 	if err != nil {
+		return err
+	}
+	if err := cfg.ValidateForServe(); err != nil {
 		return err
 	}
 
