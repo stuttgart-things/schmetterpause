@@ -38,6 +38,11 @@ type PlayerRepository interface {
 	// List returns all players by descending rating — the order the ranking
 	// in AP6 needs.
 	List(ctx context.Context) ([]domain.Player, error)
+	// Records returns every player with their confirmed match tally, in the
+	// same order as List. The counting is the database's job: a Go loop over
+	// every match to answer "how many has she won" is the shape this
+	// interface exists to avoid.
+	Records(ctx context.Context) ([]domain.PlayerRecord, error)
 	Count(ctx context.Context) (int, error)
 	UpdateTTR(ctx context.Context, id uuid.UUID, ttr int) error
 }
