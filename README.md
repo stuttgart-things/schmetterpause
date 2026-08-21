@@ -13,6 +13,11 @@ Liga-, Turnier- und Buchungsmodus kommen später.
 
 ## Loslegen
 
+Voraussetzungen: [Task](https://taskfile.dev/), Docker und die
+[Dagger-CLI](https://docs.dagger.io/install). Beim ersten Aufruf einer
+Dagger-Task einmalig `task dagger:develop` ausführen — das erzeugt die
+generierten Teile des Pipeline-Moduls.
+
 ```sh
 task up        # Compose-Umgebung starten (App + Postgres)
 task ci        # lint, build, verify — identisch zur Pipeline

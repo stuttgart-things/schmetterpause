@@ -1,0 +1,27 @@
+package templates
+
+templ Layout(title string) {
+	<!DOCTYPE html>
+	<html lang="de">
+		<head>
+			<meta charset="utf-8"/>
+			<meta name="viewport" content="width=device-width, initial-scale=1"/>
+			<title>{ title } &middot; Schmetterpause</title>
+			<link rel="stylesheet" href="/static/css/app.css"/>
+			<script src="/static/js/htmx.min.js" defer></script>
+		</head>
+		<body>
+			<header class="topbar">
+				<a class="brand" href="/">Schmetterpause</a>
+				<span class="tagline">Büro-Tischtennis</span>
+			</header>
+			<main>
+				{ children... }
+			</main>
+			<footer class="footer">
+				<a href="/healthz">healthz</a>
+				<a href="/readyz">readyz</a>
+			</footer>
+		</body>
+	</html>
+}
