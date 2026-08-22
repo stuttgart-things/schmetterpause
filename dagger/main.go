@@ -528,11 +528,23 @@ curl -fsS http://app:8080/ | grep -q "class=\"brand-logo\"" || {
 }
 
 echo "== HTMX fragment: handler, repository and database =="
-curl -fsS http://app:8080/fragments/status | grep -q ">erreichbar<" || {
+status=$(mktemp)
+curl -fsS http://app:8080/fragments/status > "$status"
+grep -q ">erreichbar<" "$status" || {
 	echo "status fragment does not report the database as reachable"
-	curl -sS http://app:8080/fragments/status || true
+	cat "$status"
 	exit 1
 }
+
+# The probes are values in the page now, not two links a player has to click
+# and read. Both states have to be there, not just the word.
+for want in ">healthz<" ">ok<" ">readyz<" ">bereit<"; do
+	grep -q "$want" "$status" || {
+		echo "the status box does not state $want"
+		cat "$status"
+		exit 1
+	}
+done
 
 echo "== session: a browser is recognised again =="
 cookies=$(mktemp)
@@ -602,6 +614,19 @@ size=$(curl -fsS http://app:8080/static/js/app.js | wc -c)
 	echo "the swap-on-422 script is missing or empty ($size bytes)"
 	exit 1
 }
+
+echo "== ranking: nobody is on a position before anybody has played =="
+fresh=$(mktemp)
+curl -fsS -b "$cookies" http://app:8080/fragments/standings > "$fresh"
+grep -q "rank-none" "$fresh" || {
+	echo "a player without a confirmed match was given a position"
+	cat "$fresh"
+	exit 1
+}
+if grep -q "rank rank-1" "$fresh"; then
+	echo "first place was handed out before a single match was confirmed"
+	exit 1
+fi
 
 echo "== ranking: the table scrolls, the page does not =="
 curl -fsS http://app:8080/ | grep -q "class=\"table-scroll\" tabindex=\"0\"" || {
