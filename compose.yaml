@@ -36,6 +36,10 @@ services:
       # No HTTPS on http://localhost, so the browser would never send a
       # cookie marked Secure.
       SP_COOKIE_SECURE: "false"
+      # Empty by default, and then the kiosk does not exist. Start it with
+      # SP_KIOSK_TOKEN=... task up for an evening where one machine at the
+      # table enters everybody's results.
+      SP_KIOSK_TOKEN: ${SP_KIOSK_TOKEN:-}
       # SP_PUBLIC_BASE_URL is deliberately unset: the QR sheet reads the
       # address off the request, which is right wherever the application is
       # reached directly. Set it where a proxy terminates TLS or rewrites the

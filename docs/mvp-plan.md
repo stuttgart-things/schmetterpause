@@ -146,6 +146,17 @@ Korrigieren darf jeder der beiden.
 
 *Fertig, wenn:* Ein unbestätigtes Match die Rangliste nicht beeinflusst.
 
+**Kiosk.** Für einen Turnierabend, an dem ein Rechner an der Platte steht,
+gibt es `/kiosk`: dort legt eine Person Spieler an und trägt Ergebnisse
+zwischen beliebigen zwei Spielern ein, die **sofort** gewertet werden. Wer
+zugesehen und mitgeschrieben hat, ist die Bestätigung — es gibt niemanden
+mehr zu fragen. Der Kiosk existiert nur, wenn `SP_KIOSK_TOKEN` gesetzt ist.
+
+Was dort entsteht, ist **nicht** die Messung der Definition of Done: die
+fragt, ob Leute *freiwillig* eintragen, und ein Schriftführer am Turnierabend
+ist das Gegenteil davon. Kiosk-Spieler haben außerdem keine Identität und
+können sich später nicht vom eigenen Handy anmelden.
+
 ### AP6 — Rangliste und Spielerprofil
 
 Rangliste mit TTR, Spielen, Bilanz. Profilseite mit letzten Matches und

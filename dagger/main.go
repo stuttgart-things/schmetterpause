@@ -59,6 +59,10 @@ const (
 	// verifySessionKey signs cookies inside the pipeline only. It never
 	// leaves the ephemeral verify containers.
 	verifySessionKey = "pipeline-only-session-key-0123456789abcdef"
+
+	// verifyKioskToken unlocks the kiosk inside the pipeline only, for the
+	// same reason and with the same lifetime.
+	verifyKioskToken = "pipeline-only-kiosk-token"
 )
 
 // Schmetterpause bundles the pipeline functions.
@@ -238,6 +242,9 @@ func (m *Schmetterpause) Verify(
 		// come back and the session check below would pass for the wrong
 		// reason.
 		WithEnvVariable("SP_COOKIE_SECURE", "false").
+		// The kiosk exists only where a token is set, so verify has to set
+		// one to be able to check that it does.
+		WithEnvVariable("SP_KIOSK_TOKEN", verifyKioskToken).
 		WithServiceBinding("db", m.Postgres()).
 		AsService(dagger.ContainerAsServiceOpts{UseEntrypoint: true})
 
@@ -681,6 +688,56 @@ curl -fsS -b "$cookies" http://app:8080/fragments/standings > /tmp/standings2
 grep -q "1:1" /tmp/standings2 || {
 	echo "the corrected result did not reach the ranking"
 	cat /tmp/standings2
+	exit 1
+}
+
+echo "== kiosk: one machine enters for everybody =="
+# Locked until the token is shown, and the token is swapped for a cookie.
+code=$(curl -sS -o /dev/null -w "%{http_code}" http://app:8080/kiosk)
+[ "$code" = "403" ] || {
+	echo "the kiosk answered $code without a token, expected 403"
+	exit 1
+}
+
+kiosk=$(mktemp)
+curl -fsS -c "$kiosk" -o /dev/null "http://app:8080/kiosk?token=pipeline-only-kiosk-token"
+grep -q schmetterpause_kiosk "$kiosk" || {
+	echo "the token did not unlock the kiosk"
+	exit 1
+}
+
+# A player created here must not sign the kiosk in as them.
+before=$(grep -c schmetterpause_session "$kiosk" || true)
+curl -fsS -b "$kiosk" -c "$kiosk" -X POST http://app:8080/kiosk/players \
+	--data-urlencode "display_name=Kiosk Cara" > /dev/null
+after=$(grep -c schmetterpause_session "$kiosk" || true)
+[ "$before" = "$after" ] || {
+	echo "creating a player at the kiosk signed the kiosk in as them"
+	exit 1
+}
+curl -fsS -b "$kiosk" -X POST http://app:8080/kiosk/players \
+	--data-urlencode "display_name=Kiosk Dirk" > /dev/null
+
+kiosk_page=$(mktemp)
+curl -fsS -b "$kiosk" http://app:8080/kiosk > "$kiosk_page"
+cara=$(tr "<" "\n" < "$kiosk_page" | grep "option value=\"" | grep "Kiosk Cara" \
+	| sed "s/.*value=\"\([^\"]*\)\".*/\1/" | head -1)
+dirk=$(tr "<" "\n" < "$kiosk_page" | grep "option value=\"" | grep "Kiosk Dirk" \
+	| sed "s/.*value=\"\([^\"]*\)\".*/\1/" | head -1)
+[ -n "$cara" ] && [ -n "$dirk" ] || {
+	echo "the kiosk does not offer the players it created"
+	exit 1
+}
+
+# Nobody is left to ask, so the result counts on submit.
+curl -fsS -b "$kiosk" -X POST http://app:8080/kiosk/matches \
+	--data "home_id=$cara&away_id=$dirk&best_of=3&points_to_win=11&set_home_1=11&set_away_1=9&set_home_2=11&set_away_2=7" \
+	| grep -q "Kiosk Cara schlägt Kiosk Dirk 2:0" || {
+	echo "the kiosk did not record the result"
+	exit 1
+}
+curl -fsS -b "$kiosk" http://app:8080/kiosk | grep -q "1008" || {
+	echo "the kiosk result did not reach the ranking"
 	exit 1
 }
 
