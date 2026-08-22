@@ -235,16 +235,20 @@ func (m *memMatches) ByID(_ context.Context, id uuid.UUID) (domain.Match, error)
 	return domain.Match{}, domain.ErrNotFound
 }
 
-// PendingFor mirrors the Postgres query: pending, the player is in it, and
-// somebody else reported it.
+// PendingFor mirrors the Postgres query: the player is in it, and it is
+// either pending under somebody else's name or contested by either of them.
 func (m *memMatches) PendingFor(_ context.Context, playerID uuid.UUID) ([]domain.Match, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
 	var out []domain.Match
 	for _, row := range m.rows {
-		involved := row.HomeID == playerID || row.AwayID == playerID
-		if row.Status == domain.MatchPending && involved && row.ReportedBy != playerID {
+		if row.HomeID != playerID && row.AwayID != playerID {
+			continue
+		}
+		waiting := (row.Status == domain.MatchPending && row.ReportedBy != playerID) ||
+			row.Status == domain.MatchDisputed
+		if waiting {
 			out = append(out, row)
 		}
 	}
@@ -280,6 +284,30 @@ func (m *memMatches) SetStatus(_ context.Context, id uuid.UUID, status domain.Ma
 		}
 		m.rows[i].Status = status
 		m.rows[i].ConfirmedAt = confirmedAt
+		return nil
+	}
+	return domain.ErrNotFound
+}
+
+// ReplaceResult mirrors the Postgres statement, including that the status is
+// part of the condition rather than checked before it.
+func (m *memMatches) ReplaceResult(_ context.Context, id uuid.UUID, corrected domain.Match) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	for i := range m.rows {
+		if m.rows[i].ID != id {
+			continue
+		}
+		if m.rows[i].Status != domain.MatchDisputed {
+			return domain.ErrConflict
+		}
+		m.rows[i].BestOf = corrected.BestOf
+		m.rows[i].PointsToWin = corrected.PointsToWin
+		m.rows[i].ReportedBy = corrected.ReportedBy
+		m.rows[i].Sets = corrected.Sets
+		m.rows[i].Status = domain.MatchPending
+		m.rows[i].ConfirmedAt = nil
 		return nil
 	}
 	return domain.ErrNotFound

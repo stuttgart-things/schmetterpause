@@ -164,10 +164,35 @@ type matchForm struct {
 	result match.Result
 }
 
-// parseMatchForm reads the form. The returned message is empty when the input
-// could be read at all — whether the result is *possible* is match.Validate's
-// question, not this one's.
+// parseMatchForm reads result entry: the opponent, plus everything
+// parseResultForm reads. The opponent is checked first so that a form with
+// nothing filled in says the most useful thing about itself.
 func parseMatchForm(r *http.Request) (matchForm, uuid.UUID, string) {
+	var (
+		opponentID uuid.UUID
+		message    string
+	)
+
+	if raw := strings.TrimSpace(r.FormValue("opponent_id")); raw == "" {
+		message = "Wähle einen Gegner."
+	} else if id, err := uuid.Parse(raw); err != nil {
+		message = "Diesen Gegner gibt es nicht."
+	} else {
+		opponentID = id
+	}
+
+	form, setsMessage := parseResultForm(r)
+	if message == "" {
+		message = setsMessage
+	}
+	return form, opponentID, message
+}
+
+// parseResultForm reads the mode and the sets, shared by result entry and the
+// correction of a contested match. The returned message is empty when the
+// input could be read at all — whether the result is *possible* is
+// match.Validate's question, not this one's.
+func parseResultForm(r *http.Request) (matchForm, string) {
 	form := matchForm{
 		bestOf:      5,
 		pointsToWin: match.PointsToEleven,
@@ -182,18 +207,7 @@ func parseMatchForm(r *http.Request) (matchForm, uuid.UUID, string) {
 	}
 	form.result.Mode = match.Mode{BestOf: form.bestOf, PointsToWin: form.pointsToWin}
 
-	var (
-		opponentID uuid.UUID
-		message    string
-	)
-
-	if raw := strings.TrimSpace(r.FormValue("opponent_id")); raw == "" {
-		message = "Wähle einen Gegner."
-	} else if id, err := uuid.Parse(raw); err != nil {
-		message = "Diesen Gegner gibt es nicht."
-	} else {
-		opponentID = id
-	}
+	var message string
 
 	// Rows are read in order and the first empty one ends the match. A row
 	// filled in after that is a gap, which almost always means a typo in the
@@ -232,7 +246,7 @@ func parseMatchForm(r *http.Request) (matchForm, uuid.UUID, string) {
 		form.result.Sets = append(form.result.Sets, match.Set{Home: homePoints, Away: awayPoints})
 	}
 
-	return form, opponentID, message
+	return form, message
 }
 
 // describeRejection turns a domain rejection into a sentence a player can act
