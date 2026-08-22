@@ -8,7 +8,7 @@ import "strconv"
 // already has a menu entry and a keyboard shortcut for (invariant 7). The
 // print rules live in the stylesheet instead.
 templ QRSheet(v QRSheetView) {
-	@Layout("QR-Aushang") {
+	@Layout("QR-Aushang", v.Header) {
 		<article class="sheet">
 			<h1>Ergebnis eintragen</h1>
 			<p class="sheet-lead">Scannen. Gegner wählen. Sätze eintragen.</p>

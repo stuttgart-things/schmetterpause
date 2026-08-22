@@ -69,6 +69,10 @@ type MatchRepository interface {
 	// somebody else recorded, and the contested ones they played in, which
 	// are waiting on either side to say what the result really was.
 	PendingFor(ctx context.Context, playerID uuid.UUID) ([]domain.Match, error)
+	// PendingCountFor is how many of those there are. The badge in the top
+	// bar needs a number and not the matches behind it, and asking for the
+	// list on every page render would load their sets along with it.
+	PendingCountFor(ctx context.Context, playerID uuid.UUID) (int, error)
 	// RecentFor returns a player's most recent matches.
 	RecentFor(ctx context.Context, playerID uuid.UUID, limit int) ([]domain.Match, error)
 	// SetStatus writes the confirmation state. confirmedAt is set exactly

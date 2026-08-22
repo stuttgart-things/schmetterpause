@@ -29,11 +29,44 @@ type StatusView struct {
 	Version string
 }
 
+// HeaderView is the state in the top bar: who this is, and how much is
+// waiting for them.
+type HeaderView struct {
+	DisplayName string
+	// ProfileURL is where the name leads. The rating is the thing people
+	// look up about themselves, so it leads to their own profile.
+	ProfileURL string
+	// Pending is how many results wait on this player.
+	Pending int
+}
+
+// SignedIn reports whether anybody is recognised.
+func (v HeaderView) SignedIn() bool { return v.DisplayName != "" }
+
+// maxBadgeCount is where the badge stops counting. Past it the number stops
+// being information and starts being a layout problem.
+const maxBadgeCount = 9
+
+func pendingCount(n int) string {
+	if n > maxBadgeCount {
+		return strconv.Itoa(maxBadgeCount) + "+"
+	}
+	return strconv.Itoa(n)
+}
+
+func pendingLabel(n int) string {
+	if n == 1 {
+		return "1 Ergebnis wartet auf deine Bestätigung"
+	}
+	return strconv.Itoa(n) + " Ergebnisse warten auf deine Bestätigung"
+}
+
 // QRSheetView is the printable sheet.
 //
 // The geometry is computed before the template sees it: a template is the
 // wrong place to walk a module grid.
 type QRSheetView struct {
+	Header HeaderView
 	// Target is the absolute URL the code encodes. It is printed as text as
 	// well, so the sheet still works for a phone whose camera will not scan.
 	Target string
@@ -46,6 +79,7 @@ type QRSheetView struct {
 // IndexView is everything the start page renders. Bundled rather than passed
 // as four parameters so adding a section later does not touch every caller.
 type IndexView struct {
+	Header    HeaderView
 	Session   SessionView
 	Standings StandingsView
 	Match     MatchFormView
@@ -213,6 +247,7 @@ type StandingRow struct {
 
 // ProfileView is one player's page.
 type ProfileView struct {
+	Header      HeaderView
 	DisplayName string
 	TTR         int
 	Rank        int

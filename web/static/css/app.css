@@ -57,29 +57,35 @@
 :root {
 	color-scheme: dark;
 
-	--bg: #0d131f;
-	/* Cards sit on the background, panels sit inside cards. Two steps are
-	   enough; a third makes every surface look like a separate component. */
-	--card: #172033;
-	--panel: #1e2a41;
-	--line: #2b3a58;
+	--bg: #0a0a12;
+	/* Cards sit on the background, panels sit inside cards. The step between
+	   them has to be big enough that a card reads as an object — too close
+	   together and the whole page looks like fog. Two steps are enough; a
+	   third makes every surface look like a separate component. */
+	--card: #15152a;
+	--panel: #1e1e3d;
+	--line: #2e2e55;
 
-	--fg: #e9eef8;
-	--muted: #8ba0c0;
+	--fg: #ececff;
+	--muted: #8f8fb8;
 
 	/* One action colour. Everything clickable and consequential is this
-	   orange, everything else stays out of the way. */
-	--accent: #ff5a2b;
-	--accent-ink: #14090b;
+	   violet, everything else stays out of the way. */
+	--accent: #7c5cff;
+	--accent-ink: #ffffff;
 
-	--ok: #3ecf8e;
+	--ok: #3ddc97;
+	/* Failure has a colour of its own. Reusing the accent for it would mean
+	   the same colour says "press me" and "this went wrong". */
+	--bad: #ff5d73;
 
 	/* The podium. */
-	--rank-1: #ff4f2b;
-	--rank-2: #ff9d2b;
-	--rank-3: #ffd23d;
-	--rank-4: #3ecf8e;
-	--rank-5: #35b7e0;
+	--rank-1: #7c5cff;
+	--rank-2: #a78bfa;
+	--rank-3: #38bdf8;
+	--rank-4: #3ddc97;
+	--rank-5: #facc15;
+	--rank-ink: #0a0a12;
 
 	--font-ui: "Space Grotesk", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
 	--font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
@@ -120,7 +126,8 @@ body {
 
 .topbar {
 	display: flex;
-	align-items: baseline;
+	align-items: center;
+	justify-content: space-between;
 	gap: 0.75rem;
 	width: 100%;
 	max-width: 46rem;
@@ -146,6 +153,59 @@ body {
 	letter-spacing: 0.12em;
 	text-transform: uppercase;
 	color: var(--muted);
+	margin-right: auto;
+}
+
+/* On a phone the top bar has a job to do and the subtitle has not. */
+@media (max-width: 34rem) {
+	.tagline { display: none; }
+}
+
+/* --- Wer bin ich ------------------------------------------------------- */
+
+/* State belongs in the bar, actions belong in cards. Two full-width cards
+   saying "you are signed in" and "nothing to do" were most of the first
+   screen and carried almost nothing. */
+.whoami {
+	display: flex;
+	align-items: center;
+	gap: 0.4rem;
+	flex: none;
+}
+
+.whoami-name {
+	font-family: var(--font-mono);
+	font-size: 0.78rem;
+	letter-spacing: 0.04em;
+	color: var(--fg);
+	text-decoration: none;
+	padding: 0.3rem 0.7rem;
+	border: 1px solid var(--line);
+	border-radius: 999px;
+	background: var(--card);
+	max-width: 11rem;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.whoami-name:hover { border-color: var(--accent); }
+
+/* Absent rather than greyed out at zero: a badge showing nothing is still a
+   thing to read past. */
+.whoami-badge {
+	display: inline-grid;
+	place-items: center;
+	min-width: 1.5rem;
+	height: 1.5rem;
+	padding: 0 0.4rem;
+	border-radius: 999px;
+	background: var(--accent);
+	color: var(--accent-ink);
+	font-family: var(--font-mono);
+	font-weight: 700;
+	font-size: 0.72rem;
+	text-decoration: none;
 }
 
 main {
@@ -178,7 +238,7 @@ h2 {
 
 .muted { color: var(--muted); }
 .ok { color: var(--ok); }
-.fail { color: var(--accent); font-weight: 600; }
+.fail { color: var(--bad); font-weight: 600; }
 
 .footer {
 	width: 100%;
@@ -356,7 +416,7 @@ button.secondary:hover {
 .actions button { margin-top: 0; }
 
 .gain { color: var(--ok); font-weight: 700; }
-.loss { color: var(--accent); font-weight: 700; }
+.loss { color: var(--bad); font-weight: 700; }
 
 .settled, .disputed { padding: 0.85rem 0; }
 
@@ -425,7 +485,7 @@ tr.self td { background: color-mix(in srgb, var(--accent) 8%, transparent); }
 	font-variant-numeric: tabular-nums;
 }
 
-.rank-1, .rank-2, .rank-3, .rank-4, .rank-5 { color: #14090b; }
+.rank-1, .rank-2, .rank-3, .rank-4, .rank-5 { color: var(--rank-ink); }
 .rank-1 { background: var(--rank-1); }
 .rank-2 { background: var(--rank-2); }
 .rank-3 { background: var(--rank-3); }

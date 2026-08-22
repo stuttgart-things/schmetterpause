@@ -439,6 +439,22 @@ func TestPendingForIncludesContestedMatches(t *testing.T) {
 		if len(waiting) != 1 {
 			t.Errorf("PendingFor(%s) = %d, want the contested match", name, len(waiting))
 		}
+
+		// The badge in the top bar counts with a separate statement, so the
+		// two have to agree or it will quietly say the wrong number.
+		n, err := matches.PendingCountFor(ctx, id)
+		if err != nil {
+			t.Fatalf("PendingCountFor(%s): %v", name, err)
+		}
+		if n != len(waiting) {
+			t.Errorf("PendingCountFor(%s) = %d, PendingFor() = %d", name, n, len(waiting))
+		}
+	}
+
+	// Nobody else is involved, so nothing waits on them.
+	cara := mustPlayer(ctx, t, store, "Cara", domain.DefaultTTR)
+	if n, err := matches.PendingCountFor(ctx, cara.ID); err != nil || n != 0 {
+		t.Errorf("PendingCountFor(Cara) = %d, %v, want 0", n, err)
 	}
 }
 
