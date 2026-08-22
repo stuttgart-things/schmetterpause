@@ -11,6 +11,9 @@ templ Layout(title string, header HeaderView) {
 			<link rel="icon" type="image/png" sizes="32x32" href="/static/img/mark-32.png"/>
 			<link rel="apple-touch-icon" href="/static/img/mark-180.png"/>
 			<script src="/static/js/htmx.min.js" defer></script>
+			// After HTMX, because it only registers a listener on it. See the
+			// file for why the listener has to exist at all.
+			<script src="/static/js/app.js" defer></script>
 		</head>
 		<body>
 			<header class="topbar">

@@ -110,7 +110,7 @@ templ correctionForm(m PendingMatchView) {
 			hx-swap="outerHTML"
 		>
 			@modeRow("fix-"+m.ID, m.BestOf, m.PointsToWin)
-			@setRows(m.Inputs)
+			@setRows("fix-"+m.ID, m.Inputs, m.BestOf, m.PointsToWin)
 			<button type="submit">Korrigieren</button>
 			if m.Error != "" {
 				<p class="fail" role="alert">{ m.Error }</p>

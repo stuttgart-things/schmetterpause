@@ -128,7 +128,7 @@ func Kiosk(v KioskView) templ.Component {
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = setRows(v.Sets).Render(ctx, templ_7745c5c3_Buffer)
+				templ_7745c5c3_Err = setRows("kiosk", v.Sets, v.BestOf, v.PointsToWin).Render(ctx, templ_7745c5c3_Buffer)
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}

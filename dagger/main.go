@@ -569,6 +569,40 @@ curl -fsS -b "$cookies" http://app:8080/fragments/whoami | grep -q "whoami-badge
 	exit 1
 }
 
+echo "== set rows: as many as the mode can have, and no more =="
+form=$(mktemp)
+curl -fsS -b "$cookies" "http://app:8080/fragments/sets?sets_prefix=entry&best_of=3&points_to_win=11" > "$form"
+grep -q "set_home_3" "$form" || {
+	echo "best-of-three is missing its third set"
+	exit 1
+}
+# if rather than "grep && { }": under set -e a grep that finds nothing is the
+# last command of an AND-OR list, and whether that ends the script is a
+# question about the shell rather than about the page.
+if grep -q "set_home_4" "$form"; then
+	echo "best-of-three offers a fourth set"
+	exit 1
+fi
+# No maximum on a box: at eleven, 12:10 and 13:11 are ordinary results, so the
+# rule is written out beside them instead.
+if grep -q "max=" "$form"; then
+	echo "a score box carries a maximum, which would reject 12:10"
+	exit 1
+fi
+grep -q "10:10" "$form" || {
+	echo "the deuce rule is not stated where the scores are typed"
+	exit 1
+}
+
+echo "== a rejected form reaches the page =="
+size=$(curl -fsS http://app:8080/static/js/app.js | wc -c)
+[ "$size" -gt 100 ] || {
+	# Without it HTMX drops the 422 that carries the reason, and a wrong
+	# score looks like a broken button.
+	echo "the swap-on-422 script is missing or empty ($size bytes)"
+	exit 1
+}
+
 echo "== ranking: the table scrolls, the page does not =="
 curl -fsS http://app:8080/ | grep -q "class=\"table-scroll\" tabindex=\"0\"" || {
 	echo "the ranking is not in a focusable scroll box"

@@ -21,6 +21,7 @@ generierten Teile des Pipeline-Moduls.
 ```sh
 task up        # Compose-Umgebung starten (App + Postgres)
 task ci        # lint, test, build, verify — identisch zur Pipeline
+task office:up # für einen Abend an der Platte, im Netz erreichbar
 ```
 
 Alle Befehle laufen über [Task](https://taskfile.dev/). Die eigentliche
@@ -34,6 +35,7 @@ CI gleich — `task ci` ist kein Näherungswert, sondern derselbe Code.
 - `CLAUDE.md` — Invarianten, fachliche Begriffe, Konventionen. Vor Änderungen lesen.
 - `docs/mvp-plan.md` — Scope, Datenmodell, Arbeitspakete, Definition of Done.
 - `docs/adr/` — Architekturentscheidungen samt verworfener Alternativen.
+- `docs/turnier-vor-ort.md` — ein Abend an der Platte mit einem Laptop für alle.
 
 Eine Änderung, die einem ADR widerspricht, braucht ein neues ADR mit
 `supersedes`-Verweis.

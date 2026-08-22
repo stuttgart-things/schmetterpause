@@ -49,7 +49,7 @@ templ Kiosk(v KioskView) {
 						@playerPicker("kiosk-away", "away_id", v.Players)
 					</div>
 					@modeRow("kiosk", v.BestOf, v.PointsToWin)
-					@setRows(v.Sets)
+					@setRows("kiosk", v.Sets, v.BestOf, v.PointsToWin)
 					<button type="submit">Eintragen und werten</button>
 				</form>
 			}

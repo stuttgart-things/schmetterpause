@@ -122,9 +122,39 @@ type SessionView struct {
 // SignedIn reports whether a player is recognised.
 func (v SessionView) SignedIn() bool { return v.DisplayName != "" }
 
-// MaxSetRows is how many set rows the entry form offers. Best-of-seven is the
-// longest mode, so seven rows can hold any legal result.
+// MaxSetRows is how many set rows a submitted form can carry. Best-of-seven
+// is the longest mode, so seven rows can hold any legal result. What a form
+// *shows* is SetRows — a shorter mode shows fewer.
 const MaxSetRows = 7
+
+// SetRows is the rows a mode actually needs. Best-of-three has no fourth set,
+// and four empty boxes underneath it are four chances to type into the wrong
+// one.
+//
+// It clamps rather than pads: a best_of that arrived from somewhere other than
+// the picker still renders, it just renders everything.
+func SetRows(sets []SetInput, bestOf int) []SetInput {
+	if bestOf <= 0 || bestOf > len(sets) {
+		return sets
+	}
+	return sets[:bestOf]
+}
+
+// DeuceFrom is the score from which a set no longer ends at the target.
+//
+// This is why the boxes carry no maximum: at eleven, 12:10 and 13:11 are
+// ordinary results, and a form that refused them would be wrong more often
+// than the one that accepts 15:8 and has the server explain itself.
+func DeuceFrom(pointsToWin int) int { return pointsToWin - 1 }
+
+// SetsView is what /fragments/sets needs: which form asked, in which mode,
+// with what already typed into it.
+type SetsView struct {
+	Prefix      string
+	BestOf      int
+	PointsToWin int
+	Sets        []SetInput
+}
 
 // MatchFormView drives the result entry form. Everything the player typed
 // comes back on a rejection, so nobody re-enters a match they already typed.

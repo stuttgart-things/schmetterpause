@@ -1,0 +1,37 @@
+# One laptop at the table, everybody else on their phone.
+#
+#   task office:ip     -- find the address the laptop answers on
+#   SP_PUBLIC_BASE_URL=http://<that address>:8080 \
+#   SP_KIOSK_TOKEN=... SP_SESSION_KEY=... task office:up
+#
+# An overlay on compose.yaml, not a replacement: same image, same database,
+# same variables (invariant 1 and 2). This file hardcodes no host of its own —
+# the three values that cannot have a sensible default refuse to start rather
+# than start wrong, because each of them fails silently in its own way and all
+# three fail in front of the whole office.
+#
+# docs/turnier-vor-ort.md walks through the evening.
+
+services:
+  db:
+    # The development stack is started and stopped by hand. This one has to
+    # survive a lid that was closed and opened again.
+    restart: unless-stopped
+
+  app:
+    environment:
+      # The address a phone has to reach. The sheet cannot read it off the
+      # request the way it does behind a proxy: whoever opens the sheet is
+      # sitting at the laptop, so the request says localhost and the printed
+      # code would send every phone to its own browser.
+      SP_PUBLIC_BASE_URL: ${SP_PUBLIC_BASE_URL:?the address a phone has to reach, e.g. http://192.168.1.23:8080 - run "task office:ip"}
+
+      # Without this /kiosk is a 404 and every player has to bring their own
+      # device before a single result can be entered.
+      SP_KIOSK_TOKEN: ${SP_KIOSK_TOKEN:?pick a token, it unlocks the machine at the table once via /kiosk?token=...}
+
+      # Not the development default: with that one, anybody who has read this
+      # repository can forge a session cookie. openssl rand -hex 32
+      SP_SESSION_KEY: ${SP_SESSION_KEY:?generate one of at least 32 characters, e.g. openssl rand -hex 32}
+
+      SP_LOG_LEVEL: ${SP_LOG_LEVEL:-info}

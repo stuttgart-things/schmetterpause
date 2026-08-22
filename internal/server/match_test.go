@@ -284,3 +284,110 @@ func TestTheMatchFormFragment(t *testing.T) {
 		t.Errorf("the fragment is not the entry form: %s", rec.Body.String())
 	}
 }
+
+// setsFragment asks /fragments/sets the way the mode picker does.
+func setsFragment(t *testing.T, h http.Handler, cookie *http.Cookie, q url.Values) string {
+	t.Helper()
+
+	r := httptest.NewRequest(http.MethodGet, "/fragments/sets?"+q.Encode(), nil)
+	if cookie != nil {
+		r.AddCookie(cookie)
+	}
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, r)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200", rec.Code)
+	}
+	return rec.Body.String()
+}
+
+func TestTheFormOffersOnlyTheSetsTheModeCanHave(t *testing.T) {
+	// Seven empty boxes under a best-of-three are four chances to type into a
+	// set that cannot exist.
+	h, _, cookie := twoPlayers(t)
+
+	body := fragment(t, h, "/fragments/match", cookie).Body.String()
+
+	// Best-of-five is the default the form comes up in.
+	for _, want := range []string{`name="set_home_5"`, `name="set_away_5"`} {
+		if !strings.Contains(body, want) {
+			t.Errorf("the default form is missing %q", want)
+		}
+	}
+	for _, unwanted := range []string{`name="set_home_6"`, `name="set_home_7"`} {
+		if strings.Contains(body, unwanted) {
+			t.Errorf("the default form offers %q, which best-of-five cannot have", unwanted)
+		}
+	}
+}
+
+func TestChangingTheModeRedrawsTheRowsAndKeepsWhatWasTyped(t *testing.T) {
+	h, _, cookie := twoPlayers(t)
+
+	body := setsFragment(t, h, cookie, url.Values{
+		"sets_prefix":   {"entry"},
+		"best_of":       {"3"},
+		"points_to_win": {"11"},
+		"set_home_1":    {"11"},
+		"set_away_1":    {"7"},
+	})
+
+	if strings.Contains(body, `name="set_home_4"`) {
+		t.Error("best-of-three still offers a fourth set")
+	}
+	if !strings.Contains(body, `name="set_home_3"`) {
+		t.Error("best-of-three is missing its third set")
+	}
+	// The point of hx-include: switching the mode must not empty the boxes.
+	if !strings.Contains(body, `value="11"`) || !strings.Contains(body, `value="7"`) {
+		t.Errorf("the fragment dropped what was already typed: %s", body)
+	}
+	if !strings.Contains(body, `id="sets-entry"`) {
+		t.Errorf("the fragment does not render into the form that asked: %s", body)
+	}
+}
+
+func TestTheDeuceRuleIsWrittenWhereTheScoresAreTyped(t *testing.T) {
+	// A box cannot carry a maximum: at eleven, 12:10 and 13:11 are ordinary
+	// results. So the rule is written out next to the boxes instead.
+	h, _, cookie := twoPlayers(t)
+
+	for _, tc := range []struct{ pointsToWin, deuce string }{
+		{"11", "10:10"},
+		{"21", "20:20"},
+	} {
+		body := setsFragment(t, h, cookie, url.Values{
+			"sets_prefix":   {"entry"},
+			"best_of":       {"5"},
+			"points_to_win": {tc.pointsToWin},
+		})
+
+		if !strings.Contains(body, "Bis "+tc.pointsToWin+" Punkte") {
+			t.Errorf("points_to_win=%s: the rule does not name the target: %s", tc.pointsToWin, body)
+		}
+		if !strings.Contains(body, tc.deuce) {
+			t.Errorf("points_to_win=%s: the rule does not say when a set runs on", tc.pointsToWin)
+		}
+		if strings.Contains(body, `max="`) {
+			t.Errorf("points_to_win=%s: a box carries a maximum, which would reject %s and worse",
+				tc.pointsToWin, "12:10")
+		}
+	}
+}
+
+func TestAnImpossiblePrefixDoesNotReachTheMarkup(t *testing.T) {
+	h, _, cookie := twoPlayers(t)
+
+	body := setsFragment(t, h, cookie, url.Values{
+		"sets_prefix": {`"><script>alert(1)</script>`},
+		"best_of":     {"5"},
+	})
+
+	if strings.Contains(body, "<script") {
+		t.Errorf("the prefix reached the markup: %s", body)
+	}
+	if !strings.Contains(body, `id="sets-entry"`) {
+		t.Errorf("an unusable prefix did not fall back: %s", body)
+	}
+}

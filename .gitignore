@@ -36,3 +36,6 @@ go.work.sum
 
 # Task state files
 /.task/
+
+# Database dumps from an evening at the table
+/schmetterpause-*.sql

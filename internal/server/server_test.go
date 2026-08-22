@@ -100,7 +100,10 @@ func TestIndexRendersLayout(t *testing.T) {
 		t.Fatalf("status = %d, want 200", rec.Code)
 	}
 	body := rec.Body.String()
-	for _, want := range []string{"Schmetterpause", "/static/js/htmx.min.js", `hx-get="/fragments/status"`} {
+	for _, want := range []string{
+		"Schmetterpause", "/static/js/htmx.min.js", "/static/js/app.js",
+		`hx-get="/fragments/status"`,
+	} {
 		if !strings.Contains(body, want) {
 			t.Errorf("page does not contain %q", want)
 		}
@@ -147,6 +150,9 @@ func TestStaticAssetsAreEmbedded(t *testing.T) {
 
 	for _, asset := range []string{
 		"/static/js/htmx.min.js",
+		// Without this one a rejected form is answered with silence: HTMX
+		// drops the 422 that carries the reason.
+		"/static/js/app.js",
 		"/static/css/app.css",
 		"/static/fonts/space-grotesk-latin.woff2",
 		"/static/fonts/jetbrains-mono-latin.woff2",
