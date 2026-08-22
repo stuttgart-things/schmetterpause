@@ -516,9 +516,23 @@ grep -q schmetterpause_session "$cookies" || {
 }
 
 # The point of AP2: the same browser maps to the same player on a later
-# request, through nothing but the cookie it kept.
-curl -fsS -b "$cookies" http://app:8080/ | grep -q "Angemeldet als" || {
+# request, through nothing but the cookie it kept. Being recognised shows in
+# the top bar, and it is rendered server-side — a name that only turns up
+# once a fragment has loaded would pass a test and flicker for a player.
+home=$(mktemp)
+curl -fsS -b "$cookies" http://app:8080/ > "$home"
+grep -q "class=\"whoami-name\"" "$home" || {
+	echo "the top bar does not say who this is"
+	exit 1
+}
+grep -q ">Verify Anna</a>" "$home" || {
 	echo "the returning request was not recognised"
+	exit 1
+}
+
+echo "== top bar: the badge counts what waits =="
+curl -fsS -b "$cookies" http://app:8080/fragments/whoami | grep -q "whoami-badge" && {
+	echo "a badge turned up with nothing waiting"
 	exit 1
 }
 
@@ -556,6 +570,12 @@ curl -fsS -b "$cookies" -X POST http://app:8080/matches \
 	--data "opponent_id=$opponent&best_of=3&points_to_win=11&set_home_1=11&set_away_1=9&set_home_2=12&set_away_2=10" \
 	| grep -q "bestätigen" || {
 	echo "a valid result was not stored as pending confirmation"
+	exit 1
+}
+
+# Anna entered one, so it now waits on Bodo and the badge says so.
+curl -fsS -b "$second" http://app:8080/fragments/whoami | grep -q "whoami-badge" || {
+	echo "the badge does not count the result waiting on the opponent"
 	exit 1
 }
 
