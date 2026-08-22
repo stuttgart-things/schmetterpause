@@ -468,3 +468,124 @@ func TestABystanderCannotCorrect(t *testing.T) {
 		t.Errorf("Correct() by a bystander = %v, want ErrNotYours", err)
 	}
 }
+
+// TestRecordSettlesWithoutAsking is what the kiosk rests on: somebody watched
+// the match and wrote it down, so the result counts on the spot.
+func TestRecordSettlesWithoutAsking(t *testing.T) {
+	store, ctx := newStore(t)
+
+	anna, err := store.Players().Create(ctx, "Anna", domain.DefaultTTR)
+	if err != nil {
+		t.Fatalf("create Anna: %v", err)
+	}
+	bodo, err := store.Players().Create(ctx, "Bodo", domain.DefaultTTR)
+	if err != nil {
+		t.Fatalf("create Bodo: %v", err)
+	}
+
+	settlement, err := scoring.Record(ctx, store, anna.ID, bodo.ID, match.Result{
+		Mode: match.Mode{BestOf: 3, PointsToWin: 11},
+		Sets: []match.Set{{Home: 11, Away: 9}, {Home: 12, Away: 10}},
+	}, time.Now())
+	if err != nil {
+		t.Fatalf("Record(): %v", err)
+	}
+	if !settlement.HomeWon || settlement.HomeSets != 2 {
+		t.Errorf("settlement reads %d:%d, home won = %v",
+			settlement.HomeSets, settlement.AwaySets, settlement.HomeWon)
+	}
+
+	stored, err := store.Matches().ByID(ctx, settlement.Match.ID)
+	if err != nil {
+		t.Fatalf("ByID(): %v", err)
+	}
+	if stored.Status != domain.MatchConfirmed || stored.ConfirmedAt == nil {
+		t.Errorf("status = %q, confirmedAt = %v — a recorded match waits on nobody",
+			stored.Status, stored.ConfirmedAt)
+	}
+	if len(stored.Sets) != 2 {
+		t.Errorf("%d sets stored, want 2", len(stored.Sets))
+	}
+
+	if got := ttrOf(ctx, t, store, anna.ID); got != 1008 {
+		t.Errorf("Anna is on %d, want 1008", got)
+	}
+	if got := ttrOf(ctx, t, store, bodo.ID); got != 992 {
+		t.Errorf("Bodo is on %d, want 992", got)
+	}
+
+	// The history is what a profile draws from, so it has to be there too.
+	history, err := store.TTRHistory().ForPlayer(ctx, anna.ID, 10)
+	if err != nil {
+		t.Fatalf("ForPlayer(): %v", err)
+	}
+	if len(history) != 1 || history[0].TTRAfter != 1008 {
+		t.Errorf("history = %+v, want one entry ending at 1008", history)
+	}
+
+	// Nothing waits on either of them.
+	for name, id := range map[string]uuid.UUID{"Anna": anna.ID, "Bodo": bodo.ID} {
+		n, err := store.Matches().PendingCountFor(ctx, id)
+		if err != nil {
+			t.Fatalf("PendingCountFor(%s): %v", name, err)
+		}
+		if n != 0 {
+			t.Errorf("%d results wait on %s after a recorded match, want 0", n, name)
+		}
+	}
+}
+
+// TestRecordLeavesNothingBehindWhenItRefuses: create and settle share one
+// transaction, so an impossible result must not leave a match row.
+func TestRecordLeavesNothingBehindWhenItRefuses(t *testing.T) {
+	store, ctx := newStore(t)
+
+	anna, err := store.Players().Create(ctx, "Anna", domain.DefaultTTR)
+	if err != nil {
+		t.Fatalf("create Anna: %v", err)
+	}
+	bodo, err := store.Players().Create(ctx, "Bodo", domain.DefaultTTR)
+	if err != nil {
+		t.Fatalf("create Bodo: %v", err)
+	}
+
+	// 11:10 is one clear point, not two.
+	_, err = scoring.Record(ctx, store, anna.ID, bodo.ID, match.Result{
+		Mode: match.Mode{BestOf: 3, PointsToWin: 11},
+		Sets: []match.Set{{Home: 11, Away: 10}, {Home: 11, Away: 9}},
+	}, time.Now())
+
+	var rejection *match.Rejection
+	if !errors.As(err, &rejection) {
+		t.Fatalf("Record() = %v, want a rejection", err)
+	}
+
+	recent, err := store.Matches().RecentFor(ctx, anna.ID, 10)
+	if err != nil {
+		t.Fatalf("RecentFor(): %v", err)
+	}
+	if len(recent) != 0 {
+		t.Errorf("%d matches survived a refused recording", len(recent))
+	}
+	if got := ttrOf(ctx, t, store, anna.ID); got != domain.DefaultTTR {
+		t.Errorf("Anna moved to %d on a refused recording", got)
+	}
+}
+
+func TestRecordRefusesAPlayerAgainstThemselves(t *testing.T) {
+	store, ctx := newStore(t)
+
+	anna, err := store.Players().Create(ctx, "Anna", domain.DefaultTTR)
+	if err != nil {
+		t.Fatalf("create Anna: %v", err)
+	}
+
+	_, err = scoring.Record(ctx, store, anna.ID, anna.ID, match.Result{
+		Mode: match.Mode{BestOf: 3, PointsToWin: 11},
+		Sets: []match.Set{{Home: 11, Away: 9}, {Home: 11, Away: 7}},
+	}, time.Now())
+
+	if !errors.Is(err, scoring.ErrSamePlayer) {
+		t.Errorf("Record() against themselves = %v, want ErrSamePlayer", err)
+	}
+}

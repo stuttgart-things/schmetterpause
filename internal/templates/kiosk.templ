@@ -1,0 +1,68 @@
+package templates
+
+// Kiosk is the page one machine at the table works from: everybody's results
+// entered by whoever is holding the pen.
+//
+// A page of its own rather than a mode on the start page, because the two
+// answer different questions. The start page asks "what did *you* play"; this
+// one asks "what just happened at the table", and the ranking beside it is
+// what people crane their necks at between matches.
+templ Kiosk(v KioskView) {
+	@Layout("Kiosk", HeaderView{}) {
+		<h1>Kiosk</h1>
+		<p class="kiosk-lead muted">
+			Ergebnisse zählen sofort — hier trägt ein, wer zugesehen hat.
+		</p>
+		if v.Note != "" {
+			<p class="kiosk-note" role="status">{ v.Note }</p>
+		}
+		if v.Error != "" {
+			<p class="fail" role="alert">{ v.Error }</p>
+		}
+		<section class="match">
+			<h2>Spieler anlegen</h2>
+			<form method="post" action="/kiosk/players">
+				<label for="kiosk-name">Name</label>
+				<input
+					id="kiosk-name"
+					name="display_name"
+					maxlength="40"
+					autocapitalize="words"
+					autocomplete="off"
+					required
+				/>
+				<button type="submit">Anlegen</button>
+			</form>
+		</section>
+		<section class="match">
+			<h2>Ergebnis eintragen</h2>
+			if len(v.Players) < 2 {
+				<p class="muted">Erst zwei Spieler anlegen.</p>
+			} else {
+				<form method="post" action="/kiosk/matches">
+					<div class="row">
+						<label for="kiosk-home">Spieler</label>
+						@playerPicker("kiosk-home", "home_id", v.Players)
+					</div>
+					<div class="row">
+						<label for="kiosk-away">Gegner</label>
+						@playerPicker("kiosk-away", "away_id", v.Players)
+					</div>
+					@modeRow("kiosk", v.BestOf, v.PointsToWin)
+					@setRows(v.Sets)
+					<button type="submit">Eintragen und werten</button>
+				</form>
+			}
+		</section>
+		@Standings(v.Standings)
+	}
+}
+
+templ playerPicker(id, name string, players []OpponentOption) {
+	<select id={ id } name={ name } required>
+		<option value="">bitte wählen</option>
+		for _, p := range players {
+			<option value={ p.ID }>{ p.DisplayName }</option>
+		}
+	</select>
+}

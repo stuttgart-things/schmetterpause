@@ -177,3 +177,27 @@ func TestPublicBaseURL(t *testing.T) {
 		})
 	}
 }
+
+// TestKioskTokenIsOffByDefault: an unlocked kiosk on a laptop in an office is
+// worse than none, so it has to be switched on deliberately.
+func TestKioskTokenIsOffByDefault(t *testing.T) {
+	t.Setenv("SP_DATABASE_URL", "postgres://user:pw@db:5432/schmetterpause")
+	t.Setenv("SP_SESSION_KEY", testKey)
+
+	cfg, err := config.Load()
+	if err != nil {
+		t.Fatalf("Load(): %v", err)
+	}
+	if cfg.KioskToken != "" {
+		t.Errorf("KioskToken = %q, want it empty unless asked for", cfg.KioskToken)
+	}
+
+	t.Setenv("SP_KIOSK_TOKEN", "tuesday")
+	cfg, err = config.Load()
+	if err != nil {
+		t.Fatalf("Load(): %v", err)
+	}
+	if cfg.KioskToken != "tuesday" {
+		t.Errorf("KioskToken = %q, want \"tuesday\"", cfg.KioskToken)
+	}
+}

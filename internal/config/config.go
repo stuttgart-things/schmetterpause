@@ -67,6 +67,16 @@ type Config struct {
 	// application would crash-loop merely because the database is ready a few
 	// seconds later.
 	DatabaseConnectTimeout time.Duration
+	// KioskToken unlocks the kiosk: one machine at the table where somebody
+	// creates players and enters results for everybody. Empty by default,
+	// and then the kiosk does not exist at all rather than existing
+	// unlocked.
+	//
+	// It is a lock against stumbling into the page, not a security boundary.
+	// What it protects is the ability to enter a wrong result, which is what
+	// the application already lets anybody do and which docs/adr/0004
+	// answers socially rather than technically.
+	KioskToken string
 	// PublicBaseURL is the address a phone has to reach, scheme and host and
 	// nothing else. Empty by default: the QR sheet then reads the address off
 	// the request, which is right wherever the application is reached
@@ -147,6 +157,8 @@ func Load() (Config, error) {
 	}
 
 	cfg.SessionKey = []byte(env("SESSION_KEY", ""))
+
+	cfg.KioskToken = env("KIOSK_TOKEN", "")
 
 	if raw := env("PUBLIC_BASE_URL", ""); raw != "" {
 		base, err := parseBaseURL(raw)

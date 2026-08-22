@@ -65,6 +65,14 @@ func (s *Server) routes() http.Handler {
 	page.HandleFunc("POST /matches/{id}/dispute", s.handleDisputeMatch)
 	page.HandleFunc("POST /matches/{id}/correct", s.handleCorrectMatch)
 	page.HandleFunc("GET /qr", s.handleQRSheet)
+	// Unset token, no routes: the kiosk does not exist rather than existing
+	// unlocked, and /kiosk is a 404 like any other unknown path.
+	if s.cfg.KioskToken != "" {
+		page.HandleFunc("GET /kiosk", s.handleKiosk)
+		page.HandleFunc("POST /kiosk/players", s.handleKioskAddPlayer)
+		page.HandleFunc("POST /kiosk/matches", s.handleKioskRecord)
+	}
+
 	mux.Handle("/", auth.Middleware(s.auth, s.log)(page))
 
 	return recoverer(s.log)(requestLogger(s.log)(mux))

@@ -29,6 +29,24 @@ type StatusView struct {
 	Version string
 }
 
+// KioskView is the page one machine at the table works from.
+//
+// Sets and mode are not handed back after a rejection the way result entry
+// does it: a scorekeeper is holding a sheet and reading from it, so the fix
+// for a mistyped number is to type it again, not to hunt for what changed.
+type KioskView struct {
+	Players     []OpponentOption
+	BestOf      int
+	PointsToWin int
+	Sets        []SetInput
+	Standings   StandingsView
+	// Note reports what just happened, in the words somebody at the table
+	// would use: "Anna schlägt Bodo 3:1."
+	Note string
+	// Error explains a refusal. Empty otherwise.
+	Error string
+}
+
 // HeaderView is the state in the top bar: who this is, and how much is
 // waiting for them.
 type HeaderView struct {

@@ -38,6 +38,11 @@ var (
 	// it. A result confirmed by whoever entered it is not confirmed at all.
 	ErrNotYours = errors.New("this match is not yours to rule on")
 
+	// ErrSamePlayer reports a match somebody plays against themselves. The
+	// schema refuses it too (matches_players_differ); catching it here makes
+	// the answer a sentence rather than a constraint violation.
+	ErrSamePlayer = errors.New("a player cannot play themselves")
+
 	// ErrNotDisputed reports a match that is not contested. Only a contested
 	// result can be corrected: a pending one is still waiting for a plain yes
 	// or no, and a confirmed one has already moved two ratings.
@@ -81,55 +86,8 @@ func Confirm(
 			return err
 		}
 
-		home, err := tx.Players().ByID(ctx, m.HomeID)
-		if err != nil {
-			return fmt.Errorf("load the home player: %w", err)
-		}
-		away, err := tx.Players().ByID(ctx, m.AwayID)
-		if err != nil {
-			return fmt.Errorf("load the away player: %w", err)
-		}
-
-		outcome, err := match.Validate(toResult(m))
-		if err != nil {
-			// The row is in the database, so this is not a player mistake —
-			// it means something wrote a result that cannot have happened.
-			return fmt.Errorf("stored match %s is not a possible result: %w", m.ID, err)
-		}
-
-		homeChange, awayChange := ttr.RateMatch(home.TTR, away.TTR, outcome.HomeWon)
-
-		if err := tx.Players().UpdateTTR(ctx, home.ID, homeChange.After); err != nil {
-			return err
-		}
-		if err := tx.Players().UpdateTTR(ctx, away.ID, awayChange.After); err != nil {
-			return err
-		}
-
-		// Written before the status changes, so a failure here leaves the
-		// match pending rather than confirmed-but-unexplained.
-		err = tx.TTRHistory().Append(ctx, []domain.TTRChange{
-			{PlayerID: home.ID, MatchID: m.ID, TTRBefore: homeChange.Before, TTRAfter: homeChange.After},
-			{PlayerID: away.ID, MatchID: m.ID, TTRBefore: awayChange.Before, TTRAfter: awayChange.After},
-		})
-		if err != nil {
-			return err
-		}
-
-		confirmedAt := at
-		if err := tx.Matches().SetStatus(ctx, m.ID, domain.MatchConfirmed, &confirmedAt); err != nil {
-			return err
-		}
-
-		m.Status = domain.MatchConfirmed
-		m.ConfirmedAt = &confirmedAt
-		settlement = Settlement{
-			Match: m, Home: home, Away: away,
-			HomeChange: homeChange, AwayChange: awayChange,
-			HomeWon:  outcome.HomeWon,
-			HomeSets: outcome.HomeSets, AwaySets: outcome.AwaySets,
-		}
-		return nil
+		settlement, err = settle(ctx, tx, m, at)
+		return err
 	})
 	if err != nil {
 		return Settlement{}, err
@@ -246,6 +204,124 @@ func Correct(
 		return Correction{}, err
 	}
 	return correction, nil
+}
+
+// settle rates a match and marks it confirmed. It is the part Confirm and
+// Record have in common: how a result turns into two ratings does not depend
+// on who decided the result counts.
+//
+// The caller owns the transaction, so a failure anywhere in here takes the
+// whole thing with it.
+func settle(ctx context.Context, tx repository.Store, m domain.Match, at time.Time) (Settlement, error) {
+	home, err := tx.Players().ByID(ctx, m.HomeID)
+	if err != nil {
+		return Settlement{}, fmt.Errorf("load the home player: %w", err)
+	}
+	away, err := tx.Players().ByID(ctx, m.AwayID)
+	if err != nil {
+		return Settlement{}, fmt.Errorf("load the away player: %w", err)
+	}
+
+	outcome, err := match.Validate(toResult(m))
+	if err != nil {
+		// The row is in the database, so this is not a player mistake — it
+		// means something wrote a result that cannot have happened.
+		return Settlement{}, fmt.Errorf("stored match %s is not a possible result: %w", m.ID, err)
+	}
+
+	homeChange, awayChange := ttr.RateMatch(home.TTR, away.TTR, outcome.HomeWon)
+
+	if err := tx.Players().UpdateTTR(ctx, home.ID, homeChange.After); err != nil {
+		return Settlement{}, err
+	}
+	if err := tx.Players().UpdateTTR(ctx, away.ID, awayChange.After); err != nil {
+		return Settlement{}, err
+	}
+
+	// Written before the status changes, so a failure here leaves the match
+	// pending rather than confirmed-but-unexplained.
+	err = tx.TTRHistory().Append(ctx, []domain.TTRChange{
+		{PlayerID: home.ID, MatchID: m.ID, TTRBefore: homeChange.Before, TTRAfter: homeChange.After},
+		{PlayerID: away.ID, MatchID: m.ID, TTRBefore: awayChange.Before, TTRAfter: awayChange.After},
+	})
+	if err != nil {
+		return Settlement{}, err
+	}
+
+	confirmedAt := at
+	if err := tx.Matches().SetStatus(ctx, m.ID, domain.MatchConfirmed, &confirmedAt); err != nil {
+		return Settlement{}, err
+	}
+
+	m.Status = domain.MatchConfirmed
+	m.ConfirmedAt = &confirmedAt
+	return Settlement{
+		Match: m, Home: home, Away: away,
+		HomeChange: homeChange, AwayChange: awayChange,
+		HomeWon:  outcome.HomeWon,
+		HomeSets: outcome.HomeSets, AwaySets: outcome.AwaySets,
+	}, nil
+}
+
+// Record stores a result between two players and settles it at once.
+//
+// It is what a scorekeeper does: somebody watched the match, both players
+// were standing at the table, and the sheet is the authority. There is no
+// third party left to ask, so the confirmation step Record skips would only
+// be a question nobody is in a position to answer differently.
+//
+// Everything else is the ordinary path — the same validation, the same
+// rating, the same history — and it all happens in one transaction, so a
+// failure leaves no half-recorded match behind.
+func Record(
+	ctx context.Context,
+	store repository.Store,
+	homeID, awayID uuid.UUID,
+	result match.Result,
+	at time.Time,
+) (Settlement, error) {
+	if homeID == awayID {
+		return Settlement{}, ErrSamePlayer
+	}
+
+	var settlement Settlement
+
+	err := store.InTx(ctx, func(tx repository.Store) error {
+		if _, err := match.Validate(result); err != nil {
+			return err
+		}
+
+		sets := make([]domain.MatchSet, 0, len(result.Sets))
+		for i, set := range result.Sets {
+			sets = append(sets, domain.MatchSet{
+				SetNo: i + 1, HomePoints: set.Home, AwayPoints: set.Away,
+			})
+		}
+
+		created, err := tx.Matches().Create(ctx, domain.Match{
+			HomeID:      homeID,
+			AwayID:      awayID,
+			BestOf:      result.Mode.BestOf,
+			PointsToWin: result.Mode.PointsToWin,
+			// Recorded rather than reported: the match never waits on
+			// anybody, so reported_by names who it is credited to and not
+			// who has to agree.
+			Status:     domain.MatchPending,
+			ReportedBy: homeID,
+			PlayedAt:   at,
+			Sets:       sets,
+		})
+		if err != nil {
+			return err
+		}
+
+		settlement, err = settle(ctx, tx, created, at)
+		return err
+	})
+	if err != nil {
+		return Settlement{}, err
+	}
+	return settlement, nil
 }
 
 // load fetches the match and checks that by is allowed to rule on it.
