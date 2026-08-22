@@ -652,3 +652,20 @@ tr.self td { background: color-mix(in srgb, var(--accent) 8%, transparent); }
 
 	.qr svg { width: 12cm; border: none; }
 }
+
+/* --- Kiosk ------------------------------------------------------------- */
+
+.kiosk-lead { margin: -0.75rem 0 1.5rem; }
+
+/* The answer to "did that go in?", in the words somebody at the table would
+   use. Loud on purpose: at a tournament the laptop is read from two metres
+   away, between matches. */
+.kiosk-note {
+	margin: 0 0 1rem;
+	padding: 0.8rem 1.1rem;
+	background: color-mix(in srgb, var(--ok) 14%, var(--card));
+	border: 1px solid color-mix(in srgb, var(--ok) 45%, transparent);
+	border-radius: var(--radius);
+	font-size: 1.05rem;
+	font-weight: 600;
+}
