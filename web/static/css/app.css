@@ -405,6 +405,35 @@ button.secondary:hover {
 
 .colon { color: var(--muted); }
 
+/* The heading row lines up with the boxes below it by having the same shape:
+   same flex row, same widths, so each name sits over the box it belongs to
+   rather than near it. */
+.set-head {
+	margin-bottom: 0.5rem;
+}
+
+.set-side {
+	width: 4.5rem;
+	text-align: center;
+	font-family: var(--font-mono);
+	font-size: 0.68rem;
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+	color: var(--muted);
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.set-head .colon {
+	/* Holds the colon's width so the columns stay aligned, shows nothing. */
+	visibility: hidden;
+}
+
+@media (max-width: 30rem) {
+	.set-side { font-size: 0.62rem; }
+}
+
 /* --- Zu bestätigen ----------------------------------------------------- */
 
 .pending-list { list-style: none; margin: 0; padding: 0; }

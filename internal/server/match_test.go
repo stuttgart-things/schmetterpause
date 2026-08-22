@@ -391,3 +391,60 @@ func TestAnImpossiblePrefixDoesNotReachTheMarkup(t *testing.T) {
 		t.Errorf("an unusable prefix did not fall back: %s", body)
 	}
 }
+
+func TestTheScoreColumnsSayWhoseTheyAre(t *testing.T) {
+	// Two boxes and a colon do not say which side is which. At the table
+	// nobody stops to work it out — they type, and the wrong player wins.
+	h, store, cookie := twoPlayers(t)
+	bodo := opponentID(t, store, "Bodo")
+
+	t.Run("entry form: the reader on the left, the opponent by name", func(t *testing.T) {
+		body := setsFragment(t, h, cookie, url.Values{
+			"sets_prefix": {"entry"},
+			"opponent_id": {bodo},
+			"best_of":     {"3"},
+		})
+
+		if !strings.Contains(body, ">Du<") {
+			t.Errorf("the left column is not named: %s", body)
+		}
+		if !strings.Contains(body, ">Bodo<") {
+			t.Errorf("the right column does not name the opponent: %s", body)
+		}
+	})
+
+	t.Run("kiosk: both sides by name", func(t *testing.T) {
+		anna := opponentID(t, store, "Anna")
+		body := setsFragment(t, h, cookie, url.Values{
+			"sets_prefix": {"kiosk"},
+			"home_id":     {anna},
+			"away_id":     {bodo},
+			"best_of":     {"3"},
+		})
+
+		for _, want := range []string{">Anna<", ">Bodo<"} {
+			if !strings.Contains(body, want) {
+				t.Errorf("the kiosk columns are missing %q: %s", want, body)
+			}
+		}
+		if strings.Contains(body, ">Du<") {
+			t.Error("the kiosk entered for somebody else and still said Du")
+		}
+	})
+
+	t.Run("nobody picked yet: the generic words", func(t *testing.T) {
+		body := setsFragment(t, h, cookie, url.Values{
+			"sets_prefix": {"kiosk"},
+			"home_id":     {"not-a-uuid"},
+			"best_of":     {"3"},
+		})
+
+		// A heading is worth having before the picker is filled in, and this
+		// endpoint draws boxes rather than deciding anything.
+		for _, want := range []string{">Spieler<", ">Gegner<"} {
+			if !strings.Contains(body, want) {
+				t.Errorf("an unresolved side is missing %q: %s", want, body)
+			}
+		}
+	})
+}

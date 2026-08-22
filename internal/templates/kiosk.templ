@@ -20,21 +20,6 @@ templ Kiosk(v KioskView) {
 			<p class="fail" role="alert">{ v.Error }</p>
 		}
 		<section class="match">
-			<h2>Spieler anlegen</h2>
-			<form method="post" action="/kiosk/players">
-				<label for="kiosk-name">Name</label>
-				<input
-					id="kiosk-name"
-					name="display_name"
-					maxlength="40"
-					autocapitalize="words"
-					autocomplete="off"
-					required
-				/>
-				<button type="submit">Anlegen</button>
-			</form>
-		</section>
-		<section class="match">
 			<h2>Ergebnis eintragen</h2>
 			if len(v.Players) < 2 {
 				<p class="muted">Erst zwei Spieler anlegen.</p>
@@ -49,17 +34,43 @@ templ Kiosk(v KioskView) {
 						@playerPicker("kiosk-away", "away_id", v.Players)
 					</div>
 					@modeRow("kiosk", v.BestOf, v.PointsToWin)
-					@setRows("kiosk", v.Sets, v.BestOf, v.PointsToWin)
+					@setRows("kiosk", v.Sets, v.BestOf, v.PointsToWin, SideHome, SideAway)
 					<button type="submit">Eintragen und werten</button>
 				</form>
 			}
+		</section>
+		<section class="match">
+			<h2>Spieler anlegen</h2>
+			<form method="post" action="/kiosk/players">
+				<label for="kiosk-name">Name</label>
+				<input
+					id="kiosk-name"
+					name="display_name"
+					maxlength="40"
+					autocapitalize="words"
+					autocomplete="off"
+					required
+				/>
+				<button type="submit">Anlegen</button>
+			</form>
 		</section>
 		@Standings(v.Standings)
 	}
 }
 
+// The pickers redraw the set rows, because the rows are headed with the two
+// names and a heading that lags behind the picker is worse than none.
 templ playerPicker(id, name string, players []OpponentOption) {
-	<select id={ id } name={ name } required>
+	<select
+		id={ id }
+		name={ name }
+		required
+		hx-get="/fragments/sets"
+		hx-target="#sets-kiosk"
+		hx-swap="outerHTML"
+		hx-include="closest form"
+		hx-sync="closest form:replace"
+	>
 		<option value="">bitte wählen</option>
 		for _, p := range players {
 			<option value={ p.ID }>{ p.DisplayName }</option>
