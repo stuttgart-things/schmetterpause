@@ -150,6 +150,9 @@ func TestStaticAssetsAreEmbedded(t *testing.T) {
 		"/static/css/app.css",
 		"/static/fonts/space-grotesk-latin.woff2",
 		"/static/fonts/jetbrains-mono-latin.woff2",
+		"/static/img/mark-32.png",
+		"/static/img/mark-180.png",
+		"/static/img/mascot.png",
 	} {
 		rec := get(t, h, asset)
 
@@ -159,6 +162,44 @@ func TestStaticAssetsAreEmbedded(t *testing.T) {
 		}
 		if rec.Body.Len() == 0 {
 			t.Errorf("%s is empty", asset)
+		}
+	}
+}
+
+func TestTheBrowserFindsAnIconWithoutBeingTold(t *testing.T) {
+	// Browsers request /favicon.ico on their own, before they have parsed the
+	// link elements. Answering it costs nothing and keeps the log readable.
+	h := newHandler(newMemStore())
+
+	rec := get(t, h, "/favicon.ico")
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200", rec.Code)
+	}
+	if got := rec.Header().Get("Content-Type"); got != "image/png" {
+		t.Errorf("content type = %q, want image/png", got)
+	}
+	// The eight magic bytes every PNG starts with: proves the route serves the
+	// image rather than a rendered error page with a 200 on it.
+	if got := rec.Body.Bytes(); len(got) < 8 || string(got[1:4]) != "PNG" {
+		t.Errorf("body is not a PNG (%d bytes)", len(got))
+	}
+}
+
+func TestTheMarkStandsBesideTheWordmark(t *testing.T) {
+	h := newHandler(newMemStore())
+
+	body := get(t, h, "/").Body.String()
+
+	for _, want := range []string{
+		`rel="icon"`,
+		`rel="apple-touch-icon"`,
+		`class="brand-logo"`,
+		// Decorative on purpose: the wordmark beside it already says the name.
+		`alt=""`,
+	} {
+		if !strings.Contains(body, want) {
+			t.Errorf("page does not contain %q", want)
 		}
 	}
 }

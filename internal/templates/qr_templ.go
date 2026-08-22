@@ -48,14 +48,14 @@ func QRSheet(v QRSheetView) templ.Component {
 				}()
 			}
 			ctx = templ.InitializeContext(ctx)
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<article class=\"sheet\"><h1>Ergebnis eintragen</h1><p class=\"sheet-lead\">Scannen. Gegner wählen. Sätze eintragen.</p><figure class=\"qr\"><svg viewBox=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<article class=\"sheet\"><img class=\"sheet-mascot\" src=\"/static/img/mascot.png\" width=\"420\" height=\"420\" alt=\"\"><h1>Ergebnis eintragen</h1><p class=\"sheet-lead\">Scannen. Gegner wählen. Sätze eintragen.</p><figure class=\"qr\"><svg viewBox=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var3 string
 			templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.ResolveAttributeValue("0 0 " + strconv.Itoa(v.Size) + " " + strconv.Itoa(v.Size))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `qr.templ`, Line: 17, Col: 73}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `qr.templ`, Line: 20, Col: 73}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var3)
 			if templ_7745c5c3_Err != nil {
@@ -68,7 +68,7 @@ func QRSheet(v QRSheetView) templ.Component {
 			var templ_7745c5c3_Var4 string
 			templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.ResolveAttributeValue("QR-Code für " + v.Target)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `qr.templ`, Line: 19, Col: 44}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `qr.templ`, Line: 22, Col: 44}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var4)
 			if templ_7745c5c3_Err != nil {
@@ -81,7 +81,7 @@ func QRSheet(v QRSheetView) templ.Component {
 			var templ_7745c5c3_Var5 string
 			templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs("QR-Code für " + v.Target)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `qr.templ`, Line: 22, Col: 40}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `qr.templ`, Line: 25, Col: 40}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 			if templ_7745c5c3_Err != nil {
@@ -94,7 +94,7 @@ func QRSheet(v QRSheetView) templ.Component {
 			var templ_7745c5c3_Var6 string
 			templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.ResolveAttributeValue(strconv.Itoa(v.Size))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `qr.templ`, Line: 26, Col: 39}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `qr.templ`, Line: 29, Col: 39}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var6)
 			if templ_7745c5c3_Err != nil {
@@ -107,7 +107,7 @@ func QRSheet(v QRSheetView) templ.Component {
 			var templ_7745c5c3_Var7 string
 			templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.ResolveAttributeValue(strconv.Itoa(v.Size))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `qr.templ`, Line: 26, Col: 71}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `qr.templ`, Line: 29, Col: 71}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var7)
 			if templ_7745c5c3_Err != nil {
@@ -120,7 +120,7 @@ func QRSheet(v QRSheetView) templ.Component {
 			var templ_7745c5c3_Var8 string
 			templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.ResolveAttributeValue(v.Path)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `qr.templ`, Line: 27, Col: 21}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `qr.templ`, Line: 30, Col: 21}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var8)
 			if templ_7745c5c3_Err != nil {
@@ -133,7 +133,7 @@ func QRSheet(v QRSheetView) templ.Component {
 			var templ_7745c5c3_Var9 string
 			templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinStringErrs(v.Target)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `qr.templ`, Line: 29, Col: 26}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `qr.templ`, Line: 32, Col: 26}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var9))
 			if templ_7745c5c3_Err != nil {

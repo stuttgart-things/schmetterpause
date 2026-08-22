@@ -27,46 +27,52 @@ templ standingsBody(v StandingsView) {
 	if len(v.Rows) == 0 {
 		<p class="muted">Noch niemand da.</p>
 	} else {
-		<table>
-			<thead>
-				<tr>
-					<th scope="col">#</th>
-					<th scope="col">Spieler</th>
-					<th scope="col" class="num">TTR</th>
-					<th scope="col" class="num">Spiele</th>
-					<th scope="col" class="num">Bilanz</th>
-				</tr>
-			</thead>
-			<tbody>
-				for _, row := range v.Rows {
-					<tr class={ templ.KV("self", row.IsSelf) }>
-						<td class="rank-cell">
-							if row.Shared {
-								<span class={ rankClass(row.Rank, true) } title="geteilter Platz">
-									{ strconv.Itoa(row.Rank) }
-								</span>
-							} else {
-								<span class={ rankClass(row.Rank, false) }>{ strconv.Itoa(row.Rank) }</span>
-							}
-						</td>
-						<td>
-							<a href={ templ.SafeURL("/players/" + row.ID) }>{ row.DisplayName }</a>
-							if row.IsSelf {
-								<span class="muted">(du)</span>
-							}
-						</td>
-						<td class="num">{ strconv.Itoa(row.TTR) }</td>
-						<td class="num">{ strconv.Itoa(row.Played) }</td>
-						<td class="num">
-							if row.Played == 0 {
-								<span class="muted">–</span>
-							} else {
-								{ strconv.Itoa(row.Won) }:{ strconv.Itoa(row.Lost) }
-							}
-						</td>
+		// The table cannot shrink below the width its content needs, so it
+		// scrolls in its own box rather than pushing the page sideways. The
+		// box is focusable because a scrolling region a keyboard cannot reach
+		// is a region a keyboard cannot read.
+		<div class="table-scroll" tabindex="0" role="region" aria-label="Rangliste">
+			<table>
+				<thead>
+					<tr>
+						<th scope="col">#</th>
+						<th scope="col">Spieler</th>
+						<th scope="col" class="num">TTR</th>
+						<th scope="col" class="num">Spiele</th>
+						<th scope="col" class="num">Bilanz</th>
 					</tr>
-				}
-			</tbody>
-		</table>
+				</thead>
+				<tbody>
+					for _, row := range v.Rows {
+						<tr class={ templ.KV("self", row.IsSelf) }>
+							<td class="rank-cell">
+								if row.Shared {
+									<span class={ rankClass(row.Rank, true) } title="geteilter Platz">
+										{ strconv.Itoa(row.Rank) }
+									</span>
+								} else {
+									<span class={ rankClass(row.Rank, false) }>{ strconv.Itoa(row.Rank) }</span>
+								}
+							</td>
+							<td class="name">
+								<a href={ templ.SafeURL("/players/" + row.ID) }>{ row.DisplayName }</a>
+								if row.IsSelf {
+									<span class="muted">(du)</span>
+								}
+							</td>
+							<td class="num">{ strconv.Itoa(row.TTR) }</td>
+							<td class="num">{ strconv.Itoa(row.Played) }</td>
+							<td class="num">
+								if row.Played == 0 {
+									<span class="muted">–</span>
+								} else {
+									{ strconv.Itoa(row.Won) }:{ strconv.Itoa(row.Lost) }
+								}
+							</td>
+						</tr>
+					}
+				</tbody>
+			</table>
+		</div>
 	}
 }

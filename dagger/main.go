@@ -501,6 +501,32 @@ size=$(curl -fsS http://app:8080/static/fonts/space-grotesk-latin.woff2 | wc -c)
 	exit 1
 }
 
+echo "== mark: the icons are embedded and are really images =="
+icon=$(mktemp)
+for path in /static/img/mark-32.png /static/img/mark-180.png /static/img/mascot.png /favicon.ico; do
+	curl -fsS "http://app:8080$path" > "$icon" || {
+		echo "$path is not served"
+		exit 1
+	}
+	# A rendered error page would come back with a 200 on it, so the check has
+	# to look at the bytes rather than at the status. Reading the file rather
+	# than piping into head: a pipe that closes early makes curl report a write
+	# failure, which would hide a real one.
+	case "$(od -An -c -N 8 "$icon" | tr -d " \n")" in
+		*PNG*) ;;
+		*)
+			echo "$path is not a PNG"
+			exit 1
+			;;
+	esac
+done
+
+echo "== mark: the top bar shows it =="
+curl -fsS http://app:8080/ | grep -q "class=\"brand-logo\"" || {
+	echo "the mark is missing from the top bar"
+	exit 1
+}
+
 echo "== HTMX fragment: handler, repository and database =="
 curl -fsS http://app:8080/fragments/status | grep -q ">erreichbar<" || {
 	echo "status fragment does not report the database as reachable"
@@ -540,6 +566,12 @@ grep -q ">Verify Anna</a>" "$home" || {
 echo "== top bar: the badge counts what waits =="
 curl -fsS -b "$cookies" http://app:8080/fragments/whoami | grep -q "whoami-badge" && {
 	echo "a badge turned up with nothing waiting"
+	exit 1
+}
+
+echo "== ranking: the table scrolls, the page does not =="
+curl -fsS http://app:8080/ | grep -q "class=\"table-scroll\" tabindex=\"0\"" || {
+	echo "the ranking is not in a focusable scroll box"
 	exit 1
 }
 
@@ -766,6 +798,11 @@ curl -fsS -b "$cookies" http://app:8080/qr > "$sheet"
 grep -q "http://app:8080/#match" "$sheet" || {
 	echo "the sheet does not print the address it was reached at"
 	cat "$sheet"
+	exit 1
+}
+
+grep -q "class=\"sheet-mascot\"" "$sheet" || {
+	echo "the sheet has no illustration"
 	exit 1
 }
 

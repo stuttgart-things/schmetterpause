@@ -183,3 +183,22 @@ func TestTheStartPageShowsTheRanking(t *testing.T) {
 		t.Errorf("the start page does not show the ranking: %s", body)
 	}
 }
+
+func TestBothTablesSitInAScrollBox(t *testing.T) {
+	// A table cannot shrink below the width its content needs, so without the
+	// box a long name takes the whole page sideways with it. The box has to be
+	// focusable: a region that scrolls and cannot be reached by keyboard is a
+	// region a keyboard cannot read.
+	h, store, anna, bodo := twoBrowsers(t)
+	settledMatch(t, h, store, anna, bodo)
+
+	for _, page := range []string{"/", "/players/" + opponentID(t, store, "Anna")} {
+		body := fragment(t, h, page, anna).Body.String()
+
+		for _, want := range []string{`class="table-scroll"`, `tabindex="0"`, `role="region"`} {
+			if !strings.Contains(body, want) {
+				t.Errorf("%s: the table is not in a scroll box, missing %q", page, want)
+			}
+		}
+	}
+}

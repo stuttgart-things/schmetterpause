@@ -8,11 +8,18 @@ templ Layout(title string, header HeaderView) {
 			<meta name="viewport" content="width=device-width, initial-scale=1"/>
 			<title>{ title } &middot; Schmetterpause</title>
 			<link rel="stylesheet" href="/static/css/app.css"/>
+			<link rel="icon" type="image/png" sizes="32x32" href="/static/img/mark-32.png"/>
+			<link rel="apple-touch-icon" href="/static/img/mark-180.png"/>
 			<script src="/static/js/htmx.min.js" defer></script>
 		</head>
 		<body>
 			<header class="topbar">
-				<a class="brand" href="/">Schmetter<span class="brand-mark">pause</span></a>
+				<a class="brand" href="/">
+					// The wordmark right beside it already says the name, so
+					// the mark is decoration for a screen reader.
+					<img class="brand-logo" src="/static/img/mark-180.png" width="28" height="28" alt=""/>
+					<span>Schmetter<span class="brand-mark">pause</span></span>
+				</a>
 				<span class="tagline">Büro-Tischtennis</span>
 				// Rendered server-side so the name is there on the first
 				// paint, and refreshed on a slow timer so the badge turns up

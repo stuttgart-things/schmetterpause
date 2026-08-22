@@ -47,49 +47,53 @@ templ Profile(v ProfileView) {
 		if len(v.Matches) == 0 {
 			<p class="muted">Noch keine Matches.</p>
 		} else {
-			<table class="matches">
-				<thead>
-					<tr>
-						<th scope="col">Wann</th>
-						<th scope="col">Gegner</th>
-						<th scope="col" class="num">Sätze</th>
-						<th scope="col">Verlauf</th>
-						<th scope="col" class="num">TTR</th>
-					</tr>
-				</thead>
-				<tbody>
-					for _, m := range v.Matches {
+			// Same reasoning as the ranking: the table scrolls in its own box
+			// rather than taking the page with it.
+			<div class="table-scroll" tabindex="0" role="region" aria-label="Letzte Matches">
+				<table class="matches">
+					<thead>
 						<tr>
-							<td class="when">{ m.PlayedAt }</td>
-							<td>{ m.OpponentName }</td>
-							<td class="num">
-								{ strconv.Itoa(m.OwnSets) }:{ strconv.Itoa(m.OpponentSets) }
-							</td>
-							<td class="sets-line">
-								for i, s := range m.Sets {
-									if i > 0 {
-										{ ", " }
-									}
-									{ strconv.Itoa(s.Own) }:{ strconv.Itoa(s.Opponent) }
-								}
-							</td>
-							<td class="num">
-								if m.Disputed {
-									<span class="muted" title="Widersprochen, zählt nicht">strittig</span>
-								} else if m.Pending {
-									<span class="muted" title="Wartet auf Bestätigung">offen</span>
-								} else if m.HasDelta && m.Delta > 0 {
-									<span class="gain">+{ strconv.Itoa(m.Delta) }</span>
-								} else if m.HasDelta && m.Delta < 0 {
-									<span class="loss">{ strconv.Itoa(m.Delta) }</span>
-								} else {
-									<span class="muted">±0</span>
-								}
-							</td>
+							<th scope="col">Wann</th>
+							<th scope="col">Gegner</th>
+							<th scope="col" class="num">Sätze</th>
+							<th scope="col">Verlauf</th>
+							<th scope="col" class="num">TTR</th>
 						</tr>
-					}
-				</tbody>
-			</table>
+					</thead>
+					<tbody>
+						for _, m := range v.Matches {
+							<tr>
+								<td class="when">{ m.PlayedAt }</td>
+								<td class="name">{ m.OpponentName }</td>
+								<td class="num">
+									{ strconv.Itoa(m.OwnSets) }:{ strconv.Itoa(m.OpponentSets) }
+								</td>
+								<td class="sets-line">
+									for i, s := range m.Sets {
+										if i > 0 {
+											{ ", " }
+										}
+										{ strconv.Itoa(s.Own) }:{ strconv.Itoa(s.Opponent) }
+									}
+								</td>
+								<td class="num">
+									if m.Disputed {
+										<span class="muted" title="Widersprochen, zählt nicht">strittig</span>
+									} else if m.Pending {
+										<span class="muted" title="Wartet auf Bestätigung">offen</span>
+									} else if m.HasDelta && m.Delta > 0 {
+										<span class="gain">+{ strconv.Itoa(m.Delta) }</span>
+									} else if m.HasDelta && m.Delta < 0 {
+										<span class="loss">{ strconv.Itoa(m.Delta) }</span>
+									} else {
+										<span class="muted">±0</span>
+									}
+								</td>
+							</tr>
+						}
+					</tbody>
+				</table>
+			</div>
 		}
 	}
 }

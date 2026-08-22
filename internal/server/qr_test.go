@@ -135,3 +135,16 @@ func TestTheSheetIsReachable(t *testing.T) {
 		t.Errorf("nothing on the start page links to the sheet: %s", body)
 	}
 }
+
+func TestTheSheetCarriesTheMascot(t *testing.T) {
+	// The sheet is printed and taped to a wall, so it is the one place the
+	// drawing is worth its bytes.
+	body := get(t, newHandler(newMemStore()), "/qr").Body.String()
+
+	if !strings.Contains(body, `class="sheet-mascot"`) {
+		t.Errorf("the sheet has no illustration: %s", body)
+	}
+	if !strings.Contains(body, "/static/img/mascot.png") {
+		t.Errorf("the sheet does not point at the illustration: %s", body)
+	}
+}
