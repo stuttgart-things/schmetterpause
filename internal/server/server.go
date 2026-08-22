@@ -51,6 +51,10 @@ func (s *Server) routes() http.Handler {
 
 	mux.Handle("GET /static/", staticHandler())
 
+	// Browsers ask for this whether or not the pages link an icon, and a 404
+	// on every first visit is noise in the log for no reason.
+	mux.Handle("GET /favicon.ico", faviconHandler())
+
 	page := http.NewServeMux()
 	page.HandleFunc("GET /{$}", s.handleIndex)
 	page.HandleFunc("GET /fragments/status", s.handleStatusFragment)

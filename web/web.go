@@ -9,6 +9,10 @@
 // come up on a network that cannot reach the internet, and a typeface that
 // silently falls back is a rendering bug nobody reports. Two subsets each of
 // Space Grotesk and JetBrains Mono, 84 kB in total, licences alongside them.
+//
+// The mark and the mascot under static/img are the same reasoning again,
+// and 130 kB of it: an icon fetched from somewhere else is an icon that is
+// missing on a closed network.
 package web
 
 import "embed"

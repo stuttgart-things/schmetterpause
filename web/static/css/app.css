@@ -138,11 +138,23 @@ body {
 /* The wordmark splits so the second half carries the accent: the app says its
    own name in the colour everything actionable uses. */
 .brand {
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
 	font-weight: 700;
 	font-size: 1.35rem;
 	letter-spacing: -0.02em;
 	color: var(--fg);
 	text-decoration: none;
+}
+
+/* 28 px is what the wordmark is tall. The file is 180 px so a phone with a
+   dense screen has pixels to spare; width and height sit on the element as
+   well, so the bar does not jump while the image loads. */
+.brand-logo {
+	display: block;
+	width: 28px;
+	height: 28px;
 }
 
 .brand-mark { color: var(--accent); }
@@ -587,6 +599,15 @@ tr.self td { background: color-mix(in srgb, var(--accent) 8%, transparent); }
 
 .sheet { text-align: center; }
 
+/* The sheet is the one place the mascot gets to be a drawing rather than an
+   icon, so it is worth the width. */
+.sheet-mascot {
+	width: min(40vw, 9rem);
+	height: auto;
+	margin: 0 auto -0.5rem;
+	display: block;
+}
+
 .sheet h1 { margin-top: 1rem; }
 
 .sheet-lead {
@@ -651,6 +672,10 @@ tr.self td { background: color-mix(in srgb, var(--accent) 8%, transparent); }
 	.sheet-lead { font-size: 14pt; }
 
 	.qr svg { width: 12cm; border: none; }
+
+	/* Smaller on paper than on screen: the code is what has to be big, and
+	   flat orange over a whole page costs more toner than it earns. */
+	.sheet-mascot { width: 4cm; }
 }
 
 /* --- Kiosk ------------------------------------------------------------- */
