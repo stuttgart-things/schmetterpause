@@ -10,6 +10,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/stuttgart-things/schmetterpause/internal/domain"
+	"github.com/stuttgart-things/schmetterpause/internal/match"
 	"github.com/stuttgart-things/schmetterpause/internal/repository"
 	"github.com/stuttgart-things/schmetterpause/internal/repository/postgres"
 	"github.com/stuttgart-things/schmetterpause/internal/scoring"
@@ -327,5 +328,143 @@ func TestConfirmAnUnknownMatch(t *testing.T) {
 
 	if _, err := scoring.Confirm(ctx, store, uuid.New(), bodo.ID, time.Now()); !errors.Is(err, domain.ErrNotFound) {
 		t.Fatalf("Confirm() for an unknown match = %v, want domain.ErrNotFound", err)
+	}
+}
+
+// disputedMatch is pendingMatch with Bodo having said it is wrong.
+func disputedMatch(ctx context.Context, t *testing.T, store *postgres.Store) (anna, bodo domain.Player, m domain.Match) {
+	t.Helper()
+
+	anna, bodo, m = pendingMatch(ctx, t, store)
+	if err := scoring.Dispute(ctx, store, m.ID, bodo.ID); err != nil {
+		t.Fatalf("Dispute(): %v", err)
+	}
+	return anna, bodo, m
+}
+
+// TestCorrectHandsTheMatchBack is the Definition of Done of issue #18: a
+// contested result reaches a rating without anybody opening psql.
+func TestCorrectHandsTheMatchBack(t *testing.T) {
+	store, ctx := newStore(t)
+	anna, bodo, m := disputedMatch(ctx, t, store)
+
+	// Bodo says he actually won it, in three sets rather than two.
+	corrected := match.Result{
+		Mode: match.Mode{BestOf: 3, PointsToWin: 11},
+		Sets: []match.Set{{Home: 11, Away: 9}, {Home: 8, Away: 11}, {Home: 7, Away: 11}},
+	}
+
+	correction, err := scoring.Correct(ctx, store, m.ID, bodo.ID, corrected)
+	if err != nil {
+		t.Fatalf("Correct(): %v", err)
+	}
+	if correction.Opponent.ID != anna.ID {
+		t.Errorf("the correction points at %s, want Anna", correction.Opponent.DisplayName)
+	}
+	if correction.HomeWon {
+		t.Error("the corrected result still reads as a win for the home player")
+	}
+
+	// Read back from the database rather than from the return value: the
+	// point of this package is what ends up stored.
+	stored, err := store.Matches().ByID(ctx, m.ID)
+	if err != nil {
+		t.Fatalf("ByID(): %v", err)
+	}
+	if stored.Status != domain.MatchPending {
+		t.Fatalf("status = %q, want pending", stored.Status)
+	}
+	if stored.ReportedBy != bodo.ID {
+		t.Error("whoever corrected it is not the reporter, so the wrong player would confirm")
+	}
+	if len(stored.Sets) != 3 {
+		t.Fatalf("%d sets stored, want 3 — the old ones were not replaced", len(stored.Sets))
+	}
+	if s := stored.Sets[2]; s.SetNo != 3 || s.HomePoints != 7 || s.AwayPoints != 11 {
+		t.Errorf("set 3 stored as %d:%d (no %d), want 7:11 (no 3)", s.HomePoints, s.AwayPoints, s.SetNo)
+	}
+
+	// Nothing has been scored yet: a correction is a claim like any other.
+	if got := ttrOf(ctx, t, store, bodo.ID); got != domain.DefaultTTR {
+		t.Errorf("Bodo is on %d before the confirmation, want %d", got, domain.DefaultTTR)
+	}
+
+	if _, err := scoring.Confirm(ctx, store, m.ID, anna.ID, time.Now()); err != nil {
+		t.Fatalf("Confirm() after the correction: %v", err)
+	}
+	if got := ttrOf(ctx, t, store, bodo.ID); got != 1008 {
+		t.Errorf("Bodo is on %d after winning the corrected match, want 1008", got)
+	}
+}
+
+// TestCorrectRejectsAnImpossibleResult keeps a correction under exactly the
+// rules a fresh entry is under, and — because it runs in a transaction —
+// leaves nothing behind when it refuses.
+func TestCorrectRejectsAnImpossibleResult(t *testing.T) {
+	store, ctx := newStore(t)
+	_, bodo, m := disputedMatch(ctx, t, store)
+
+	// 11:10 is one clear point, not two.
+	_, err := scoring.Correct(ctx, store, m.ID, bodo.ID, match.Result{
+		Mode: match.Mode{BestOf: 3, PointsToWin: 11},
+		Sets: []match.Set{{Home: 11, Away: 10}, {Home: 11, Away: 9}},
+	})
+
+	var rejection *match.Rejection
+	if !errors.As(err, &rejection) {
+		t.Fatalf("Correct() = %v, want a rejection", err)
+	}
+
+	stored, err := store.Matches().ByID(ctx, m.ID)
+	if err != nil {
+		t.Fatalf("ByID(): %v", err)
+	}
+	if stored.Status != domain.MatchDisputed {
+		t.Errorf("status = %q, want the match left disputed", stored.Status)
+	}
+	if len(stored.Sets) != 2 || stored.Sets[0].HomePoints != 11 || stored.Sets[0].AwayPoints != 9 {
+		t.Error("the refused correction changed the stored sets anyway")
+	}
+}
+
+func TestCorrectOnlyTouchesAContestedMatch(t *testing.T) {
+	store, ctx := newStore(t)
+	anna, bodo, m := pendingMatch(ctx, t, store)
+
+	valid := match.Result{
+		Mode: match.Mode{BestOf: 3, PointsToWin: 11},
+		Sets: []match.Set{{Home: 11, Away: 9}, {Home: 11, Away: 7}},
+	}
+
+	if _, err := scoring.Correct(ctx, store, m.ID, bodo.ID, valid); !errors.Is(err, scoring.ErrNotDisputed) {
+		t.Errorf("correcting a pending match = %v, want ErrNotDisputed", err)
+	}
+
+	if _, err := scoring.Confirm(ctx, store, m.ID, bodo.ID, time.Now()); err != nil {
+		t.Fatalf("Confirm(): %v", err)
+	}
+	if _, err := scoring.Correct(ctx, store, m.ID, anna.ID, valid); !errors.Is(err, scoring.ErrNotDisputed) {
+		t.Errorf("correcting a confirmed match = %v, want ErrNotDisputed", err)
+	}
+	if got := ttrOf(ctx, t, store, anna.ID); got != 1008 {
+		t.Errorf("Anna is on %d, so a settled result was rewritten", got)
+	}
+}
+
+func TestABystanderCannotCorrect(t *testing.T) {
+	store, ctx := newStore(t)
+	_, _, m := disputedMatch(ctx, t, store)
+
+	cara, err := store.Players().Create(ctx, "Cara", domain.DefaultTTR)
+	if err != nil {
+		t.Fatalf("create Cara: %v", err)
+	}
+
+	_, err = scoring.Correct(ctx, store, m.ID, cara.ID, match.Result{
+		Mode: match.Mode{BestOf: 3, PointsToWin: 11},
+		Sets: []match.Set{{Home: 11, Away: 9}, {Home: 11, Away: 7}},
+	})
+	if !errors.Is(err, scoring.ErrNotYours) {
+		t.Errorf("Correct() by a bystander = %v, want ErrNotYours", err)
 	}
 }

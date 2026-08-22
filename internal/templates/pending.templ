@@ -29,15 +29,26 @@ templ pendingItems(v PendingListView) {
 	} else {
 		<ul class="pending-list">
 			for _, m := range v.Matches {
-				<li id={ "pending-" + m.ID }>
-					@PendingMatch(m)
-				</li>
+				@PendingItem(m)
 			}
 		</ul>
 	}
 }
 
-templ PendingMatch(m PendingMatchView) {
+// PendingItem is one entry, and the only place that decides which of the two
+// states it is in. The actions swap this same element, so the list and the
+// answer to an action cannot drift apart.
+templ PendingItem(m PendingMatchView) {
+	<li id={ "pending-" + m.ID } class={ templ.KV("disputed", m.Disputed) }>
+		if m.Disputed {
+			@correctionForm(m)
+		} else {
+			@reportedResult(m)
+		}
+	</li>
+}
+
+templ reportedResult(m PendingMatchView) {
 	<div class="pending-match">
 		<p>
 			<strong>{ m.ReporterName }</strong> hat eingetragen:
@@ -75,6 +86,52 @@ templ PendingMatch(m PendingMatchView) {
 	</div>
 }
 
+// correctionForm is what a contested result offers instead of a dead end.
+//
+// Pre-filled with what was reported, from the reader's side, because a
+// disputed result is usually nearly right — one set typed the wrong way
+// round. Retyping all of it to fix one number is how a correction stops
+// being worth the trouble.
+//
+// The prompt names neither side: who disputed is not recorded, and it does
+// not matter. Either participant may put it right.
+templ correctionForm(m PendingMatchView) {
+	<div class="pending-match">
+		<p>
+			<strong>Strittig.</strong> Trag ein, wie es wirklich ausgegangen
+			ist — { m.OpponentName } bestätigt es danach.
+		</p>
+		<form
+			hx-post={ "/matches/" + m.ID + "/correct" }
+			hx-target={ "#pending-" + m.ID }
+			hx-swap="outerHTML"
+		>
+			@modeRow("fix-"+m.ID, m.BestOf, m.PointsToWin)
+			@setRows(m.Inputs)
+			<button type="submit">Korrigieren</button>
+			if m.Error != "" {
+				<p class="fail" role="alert">{ m.Error }</p>
+			}
+		</form>
+	</div>
+}
+
+// Corrected replaces a list entry once the corrected result is on its way to
+// the opponent.
+templ Corrected(v CorrectedView) {
+	<li id={ "pending-" + v.ID } class="settled">
+		<p>
+			Korrigiert auf
+			{ strconv.Itoa(v.OwnSets) }:{ strconv.Itoa(v.OpponentSets) }
+			gegen { v.OpponentName }.
+		</p>
+		<p class="muted">
+			{ v.OpponentName } muss das jetzt bestätigen. Bis dahin zählt es
+			nicht für die Wertung.
+		</p>
+	</li>
+}
+
 // Settled replaces a list entry once the result counts.
 templ Settled(v SettledView) {
 	<li id={ "pending-" + v.ID } class="settled">
@@ -95,21 +152,6 @@ templ Settled(v SettledView) {
 				<span class="loss">{ strconv.Itoa(v.Delta) }</span>
 			}
 			TTR, jetzt { strconv.Itoa(v.NewTTR) }.
-		</p>
-	</li>
-}
-
-// Disputed replaces a list entry once the result has been contested. The MVP
-// has no interface for resolving one — that is issue #18, and the honest
-// answer until it has happened often enough to be worth building.
-templ Disputed(v DisputedView) {
-	<li id={ "pending-" + v.ID } class="disputed">
-		<p>
-			Widersprochen. Das Ergebnis zählt nicht.
-		</p>
-		<p class="muted">
-			Klärt es mit { v.ReporterName }; ein neues Ergebnis kann er
-			danach eintragen.
 		</p>
 	</li>
 }

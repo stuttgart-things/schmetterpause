@@ -4,12 +4,14 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/google/uuid"
 
 	"github.com/stuttgart-things/schmetterpause/internal/auth"
 	"github.com/stuttgart-things/schmetterpause/internal/domain"
+	"github.com/stuttgart-things/schmetterpause/internal/match"
 	"github.com/stuttgart-things/schmetterpause/internal/scoring"
 	"github.com/stuttgart-things/schmetterpause/internal/templates"
 )
@@ -64,18 +66,11 @@ func (s *Server) handleConfirmMatch(w http.ResponseWriter, r *http.Request) {
 	s.refreshAfterRuling(w, r, self)
 }
 
-// handleDisputeMatch contests a match the player does not agree with.
+// handleDisputeMatch contests a match the player does not agree with, and
+// hands them the form to say what it really was.
 func (s *Server) handleDisputeMatch(w http.ResponseWriter, r *http.Request) {
 	self, matchID, ok := s.rulingRequest(w, r)
 	if !ok {
-		return
-	}
-
-	// Read before the status changes, so the message can name whoever
-	// entered it.
-	m, err := s.store.Matches().ByID(r.Context(), matchID)
-	if err != nil {
-		s.reportRulingError(w, r, err, "loading the match failed")
 		return
 	}
 
@@ -84,16 +79,110 @@ func (s *Server) handleDisputeMatch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	reporter, err := s.store.Players().ByID(r.Context(), m.ReportedBy)
+	// Read after the dispute, so the entry is rendered from the state that
+	// now exists rather than the one that just stopped existing.
+	view, err := s.pendingEntryView(r.Context(), matchID, self)
 	if err != nil {
-		s.log.WarnContext(r.Context(), "loading the reporter failed", "error", err)
+		s.log.ErrorContext(r.Context(), "loading the contested match failed", "error", err)
+		http.Error(w, "Das hat gerade nicht geklappt", http.StatusInternalServerError)
+		return
 	}
 
-	s.render(w, r, templates.Disputed(templates.DisputedView{
-		ID:           matchID.String(),
-		ReporterName: reporter.DisplayName,
-	}))
+	s.render(w, r, templates.PendingItem(view))
 	s.refreshAfterRuling(w, r, self)
+}
+
+// handleCorrectMatch replaces the result of a contested match and hands it
+// back to the opponent for confirmation.
+func (s *Server) handleCorrectMatch(w http.ResponseWriter, r *http.Request) {
+	self, matchID, ok := s.rulingRequest(w, r)
+	if !ok {
+		return
+	}
+
+	m, err := s.store.Matches().ByID(r.Context(), matchID)
+	if err != nil {
+		s.reportCorrectionError(w, r, err)
+		return
+	}
+
+	form, msg := parseResultForm(r)
+
+	if msg == "" {
+		correction, err := scoring.Correct(r.Context(), s.store, matchID, self,
+			asPlayed(form.result, m.HomeID == self))
+
+		var rejection *match.Rejection
+		switch {
+		case err == nil:
+			ownSets, opponentSets := correction.AwaySets, correction.HomeSets
+			if m.HomeID == self {
+				ownSets, opponentSets = correction.HomeSets, correction.AwaySets
+			}
+			s.render(w, r, templates.Corrected(templates.CorrectedView{
+				ID:           matchID.String(),
+				OpponentName: correction.Opponent.DisplayName,
+				OwnSets:      ownSets,
+				OpponentSets: opponentSets,
+			}))
+			s.refreshAfterRuling(w, r, self)
+			return
+		case errors.As(err, &rejection):
+			msg = describeRejection(err)
+		default:
+			s.reportCorrectionError(w, r, err)
+			return
+		}
+	}
+
+	view, err := s.pendingEntryView(r.Context(), matchID, self)
+	if err != nil {
+		s.log.ErrorContext(r.Context(), "loading the contested match failed", "error", err)
+		http.Error(w, "Das hat gerade nicht geklappt", http.StatusInternalServerError)
+		return
+	}
+	// Hand back what was typed rather than what is stored, so a correction
+	// is not lost to one mistyped number.
+	view.Inputs = form.typed
+	view.BestOf, view.PointsToWin = form.bestOf, form.pointsToWin
+	view.Error = msg
+
+	// 422: the request was well formed, the result in it was not.
+	w.WriteHeader(http.StatusUnprocessableEntity)
+	s.render(w, r, templates.PendingItem(view))
+}
+
+// asPlayed turns a result typed from one player's side into the home/away
+// orientation the domain stores. The form always reads "own : opponent"; who
+// that is depends on which side of the table they were on.
+func asPlayed(result match.Result, atHome bool) match.Result {
+	if atHome {
+		return result
+	}
+
+	flipped := match.Result{Mode: result.Mode, Sets: make([]match.Set, len(result.Sets))}
+	for i, set := range result.Sets {
+		flipped.Sets[i] = match.Set{Home: set.Away, Away: set.Home}
+	}
+	return flipped
+}
+
+// reportCorrectionError maps a failed correction onto a status and a
+// sentence. Separate from reportRulingError because the same errors mean
+// something else here: a correction is refused for being late, not for being
+// somebody else's call.
+func (s *Server) reportCorrectionError(w http.ResponseWriter, r *http.Request, err error) {
+	switch {
+	case errors.Is(err, domain.ErrNotFound):
+		http.Error(w, "Dieses Match gibt es nicht", http.StatusNotFound)
+	case errors.Is(err, scoring.ErrNotYours):
+		http.Error(w, "Da hast du nicht mitgespielt", http.StatusForbidden)
+	case errors.Is(err, scoring.ErrNotDisputed), errors.Is(err, domain.ErrConflict):
+		http.Error(w, "Dieses Match ist nicht strittig", http.StatusConflict)
+	default:
+		s.log.ErrorContext(r.Context(), "correcting the match failed", "error", err)
+		http.Error(w, "Das hat gerade nicht geklappt", http.StatusInternalServerError)
+	}
 }
 
 // rulingRequest resolves the player and the match id, answering the request
@@ -160,38 +249,91 @@ func (s *Server) pendingListView(ctx context.Context, self uuid.UUID) (templates
 	view := templates.PendingListView{Matches: make([]templates.PendingMatchView, 0, len(matches))}
 
 	for _, m := range matches {
-		name, ok := names[m.ReportedBy]
-		if !ok {
-			reporter, err := s.store.Players().ByID(ctx, m.ReportedBy)
-			if err != nil {
-				return templates.PendingListView{}, err
-			}
-			name = reporter.DisplayName
-			names[m.ReportedBy] = name
+		entry, err := s.pendingEntry(ctx, m, self, names)
+		if err != nil {
+			return templates.PendingListView{}, err
 		}
-
-		atHome := m.HomeID == self
-		entry := templates.PendingMatchView{
-			ID:           m.ID.String(),
-			ReporterName: name,
-			Sets:         make([]templates.SetScore, 0, len(m.Sets)),
-		}
-
-		for _, set := range m.Sets {
-			own, opponent := set.HomePoints, set.AwayPoints
-			if !atHome {
-				own, opponent = opponent, own
-			}
-			entry.Sets = append(entry.Sets, templates.SetScore{Own: own, Opponent: opponent})
-			if own > opponent {
-				entry.OwnSets++
-			} else {
-				entry.OpponentSets++
-			}
-		}
-		entry.Won = entry.OwnSets > entry.OpponentSets
-
 		view.Matches = append(view.Matches, entry)
 	}
 	return view, nil
+}
+
+// pendingEntryView describes a single waiting match, for the responses that
+// replace one entry rather than the whole list.
+func (s *Server) pendingEntryView(ctx context.Context, matchID, self uuid.UUID) (templates.PendingMatchView, error) {
+	m, err := s.store.Matches().ByID(ctx, matchID)
+	if err != nil {
+		return templates.PendingMatchView{}, err
+	}
+	return s.pendingEntry(ctx, m, self, map[uuid.UUID]string{})
+}
+
+// pendingEntry turns a match into the entry this player sees. names caches
+// display names across a list; pass an empty map for a single entry.
+func (s *Server) pendingEntry(
+	ctx context.Context,
+	m domain.Match,
+	self uuid.UUID,
+	names map[uuid.UUID]string,
+) (templates.PendingMatchView, error) {
+	lookup := func(id uuid.UUID) (string, error) {
+		if name, ok := names[id]; ok {
+			return name, nil
+		}
+		player, err := s.store.Players().ByID(ctx, id)
+		if err != nil {
+			return "", err
+		}
+		names[id] = player.DisplayName
+		return player.DisplayName, nil
+	}
+
+	opponentID := m.AwayID
+	if m.AwayID == self {
+		opponentID = m.HomeID
+	}
+
+	reporterName, err := lookup(m.ReportedBy)
+	if err != nil {
+		return templates.PendingMatchView{}, err
+	}
+	opponentName, err := lookup(opponentID)
+	if err != nil {
+		return templates.PendingMatchView{}, err
+	}
+
+	atHome := m.HomeID == self
+	entry := templates.PendingMatchView{
+		ID:           m.ID.String(),
+		ReporterName: reporterName,
+		OpponentName: opponentName,
+		Disputed:     m.Status == domain.MatchDisputed,
+		BestOf:       m.BestOf,
+		PointsToWin:  m.PointsToWin,
+		Sets:         make([]templates.SetScore, 0, len(m.Sets)),
+		Inputs:       make([]templates.SetInput, templates.MaxSetRows),
+	}
+
+	for i, set := range m.Sets {
+		own, opponent := set.HomePoints, set.AwayPoints
+		if !atHome {
+			own, opponent = opponent, own
+		}
+		entry.Sets = append(entry.Sets, templates.SetScore{Own: own, Opponent: opponent})
+		// The correction form opens on what was reported, so fixing one
+		// number does not mean retyping the other seven.
+		if i < templates.MaxSetRows {
+			entry.Inputs[i] = templates.SetInput{
+				Home: strconv.Itoa(own), Away: strconv.Itoa(opponent),
+			}
+		}
+		if own > opponent {
+			entry.OwnSets++
+		} else {
+			entry.OpponentSets++
+		}
+	}
+	entry.Won = entry.OwnSets > entry.OpponentSets
+
+	return entry, nil
 }

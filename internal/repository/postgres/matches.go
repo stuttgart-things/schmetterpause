@@ -71,13 +71,18 @@ func (r matchRepo) ByID(ctx context.Context, id uuid.UUID) (domain.Match, error)
 }
 
 func (r matchRepo) PendingFor(ctx context.Context, playerID uuid.UUID) ([]domain.Match, error) {
-	// What needs confirming is what somebody else recorded.
+	// What needs confirming is what somebody else recorded. A contested
+	// match is in here too, from both sides: it is waiting on somebody to
+	// say what the result really was, and if it only appeared in the answer
+	// to the dispute it could be lost to a page reload.
 	const q = `
 		select ` + matchColumns + `
 		from matches
-		where status = 'pending'
-		  and (home_id = $1 or away_id = $1)
-		  and reported_by <> $1
+		where (home_id = $1 or away_id = $1)
+		  and (
+		        (status = 'pending' and reported_by <> $1)
+		     or status = 'disputed'
+		  )
 		order by played_at desc`
 
 	return r.list(ctx, q, playerID)
@@ -103,6 +108,47 @@ func (r matchRepo) SetStatus(ctx context.Context, id uuid.UUID, status domain.Ma
 	}
 	if tag.RowsAffected() == 0 {
 		return fmt.Errorf("match %s: %w", id, domain.ErrNotFound)
+	}
+	return nil
+}
+
+func (r matchRepo) ReplaceResult(ctx context.Context, id uuid.UUID, corrected domain.Match) error {
+	// The status is part of the where clause, not of a check before it: two
+	// players correcting the same match at the same moment would otherwise
+	// both pass the check and the second would overwrite the first.
+	const updateMatch = `
+		update matches
+		set best_of = $2, points_to_win = $3, reported_by = $4,
+		    status = 'pending', confirmed_at = null
+		where id = $1 and status = 'disputed'`
+
+	tag, err := r.q.Exec(ctx, updateMatch, id,
+		corrected.BestOf, corrected.PointsToWin, corrected.ReportedBy)
+	if err != nil {
+		return fmt.Errorf("correct match %s: %w", id, err)
+	}
+	if tag.RowsAffected() == 0 {
+		// Nothing was updated, so either the match is gone or it was not
+		// contested. Both are worth telling apart to the caller.
+		if _, err := r.ByID(ctx, id); err != nil {
+			return err
+		}
+		return fmt.Errorf("match %s is not contested: %w", id, domain.ErrConflict)
+	}
+
+	const deleteSets = `delete from match_sets where match_id = $1`
+	if _, err := r.q.Exec(ctx, deleteSets, id); err != nil {
+		return fmt.Errorf("clear the sets of match %s: %w", id, err)
+	}
+
+	const insertSet = `
+		insert into match_sets (match_id, set_no, home_points, away_points)
+		values ($1, $2, $3, $4)`
+
+	for _, s := range corrected.Sets {
+		if _, err := r.q.Exec(ctx, insertSet, id, s.SetNo, s.HomePoints, s.AwayPoints); err != nil {
+			return fmt.Errorf("write set %d of match %s: %w", s.SetNo, id, err)
+		}
 	}
 	return nil
 }

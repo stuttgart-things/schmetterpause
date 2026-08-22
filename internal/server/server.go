@@ -62,6 +62,7 @@ func (s *Server) routes() http.Handler {
 	page.HandleFunc("GET /fragments/pending", s.handlePendingFragment)
 	page.HandleFunc("POST /matches/{id}/confirm", s.handleConfirmMatch)
 	page.HandleFunc("POST /matches/{id}/dispute", s.handleDisputeMatch)
+	page.HandleFunc("POST /matches/{id}/correct", s.handleCorrectMatch)
 	page.HandleFunc("GET /qr", s.handleQRSheet)
 	mux.Handle("/", auth.Middleware(s.auth, s.log)(page))
 

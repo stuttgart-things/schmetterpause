@@ -125,14 +125,40 @@ type PendingListView struct {
 
 // PendingMatchView is one result awaiting a decision, seen from the side of
 // the player who has to make it — they read "3:1 für dich", not "home 3:1".
+//
+// It covers both states an entry can be in, because they replace each other
+// in place: a reported result waiting for yes or no, and a contested one
+// waiting for a correction.
 type PendingMatchView struct {
 	ID           string
 	ReporterName string
+	// OpponentName is the other participant. On a reported result that is
+	// the reporter; on a contested one it need not be, because either side
+	// may have put the wrong number in.
+	OpponentName string
 	OwnSets      int
 	OpponentSets int
 	Sets         []SetScore
 	// Won is what the reported result claims for the viewer.
 	Won bool
+
+	// Disputed switches the entry to the correction form.
+	Disputed bool
+	// BestOf, PointsToWin and Inputs pre-fill that form with what was
+	// reported, from the viewer's side.
+	BestOf      int
+	PointsToWin int
+	Inputs      []SetInput
+	// Error explains why a correction was rejected. Empty otherwise.
+	Error string
+}
+
+// CorrectedView reports a corrected result on its way back to the opponent.
+type CorrectedView struct {
+	ID           string
+	OpponentName string
+	// OwnSets and OpponentSets are from the correcting player's side.
+	OwnSets, OpponentSets int
 }
 
 // SetScore is one set, again from the viewer's side.
@@ -151,12 +177,6 @@ type SettledView struct {
 	// Delta is the viewer's rating change, NewTTR where it left them.
 	Delta  int
 	NewTTR int
-}
-
-// DisputedView reports a contested result.
-type DisputedView struct {
-	ID           string
-	ReporterName string
 }
 
 // StandingsView is the ranking.

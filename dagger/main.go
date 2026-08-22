@@ -598,6 +598,72 @@ grep -q "1:0" /tmp/standings || {
 	exit 1
 }
 
+echo "== correction: a contested result reaches a rating without SQL =="
+second_match=$(mktemp)
+curl -fsS -b "$cookies" -X POST http://app:8080/matches \
+	--data "opponent_id=$opponent&best_of=3&points_to_win=11&set_home_1=11&set_away_1=8&set_home_2=11&set_away_2=6" \
+	> /dev/null
+
+mid2=$(curl -fsS -b "$second" http://app:8080/fragments/pending \
+	| tr "<" "\n" | grep "li id=\"pending-" | grep -v "$mid" | head -1 \
+	| sed "s/.*pending-\([0-9a-f-]*\)\".*/\1/")
+[ -n "$mid2" ] || {
+	echo "the second match never reached the opponent"
+	exit 1
+}
+
+# Bodo says it was the other way round. The form has to come back filled in
+# with what Anna claimed, seen from his side.
+curl -fsS -b "$second" -X POST "http://app:8080/matches/$mid2/dispute" > "$second_match"
+grep -q "Strittig" "$second_match" || {
+	echo "disputing did not offer a correction"
+	cat "$second_match"
+	exit 1
+}
+grep -q "set_home_1\" value=\"8\"" "$second_match" || {
+	echo "the correction form did not open on the reported result"
+	cat "$second_match"
+	exit 1
+}
+
+# A contested match must survive a reload, or the correction is unreachable.
+curl -fsS -b "$cookies" http://app:8080/fragments/pending | grep -q "/correct" || {
+	echo "the reporter cannot reach the correction after a reload"
+	exit 1
+}
+
+# The corrected result is held to the same rules as a fresh one.
+code=$(curl -sS -b "$second" -o /dev/null -w "%{http_code}" \
+	-X POST "http://app:8080/matches/$mid2/correct" \
+	--data "best_of=3&points_to_win=11&set_home_1=11&set_away_1=10&set_home_2=11&set_away_2=9")
+[ "$code" = "422" ] || {
+	echo "an impossible correction was answered with $code, expected 422"
+	exit 1
+}
+
+curl -fsS -b "$second" -X POST "http://app:8080/matches/$mid2/correct" \
+	--data "best_of=3&points_to_win=11&set_home_1=11&set_away_1=8&set_home_2=11&set_away_2=6" \
+	| grep -q "Korrigiert" || {
+	echo "the correction was not accepted"
+	exit 1
+}
+
+# Whoever corrected became the reporter, so the other one confirms.
+curl -fsS -b "$cookies" -X POST "http://app:8080/matches/$mid2/confirm" \
+	| grep -q "Bestätigt" || {
+	echo "the corrected result could not be confirmed"
+	exit 1
+}
+
+# Anna won the first, Bodo the corrected second: back to level, and each with
+# one win and one loss.
+curl -fsS -b "$cookies" http://app:8080/fragments/standings > /tmp/standings2
+grep -q "1:1" /tmp/standings2 || {
+	echo "the corrected result did not reach the ranking"
+	cat /tmp/standings2
+	exit 1
+}
+
 echo "== profile: the rating history is drawn =="
 pid=$(tr "<" "\n" < /tmp/standings | grep "a href=\"/players/" | head -1 \
 	| sed "s|.*players/\([0-9a-f-]*\)\".*|\1|")

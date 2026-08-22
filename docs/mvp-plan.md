@@ -139,7 +139,10 @@ sagt, warum.
 
 Der Gegner sieht offene Ergebnisse und bestätigt oder widerspricht. Erst bei
 `confirmed` wird TTR gerechnet und `ttr_history` geschrieben. `disputed`
-blockiert die Wertung und ist im MVP nur manuell auflösbar.
+blockiert die Wertung; wer widerspricht, bekommt direkt das Eingabeformular
+mit dem gemeldeten Ergebnis vorbefüllt und trägt ein, wie es wirklich
+ausgegangen ist — das Match geht damit als `pending` an den anderen zurück.
+Korrigieren darf jeder der beiden.
 
 *Fertig, wenn:* Ein unbestätigtes Match die Rangliste nicht beeinflusst.
 
@@ -248,8 +251,8 @@ Bewusst noch nicht entschieden — gehören in Issues, nicht in ADRs:
 
 - Startwert für neue Spieler. Aktuell 1000 angesetzt. Ob das für eine Bürogruppe
   gut streut, zeigt sich erst mit echten Daten.
-- Auflösung von `disputed`. Im MVP manuell per SQL. Ob es eine Oberfläche
-  braucht, entscheidet die Häufigkeit.
-- Ob `points_to_win` überhaupt konfigurierbar sein muss oder 11 als Konstante
-  reicht. Im Zweifel Konstante, Spalte bleibt aber im Schema.
-- Registry für die Images. Erst relevant, wenn über Compose hinaus deployt wird.
+
+Entschieden, seit dieser Abschnitt geschrieben wurde: `points_to_win` ist
+konfigurierbar (11 als Vorgabe, 21 als Option), die Images liegen auf ttl.sh
+zum Herumzeigen und auf ghcr.io als Artefakt, und `disputed` löst sich über
+die Korrektur in AP5 auf.

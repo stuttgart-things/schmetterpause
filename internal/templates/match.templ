@@ -24,49 +24,8 @@ templ MatchForm(v MatchFormView) {
 						}
 					</select>
 				</div>
-				<div class="row">
-					<label for="best-of">Modus</label>
-					<select id="best-of" name="best_of">
-						for _, n := range []int{3, 5, 7} {
-							<option value={ strconv.Itoa(n) } selected?={ v.BestOf == n }>
-								Best of { strconv.Itoa(n) }
-							</option>
-						}
-					</select>
-					<select id="points-to-win" name="points_to_win" aria-label="Punkte pro Satz">
-						for _, p := range []int{11, 21} {
-							<option value={ strconv.Itoa(p) } selected?={ v.PointsToWin == p }>
-								bis { strconv.Itoa(p) }
-							</option>
-						}
-					</select>
-				</div>
-				<fieldset class="sets">
-					<legend>Sätze</legend>
-					<p class="muted">Nicht gespielte Sätze leer lassen.</p>
-					for i, s := range v.Sets {
-						<div class="set">
-							<span class="set-no">{ strconv.Itoa(i + 1) }.</span>
-							<input
-								type="number"
-								name={ "set_home_" + strconv.Itoa(i+1) }
-								value={ s.Home }
-								min="0"
-								inputmode="numeric"
-								aria-label={ "Satz " + strconv.Itoa(i+1) + ", eigene Punkte" }
-							/>
-							<span class="colon">:</span>
-							<input
-								type="number"
-								name={ "set_away_" + strconv.Itoa(i+1) }
-								value={ s.Away }
-								min="0"
-								inputmode="numeric"
-								aria-label={ "Satz " + strconv.Itoa(i+1) + ", Punkte des Gegners" }
-							/>
-						</div>
-					}
-				</fieldset>
+				@modeRow("entry", v.BestOf, v.PointsToWin)
+				@setRows(v.Sets)
 				<button type="submit">Eintragen</button>
 				if v.Error != "" {
 					<p class="fail" role="alert">{ v.Error }</p>
@@ -74,6 +33,63 @@ templ MatchForm(v MatchFormView) {
 			</form>
 		}
 	</section>
+}
+
+// modeRow is the best-of and points-per-set pair, shared by result entry and
+// the correction form.
+//
+// The ids carry a prefix because both forms can be on the page at once — a
+// contested match sits in the list right above the entry form, and two
+// elements answering to #best-of would leave the labels pointing at whichever
+// one the browser found first.
+templ modeRow(prefix string, bestOf, pointsToWin int) {
+	<div class="row">
+		<label for={ prefix + "-best-of" }>Modus</label>
+		<select id={ prefix + "-best-of" } name="best_of">
+			for _, n := range []int{3, 5, 7} {
+				<option value={ strconv.Itoa(n) } selected?={ bestOf == n }>
+					Best of { strconv.Itoa(n) }
+				</option>
+			}
+		</select>
+		<select id={ prefix + "-points-to-win" } name="points_to_win" aria-label="Punkte pro Satz">
+			for _, p := range []int{11, 21} {
+				<option value={ strconv.Itoa(p) } selected?={ pointsToWin == p }>
+					bis { strconv.Itoa(p) }
+				</option>
+			}
+		</select>
+	</div>
+}
+
+// setRows is the set-by-set score, always from the reader's own side.
+templ setRows(sets []SetInput) {
+	<fieldset class="sets">
+		<legend>Sätze</legend>
+		<p class="muted">Nicht gespielte Sätze leer lassen.</p>
+		for i, s := range sets {
+			<div class="set">
+				<span class="set-no">{ strconv.Itoa(i + 1) }.</span>
+				<input
+					type="number"
+					name={ "set_home_" + strconv.Itoa(i+1) }
+					value={ s.Home }
+					min="0"
+					inputmode="numeric"
+					aria-label={ "Satz " + strconv.Itoa(i+1) + ", eigene Punkte" }
+				/>
+				<span class="colon">:</span>
+				<input
+					type="number"
+					name={ "set_away_" + strconv.Itoa(i+1) }
+					value={ s.Away }
+					min="0"
+					inputmode="numeric"
+					aria-label={ "Satz " + strconv.Itoa(i+1) + ", Punkte des Gegners" }
+				/>
+			</div>
+		}
+	</fieldset>
 }
 
 // MatchRecorded confirms the entry and says what happens next. It is
