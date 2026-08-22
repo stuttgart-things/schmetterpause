@@ -70,8 +70,15 @@
 	--muted: #8f8fb8;
 
 	/* One action colour. Everything clickable and consequential is this
-	   violet, everything else stays out of the way. */
-	--accent: #7c5cff;
+	   violet, everything else stays out of the way.
+
+	   Two tokens rather than one, because a single violet cannot do both
+	   jobs: as a fill it has to be dark enough for white text (4.78:1 here),
+	   as text it has to be light enough against a card (5.01:1). The old
+	   #7c5cff sat between the two and missed AA in both directions — 4.35
+	   under white, 4.12 on a card. */
+	--accent: #7452ff;
+	--accent-text: #8c70ff;
 	--accent-ink: #ffffff;
 
 	--ok: #3ddc97;
@@ -79,12 +86,11 @@
 	   the same colour says "press me" and "this went wrong". */
 	--bad: #ff5d73;
 
-	/* The podium. */
-	--rank-1: #7c5cff;
-	--rank-2: #a78bfa;
-	--rank-3: #38bdf8;
-	--rank-4: #3ddc97;
-	--rank-5: #facc15;
+	/* The podium: only first place carries a colour. */
+	/* The mascot's own orange, on purpose: it is the only place the logo
+	   colour appears in the interface, and it marks the one thing worth
+	   marking. Dark ink on it measures 8.9:1. */
+	--rank-1: #f89828;
 	--rank-ink: #0a0a12;
 
 	--font-ui: "Space Grotesk", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
@@ -157,7 +163,7 @@ body {
 	height: 28px;
 }
 
-.brand-mark { color: var(--accent); }
+.brand-mark { color: var(--accent-text); }
 
 .tagline {
 	font-family: var(--font-mono);
@@ -512,7 +518,9 @@ tr.self td { background: color-mix(in srgb, var(--accent) 8%, transparent); }
 	height: 1.9rem;
 	padding: 0 0.35rem;
 	border-radius: var(--radius-sm);
-	background: var(--panel);
+	/* Bare by default. Everything from fourth place down is a number, and a
+	   number does not need a box around it to be read. */
+	background: transparent;
 	color: var(--fg);
 	font-family: var(--font-mono);
 	font-weight: 700;
@@ -520,12 +528,26 @@ tr.self td { background: color-mix(in srgb, var(--accent) 8%, transparent); }
 	font-variant-numeric: tabular-nums;
 }
 
-.rank-1, .rank-2, .rank-3, .rank-4, .rank-5 { color: var(--rank-ink); }
-.rank-1 { background: var(--rank-1); }
-.rank-2 { background: var(--rank-2); }
-.rank-3 { background: var(--rank-3); }
-.rank-4 { background: var(--rank-4); }
-.rank-5 { background: var(--rank-5); }
+/* Filled for first place, outlined for the other two on the podium, bare
+   below that. Five colours made the rank column shout louder than the ratings
+   it stands next to, and the loudest thing on a ranking should be the
+   ranking. */
+.rank-1 {
+	background: var(--rank-1);
+	color: var(--rank-ink);
+}
+
+.rank-2, .rank-3 {
+	background: transparent;
+	box-shadow: inset 0 0 0 1px var(--line);
+}
+
+/* Nobody has played yet, so nobody holds a position. A dash rather than a
+   number: four ones under each other read as a defect, not as a tie. */
+.rank-none {
+	background: transparent;
+	color: var(--muted);
+}
 
 /* A shared rank gets a ring, so two identical numbers do not have to explain
    themselves. */
@@ -574,7 +596,7 @@ tr.self td { background: color-mix(in srgb, var(--accent) 8%, transparent); }
 }
 
 .back a { color: var(--muted); text-decoration: none; }
-.back a:hover { color: var(--accent); }
+.back a:hover { color: var(--accent-text); }
 
 /* Metadata as chips rather than a sentence: three facts people compare at a
    glance, not prose they read. */
@@ -599,6 +621,24 @@ tr.self td { background: color-mix(in srgb, var(--accent) 8%, transparent); }
 	font-size: 0.75rem;
 	letter-spacing: 0.04em;
 	font-variant-numeric: tabular-nums;
+}
+
+/* The empty state carries the reason, not just the absence: "nobody has a
+   position" is confusing, "nobody has played" is not. */
+.standings-empty {
+	margin: 1rem 0 0;
+}
+
+/* --- Maskottchen auf der Seite ----------------------------------------- */
+
+/* The one decorative element. It sits at the end of the page, so it competes
+   with nothing, and it fills the space a short ranking leaves above the
+   footer. */
+.page-mascot {
+	display: block;
+	width: min(45vw, 10rem);
+	height: auto;
+	margin: 2.5rem auto 0.5rem;
 }
 
 /* --- Stat-Kachel mit Verlauf ------------------------------------------- */
@@ -633,7 +673,7 @@ tr.self td { background: color-mix(in srgb, var(--accent) 8%, transparent); }
 
 /* The line is context; only the current rating carries the accent. */
 .spark-line { stroke: var(--muted); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
-.spark-now { fill: var(--accent); }
+.spark-now { fill: var(--accent-text); }
 
 .spark figcaption {
 	margin-top: 0.35rem;
@@ -709,7 +749,7 @@ tr.self td { background: color-mix(in srgb, var(--accent) 8%, transparent); }
    dropped rather than dumped onto paper, and the code gets a size that scans
    from arm's length. */
 @media print {
-	.topbar, .footer, .no-print { display: none; }
+	.topbar, .footer, .no-print, .page-mascot { display: none; }
 
 	body { background: #fff; color: #000; }
 	main { max-width: none; padding: 0; }
