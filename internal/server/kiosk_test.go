@@ -257,3 +257,22 @@ func TestTheKioskRefusesImpossibleInput(t *testing.T) {
 		})
 	}
 }
+
+func TestTheKioskLeadsWithTheThingThatHappensAllEvening(t *testing.T) {
+	// Adding a player happens once per person, entering a result happens
+	// after every match. The order on the page follows the frequency.
+	h, _ := kioskHandler(t)
+	cookie := unlock(t, h)
+
+	body := fragment(t, h, "/kiosk", cookie).Body.String()
+
+	enter := strings.Index(body, "Ergebnis eintragen")
+	create := strings.Index(body, "Spieler anlegen")
+
+	if enter < 0 || create < 0 {
+		t.Fatalf("the kiosk is missing one of its two forms: %s", body)
+	}
+	if enter > create {
+		t.Error("adding a player comes before entering a result")
+	}
+}

@@ -594,6 +594,20 @@ grep -q "10:10" "$form" || {
 	exit 1
 }
 
+echo "== score columns: each one says whose it is =="
+sides=$(mktemp)
+curl -fsS -b "$cookies" "http://app:8080/fragments/sets?sets_prefix=entry&best_of=3&points_to_win=11" > "$sides"
+grep -q ">Du<" "$sides" || {
+	echo "the left score column is not named"
+	cat "$sides"
+	exit 1
+}
+grep -q ">Gegner<" "$sides" || {
+	echo "the right score column is not named"
+	cat "$sides"
+	exit 1
+}
+
 echo "== a rejected form reaches the page =="
 size=$(curl -fsS http://app:8080/static/js/app.js | wc -c)
 [ "$size" -gt 100 ] || {
