@@ -51,6 +51,68 @@ tasks:
         vars: { SERVICES: db }
       - go run ./cmd/schmetterpause serve
 
+  # --------------------------------------------------------- Event on site
+  # One laptop at the table, everybody else on their phone. The walkthrough
+  # is in docs/turnier-vor-ort.md.
+
+  office:ip:
+    desc: "Show the addresses this machine answers on, for SP_PUBLIC_BASE_URL"
+    silent: true
+    cmds:
+      - |
+        if command -v ip >/dev/null 2>&1; then
+          ip -4 -o addr show scope global | awk '{split($4, a, "/"); print $2 "\t" a[1]}'
+        elif command -v ipconfig >/dev/null 2>&1; then
+          for i in $(ifconfig -l); do
+            a=$(ipconfig getifaddr "$i" 2>/dev/null) && [ -n "$a" ] && printf '%s\t%s\n' "$i" "$a"
+          done
+        elif hostname -I >/dev/null 2>&1; then
+          # No interface names from this one, only the addresses.
+          for a in $(hostname -I); do printf '?\t%s\n' "$a"; done
+        else
+          echo "No ip, ipconfig or hostname -I here — read the address off the network settings." >&2
+          exit 1
+        fi
+        echo
+        echo "Then: SP_PUBLIC_BASE_URL=http://<address>:8080 SP_KIOSK_TOKEN=... SP_SESSION_KEY=... task office:up"
+
+  office:up:
+    desc: "Start for the office: reachable on the network, kiosk unlocked"
+    silent: true
+    # Compose reads .env by itself; this is so the summary below sees the same
+    # values rather than three empty lines.
+    dotenv: ['.env']
+    env:
+      # The one case where the app answers on every interface rather than on
+      # loopback: the phones are not on this machine.
+      SP_BIND_ADDR: 0.0.0.0
+    cmds:
+      - docker compose -f compose.yaml -f compose.office.yaml up --build --detach --wait
+      - |
+        echo
+        echo "Ranking and result entry:  $SP_PUBLIC_BASE_URL/"
+        echo "Sheet to print and tape up: $SP_PUBLIC_BASE_URL/qr"
+        echo "Machine at the table, once: $SP_PUBLIC_BASE_URL/kiosk?token=$SP_KIOSK_TOKEN"
+
+  office:stop:
+    desc: "Stop the event stack and keep every result"
+    silent: true
+    cmds:
+      # The base file only: the overlay insists on the three variables, and
+      # having to produce a session key in order to stop something is exactly
+      # the wrong moment to look one up.
+      - docker compose stop
+      - 'echo "Stopped. task office:up brings it back with the data intact."'
+
+  office:backup:
+    desc: "Write the tournament database to a file"
+    silent: true
+    cmds:
+      # Named by the moment, not by the code version: what matters afterwards
+      # is which evening this was.
+      - 'docker compose exec -T db pg_dump -U schmetterpause schmetterpause > schmetterpause-{{now | date "2006-01-02-1504"}}.sql'
+      - 'echo "Written: schmetterpause-{{now | date "2006-01-02-1504"}}.sql"'
+
   psql:
     desc: "psql session on the development database"
     interactive: true

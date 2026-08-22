@@ -45,7 +45,10 @@ services:
       # reached directly. Set it where a proxy terminates TLS or rewrites the
       # host, because there the request no longer says where a phone has to go.
     ports:
-      - "127.0.0.1:8080:8080"
+      # Loopback by default: a development machine has no business answering
+      # the whole network. compose.office.yaml is started with 0.0.0.0 here,
+      # which is the one case where it does.
+      - "${SP_BIND_ADDR:-127.0.0.1}:8080:8080"
     depends_on:
       db:
         condition: service_healthy
