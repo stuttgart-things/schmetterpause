@@ -63,6 +63,9 @@ func (s *Server) routes() http.Handler {
 	page.HandleFunc("GET /players/{id}", s.handleProfile)
 	page.HandleFunc("POST /players", s.handleJoin)
 	page.HandleFunc("GET /fragments/match", s.handleMatchForm)
+	// Not behind a player check: the kiosk has no player session and needs
+	// the same rows.
+	page.HandleFunc("GET /fragments/sets", s.handleSetsFragment)
 	page.HandleFunc("POST /matches", s.handleRecordMatch)
 	page.HandleFunc("GET /fragments/pending", s.handlePendingFragment)
 	page.HandleFunc("POST /matches/{id}/confirm", s.handleConfirmMatch)

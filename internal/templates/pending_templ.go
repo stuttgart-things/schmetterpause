@@ -534,7 +534,7 @@ func correctionForm(m PendingMatchView) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = setRows(m.Inputs).Render(ctx, templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = setRows("fix-"+m.ID, m.Inputs, m.BestOf, m.PointsToWin).Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

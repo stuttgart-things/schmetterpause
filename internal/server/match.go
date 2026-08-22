@@ -289,3 +289,43 @@ func describeRejection(err error) string {
 	}
 	return "Das Ergebnis ist so nicht möglich."
 }
+
+// setsPrefixFallback is the form the fragment renders into when the request
+// names one that cannot be a form on any page.
+const setsPrefixFallback = "entry"
+
+// handleSetsFragment re-renders the set rows for the mode currently picked.
+//
+// One endpoint for all three forms — entry, kiosk and correction — because
+// they differ in nothing the rows care about. The form says which one it is
+// through the hidden sets_prefix field that setRows puts there, and hands its
+// own contents along, so changing the mode never empties a box somebody has
+// already filled in.
+func (s *Server) handleSetsFragment(w http.ResponseWriter, r *http.Request) {
+	form, _ := parseResultForm(r)
+
+	s.render(w, r, templates.SetsFragment(templates.SetsView{
+		Prefix:      setsPrefix(r.FormValue("sets_prefix")),
+		BestOf:      form.bestOf,
+		PointsToWin: form.pointsToWin,
+		Sets:        form.typed,
+	}))
+}
+
+// setsPrefix keeps the prefix to what the templates can produce. It ends up in
+// an id and in a target selector, and while templ escapes the attribute, a
+// selector built from arbitrary input is a sharp edge to leave lying around.
+func setsPrefix(raw string) string {
+	if raw == "" || len(raw) > 40 {
+		return setsPrefixFallback
+	}
+
+	for _, c := range raw {
+		switch {
+		case c >= 'a' && c <= 'z', c >= 'A' && c <= 'Z', c >= '0' && c <= '9', c == '-':
+		default:
+			return setsPrefixFallback
+		}
+	}
+	return raw
+}

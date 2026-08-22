@@ -25,7 +25,7 @@ templ MatchForm(v MatchFormView) {
 					</select>
 				</div>
 				@modeRow("entry", v.BestOf, v.PointsToWin)
-				@setRows(v.Sets)
+				@setRows("entry", v.Sets, v.BestOf, v.PointsToWin)
 				<button type="submit">Eintragen</button>
 				if v.Error != "" {
 					<p class="fail" role="alert">{ v.Error }</p>
@@ -45,14 +45,35 @@ templ MatchForm(v MatchFormView) {
 templ modeRow(prefix string, bestOf, pointsToWin int) {
 	<div class="row">
 		<label for={ prefix + "-best-of" }>Modus</label>
-		<select id={ prefix + "-best-of" } name="best_of">
+		// Both selects re-render the set rows: best-of decides how many there
+		// are, and the target score decides what the rule underneath them
+		// says. hx-include carries what is already typed, so changing the
+		// mode does not empty the boxes.
+		<select
+			id={ prefix + "-best-of" }
+			name="best_of"
+			hx-get="/fragments/sets"
+			hx-target={ "#sets-" + prefix }
+			hx-swap="outerHTML"
+			hx-include="closest form"
+			hx-sync="closest form:replace"
+		>
 			for _, n := range []int{3, 5, 7} {
 				<option value={ strconv.Itoa(n) } selected?={ bestOf == n }>
 					Best of { strconv.Itoa(n) }
 				</option>
 			}
 		</select>
-		<select id={ prefix + "-points-to-win" } name="points_to_win" aria-label="Punkte pro Satz">
+		<select
+			id={ prefix + "-points-to-win" }
+			name="points_to_win"
+			aria-label="Punkte pro Satz"
+			hx-get="/fragments/sets"
+			hx-target={ "#sets-" + prefix }
+			hx-swap="outerHTML"
+			hx-include="closest form"
+			hx-sync="closest form:replace"
+		>
 			for _, p := range []int{11, 21} {
 				<option value={ strconv.Itoa(p) } selected?={ pointsToWin == p }>
 					bis { strconv.Itoa(p) }
@@ -63,11 +84,25 @@ templ modeRow(prefix string, bestOf, pointsToWin int) {
 }
 
 // setRows is the set-by-set score, always from the reader's own side.
-templ setRows(sets []SetInput) {
-	<fieldset class="sets">
+//
+// It shows as many rows as the mode can have and no more, and it carries the
+// prefix in a hidden field so /fragments/sets can render itself back into the
+// right form when the mode changes — three of these can be on one page.
+//
+// The boxes have no maximum on purpose: at eleven, 12:10 and 13:11 are
+// ordinary results, so any cap that would reject 15:8 would reject those too.
+// The rule is written out instead, and the server has the last word.
+templ setRows(prefix string, sets []SetInput, bestOf, pointsToWin int) {
+	<fieldset id={ "sets-" + prefix } class="sets">
 		<legend>Sätze</legend>
-		<p class="muted">Nicht gespielte Sätze leer lassen.</p>
-		for i, s := range sets {
+		<input type="hidden" name="sets_prefix" value={ prefix }/>
+		<p id={ "sets-rule-" + prefix } class="muted">
+			Bis { strconv.Itoa(pointsToWin) } Punkte. Steht es
+			{ strconv.Itoa(DeuceFrom(pointsToWin)) }:{ strconv.Itoa(DeuceFrom(pointsToWin)) },
+			geht der Satz weiter, bis jemand zwei Punkte vorn liegt. Nicht
+			gespielte Sätze leer lassen.
+		</p>
+		for i, s := range SetRows(sets, bestOf) {
 			<div class="set">
 				<span class="set-no">{ strconv.Itoa(i + 1) }.</span>
 				<input
@@ -77,6 +112,7 @@ templ setRows(sets []SetInput) {
 					min="0"
 					inputmode="numeric"
 					aria-label={ "Satz " + strconv.Itoa(i+1) + ", eigene Punkte" }
+					aria-describedby={ "sets-rule-" + prefix }
 				/>
 				<span class="colon">:</span>
 				<input
@@ -86,10 +122,17 @@ templ setRows(sets []SetInput) {
 					min="0"
 					inputmode="numeric"
 					aria-label={ "Satz " + strconv.Itoa(i+1) + ", Punkte des Gegners" }
+					aria-describedby={ "sets-rule-" + prefix }
 				/>
 			</div>
 		}
 	</fieldset>
+}
+
+// SetsFragment is the set rows on their own, for the swap that follows a
+// change of mode. Every form on the page has its own, told apart by prefix.
+templ SetsFragment(v SetsView) {
+	@setRows(v.Prefix, v.Sets, v.BestOf, v.PointsToWin)
 }
 
 // MatchRecorded confirms the entry and says what happens next. It is
