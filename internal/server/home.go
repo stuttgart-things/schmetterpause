@@ -20,9 +20,50 @@ import (
 // browser and is not a rule.
 const maxDisplayNameLen = 40
 
+// handleWhoami serves the top-right corner on its own, for the slow refresh
+// that makes the badge appear without a reload.
+func (s *Server) handleWhoami(w http.ResponseWriter, r *http.Request) {
+	s.render(w, r, templates.Whoami(s.headerView(r.Context())))
+}
+
+// headerView describes who this is and how much waits on them.
+//
+// It never fails the request: a top bar that cannot say how many results are
+// waiting is worth less than a page, so a broken count is logged and the
+// badge simply stays away.
+func (s *Server) headerView(ctx context.Context) templates.HeaderView {
+	id, ok := auth.PlayerID(ctx)
+	if !ok {
+		return templates.HeaderView{}
+	}
+
+	player, err := s.store.Players().ByID(ctx, id)
+	if err != nil {
+		s.log.WarnContext(ctx, "the session points at an unknown player",
+			"player_id", id, "error", err)
+		return templates.HeaderView{}
+	}
+
+	view := templates.HeaderView{
+		DisplayName: player.DisplayName,
+		ProfileURL:  "/players/" + player.ID.String(),
+	}
+
+	waiting, err := s.store.Matches().PendingCountFor(ctx, id)
+	if err != nil {
+		s.log.ErrorContext(ctx, "counting the pending matches failed", "error", err)
+		return view
+	}
+	view.Pending = waiting
+	return view
+}
+
 // handleIndex renders the start page: session, result entry and the roster.
 func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
-	view := templates.IndexView{Session: s.sessionView(r.Context())}
+	view := templates.IndexView{
+		Header:  s.headerView(r.Context()),
+		Session: s.sessionView(r.Context()),
+	}
 
 	table, err := s.standingsView(r.Context())
 	if err != nil {
@@ -100,14 +141,19 @@ func (s *Server) handleJoin(w http.ResponseWriter, r *http.Request) {
 
 	s.auth.SetCookie(w, subject)
 
-	table, err := s.standingsView(auth.WithPlayerID(r.Context(), created.ID))
+	signedIn := auth.WithPlayerID(r.Context(), created.ID)
+
+	table, err := s.standingsView(signedIn)
 	if err != nil {
 		// The player exists and is signed in; only the ranking is missing.
 		// Saying so beats discarding a successful join.
 		s.log.ErrorContext(r.Context(), "loading the standings failed", "error", err)
 	}
 
-	s.render(w, r, templates.Session(templates.SessionView{DisplayName: created.DisplayName}))
+	// The corner is refreshed out of band in the same response, so the name
+	// appears where it now lives rather than only after a reload.
+	s.render(w, r, templates.Joined(templates.SessionView{DisplayName: created.DisplayName}))
+	s.render(w, r, templates.WhoamiOOB(s.headerView(signedIn)))
 	s.render(w, r, templates.StandingsOOB(table))
 }
 

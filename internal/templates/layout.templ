@@ -1,6 +1,6 @@
 package templates
 
-templ Layout(title string) {
+templ Layout(title string, header HeaderView) {
 	<!DOCTYPE html>
 	<html lang="de">
 		<head>
@@ -14,6 +14,19 @@ templ Layout(title string) {
 			<header class="topbar">
 				<a class="brand" href="/">Schmetter<span class="brand-mark">pause</span></a>
 				<span class="tagline">Büro-Tischtennis</span>
+				// Rendered server-side so the name is there on the first
+				// paint, and refreshed on a slow timer so the badge turns up
+				// when somebody else enters a result against you.
+				<span
+					id="whoami"
+					class="whoami"
+					hx-get="/fragments/whoami"
+					hx-trigger="every 60s"
+					hx-target="this"
+					hx-swap="innerHTML"
+				>
+					@Whoami(header)
+				</span>
 			</header>
 			<main>
 				{ children... }
@@ -25,4 +38,32 @@ templ Layout(title string) {
 			</footer>
 		</body>
 	</html>
+}
+
+// Whoami is the contents of the top-right corner: who this is, and how much
+// is waiting for them. Nothing at all before anybody is recognised — the join
+// form on the start page is the thing to look at then.
+templ Whoami(v HeaderView) {
+	if v.SignedIn() {
+		<a class="whoami-name" href={ templ.SafeURL(v.ProfileURL) }>{ v.DisplayName }</a>
+		if v.Pending > 0 {
+			<a
+				class="whoami-badge"
+				href="#pending"
+				title="Ergebnisse warten auf deine Bestätigung"
+				aria-label={ pendingLabel(v.Pending) }
+			>
+				{ pendingCount(v.Pending) }
+			</a>
+		}
+	}
+}
+
+// WhoamiOOB refreshes the corner from a response that did something else.
+// innerHTML rather than a whole-element swap, so the polling attributes on
+// the container survive it.
+templ WhoamiOOB(v HeaderView) {
+	<span id="whoami" hx-swap-oob="innerHTML">
+		@Whoami(v)
+	</span>
 }

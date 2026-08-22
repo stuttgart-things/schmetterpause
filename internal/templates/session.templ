@@ -1,18 +1,12 @@
 package templates
 
-// Session renders the #session region: either the join form, or a note
-// naming the recognised player. Both carry the same id so the form can
-// replace itself with the outcome.
+// Session renders the #session region. It holds the join form and nothing
+// else: being signed in is state, and state lives in the top bar now, so a
+// recognised player gets an empty region rather than a card telling them
+// something they can already see.
 templ Session(v SessionView) {
-	<section id="session" class="session">
-		if v.SignedIn() {
-			<p>
-				Angemeldet als <strong>{ v.DisplayName }</strong>.
-			</p>
-			<p class="muted">
-				Dieses Gerät erkennt dich wieder — auch nach einem Neustart.
-			</p>
-		} else {
+	<section id="session" class={ templ.KV("session", !v.SignedIn()) }>
+		if !v.SignedIn() {
 			<form hx-post="/players" hx-target="#session" hx-swap="outerHTML">
 				<label for="display-name">Dein Name</label>
 				<input
@@ -30,5 +24,19 @@ templ Session(v SessionView) {
 				}
 			</form>
 		}
+	</section>
+}
+
+// Joined confirms a successful join, once. The line about the device is
+// onboarding rather than status: it answers a question somebody has exactly
+// at this moment and never again, so it is not on the page afterwards.
+templ Joined(v SessionView) {
+	<section id="session" class="session">
+		<p>
+			Angemeldet als <strong>{ v.DisplayName }</strong>.
+		</p>
+		<p class="muted">
+			Dieses Gerät erkennt dich wieder — auch nach einem Neustart.
+		</p>
 	</section>
 }

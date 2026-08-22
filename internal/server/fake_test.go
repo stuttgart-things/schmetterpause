@@ -255,6 +255,11 @@ func (m *memMatches) PendingFor(_ context.Context, playerID uuid.UUID) ([]domain
 	return out, nil
 }
 
+func (m *memMatches) PendingCountFor(ctx context.Context, playerID uuid.UUID) (int, error) {
+	waiting, err := m.PendingFor(ctx, playerID)
+	return len(waiting), err
+}
+
 // RecentFor mirrors the Postgres query: every match the player is in, newest
 // first, whatever its status.
 func (m *memMatches) RecentFor(_ context.Context, playerID uuid.UUID, limit int) ([]domain.Match, error) {

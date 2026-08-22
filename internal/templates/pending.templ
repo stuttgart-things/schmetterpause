@@ -8,8 +8,7 @@ import "strconv"
 // the whole point of the step, and the reason it is the app's real defence
 // against a joke score rather than the login is.
 templ PendingList(v PendingListView) {
-	<section id="pending" class="pending">
-		<h2>Zu bestätigen</h2>
+	<section id="pending" class={ templ.KV("pending", len(v.Matches) > 0) }>
 		@pendingItems(v)
 	</section>
 }
@@ -17,16 +16,20 @@ templ PendingList(v PendingListView) {
 // PendingListOOB is PendingList marked for an out-of-band swap, so an action
 // elsewhere on the page can refresh it in the same response.
 templ PendingListOOB(v PendingListView) {
-	<section id="pending" class="pending" hx-swap-oob="true">
-		<h2>Zu bestätigen</h2>
+	<section id="pending" class={ templ.KV("pending", len(v.Matches) > 0) } hx-swap-oob="true">
 		@pendingItems(v)
 	</section>
 }
 
+// pendingItems renders nothing at all when there is nothing waiting. A card
+// saying "nothing to confirm" is a line to read past every single time, and
+// the badge in the top bar already says so by being absent.
+//
+// The empty <section> stays in the document because the out-of-band swaps
+// after a ruling need something to aim at.
 templ pendingItems(v PendingListView) {
-	if len(v.Matches) == 0 {
-		<p class="muted">Nichts zu bestätigen.</p>
-	} else {
+	if len(v.Matches) > 0 {
+		<h2>Zu bestätigen</h2>
 		<ul class="pending-list">
 			for _, m := range v.Matches {
 				@PendingItem(m)

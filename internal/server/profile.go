@@ -98,7 +98,7 @@ func (s *Server) profileView(ctx context.Context, id uuid.UUID) (templates.Profi
 		return templates.ProfileView{}, err
 	}
 
-	view := templates.ProfileView{}
+	view := templates.ProfileView{Header: s.headerView(ctx)}
 	found := false
 	for _, row := range standings.Build(records) {
 		if row.Record.Player.ID != id {

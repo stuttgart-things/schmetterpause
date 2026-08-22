@@ -265,11 +265,70 @@ func TestAReturningBrowserIsRecognised(t *testing.T) {
 	restarted.ServeHTTP(rec, r)
 
 	body := rec.Body.String()
-	if !strings.Contains(body, "Angemeldet als") || !strings.Contains(body, "Anna") {
+	// Being recognised is now stated in the top bar rather than in a card of
+	// its own, and the name leads to that player's own profile.
+	if !strings.Contains(body, `class="whoami-name"`) || !strings.Contains(body, ">Anna<") {
 		t.Errorf("the returning browser was not recognised: %s", body)
 	}
 	if strings.Contains(body, `name="display_name"`) {
 		t.Error("the join form is still being shown to a recognised player")
+	}
+}
+
+// TestTheBadgeCountsWhatIsWaiting: the top bar replaces a card that said
+// "nothing to confirm", so the badge has to be the thing that says otherwise.
+func TestTheBadgeCountsWhatIsWaiting(t *testing.T) {
+	h, store, anna, bodo := twoBrowsers(t)
+
+	// Nobody has entered anything, so there is nothing to announce.
+	if body := get(t, h, "/fragments/whoami").Body.String(); strings.Contains(body, "whoami-badge") {
+		t.Errorf("a badge turned up with nothing waiting: %s", body)
+	}
+
+	reportedByAnna(t, h, store, anna)
+
+	forBodo := fragment(t, h, "/fragments/whoami", bodo).Body.String()
+	if !strings.Contains(forBodo, `class="whoami-badge"`) || !strings.Contains(forBodo, ">1<") {
+		t.Errorf("Bodo is not told a result waits on him: %s", forBodo)
+	}
+	// Anna entered it, so it does not wait on her.
+	if forAnna := fragment(t, h, "/fragments/whoami", anna).Body.String(); strings.Contains(forAnna, "whoami-badge") {
+		t.Errorf("Anna is counted for her own result: %s", forAnna)
+	}
+
+	// Confirming empties it again, in the same response.
+	rec := post(t, h, "/matches/"+store.matches.all()[0].ID.String()+"/confirm", bodo)
+	if !strings.Contains(rec.Body.String(), `id="whoami" hx-swap-oob="innerHTML"`) {
+		t.Errorf("the ruling did not refresh the top bar: %s", rec.Body.String())
+	}
+	if after := fragment(t, h, "/fragments/whoami", bodo).Body.String(); strings.Contains(after, "whoami-badge") {
+		t.Errorf("the badge outlived the confirmation: %s", after)
+	}
+}
+
+// TestJoiningSaysItOnce keeps the onboarding line where it belongs: it
+// answers a question somebody has exactly once, so it is not on the page
+// afterwards.
+func TestJoiningSaysItOnce(t *testing.T) {
+	store := newMemStore()
+	h := newHandlerWith(store, auth.NewCookieAuthenticator(store.Identities(), testSessionKey, false))
+
+	rec := join(t, h, "Anna")
+	body := rec.Body.String()
+	if !strings.Contains(body, "erkennt dich wieder") {
+		t.Errorf("joining does not explain the cookie: %s", body)
+	}
+	if !strings.Contains(body, `id="whoami" hx-swap-oob="innerHTML"`) {
+		t.Errorf("joining does not put the name in the top bar: %s", body)
+	}
+
+	r := httptest.NewRequest(http.MethodGet, "/", nil)
+	r.AddCookie(sessionCookie(t, rec))
+	next := httptest.NewRecorder()
+	h.ServeHTTP(next, r)
+
+	if strings.Contains(next.Body.String(), "erkennt dich wieder") {
+		t.Error("the onboarding line is still on the page on the next visit")
 	}
 }
 

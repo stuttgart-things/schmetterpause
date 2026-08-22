@@ -3,7 +3,7 @@ package templates
 import "strconv"
 
 templ Index(v IndexView) {
-	@Layout("Start") {
+	@Layout("Start", v.Header) {
 		// The wordmark is already in the top bar, so a second one at page size
 		// would read as a mistake. The heading stays for anything that
 		// navigates by structure rather than by looking.

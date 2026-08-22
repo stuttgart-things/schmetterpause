@@ -31,6 +31,7 @@ func (s *Server) handleQRSheet(w http.ResponseWriter, r *http.Request) {
 	}
 
 	s.render(w, r, templates.QRSheet(templates.QRSheetView{
+		Header: s.headerView(r.Context()),
 		Target: target,
 		Path:   code.Path,
 		Size:   code.Size,

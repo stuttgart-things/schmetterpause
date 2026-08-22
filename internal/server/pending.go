@@ -219,9 +219,11 @@ func (s *Server) reportRulingError(w http.ResponseWriter, r *http.Request, err e
 	}
 }
 
-// refreshAfterRuling swaps the ranking and the pending list out of band,
-// since a ruling changes both.
+// refreshAfterRuling swaps the ranking, the pending list and the badge out of
+// band, since a ruling changes all three.
 func (s *Server) refreshAfterRuling(w http.ResponseWriter, r *http.Request, self uuid.UUID) {
+	s.render(w, r, templates.WhoamiOOB(s.headerView(r.Context())))
+
 	table, err := s.standingsView(r.Context())
 	if err != nil {
 		s.log.ErrorContext(r.Context(), "loading the standings failed", "error", err)

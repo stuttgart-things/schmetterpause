@@ -5,7 +5,7 @@ import "strconv"
 // Profile is one player's page: where they stand now, how they got there, and
 // the matches behind it.
 templ Profile(v ProfileView) {
-	@Layout(v.DisplayName) {
+	@Layout(v.DisplayName, v.Header) {
 		<p class="back"><a href="/">&larr; Rangliste</a></p>
 		<h1>{ v.DisplayName }</h1>
 		<section class="stat">
