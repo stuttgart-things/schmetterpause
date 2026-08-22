@@ -438,6 +438,19 @@ button.secondary:hover {
 
 /* --- Rangliste und Profil ---------------------------------------------- */
 
+/* A table refuses to shrink below the width its content needs, so a name
+   nobody anticipated would take the whole page sideways with it. The table
+   scrolls inside its own box instead, and the page never does. */
+.table-scroll {
+	overflow-x: auto;
+	overscroll-behavior-x: contain;
+}
+
+.table-scroll:focus-visible {
+	outline: 2px solid var(--accent);
+	outline-offset: 2px;
+}
+
 table {
 	width: 100%;
 	border-collapse: collapse;
@@ -459,6 +472,16 @@ th {
 }
 
 tbody tr:last-child td { border-bottom: none; }
+
+/* Names are the one column with content of unpredictable width, so they are
+   the one column allowed to break mid-word. Everything else stays whole —
+   a set line broken between "11:" and "9" reads as two results.
+
+   break-word rather than anywhere: anywhere lets the column claim a
+   min-content width of one letter, and the layout then hands it that,
+   breaking every ordinary name. break-word leaves the column its natural
+   width and breaks only what would otherwise not fit at all. */
+td.name { overflow-wrap: break-word; }
 
 /* Tabular figures keep the columns aligned while ratings move. The big
    number on a profile deliberately does not use them. */
@@ -516,6 +539,30 @@ tr.self td { background: color-mix(in srgb, var(--accent) 8%, transparent); }
 	font-size: 0.8rem;
 	color: var(--muted);
 	white-space: nowrap;
+}
+
+/* A phone is the case these tables have to survive, and on a phone the
+   padding and the letter-spacing in the headings are a third of the width
+   between them. Both give way before the numbers do, and the numbers are
+   what a ranking is for. Measured at 360 px with a hyphenated double name:
+   with these it fits, without them it scrolls.
+
+   This block sits after the rules it overrides on purpose — a media query
+   carries no extra specificity, so source order is what decides. */
+@media (max-width: 30rem) {
+	th, td { padding: 0.5rem 0.25rem; }
+
+	th {
+		font-size: 0.62rem;
+		letter-spacing: 0.04em;
+	}
+
+	.rank {
+		min-width: 1.6rem;
+		height: 1.6rem;
+	}
+
+	.matches .when { font-size: 0.72rem; }
 }
 
 .back {
