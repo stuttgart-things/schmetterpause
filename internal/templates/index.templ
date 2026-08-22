@@ -22,13 +22,31 @@ templ Index(v IndexView) {
 		>
 			<p class="muted">Status wird geladen …</p>
 		</section>
+		// Decorative, and the only decoration on the page. It sits at the end
+		// where it competes with nothing, and it fills the gap a short table
+		// leaves above the footer.
+		<img class="page-mascot" src="/static/img/mascot.png" width="420" height="420" alt=""/>
 	}
 }
 
 // Status is the fragment loaded by HTMX. It proves the path
 // handler -> repository -> database and back into the template.
+//
+// It states what the two probes would answer rather than linking to them: a
+// link you have to click and read is not a status, and the footer used to
+// carry two of them.
 templ Status(v StatusView) {
 	<dl class="status">
+		<dt>healthz</dt>
+		// This fragment came from the process, so the process is alive. That
+		// is the whole question liveness asks.
+		<dd class="ok">ok</dd>
+		<dt>readyz</dt>
+		if v.Ready() {
+			<dd class="ok">bereit</dd>
+		} else {
+			<dd class="fail">nicht bereit</dd>
+		}
 		<dt>Datenbank</dt>
 		if v.DatabaseReachable {
 			<dd class="ok">erreichbar</dd>
