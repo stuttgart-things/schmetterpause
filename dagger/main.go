@@ -487,6 +487,13 @@ size=$(curl -fsS http://app:8080/static/js/htmx.min.js | wc -c)
 	exit 1
 }
 
+echo "== fonts: embedded and served =="
+size=$(curl -fsS http://app:8080/static/fonts/space-grotesk-latin.woff2 | wc -c)
+[ "$size" -gt 10000 ] || {
+	echo "the display font is missing or empty ($size bytes)"
+	exit 1
+}
+
 echo "== HTMX fragment: handler, repository and database =="
 curl -fsS http://app:8080/fragments/status | grep -q ">erreichbar<" || {
 	echo "status fragment does not report the database as reachable"

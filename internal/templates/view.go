@@ -5,6 +5,8 @@
 // verifies they match the current *.templ sources.
 package templates
 
+import "strconv"
+
 // generate regenerates the *_templ.go files. templ is pinned as a Go tool in
 // go.mod so that the same version runs locally and in the pipeline.
 //
@@ -160,6 +162,19 @@ type DisputedView struct {
 // StandingsView is the ranking.
 type StandingsView struct {
 	Rows []StandingRow
+}
+
+// rankClass names the chip a rank is drawn in. Only the first five positions
+// carry a colour: five is a ladder, twelve is a fruit bowl.
+func rankClass(rank int, shared bool) string {
+	class := "rank"
+	if rank >= 1 && rank <= 5 {
+		class += " rank-" + strconv.Itoa(rank)
+	}
+	if shared {
+		class += " shared"
+	}
+	return class
 }
 
 // StandingRow is one line of the ranking.
