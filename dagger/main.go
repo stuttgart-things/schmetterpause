@@ -569,6 +569,12 @@ curl -fsS -b "$cookies" http://app:8080/fragments/whoami | grep -q "whoami-badge
 	exit 1
 }
 
+echo "== ranking: the table scrolls, the page does not =="
+curl -fsS http://app:8080/ | grep -q "class=\"table-scroll\" tabindex=\"0\"" || {
+	echo "the ranking is not in a focusable scroll box"
+	exit 1
+}
+
 echo "== match entry: an impossible result is refused, a real one is stored =="
 second=$(mktemp)
 curl -fsS -c "$second" -X POST http://app:8080/players \
