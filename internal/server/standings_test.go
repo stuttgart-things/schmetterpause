@@ -7,6 +7,8 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
+
+	"github.com/stuttgart-things/schmetterpause/internal/domain"
 )
 
 // settledMatch has Anna report a 2:0 over Bodo and Bodo confirm it, so there
@@ -63,10 +65,44 @@ func TestTheRankingIsOrderedAndNumbered(t *testing.T) {
 	}
 }
 
-// TestLevelPlayersShareARank covers the case two fresh players are always in:
-// nobody has played, so nobody is second.
-func TestLevelPlayersShareARank(t *testing.T) {
+// TestAFreshTableRanksNobody is the state every evening starts in: names on
+// the board, no matches. Four players all on the starting rating used to come
+// out as four number ones, which reads as a defect rather than as a tie.
+func TestAFreshTableRanksNobody(t *testing.T) {
 	h, _, anna, _ := twoBrowsers(t)
+
+	body := fragment(t, h, "/fragments/standings", anna).Body.String()
+
+	if strings.Contains(body, `class="rank rank-1"`) {
+		t.Errorf("somebody without a confirmed match was given a position: %s", body)
+	}
+	if !strings.Contains(body, `class="rank rank-none"`) {
+		t.Errorf("an unplayed row is not marked as unranked: %s", body)
+	}
+	// The reason, not just the absence: "nobody has a position" is confusing,
+	// "nobody has played" is not.
+	if !strings.Contains(body, "Noch kein gewertetes Spiel") {
+		t.Errorf("the empty table does not say why it is empty: %s", body)
+	}
+}
+
+// TestLevelPlayersShareARank is the tie that can actually happen: both have
+// played, and they are level.
+func TestLevelPlayersShareARank(t *testing.T) {
+	h, store, anna, bodo := twoBrowsers(t)
+	settledMatch(t, h, store, anna, bodo)
+
+	// The match moved them apart. Put them back on one rating, because the
+	// tie is what is under test and not the arithmetic that produced it.
+	players, err := store.Players().List(t.Context())
+	if err != nil {
+		t.Fatalf("List(): %v", err)
+	}
+	for _, p := range players {
+		if err := store.Players().UpdateTTR(t.Context(), p.ID, domain.DefaultTTR); err != nil {
+			t.Fatalf("UpdateTTR(): %v", err)
+		}
+	}
 
 	body := fragment(t, h, "/fragments/standings", anna).Body.String()
 

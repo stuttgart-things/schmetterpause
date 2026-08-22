@@ -29,6 +29,11 @@ type StatusView struct {
 	Version string
 }
 
+// Ready is what /readyz would answer. Readiness is defined by the database
+// check and nothing else, so the two cannot drift apart by being stated in
+// two places — this reads the same field the probe does.
+func (v StatusView) Ready() bool { return v.DatabaseReachable }
+
 // KioskView is the page one machine at the table works from.
 //
 // Sets and mode are not handed back after a rejection the way result entry
@@ -266,11 +271,30 @@ type StandingsView struct {
 	Rows []StandingRow
 }
 
-// rankClass names the chip a rank is drawn in. Only the first five positions
-// carry a colour: five is a ladder, twelve is a fruit bowl.
+// AnyRanked reports whether a single confirmed match has been played. Until
+// then the table lists who is in and says so, rather than presenting a
+// placement nobody earned.
+func (v StandingsView) AnyRanked() bool {
+	for _, row := range v.Rows {
+		if row.Ranked() {
+			return true
+		}
+	}
+	return false
+}
+
+// rankClass names the chip a rank is drawn in.
+//
+// Only the podium is marked, and only first place is filled — in the mascot's
+// orange, which is the one place the logo colour reaches into the interface.
+// Everything from fourth place down is a bare number, because a rank column
+// in five colours reads louder than the ratings beside it.
 func rankClass(rank int, shared bool) string {
 	class := "rank"
-	if rank >= 1 && rank <= 5 {
+	switch {
+	case rank == 0:
+		return class + " rank-none"
+	case rank <= 3:
 		class += " rank-" + strconv.Itoa(rank)
 	}
 	if shared {
@@ -292,6 +316,9 @@ type StandingRow struct {
 	Won, Lost   int
 	IsSelf      bool
 }
+
+// Ranked reports whether this row holds a position at all.
+func (r StandingRow) Ranked() bool { return r.Rank > 0 }
 
 // ProfileView is one player's page.
 type ProfileView struct {

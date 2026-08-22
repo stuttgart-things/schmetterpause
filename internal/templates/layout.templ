@@ -41,10 +41,11 @@ templ Layout(title string, header HeaderView) {
 			<main>
 				{ children... }
 			</main>
+			// One link, because one of the three led somewhere a player has
+			// business going. What the other two answered is written out in
+			// the status box instead.
 			<footer class="footer">
 				<a href="/qr">QR-Aushang</a>
-				<a href="/healthz">healthz</a>
-				<a href="/readyz">readyz</a>
 			</footer>
 		</body>
 	</html>
