@@ -338,6 +338,110 @@ func TestMatchRepository(t *testing.T) {
 	}
 }
 
+// TestReplaceResult covers the guard the caller cannot provide: the status is
+// part of the update's condition, so a match that stopped being contested
+// between the check and the write is not rewritten anyway.
+func TestReplaceResult(t *testing.T) {
+	store, ctx := newStore(t)
+	matches := store.Matches()
+
+	anna := mustPlayer(ctx, t, store, "Anna", domain.DefaultTTR)
+	bodo := mustPlayer(ctx, t, store, "Bodo", domain.DefaultTTR)
+
+	created, err := matches.Create(ctx, domain.Match{
+		HomeID: anna.ID, AwayID: bodo.ID,
+		BestOf: 5, PointsToWin: 11,
+		Status: domain.MatchPending, ReportedBy: anna.ID,
+		Sets: []domain.MatchSet{
+			{SetNo: 1, HomePoints: 11, AwayPoints: 9},
+			{SetNo: 2, HomePoints: 11, AwayPoints: 7},
+			{SetNo: 3, HomePoints: 11, AwayPoints: 5},
+		},
+	})
+	if err != nil {
+		t.Fatalf("Create(): %v", err)
+	}
+
+	corrected := domain.Match{
+		BestOf: 3, PointsToWin: 21, ReportedBy: bodo.ID,
+		Sets: []domain.MatchSet{
+			{SetNo: 1, HomePoints: 19, AwayPoints: 21},
+			{SetNo: 2, HomePoints: 21, AwayPoints: 23},
+		},
+	}
+
+	// Pending is not contested, so there is nothing to correct yet.
+	if err := matches.ReplaceResult(ctx, created.ID, corrected); !errors.Is(err, domain.ErrConflict) {
+		t.Errorf("ReplaceResult() on a pending match = %v, want domain.ErrConflict", err)
+	}
+
+	if err := matches.SetStatus(ctx, created.ID, domain.MatchDisputed, nil); err != nil {
+		t.Fatalf("SetStatus(disputed): %v", err)
+	}
+	if err := matches.ReplaceResult(ctx, created.ID, corrected); err != nil {
+		t.Fatalf("ReplaceResult(): %v", err)
+	}
+
+	got, err := matches.ByID(ctx, created.ID)
+	if err != nil {
+		t.Fatalf("ByID(): %v", err)
+	}
+	switch {
+	case got.Status != domain.MatchPending:
+		t.Errorf("status = %q, want pending", got.Status)
+	case got.ReportedBy != bodo.ID:
+		t.Error("the reporter did not move to whoever corrected it")
+	case got.BestOf != 3 || got.PointsToWin != 21:
+		t.Errorf("mode = best of %d to %d, want best of 3 to 21", got.BestOf, got.PointsToWin)
+	case len(got.Sets) != 2:
+		t.Errorf("%d sets stored, want 2 — the old ones outlived the correction", len(got.Sets))
+	case got.Sets[1].HomePoints != 21 || got.Sets[1].AwayPoints != 23:
+		t.Errorf("set 2 = %d:%d, want 21:23", got.Sets[1].HomePoints, got.Sets[1].AwayPoints)
+	}
+
+	// It is back to pending, so a second correction has nothing to act on.
+	if err := matches.ReplaceResult(ctx, created.ID, corrected); !errors.Is(err, domain.ErrConflict) {
+		t.Errorf("a repeated ReplaceResult() = %v, want domain.ErrConflict", err)
+	}
+	if err := matches.ReplaceResult(ctx, uuid.New(), corrected); !errors.Is(err, domain.ErrNotFound) {
+		t.Errorf("ReplaceResult() on an unknown match = %v, want domain.ErrNotFound", err)
+	}
+}
+
+// TestPendingForIncludesContestedMatches: a contested match waits on either
+// side to correct it, so it has to be reachable from both. Without this it
+// would live only in the answer to the dispute and vanish on a reload.
+func TestPendingForIncludesContestedMatches(t *testing.T) {
+	store, ctx := newStore(t)
+	matches := store.Matches()
+
+	anna := mustPlayer(ctx, t, store, "Anna", domain.DefaultTTR)
+	bodo := mustPlayer(ctx, t, store, "Bodo", domain.DefaultTTR)
+
+	created, err := matches.Create(ctx, domain.Match{
+		HomeID: anna.ID, AwayID: bodo.ID,
+		BestOf: 3, PointsToWin: 11,
+		Status: domain.MatchPending, ReportedBy: anna.ID,
+		Sets: []domain.MatchSet{{SetNo: 1, HomePoints: 11, AwayPoints: 9}},
+	})
+	if err != nil {
+		t.Fatalf("Create(): %v", err)
+	}
+	if err := matches.SetStatus(ctx, created.ID, domain.MatchDisputed, nil); err != nil {
+		t.Fatalf("SetStatus(disputed): %v", err)
+	}
+
+	for name, id := range map[string]uuid.UUID{"Anna": anna.ID, "Bodo": bodo.ID} {
+		waiting, err := matches.PendingFor(ctx, id)
+		if err != nil {
+			t.Fatalf("PendingFor(%s): %v", name, err)
+		}
+		if len(waiting) != 1 {
+			t.Errorf("PendingFor(%s) = %d, want the contested match", name, len(waiting))
+		}
+	}
+}
+
 func TestTTRHistoryRepository(t *testing.T) {
 	store, ctx := newStore(t)
 

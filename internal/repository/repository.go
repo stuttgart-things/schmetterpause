@@ -65,14 +65,24 @@ type MatchRepository interface {
 	// including the assigned ID.
 	Create(ctx context.Context, m domain.Match) (domain.Match, error)
 	ByID(ctx context.Context, id uuid.UUID) (domain.Match, error)
-	// PendingFor returns the matches waiting on this player's confirmation —
-	// that is, the ones somebody else recorded.
+	// PendingFor returns the matches waiting on this player: the pending ones
+	// somebody else recorded, and the contested ones they played in, which
+	// are waiting on either side to say what the result really was.
 	PendingFor(ctx context.Context, playerID uuid.UUID) ([]domain.Match, error)
 	// RecentFor returns a player's most recent matches.
 	RecentFor(ctx context.Context, playerID uuid.UUID, limit int) ([]domain.Match, error)
 	// SetStatus writes the confirmation state. confirmedAt is set exactly
 	// when status is domain.MatchConfirmed.
 	SetStatus(ctx context.Context, id uuid.UUID, status domain.MatchStatus, confirmedAt *time.Time) error
+	// ReplaceResult swaps the result of a contested match and hands it back
+	// for confirmation: mode, sets and reporter come from corrected, and the
+	// status returns to pending.
+	//
+	// It refuses anything that is not currently disputed, with
+	// domain.ErrConflict — a settled result must not be quietly rewritten,
+	// and that guard belongs where the write happens rather than only in the
+	// caller that remembered to check.
+	ReplaceResult(ctx context.Context, id uuid.UUID, corrected domain.Match) error
 }
 
 // TTRHistoryRepository writes and reads the rating history.
