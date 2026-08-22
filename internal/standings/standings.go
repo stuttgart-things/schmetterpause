@@ -18,11 +18,18 @@ import (
 
 // Row is one line of the ranking.
 type Row struct {
-	// Rank is the position, counting from 1. Players on the same rating
-	// share a rank and the next distinct rating skips the ones they used
-	// up — two players on rank 1 are followed by rank 3, not rank 2. That is
-	// how a sports table reads, and the alternative quietly promotes the
-	// third player.
+	// Rank is the position, counting from 1, or 0 for a player who has not
+	// played a confirmed match yet.
+	//
+	// Zero rather than a position, because a rating nobody has tested is not
+	// a placement. Four new players all sit on the starting rating, and
+	// ranking them would put four ones under each other and read as a bug —
+	// which is exactly what it looked like the first time somebody saw it.
+	//
+	// Players on the same rating share a rank and the next distinct rating
+	// skips the ones they used up: two players on rank 1 are followed by
+	// rank 3, not rank 2. That is how a sports table reads, and the
+	// alternative quietly promotes the third player.
 	Rank int
 	// Shared marks a rank held by more than one player, so the table can say
 	// so rather than leaving two identical numbers to explain themselves.
@@ -39,6 +46,13 @@ type Row struct {
 func Build(records []domain.PlayerRecord) []Row {
 	sorted := slices.Clone(records)
 	slices.SortStableFunc(sorted, func(a, b domain.PlayerRecord) int {
+		// Everybody who has played comes first, whatever the ratings say. An
+		// untested starting rating would otherwise stand above a player who
+		// has lost a match, and a table that puts somebody who has not
+		// played above somebody who has is not a ranking.
+		if c := cmp.Compare(played(b), played(a)); c != 0 {
+			return c
+		}
 		if c := cmp.Compare(b.Player.TTR, a.Player.TTR); c != 0 {
 			return c
 		}
@@ -50,8 +64,13 @@ func Build(records []domain.PlayerRecord) []Row {
 
 	rows := make([]Row, 0, len(sorted))
 	for i, record := range sorted {
+		if record.Played == 0 {
+			rows = append(rows, Row{Record: record})
+			continue
+		}
+
 		rank := i + 1
-		if i > 0 && sorted[i-1].Player.TTR == record.Player.TTR {
+		if i > 0 && sorted[i-1].Played > 0 && sorted[i-1].Player.TTR == record.Player.TTR {
 			rank = rows[i-1].Rank
 		}
 		rows = append(rows, Row{Rank: rank, Record: record})
@@ -61,9 +80,25 @@ func Build(records []domain.PlayerRecord) []Row {
 	return rows
 }
 
-// markShared flags every row whose rank another row also holds.
+// played is 1 for a player with at least one confirmed match, 0 otherwise —
+// the sort only needs the distinction, not the count.
+func played(r domain.PlayerRecord) int {
+	if r.Played > 0 {
+		return 1
+	}
+	return 0
+}
+
+// Ranked reports whether this row holds a position at all.
+func (r Row) Ranked() bool { return r.Rank > 0 }
+
+// markShared flags every row whose rank another row also holds. Unranked rows
+// hold nothing, so they never share.
 func markShared(rows []Row) {
 	for i := range rows {
+		if !rows[i].Ranked() {
+			continue
+		}
 		switch {
 		case i > 0 && rows[i-1].Rank == rows[i].Rank:
 			rows[i].Shared = true

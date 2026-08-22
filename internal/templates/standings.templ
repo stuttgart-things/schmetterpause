@@ -46,7 +46,9 @@ templ standingsBody(v StandingsView) {
 					for _, row := range v.Rows {
 						<tr class={ templ.KV("self", row.IsSelf) }>
 							<td class="rank-cell">
-								if row.Shared {
+								if !row.Ranked() {
+									<span class={ rankClass(0, false) } title="noch kein gewertetes Spiel">&ndash;</span>
+								} else if row.Shared {
 									<span class={ rankClass(row.Rank, true) } title="geteilter Platz">
 										{ strconv.Itoa(row.Rank) }
 									</span>
@@ -74,5 +76,11 @@ templ standingsBody(v StandingsView) {
 				</tbody>
 			</table>
 		</div>
+		if !v.AnyRanked() {
+			<p class="muted standings-empty">
+				Noch kein gewertetes Spiel &mdash; darum steht niemand auf
+				einem Platz. Sei der Erste.
+			</p>
+		}
 	}
 }

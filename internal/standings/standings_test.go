@@ -39,9 +39,15 @@ func TestBuild(t *testing.T) {
 			want: nil,
 		},
 		{
-			name:    "one player",
-			records: []domain.PlayerRecord{record("Anna", 1000, 0, 0)},
+			name:    "one player who has played",
+			records: []domain.PlayerRecord{record("Anna", 1000, 1, 1)},
 			want:    []string{"Anna:1"},
+		},
+		{
+			// Rank 0: a starting rating nobody has tested is not a placement.
+			name:    "a player who has not played holds no rank",
+			records: []domain.PlayerRecord{record("Anna", 1000, 0, 0)},
+			want:    []string{"Anna:0"},
 		},
 		{
 			name: "distinct ratings",
@@ -70,9 +76,29 @@ func TestBuild(t *testing.T) {
 		{
 			name: "everybody level",
 			records: []domain.PlayerRecord{
-				record("Anna", 1000, 0, 0), record("Bodo", 1000, 0, 0), record("Cleo", 1000, 0, 0),
+				record("Anna", 1000, 2, 1), record("Bodo", 1000, 2, 1), record("Cleo", 1000, 2, 1),
 			},
 			want: []string{"Anna:1", "Bodo:1", "Cleo:1"},
+		},
+		{
+			// The state a fresh evening starts in: four names, no matches,
+			// and four number ones would read as a defect rather than a tie.
+			name: "a fresh table ranks nobody",
+			records: []domain.PlayerRecord{
+				record("Anna", 1000, 0, 0), record("Bodo", 1000, 0, 0),
+				record("Cleo", 1000, 0, 0), record("Dora", 1000, 0, 0),
+			},
+			want: []string{"Anna:0", "Bodo:0", "Cleo:0", "Dora:0"},
+		},
+		{
+			// Bodo lost and is below the starting rating; Cleo has not
+			// played. Rating alone would put Cleo above him, which is not
+			// something a table may claim.
+			name: "whoever has played stands above whoever has not",
+			records: []domain.PlayerRecord{
+				record("Cleo", 1000, 0, 0), record("Bodo", 992, 1, 0), record("Anna", 1008, 1, 1),
+			},
+			want: []string{"Anna:1", "Bodo:2", "Cleo:0"},
 		},
 		{
 			// The repository sorts already, but a ranking that depends on
@@ -87,7 +113,7 @@ func TestBuild(t *testing.T) {
 			// Same rating: alphabetical, and case must not decide it.
 			name: "level players sort by name",
 			records: []domain.PlayerRecord{
-				record("bodo", 1000, 0, 0), record("Anna", 1000, 0, 0),
+				record("bodo", 1000, 1, 0), record("Anna", 1000, 1, 0),
 			},
 			want: []string{"Anna:1", "bodo:1"},
 		},
