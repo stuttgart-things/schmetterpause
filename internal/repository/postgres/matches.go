@@ -88,6 +88,24 @@ func (r matchRepo) PendingFor(ctx context.Context, playerID uuid.UUID) ([]domain
 	return r.list(ctx, q, playerID)
 }
 
+func (r matchRepo) PendingCountFor(ctx context.Context, playerID uuid.UUID) (int, error) {
+	// Same condition as PendingFor, counted rather than fetched.
+	const q = `
+		select count(*)
+		from matches
+		where (home_id = $1 or away_id = $1)
+		  and (
+		        (status = 'pending' and reported_by <> $1)
+		     or status = 'disputed'
+		  )`
+
+	var n int
+	if err := r.q.QueryRow(ctx, q, playerID).Scan(&n); err != nil {
+		return 0, fmt.Errorf("count what waits on player %s: %w", playerID, err)
+	}
+	return n, nil
+}
+
 func (r matchRepo) RecentFor(ctx context.Context, playerID uuid.UUID, limit int) ([]domain.Match, error) {
 	const q = `
 		select ` + matchColumns + `
