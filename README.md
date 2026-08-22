@@ -21,7 +21,8 @@ generierten Teile des Pipeline-Moduls.
 ```sh
 task up        # Compose-Umgebung starten (App + Postgres)
 task ci        # lint, test, build, verify — identisch zur Pipeline
-task office:up # für einen Abend an der Platte, im Netz erreichbar
+task office:setup # .env für einen Abend an der Platte
+task office:up    # starten, im Netz erreichbar
 ```
 
 Alle Befehle laufen über [Task](https://taskfile.dev/). Die eigentliche
