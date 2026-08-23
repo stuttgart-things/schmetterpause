@@ -22,6 +22,9 @@ Ursachenanalyse: zu umständliche Eingabe, fehlender Anlass zu spielen, oder
 schlicht kein Interesse. Der Ligamodus (M2) ist die Antwort auf "fehlender
 Anlass" — aber nur, wenn die Messung das zeigt.
 
+Abgelesen wird das mit `task office:dod`. Die Anwendung hat dafür keinen
+Bildschirm und bekommt auch keinen: es ist eine Zahl, die man einmal liest.
+
 ## Scope
 
 ### Enthalten

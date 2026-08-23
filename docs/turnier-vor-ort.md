@@ -151,6 +151,38 @@ task office:stop     # anhalten, alle Ergebnisse bleiben erhalten
 > **`task down` nicht verwenden.** Das ist der Entwicklungsbefehl und löscht das
 > Datenbank-Volume mitsamt allen Ergebnissen.
 
+## Die Messung — und warum dieser Abend nicht dazugehört
+
+Die Frage, für die es diese Anwendung gibt, steht in `docs/mvp-plan.md`: über
+fünf aufeinanderfolgende Arbeitstage mindestens zehn Matches von mindestens
+fünf verschiedenen Spielern, **ohne dass jemand daran erinnert wurde**.
+
+```sh
+task office:dod
+```
+
+Das gibt die Ergebnisse pro Tag aus und dazu das beste Fenster aus fünf
+Arbeitstagen mit einem klaren `PASSED` oder `not yet`. Gezählt werden nur
+**bestätigte** Matches — was auf eine Bestätigung wartet, ist noch kein
+Ergebnis. Wochenendspiele stehen in der Tagesliste, zählen aber in keinem
+Fenster: gefragt sind Arbeitstage.
+
+**Ein Turnierabend ist nicht diese Messung, und die Datenbank kann den
+Unterschied nicht sehen.** Ein Kiosk-Eintrag wird dem Heimspieler
+gutgeschrieben — ein Abend, den ein Schriftführer eingetippt hat, sieht darin
+exakt aus wie zehn Leute, die ihre eigenen Matches eingetragen haben. Acht
+Spieler im Modus "jeder gegen jeden" sind 28 Matches, fast das Dreifache der
+Hürde. Mitgezählt wäre die Messung bestanden und hätte nichts gezeigt.
+
+Deshalb: Turnier spielen, Daten behalten, und den Zähler in einer normalen
+Woche danach starten.
+
+```sh
+task office:dod SINCE=2026-08-26   # der Tag nach dem Turnier
+```
+
+Dass niemand erinnert wurde, steht in keiner Spalte. Das weißt nur du.
+
 ## Was schiefgehen kann
 
 **Die Handys erreichen den Laptop nicht.** Viele Gäste- und Firmen-WLANs
