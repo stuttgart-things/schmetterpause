@@ -4,13 +4,7 @@ import "strconv"
 
 templ Index(v IndexView) {
 	@Layout("Start", v.Header) {
-		// The wordmark is already in the top bar, so a second one at page size
-		// would read as a mistake. The heading stays for anything that
-		// navigates by structure rather than by looking.
-		<div class="page-head">
-			<h1 class="sr-only">Schmetterpause &mdash; Büro-Tischtennis</h1>
-			@PageMascot()
-		</div>
+		@PageHead(v.Session)
 		@Session(v.Session)
 		if v.ShowMatch {
 			@PendingList(v.Pending)
@@ -26,6 +20,43 @@ templ Index(v IndexView) {
 			<p class="muted">Status wird geladen …</p>
 		</section>
 	}
+}
+
+// PageHead is the greeting and the drawing beside it.
+//
+// The wordmark is already in the top bar, so the heading here says something
+// the bar does not: who is looking, once anybody is.
+templ PageHead(v SessionView) {
+	<div id="page-head" class="page-head">
+		@pageHeadBody(v)
+	</div>
+}
+
+// PageHeadOOB is PageHead marked for an out-of-band swap, so joining puts the
+// name up there in the same response that creates the player.
+templ PageHeadOOB(v SessionView) {
+	<div id="page-head" class="page-head" hx-swap-oob="true">
+		@pageHeadBody(v)
+	</div>
+}
+
+// pageHeadBody greets by name and nothing else.
+//
+// No rating and no rank, tempting as it is: both move whenever a result is
+// confirmed anywhere on the page, and every one of those responses would have
+// to remember to refresh this corner too. The name is the one thing about a
+// player that does not change, and the numbers are in the table below with
+// their own row marked.
+templ pageHeadBody(v SessionView) {
+	<div class="page-greeting">
+		if v.SignedIn() {
+			<h1>Hallo, { v.DisplayName }</h1>
+		} else {
+			<h1>Büro-Tischtennis</h1>
+			<p class="muted">Trag deinen Namen ein und spiel mit.</p>
+		}
+	</div>
+	@PageMascot()
 }
 
 // PageMascot is the drawing at the top of a page, above everything a player
