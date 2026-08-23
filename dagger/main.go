@@ -891,15 +891,67 @@ grep -q "Kiosk Dirk" "$picker" || {
 	exit 1
 }
 
+# Reads one player's rating out of the ranking on a page. Per row rather
+# than per page: several players sit at the same number, so a bare grep for
+# it passes without the row that is meant to carry it ever having moved.
+ttr_of() {
+	tr "<" "\n" < "$1" | grep -A 4 ">$2$" | grep "td class=\"num\">" \
+		| head -1 | sed "s|.*num\">||"
+}
+
 # Nobody is left to ask, so the result counts on submit.
+recorded=$(mktemp)
 curl -fsS -b "$kiosk" -X POST http://app:8080/kiosk/matches \
-	--data "home_id=$cara&away_id=$dirk&best_of=3&points_to_win=11&set_home_1=11&set_away_1=9&set_home_2=11&set_away_2=7" \
-	| grep -q "Kiosk Cara schlägt Kiosk Dirk 2:0" || {
+	--data "home_id=$cara&away_id=$dirk&best_of=3&points_to_win=11&set_home_1=11&set_away_1=9&set_home_2=11&set_away_2=7" > "$recorded"
+grep -q "Kiosk Cara schlägt Kiosk Dirk 2:0" "$recorded" || {
 	echo "the kiosk did not record the result"
 	exit 1
 }
-curl -fsS -b "$kiosk" http://app:8080/kiosk | grep -q "1008" || {
-	echo "the kiosk result did not reach the ranking"
+curl -fsS -b "$kiosk" http://app:8080/kiosk > "$kiosk_page"
+rated=$(ttr_of "$kiosk_page" "Kiosk Cara")
+[ "$rated" = "1008" ] || {
+	echo "the kiosk result did not reach the ranking: Kiosk Cara stands at ${rated:-nothing}, expected 1008"
+	exit 1
+}
+
+# A kiosk result counts the moment it is entered, so the way back has to
+# exist — and only in the answer that produced it, not on a reload.
+undo=$(tr "<" "\n" < "$recorded" | grep "action=\"/kiosk/matches/" \
+	| sed "s|.*action=\"\([^\"]*\)\".*|\1|" | head -1)
+[ -n "$undo" ] || {
+	echo "the entry offers no way to take it back"
+	cat "$recorded"
+	exit 1
+}
+if grep -q "/undo" "$kiosk_page"; then
+	echo "a reloaded kiosk still offers to take back an older result"
+	exit 1
+fi
+
+undone=$(mktemp)
+curl -fsS -b "$kiosk" -X POST "http://app:8080$undo" > "$undone"
+grep -q "Zurückgenommen" "$undone" || {
+	echo "the kiosk did not take the result back"
+	cat "$undone"
+	exit 1
+}
+# The point of taking it back is the two ratings, not the message.
+rated=$(ttr_of "$undone" "Kiosk Cara")
+[ "$rated" = "1000" ] || {
+	echo "Kiosk Cara stands at ${rated:-nothing} after the result was taken back, expected 1000"
+	exit 1
+}
+beaten=$(ttr_of "$undone" "Kiosk Dirk")
+[ "$beaten" = "1000" ] || {
+	echo "Kiosk Dirk stands at ${beaten:-nothing} after the result was taken back, expected 1000"
+	exit 1
+}
+
+# Twice would put the ratings back a second time from a match that no longer
+# exists, so the second attempt has to be refused rather than repeated.
+code=$(curl -sS -b "$kiosk" -o /dev/null -w "%{http_code}" -X POST "http://app:8080$undo")
+[ "$code" = "422" ] || {
+	echo "taking the same result back twice was answered with $code, expected 422"
 	exit 1
 }
 
