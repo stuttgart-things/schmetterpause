@@ -78,6 +78,7 @@ func (s *Server) routes() http.Handler {
 		page.HandleFunc("GET /kiosk", s.handleKiosk)
 		page.HandleFunc("POST /kiosk/players", s.handleKioskAddPlayer)
 		page.HandleFunc("POST /kiosk/matches", s.handleKioskRecord)
+		page.HandleFunc("POST /kiosk/matches/{id}/undo", s.handleKioskUndo)
 	}
 
 	mux.Handle("/", auth.Middleware(s.auth, s.log)(page))

@@ -340,12 +340,17 @@ func TestBothPagesGreetWithTheMascot(t *testing.T) {
 	cookie := unlock(t, h)
 
 	kiosk := fragment(t, h, "/kiosk", cookie).Body.String()
+	// Beside the heading rather than above it: in the same row, and before
+	// the first card either way. Document order puts it after the heading
+	// now, which is what makes it sit on the right.
+	if !strings.Contains(kiosk, `class="page-head"`) {
+		t.Errorf("the kiosk has no heading row: %s", kiosk)
+	}
 	if !strings.Contains(kiosk, `class="page-mascot"`) {
 		t.Errorf("the kiosk has no mascot: %s", kiosk)
 	}
-	// Above the heading, not somewhere below the forms.
-	if strings.Index(kiosk, "page-mascot") > strings.Index(kiosk, "<h1>Kiosk</h1>") {
-		t.Error("the kiosk mascot sits below the heading")
+	if strings.Index(kiosk, "page-mascot") > strings.Index(kiosk, `<section class="match">`) {
+		t.Error("the kiosk mascot sits below the first card")
 	}
 
 	if _, err := store.Players().Create(t.Context(), "Anna", domain.DefaultTTR); err != nil {
@@ -355,7 +360,132 @@ func TestBothPagesGreetWithTheMascot(t *testing.T) {
 	if !strings.Contains(start, `class="page-mascot"`) {
 		t.Errorf("the start page has no mascot: %s", start)
 	}
+	if !strings.Contains(start, `class="page-head"`) {
+		t.Errorf("the start page has no heading row: %s", start)
+	}
 	if strings.Index(start, "page-mascot") > strings.Index(start, `id="standings"`) {
 		t.Error("the start page mascot sits below the ranking")
+	}
+}
+
+// kioskEnter records a result at the kiosk and returns the page it answered
+// with, which is where the undo is offered.
+func kioskEnter(t *testing.T, h http.Handler, cookie *http.Cookie, home, away string) string {
+	t.Helper()
+
+	rec := kioskPost(t, h, "/kiosk/matches", cookie, url.Values{
+		"home_id": {home}, "away_id": {away},
+		"best_of": {"3"}, "points_to_win": {"11"},
+		"set_home_1": {"11"}, "set_away_1": {"7"},
+		"set_home_2": {"11"}, "set_away_2": {"9"},
+	})
+	if rec.Code != http.StatusOK {
+		t.Fatalf("entering: status %d: %s", rec.Code, rec.Body.String())
+	}
+	return rec.Body.String()
+}
+
+// undoLink pulls the match id out of the form the kiosk offers after an entry.
+func undoLink(t *testing.T, body string) string {
+	t.Helper()
+
+	const marker = `action="/kiosk/matches/`
+	i := strings.Index(body, marker)
+	if i < 0 {
+		t.Fatalf("no undo offered: %s", body)
+	}
+	rest := body[i+len(marker):]
+	return rest[:strings.Index(rest, "/undo")]
+}
+
+func TestTheKioskCanTakeTheLastResultBack(t *testing.T) {
+	// A kiosk result counts at once, so there is nothing to dispute and
+	// nothing to correct. Without this a typo stands for good.
+	h, store := kioskHandler(t)
+	cookie := unlock(t, h)
+	for _, name := range []string{"Anna", "Bodo"} {
+		if _, err := store.Players().Create(t.Context(), name, domain.DefaultTTR); err != nil {
+			t.Fatalf("seeding %s: %v", name, err)
+		}
+	}
+	anna, bodo := opponentID(t, store, "Anna"), opponentID(t, store, "Bodo")
+
+	body := kioskEnter(t, h, cookie, anna, bodo)
+	if !strings.Contains(body, "Zurücknehmen") {
+		t.Fatalf("no way back was offered: %s", body)
+	}
+
+	// The rating moved.
+	moved, err := store.Players().List(t.Context())
+	if err != nil {
+		t.Fatalf("List(): %v", err)
+	}
+	for _, p := range moved {
+		if p.TTR == domain.DefaultTTR {
+			t.Fatalf("%s did not move at all: %d", p.DisplayName, p.TTR)
+		}
+	}
+
+	rec := kioskPost(t, h, "/kiosk/matches/"+undoLink(t, body)+"/undo", cookie, nil)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("undo: status %d: %s", rec.Code, rec.Body.String())
+	}
+	if !strings.Contains(rec.Body.String(), "Zurückgenommen") {
+		t.Errorf("the undo did not say what happened: %s", rec.Body.String())
+	}
+
+	// Both ratings are back, and the match is gone from the ranking.
+	back, err := store.Players().List(t.Context())
+	if err != nil {
+		t.Fatalf("List(): %v", err)
+	}
+	for _, p := range back {
+		if p.TTR != domain.DefaultTTR {
+			t.Errorf("%s came back to %d, want %d", p.DisplayName, p.TTR, domain.DefaultTTR)
+		}
+	}
+	if !strings.Contains(rec.Body.String(), `class="rank rank-none"`) {
+		t.Errorf("the ranking still counts the taken-back match: %s", rec.Body.String())
+	}
+}
+
+func TestASecondResultBlocksTheUndo(t *testing.T) {
+	// Putting the ratings back means writing the ones from before the match
+	// straight back, and that is only right while nothing has counted since.
+	h, store := kioskHandler(t)
+	cookie := unlock(t, h)
+	for _, name := range []string{"Anna", "Bodo"} {
+		if _, err := store.Players().Create(t.Context(), name, domain.DefaultTTR); err != nil {
+			t.Fatalf("seeding %s: %v", name, err)
+		}
+	}
+	anna, bodo := opponentID(t, store, "Anna"), opponentID(t, store, "Bodo")
+
+	first := undoLink(t, kioskEnter(t, h, cookie, anna, bodo))
+	kioskEnter(t, h, cookie, bodo, anna)
+
+	rec := kioskPost(t, h, "/kiosk/matches/"+first+"/undo", cookie, nil)
+
+	if !strings.Contains(rec.Body.String(), "weiteres gewertet") {
+		t.Errorf("the older result was taken back anyway: %s", rec.Body.String())
+	}
+}
+
+func TestOnlyTheKioskMayTakeAResultBack(t *testing.T) {
+	h, store := kioskHandler(t)
+	cookie := unlock(t, h)
+	for _, name := range []string{"Anna", "Bodo"} {
+		if _, err := store.Players().Create(t.Context(), name, domain.DefaultTTR); err != nil {
+			t.Fatalf("seeding %s: %v", name, err)
+		}
+	}
+	id := undoLink(t, kioskEnter(t, h, cookie,
+		opponentID(t, store, "Anna"), opponentID(t, store, "Bodo")))
+
+	rec := kioskPost(t, h, "/kiosk/matches/"+id+"/undo", nil, nil)
+
+	if rec.Code != http.StatusForbidden {
+		t.Errorf("status = %d, want 403", rec.Code)
 	}
 }

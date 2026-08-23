@@ -7,8 +7,10 @@ templ Index(v IndexView) {
 		// The wordmark is already in the top bar, so a second one at page size
 		// would read as a mistake. The heading stays for anything that
 		// navigates by structure rather than by looking.
-		<h1 class="sr-only">Schmetterpause &mdash; Büro-Tischtennis</h1>
-		@PageMascot()
+		<div class="page-head">
+			<h1 class="sr-only">Schmetterpause &mdash; Büro-Tischtennis</h1>
+			@PageMascot()
+		</div>
 		@Session(v.Session)
 		if v.ShowMatch {
 			@PendingList(v.Pending)

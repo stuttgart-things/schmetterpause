@@ -117,6 +117,25 @@ func (r matchRepo) RecentFor(ctx context.Context, playerID uuid.UUID, limit int)
 	return r.list(ctx, q, playerID, limit)
 }
 
+// Delete removes a confirmed match. The schema cascades match_sets and
+// ttr_history, so one statement takes the whole thing with it.
+//
+// The status is in the condition rather than checked first: two kiosks
+// pressing "zurücknehmen" on the same result would otherwise both read
+// "confirmed" and both proceed.
+func (r matchRepo) Delete(ctx context.Context, id uuid.UUID) error {
+	const q = `delete from matches where id = $1 and status = 'confirmed'`
+
+	tag, err := r.q.Exec(ctx, q, id)
+	if err != nil {
+		return fmt.Errorf("delete match %s: %w", id, err)
+	}
+	if tag.RowsAffected() == 0 {
+		return domain.ErrNotFound
+	}
+	return nil
+}
+
 func (r matchRepo) SetStatus(ctx context.Context, id uuid.UUID, status domain.MatchStatus, confirmedAt *time.Time) error {
 	const q = `update matches set status = $2, confirmed_at = $3 where id = $1`
 

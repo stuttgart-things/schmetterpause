@@ -687,14 +687,28 @@ tr.self td { background: color-mix(in srgb, var(--accent) 8%, transparent); }
 
 /* --- Maskottchen auf der Seite ----------------------------------------- */
 
-/* The one decorative element, at the top of the page. Smaller than it was at
-   the foot: above the content it has to greet, not to take the screen the
-   first card needs. */
+/* Heading on the left, drawing on the right, one row. Above the content the
+   mascot cost a full row of scrolling on a phone; beside the heading it costs
+   the difference between the two, which on the kiosk is nothing at all. */
+.page-head {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 1rem;
+	margin-bottom: 0.5rem;
+}
+
+.page-head h1 { margin-bottom: 0.25rem; }
+.page-head .kiosk-lead { margin: 0; }
+
+/* The one decorative element. Right-aligned and allowed to shrink first: on a
+   narrow screen the words matter and the cat does not. */
 .page-mascot {
 	display: block;
-	width: min(30vw, 7rem);
+	width: min(28vw, 6.5rem);
 	height: auto;
-	margin: 0.5rem auto 1.25rem;
+	flex: 0 0 auto;
+	margin: 0;
 }
 
 /* --- Stat-Kachel mit Verlauf ------------------------------------------- */
@@ -829,6 +843,11 @@ tr.self td { background: color-mix(in srgb, var(--accent) 8%, transparent); }
    use. Loud on purpose: at a tournament the laptop is read from two metres
    away, between matches. */
 .kiosk-note {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 1rem;
+	flex-wrap: wrap;
 	margin: 0 0 1rem;
 	padding: 0.8rem 1.1rem;
 	background: color-mix(in srgb, var(--ok) 14%, var(--card));
@@ -837,3 +856,8 @@ tr.self td { background: color-mix(in srgb, var(--accent) 8%, transparent); }
 	font-size: 1.05rem;
 	font-weight: 600;
 }
+
+/* The note carries the way back with it: the button belongs to this one
+   result, so it lives in the box that names it and nowhere else. */
+.kiosk-note p,
+.kiosk-note form { margin: 0; }

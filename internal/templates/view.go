@@ -52,6 +52,10 @@ type KioskView struct {
 	// Note reports what just happened, in the words somebody at the table
 	// would use: "Anna schlägt Bodo 3:1."
 	Note string
+	// UndoID is the match the note is about, when it can still be taken
+	// back. Empty on a fresh page: the offer belongs to the answer of the
+	// entry that produced it, not to the page in general.
+	UndoID string
 	// Error explains a refusal. Empty otherwise.
 	Error string
 }
