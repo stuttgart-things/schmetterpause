@@ -481,3 +481,29 @@ func TestStandingsMarksTheViewer(t *testing.T) {
 		t.Errorf("the ranking does not mark the viewer: %s", rec.Body.String())
 	}
 }
+
+func TestTheScriptAndStylesheetAreNotCachedForAnHour(t *testing.T) {
+	// A deployment replaces the HTML at once and the assets not at all, so a
+	// long-lived script can end up wired to markup that postdates it. That is
+	// how sliders came to be drawn and do nothing.
+	h := newHandler(newMemStore())
+
+	for _, tc := range []struct{ asset, want string }{
+		{"/static/js/app.js", "no-cache"},
+		{"/static/css/app.css", "no-cache"},
+		// Referenced by name, and a stale one is only cosmetic. These are
+		// also the assets actually worth caching.
+		{"/static/fonts/space-grotesk-latin.woff2", "public, max-age=3600"},
+		{"/static/img/mark-32.png", "public, max-age=3600"},
+	} {
+		rec := get(t, h, tc.asset)
+
+		if rec.Code != http.StatusOK {
+			t.Errorf("%s: status = %d, want 200", tc.asset, rec.Code)
+			continue
+		}
+		if got := rec.Header().Get("Cache-Control"); got != tc.want {
+			t.Errorf("%s: Cache-Control = %q, want %q", tc.asset, got, tc.want)
+		}
+	}
+}

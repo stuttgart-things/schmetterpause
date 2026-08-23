@@ -3,6 +3,8 @@ package server
 import (
 	"io/fs"
 	"net/http"
+	"path/filepath"
+	"strings"
 
 	"github.com/stuttgart-things/schmetterpause/web"
 )
@@ -19,12 +21,35 @@ func staticHandler() http.Handler {
 	fileServer := http.FileServerFS(assets)
 
 	return http.StripPrefix("/static/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// The assets are embedded in the binary and change only with a new
-		// image. An hour is a safe compromise as long as the filenames carry
-		// no content hash.
-		w.Header().Set("Cache-Control", "public, max-age=3600")
+		w.Header().Set("Cache-Control", cacheControl(r.URL.Path))
 		fileServer.ServeHTTP(w, r)
 	}))
+}
+
+// cacheControl decides how long an asset may be kept, and the answer depends
+// on whether the file has to agree with the page that loaded it.
+//
+// The stylesheet and the script do. A deployment replaces the HTML instantly
+// and the assets not at all, so for up to an hour a browser can hold the old
+// script against the new markup — which looks exactly like a feature that was
+// built and does not work. That happened: sliders drawn by new HTML, wired by
+// a script that predates them, drawn in the browser's default colour because
+// the stylesheet was stale too.
+//
+// Fonts and images do not have that problem. They are referenced by name, a
+// stale one is cosmetic, and they are the assets worth caching — 84 kB of
+// fonts and 130 kB of images against 20 kB of CSS and script.
+//
+// The proper fix is a content hash in the filename. This is the smaller one,
+// and it is the one that is right on a laptop somebody redeploys mid-evening.
+func cacheControl(path string) string {
+	switch strings.ToLower(filepath.Ext(path)) {
+	case ".css", ".js":
+		// Not "no-store": the browser may keep it, it just has to ask.
+		return "no-cache"
+	default:
+		return "public, max-age=3600"
+	}
 }
 
 // faviconHandler answers the request every browser makes on its own with the
