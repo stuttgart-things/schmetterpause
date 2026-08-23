@@ -194,7 +194,7 @@ func parseMatchForm(r *http.Request) (matchForm, uuid.UUID, string) {
 // match.Validate's question, not this one's.
 func parseResultForm(r *http.Request) (matchForm, string) {
 	form := matchForm{
-		bestOf:      5,
+		bestOf:      match.DefaultBestOf,
 		pointsToWin: match.PointsToEleven,
 		typed:       make([]templates.SetInput, templates.MaxSetRows),
 	}

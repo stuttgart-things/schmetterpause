@@ -333,3 +333,29 @@ func TestAModeChangeLeavesThePickersAlone(t *testing.T) {
 		t.Errorf("a mode change replaced a picker: %s", rec.Body.String())
 	}
 }
+
+func TestBothPagesGreetWithTheMascot(t *testing.T) {
+	// One drawing, at the top of both pages, and hidden in print.
+	h, store := kioskHandler(t)
+	cookie := unlock(t, h)
+
+	kiosk := fragment(t, h, "/kiosk", cookie).Body.String()
+	if !strings.Contains(kiosk, `class="page-mascot"`) {
+		t.Errorf("the kiosk has no mascot: %s", kiosk)
+	}
+	// Above the heading, not somewhere below the forms.
+	if strings.Index(kiosk, "page-mascot") > strings.Index(kiosk, "<h1>Kiosk</h1>") {
+		t.Error("the kiosk mascot sits below the heading")
+	}
+
+	if _, err := store.Players().Create(t.Context(), "Anna", domain.DefaultTTR); err != nil {
+		t.Fatalf("seeding: %v", err)
+	}
+	start := get(t, h, "/").Body.String()
+	if !strings.Contains(start, `class="page-mascot"`) {
+		t.Errorf("the start page has no mascot: %s", start)
+	}
+	if strings.Index(start, "page-mascot") > strings.Index(start, `id="standings"`) {
+		t.Error("the start page mascot sits below the ranking")
+	}
+}

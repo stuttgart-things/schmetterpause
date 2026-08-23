@@ -309,15 +309,18 @@ func TestTheFormOffersOnlyTheSetsTheModeCanHave(t *testing.T) {
 
 	body := fragment(t, h, "/fragments/match", cookie).Body.String()
 
-	// Best-of-five is the default the form comes up in.
-	for _, want := range []string{`name="set_home_5"`, `name="set_away_5"`} {
+	// Best-of-three is the default: that is what gets played in a break.
+	if !strings.Contains(body, `<option value="3" selected>`) {
+		t.Errorf("best-of-three is not preselected: %s", body)
+	}
+	for _, want := range []string{`name="set_home_3"`, `name="set_away_3"`} {
 		if !strings.Contains(body, want) {
 			t.Errorf("the default form is missing %q", want)
 		}
 	}
-	for _, unwanted := range []string{`name="set_home_6"`, `name="set_home_7"`} {
+	for _, unwanted := range []string{`name="set_home_4"`, `name="set_home_5"`} {
 		if strings.Contains(body, unwanted) {
-			t.Errorf("the default form offers %q, which best-of-five cannot have", unwanted)
+			t.Errorf("the default form offers %q, which best-of-three cannot have", unwanted)
 		}
 	}
 }
@@ -353,9 +356,9 @@ func TestTheDeuceRuleIsWrittenWhereTheScoresAreTyped(t *testing.T) {
 	// results. So the rule is written out next to the boxes instead.
 	h, _, cookie := twoPlayers(t)
 
-	for _, tc := range []struct{ pointsToWin, deuce string }{
-		{"11", "10:10"},
-		{"21", "20:20"},
+	for _, tc := range []struct{ pointsToWin, deuce, serve string }{
+		{"11", "10:10", "2"},
+		{"21", "20:20", "5"},
 	} {
 		body := setsFragment(t, h, cookie, url.Values{
 			"sets_prefix":   {"entry"},
@@ -368,6 +371,11 @@ func TestTheDeuceRuleIsWrittenWhereTheScoresAreTyped(t *testing.T) {
 		}
 		if !strings.Contains(body, tc.deuce) {
 			t.Errorf("points_to_win=%s: the rule does not say when a set runs on", tc.pointsToWin)
+		}
+		// Two serves each to eleven, five each to twenty-one. "Always two" is
+		// the rule most people know and the wrong one for the other mode.
+		if !strings.Contains(body, "je "+tc.serve+" Punkten") {
+			t.Errorf("points_to_win=%s: the rule does not say who serves: %s", tc.pointsToWin, body)
 		}
 		// The slider beside the box carries a max, and should. The box must
 		// not: a set to eleven can end 12:10 or 13:11.
