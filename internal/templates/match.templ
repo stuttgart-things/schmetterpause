@@ -17,7 +17,16 @@ templ MatchForm(v MatchFormView) {
 			<form hx-post="/matches" hx-target="#match" hx-swap="outerHTML">
 				<div class="row">
 					<label for="opponent">Gegner</label>
-					<select id="opponent" name="opponent_id" required>
+					<select
+						id="opponent"
+						name="opponent_id"
+						required
+						hx-get="/fragments/sets"
+						hx-target="#sets-entry"
+						hx-swap="outerHTML"
+						hx-include="closest form"
+						hx-sync="closest form:replace"
+					>
 						<option value="">bitte wählen</option>
 						for _, o := range v.Opponents {
 							<option value={ o.ID } selected?={ o.Selected }>{ o.DisplayName }</option>
@@ -25,7 +34,7 @@ templ MatchForm(v MatchFormView) {
 					</select>
 				</div>
 				@modeRow("entry", v.BestOf, v.PointsToWin)
-				@setRows("entry", v.Sets, v.BestOf, v.PointsToWin)
+				@setRows("entry", v.Sets, v.BestOf, v.PointsToWin, SideYourself, v.AwayLabel())
 				<button type="submit">Eintragen</button>
 				if v.Error != "" {
 					<p class="fail" role="alert">{ v.Error }</p>
@@ -92,7 +101,7 @@ templ modeRow(prefix string, bestOf, pointsToWin int) {
 // The boxes have no maximum on purpose: at eleven, 12:10 and 13:11 are
 // ordinary results, so any cap that would reject 15:8 would reject those too.
 // The rule is written out instead, and the server has the last word.
-templ setRows(prefix string, sets []SetInput, bestOf, pointsToWin int) {
+templ setRows(prefix string, sets []SetInput, bestOf, pointsToWin int, homeLabel, awayLabel string) {
 	<fieldset id={ "sets-" + prefix } class="sets">
 		<legend>Sätze</legend>
 		<input type="hidden" name="sets_prefix" value={ prefix }/>
@@ -102,6 +111,17 @@ templ setRows(prefix string, sets []SetInput, bestOf, pointsToWin int) {
 			geht der Satz weiter, bis jemand zwei Punkte vorn liegt. Nicht
 			gespielte Sätze leer lassen.
 		</p>
+		// Which column is whose. The colon between two boxes says nothing
+		// about that, and at the table nobody stops to work it out.
+		<div class="set set-head" aria-hidden="true">
+			<span class="set-no"></span>
+			<span class="set-side">{ homeLabel }</span>
+			// A colon that is there but not shown: an empty span is zero
+			// wide, and the right-hand heading would sit four pixels off the
+			// box it belongs to.
+			<span class="colon">:</span>
+			<span class="set-side">{ awayLabel }</span>
+		</div>
 		for i, s := range SetRows(sets, bestOf) {
 			<div class="set">
 				<span class="set-no">{ strconv.Itoa(i + 1) }.</span>
@@ -111,7 +131,7 @@ templ setRows(prefix string, sets []SetInput, bestOf, pointsToWin int) {
 					value={ s.Home }
 					min="0"
 					inputmode="numeric"
-					aria-label={ "Satz " + strconv.Itoa(i+1) + ", eigene Punkte" }
+					aria-label={ "Satz " + strconv.Itoa(i+1) + ", Punkte " + homeLabel }
 					aria-describedby={ "sets-rule-" + prefix }
 				/>
 				<span class="colon">:</span>
@@ -121,7 +141,7 @@ templ setRows(prefix string, sets []SetInput, bestOf, pointsToWin int) {
 					value={ s.Away }
 					min="0"
 					inputmode="numeric"
-					aria-label={ "Satz " + strconv.Itoa(i+1) + ", Punkte des Gegners" }
+					aria-label={ "Satz " + strconv.Itoa(i+1) + ", Punkte " + awayLabel }
 					aria-describedby={ "sets-rule-" + prefix }
 				/>
 			</div>
@@ -132,7 +152,7 @@ templ setRows(prefix string, sets []SetInput, bestOf, pointsToWin int) {
 // SetsFragment is the set rows on their own, for the swap that follows a
 // change of mode. Every form on the page has its own, told apart by prefix.
 templ SetsFragment(v SetsView) {
-	@setRows(v.Prefix, v.Sets, v.BestOf, v.PointsToWin)
+	@setRows(v.Prefix, v.Sets, v.BestOf, v.PointsToWin, v.HomeLabel, v.AwayLabel)
 }
 
 // MatchRecorded confirms the entry and says what happens next. It is

@@ -153,13 +153,24 @@ func SetRows(sets []SetInput, bestOf int) []SetInput {
 func DeuceFrom(pointsToWin int) int { return pointsToWin - 1 }
 
 // SetsView is what /fragments/sets needs: which form asked, in which mode,
-// with what already typed into it.
+// with what already typed into it, and whose points go in which box.
 type SetsView struct {
 	Prefix      string
 	BestOf      int
 	PointsToWin int
 	Sets        []SetInput
+	// HomeLabel and AwayLabel head the two score columns. Two boxes with a
+	// colon between them do not say which side is which, and at the table
+	// nobody stops to work it out — they type, and the wrong player wins.
+	HomeLabel, AwayLabel string
 }
+
+// SideDefaults are the column headings before anybody is picked.
+const (
+	SideHome     = "Spieler"
+	SideAway     = "Gegner"
+	SideYourself = "Du"
+)
 
 // MatchFormView drives the result entry form. Everything the player typed
 // comes back on a rejection, so nobody re-enters a match they already typed.
@@ -171,6 +182,17 @@ type MatchFormView struct {
 	// Error explains why the last attempt was rejected, in the words a
 	// player can act on. Empty on a fresh form.
 	Error string
+}
+
+// AwayLabel is the name of the chosen opponent, or the generic word before
+// anybody is chosen.
+func (v MatchFormView) AwayLabel() string {
+	for _, o := range v.Opponents {
+		if o.Selected {
+			return o.DisplayName
+		}
+	}
+	return SideAway
 }
 
 // OpponentOption is one entry in the opponent picker.

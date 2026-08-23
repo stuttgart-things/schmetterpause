@@ -303,13 +303,54 @@ const setsPrefixFallback = "entry"
 // already filled in.
 func (s *Server) handleSetsFragment(w http.ResponseWriter, r *http.Request) {
 	form, _ := parseResultForm(r)
+	home, away := s.setsColumns(r)
 
 	s.render(w, r, templates.SetsFragment(templates.SetsView{
 		Prefix:      setsPrefix(r.FormValue("sets_prefix")),
 		BestOf:      form.bestOf,
 		PointsToWin: form.pointsToWin,
 		Sets:        form.typed,
+		HomeLabel:   home,
+		AwayLabel:   away,
 	}))
+}
+
+// setsColumns names the two score columns for whichever form asked.
+//
+// The kiosk enters for two other people and sends both ids; everywhere else
+// the left column is the reader. A name that cannot be resolved falls back to
+// the generic word rather than to an error: a heading is worth having even
+// when the picker is still empty, and this endpoint draws boxes, it does not
+// decide anything.
+func (s *Server) setsColumns(r *http.Request) (home, away string) {
+	name := func(raw string) string {
+		id, err := uuid.Parse(strings.TrimSpace(raw))
+		if err != nil {
+			return ""
+		}
+		player, err := s.store.Players().ByID(r.Context(), id)
+		if err != nil {
+			return ""
+		}
+		return player.DisplayName
+	}
+
+	if raw := r.FormValue("home_id"); raw != "" {
+		home, away = templates.SideHome, templates.SideAway
+		if n := name(raw); n != "" {
+			home = n
+		}
+		if n := name(r.FormValue("away_id")); n != "" {
+			away = n
+		}
+		return home, away
+	}
+
+	away = templates.SideAway
+	if n := name(r.FormValue("opponent_id")); n != "" {
+		away = n
+	}
+	return templates.SideYourself, away
 }
 
 // setsPrefix keeps the prefix to what the templates can produce. It ends up in
