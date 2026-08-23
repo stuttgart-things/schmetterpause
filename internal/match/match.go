@@ -23,6 +23,10 @@ const (
 	PointsToTwentyOne = 21
 )
 
+// DefaultBestOf is the mode a form comes up in. Three, because that is what
+// gets played in a break: five sets is a match somebody planned for.
+const DefaultBestOf = 3
+
 // allowedBestOf mirrors the matches_best_of_valid constraint in the schema.
 var allowedBestOf = map[int]bool{3: true, 5: true, 7: true}
 

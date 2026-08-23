@@ -179,7 +179,7 @@ func (s *Server) kioskView(ctx context.Context) (templates.KioskView, error) {
 	view := templates.KioskView{
 		Players: make([]templates.OpponentOption, 0, len(players)),
 		Sets:    make([]templates.SetInput, templates.MaxSetRows),
-		BestOf:  5, PointsToWin: match.PointsToEleven,
+		BestOf:  match.DefaultBestOf, PointsToWin: match.PointsToEleven,
 	}
 	for _, p := range players {
 		view.Players = append(view.Players, templates.OpponentOption{

@@ -106,10 +106,12 @@ templ setRows(prefix string, sets []SetInput, bestOf, pointsToWin int, homeLabel
 		<legend>Sätze</legend>
 		<input type="hidden" name="sets_prefix" value={ prefix }/>
 		<p id={ "sets-rule-" + prefix } class="muted">
-			Bis { strconv.Itoa(pointsToWin) } Punkte. Steht es
+			Bis { strconv.Itoa(pointsToWin) } Punkte, Aufschlagwechsel nach je
+			{ strconv.Itoa(ServeEvery(pointsToWin)) } Punkten. Steht es
 			{ strconv.Itoa(DeuceFrom(pointsToWin)) }:{ strconv.Itoa(DeuceFrom(pointsToWin)) },
-			geht der Satz weiter, bis jemand zwei Punkte vorn liegt. Nicht
-			gespielte Sätze auf 0:0 stehen lassen.
+			geht der Satz weiter, bis jemand zwei Punkte vorn liegt &mdash; und
+			der Aufschlag wechselt dann nach jedem Punkt. Nicht gespielte Sätze
+			auf 0:0 stehen lassen.
 		</p>
 		// Which column is whose. The colon between two boxes says nothing
 		// about that, and at the table nobody stops to work it out.

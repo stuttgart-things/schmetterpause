@@ -5,7 +5,11 @@
 // verifies they match the current *.templ sources.
 package templates
 
-import "strconv"
+import (
+	"strconv"
+
+	"github.com/stuttgart-things/schmetterpause/internal/match"
+)
 
 // generate regenerates the *_templ.go files. templ is pinned as a Go tool in
 // go.mod so that the same version runs locally and in the pipeline.
@@ -145,6 +149,19 @@ func SetRows(sets []SetInput, bestOf int) []SetInput {
 	return sets[:bestOf]
 }
 
+// ServeEvery is how many points a player serves in a row before the service
+// changes: two in a set to eleven, five in a set to twenty-one.
+//
+// Not a constant, because the form offers both modes and the answer is
+// different in each. "Always two" is the rule most people know, and it is the
+// wrong one for the twenty-one mode the picker also offers.
+func ServeEvery(pointsToWin int) int {
+	if pointsToWin >= 21 {
+		return 5
+	}
+	return 2
+}
+
 // DeuceFrom is the score from which a set no longer ends at the target.
 //
 // This is why the boxes carry no maximum: at eleven, 12:10 and 13:11 are
@@ -236,8 +253,8 @@ type SetInput struct {
 func NewMatchFormView(opponents []OpponentOption) MatchFormView {
 	return MatchFormView{
 		Opponents:   opponents,
-		BestOf:      5,
-		PointsToWin: 11,
+		BestOf:      match.DefaultBestOf,
+		PointsToWin: match.PointsToEleven,
 		Sets:        make([]SetInput, MaxSetRows),
 	}
 }
