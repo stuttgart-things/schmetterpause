@@ -607,6 +607,20 @@ grep -q "10:10" "$form" || {
 	echo "the deuce rule is not stated where the scores are typed"
 	exit 1
 }
+# Two serves each to eleven. The other mode says five, which is why the rule
+# is written from the mode rather than as a constant.
+grep -q "je 2 Punkten" "$form" || {
+	echo "the service rule is not stated where the scores are typed"
+	exit 1
+}
+
+echo "== the mascot greets from the top of the page =="
+top=$(mktemp)
+curl -fsS -b "$cookies" http://app:8080/ > "$top"
+grep -q "page-mascot" "$top" || {
+	echo "the start page has no mascot"
+	exit 1
+}
 
 echo "== score columns: each one says whose it is =="
 sides=$(mktemp)
@@ -845,6 +859,10 @@ curl -fsS -b "$kiosk" -X POST http://app:8080/kiosk/players \
 
 kiosk_page=$(mktemp)
 curl -fsS -b "$kiosk" http://app:8080/kiosk > "$kiosk_page"
+grep -q "page-mascot" "$kiosk_page" || {
+	echo "the kiosk has no mascot"
+	exit 1
+}
 cara=$(tr "<" "\n" < "$kiosk_page" | grep "option value=\"" | grep "Kiosk Cara" \
 	| sed "s/.*value=\"\([^\"]*\)\".*/\1/" | head -1)
 dirk=$(tr "<" "\n" < "$kiosk_page" | grep "option value=\"" | grep "Kiosk Dirk" \
