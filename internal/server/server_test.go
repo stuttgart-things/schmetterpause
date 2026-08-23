@@ -507,3 +507,55 @@ func TestTheScriptAndStylesheetAreNotCachedForAnHour(t *testing.T) {
 		}
 	}
 }
+
+func TestTheHeadingGreetsWhoeverIsLookingByName(t *testing.T) {
+	store := newMemStore()
+	h := newHandlerWith(store, auth.NewCookieAuthenticator(store.Identities(), testSessionKey, false))
+
+	// Nobody recognised: the heading names the app, because there is nobody
+	// to name instead.
+	body := get(t, h, "/").Body.String()
+	if !strings.Contains(body, "<h1>Büro-Tischtennis</h1>") {
+		t.Errorf("the start page does not introduce itself: %s", body)
+	}
+	if strings.Contains(body, "Hallo,") {
+		t.Error("the start page greets somebody it has not met")
+	}
+
+	rec := join(t, h, "Anna Bergmann")
+	cookie := sessionCookie(t, rec)
+
+	// The name has to appear in the answer to the join itself. Without the
+	// out-of-band swap the greeting stays "Büro-Tischtennis" until the page
+	// is reloaded, which is the one moment nobody does.
+	joined := rec.Body.String()
+	if !strings.Contains(joined, `id="page-head"`) || !strings.Contains(joined, "hx-swap-oob") {
+		t.Errorf("joining does not refresh the greeting: %s", joined)
+	}
+	if !strings.Contains(joined, "<h1>Hallo, Anna Bergmann</h1>") {
+		t.Errorf("the answer to the join does not greet by name: %s", joined)
+	}
+
+	body = fragment(t, h, "/", cookie).Body.String()
+	if !strings.Contains(body, "<h1>Hallo, Anna Bergmann</h1>") {
+		t.Errorf("the reloaded start page does not greet by name: %s", body)
+	}
+}
+
+func TestTheGreetingEscapesTheName(t *testing.T) {
+	// The name is whatever somebody typed, and it lands in a heading.
+	store := newMemStore()
+	h := newHandlerWith(store, auth.NewCookieAuthenticator(store.Identities(), testSessionKey, false))
+
+	rec := join(t, h, `Anna <script>alert(1)</script>`)
+
+	body := rec.Body.String()
+	if strings.Contains(body, "<script>alert(1)</script>") {
+		t.Errorf("the greeting renders the name as markup: %s", body)
+	}
+	// Asserted as well as the absence above: without this the test would
+	// also pass for a name that never reached the page at all.
+	if !strings.Contains(body, "Hallo, Anna &lt;script&gt;") {
+		t.Errorf("the greeting does not carry the escaped name: %s", body)
+	}
+}

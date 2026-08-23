@@ -693,22 +693,33 @@ tr.self td { background: color-mix(in srgb, var(--accent) 8%, transparent); }
 .page-head {
 	display: flex;
 	align-items: center;
-	justify-content: space-between;
 	gap: 1rem;
 	margin-bottom: 0.5rem;
 }
 
-.page-head h1 { margin-bottom: 0.25rem; }
-.page-head .kiosk-lead { margin: 0; }
+/* Smaller than a heading standing on its own: this one shares its row, and a
+   name can be much longer than the word it replaces. */
+.page-head h1 {
+	font-size: clamp(1.6rem, 5.5vw, 2.4rem);
+	margin: 0 0 0.25rem;
+	overflow-wrap: break-word;
+}
 
-/* The one decorative element. Right-aligned and allowed to shrink first: on a
-   narrow screen the words matter and the cat does not. */
+/* min-width lets the text shrink instead of pushing the drawing off the row —
+   a flex item refuses to go below its content width without it. */
+.page-greeting { min-width: 0; }
+.page-greeting p { margin: 0; }
+
+/* The one decorative element. Pushed right by its own margin rather than by
+   space-between on the row: on the start page the heading beside it can be
+   screen-reader-only and out of flow, and then space-between has one item to
+   distribute and leaves it on the left. */
 .page-mascot {
 	display: block;
 	width: min(28vw, 6.5rem);
 	height: auto;
 	flex: 0 0 auto;
-	margin: 0;
+	margin: 0 0 0 auto;
 }
 
 /* --- Stat-Kachel mit Verlauf ------------------------------------------- */
@@ -837,7 +848,6 @@ tr.self td { background: color-mix(in srgb, var(--accent) 8%, transparent); }
 
 /* --- Kiosk ------------------------------------------------------------- */
 
-.kiosk-lead { margin: -0.75rem 0 1.5rem; }
 
 /* The answer to "did that go in?", in the words somebody at the table would
    use. Loud on purpose: at a tournament the laptop is read from two metres

@@ -614,13 +614,44 @@ grep -q "je 2 Punkten" "$form" || {
 	exit 1
 }
 
-echo "== the mascot greets from the top of the page =="
+echo "== the head greets by name, the mascot stands beside it =="
 top=$(mktemp)
 curl -fsS -b "$cookies" http://app:8080/ > "$top"
 grep -q "page-mascot" "$top" || {
 	echo "the start page has no mascot"
 	exit 1
 }
+grep -q "<h1>Hallo, Verify Anna</h1>" "$top" || {
+	echo "the start page does not greet the player it recognises"
+	exit 1
+}
+
+# Without the out-of-band swap the greeting stays on the app's name until the
+# page is reloaded, which is the one moment nobody does.
+fresh=$(mktemp)
+curl -fsS -c "$fresh" -X POST http://app:8080/players \
+	--data-urlencode "display_name=Verify Ella" > "$top"
+grep -q "id=\"page-head\"" "$top" || {
+	echo "joining does not send the greeting back"
+	cat "$top"
+	exit 1
+}
+grep -q "<h1>Hallo, Verify Ella</h1>" "$top" || {
+	echo "the answer to the join does not greet by name"
+	cat "$top"
+	exit 1
+}
+
+# Nobody recognised: the heading names the app rather than greeting a stranger.
+curl -fsS http://app:8080/ > "$top"
+grep -q "<h1>Büro-Tischtennis</h1>" "$top" || {
+	echo "the start page does not introduce itself to a browser it does not know"
+	exit 1
+}
+if grep -q "Hallo," "$top"; then
+	echo "the start page greets somebody it has not met"
+	exit 1
+fi
 
 echo "== score columns: each one says whose it is =="
 sides=$(mktemp)

@@ -48,7 +48,7 @@ func Kiosk(v KioskView) templ.Component {
 				}()
 			}
 			ctx = templ.InitializeContext(ctx)
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<div class=\"page-head\"><div><h1>Kiosk</h1><p class=\"kiosk-lead muted\">Ergebnisse zählen sofort — hier trägt ein, wer zugesehen hat.</p></div>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<div class=\"page-head\"><div class=\"page-greeting\"><h1>Kiosk</h1><p class=\"muted\">Ergebnisse zählen sofort — hier trägt ein, wer zugesehen hat.</p></div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

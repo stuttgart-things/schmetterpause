@@ -150,10 +150,13 @@ func (s *Server) handleJoin(w http.ResponseWriter, r *http.Request) {
 		s.log.ErrorContext(r.Context(), "loading the standings failed", "error", err)
 	}
 
-	// The corner is refreshed out of band in the same response, so the name
-	// appears where it now lives rather than only after a reload.
-	s.render(w, r, templates.Joined(templates.SessionView{DisplayName: created.DisplayName}))
+	// The corner and the greeting are refreshed out of band in the same
+	// response, so the name appears where it now lives rather than only
+	// after a reload.
+	joined := templates.SessionView{DisplayName: created.DisplayName}
+	s.render(w, r, templates.Joined(joined))
 	s.render(w, r, templates.WhoamiOOB(s.headerView(signedIn)))
+	s.render(w, r, templates.PageHeadOOB(joined))
 	s.render(w, r, templates.StandingsOOB(table))
 }
 
