@@ -176,10 +176,13 @@ type KioskPicker struct {
 	Players []OpponentOption
 }
 
-// sliderStart is where the slider sits for a box that has no number in it
-// yet. Zero, and it stays a position rather than a value until somebody
-// moves it — the box is what gets submitted.
-func sliderStart(value string) string {
+// scoreValue is what a score box shows: what was typed, or zero.
+//
+// A default rather than an empty box, so the slider beside it has something
+// to point at from the start and nobody has to type a zero for a set somebody
+// lost to nil. A row that stays at 0:0 counts as not played — table tennis
+// has no draws, so the two cannot be confused.
+func scoreValue(value string) string {
 	if value == "" {
 		return "0"
 	}

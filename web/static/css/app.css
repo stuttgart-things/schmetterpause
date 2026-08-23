@@ -435,14 +435,15 @@ button.secondary:hover {
 	cursor: pointer;
 }
 
-/* A slider always has a position, so an untouched one sits at zero and looks
-   like it means it. Dim until the box beside it holds a number, so "leave
-   unplayed sets empty" still reads as empty.
+/* Every box comes up with a zero in it, so a row that still reads 0:0 was not
+   played — and its sliders say so by being dim. Per row rather than per box:
+   11:0 is a real set, and dimming the zero in it would call a result an
+   absence.
 
    Dim is the default rather than the exception: a freshly swapped row starts
-   empty, and this way it starts right without anything having to run. */
-.score .score-slider { opacity: 0.3; }
-.score.has-score .score-slider { opacity: 1; }
+   at 0:0, and this way it starts right without anything having to run. */
+.set .score-slider { opacity: 0.3; }
+.set.has-score .score-slider { opacity: 1; }
 
 .set-side {
 	width: 4.5rem;

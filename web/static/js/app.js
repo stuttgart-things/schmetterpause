@@ -30,6 +30,9 @@ document.addEventListener('input', function (event) {
 		if (box) {
 			box.value = el.value;
 		}
+		// Marking before returning, not after: an early return here left a
+		// row dim after the slider had just put a number in it.
+		mark(el.closest && el.closest('.set'));
 		return;
 	}
 
@@ -43,22 +46,27 @@ document.addEventListener('input', function (event) {
 		}
 	}
 
-	mark(el.closest && el.closest('.score'));
+	mark(el.closest && el.closest('.set'));
 });
 
-// A slider under an empty box is dim, so a set nobody played does not look
-// like a set that ended 0:0. The stylesheet dims by default; this marks the
-// ones that hold a number.
-function mark(score) {
-	if (!score) {
+// A row that still stands at 0:0 was not played, so its two sliders are dim.
+// Marked per row rather than per box: 11:0 is a real set, and dimming the
+// zero in it would call a result an absence.
+function mark(row) {
+	if (!row) {
 		return;
 	}
-	var box = score.querySelector('input[type="number"]');
-	score.classList.toggle('has-score', box !== null && box.value !== '');
+	var played = false;
+	row.querySelectorAll('input[type="number"]').forEach(function (box) {
+		if (box.value !== '' && box.value !== '0') {
+			played = true;
+		}
+	});
+	row.classList.toggle('has-score', played);
 }
 
 function markAll() {
-	document.querySelectorAll('.score').forEach(mark);
+	document.querySelectorAll('.set').forEach(mark);
 }
 
 // The set rows are replaced whenever the mode or a player changes, and the

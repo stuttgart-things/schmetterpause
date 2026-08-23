@@ -109,7 +109,7 @@ templ setRows(prefix string, sets []SetInput, bestOf, pointsToWin int, homeLabel
 			Bis { strconv.Itoa(pointsToWin) } Punkte. Steht es
 			{ strconv.Itoa(DeuceFrom(pointsToWin)) }:{ strconv.Itoa(DeuceFrom(pointsToWin)) },
 			geht der Satz weiter, bis jemand zwei Punkte vorn liegt. Nicht
-			gespielte Sätze leer lassen.
+			gespielte Sätze auf 0:0 stehen lassen.
 		</p>
 		// Which column is whose. The colon between two boxes says nothing
 		// about that, and at the table nobody stops to work it out.
@@ -151,7 +151,7 @@ templ scoreField(prefix, name, value string, pointsToWin int, label string) {
 			type="number"
 			id={ prefix + "-" + name }
 			name={ name }
-			value={ value }
+			value={ scoreValue(value) }
 			min="0"
 			inputmode="numeric"
 			aria-label={ label }
@@ -164,7 +164,7 @@ templ scoreField(prefix, name, value string, pointsToWin int, label string) {
 			type="range"
 			min="0"
 			max={ strconv.Itoa(pointsToWin + 10) }
-			value={ sliderStart(value) }
+			value={ scoreValue(value) }
 			data-score={ prefix + "-" + name }
 			aria-label={ label + ", Schieberegler" }
 			tabindex="-1"
