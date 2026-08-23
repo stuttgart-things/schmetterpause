@@ -10,17 +10,20 @@ sind drei Umgebungsvariablen und eine zweite Compose-Datei, die sie einfordert.
 
 ## Einmalig vorbereiten
 
-### 1. Adresse des Laptops herausfinden
-
 ```sh
-task office:ip
+task office:setup
 ```
 
-Das listet die Adressen, unter denen der Laptop im Netz erreichbar ist. Gesucht
-ist die Adresse aus dem Büronetz — typischerweise `192.168.x.x` oder `10.x.x.x`,
-nicht `127.0.0.1` und nicht die Docker-Adresse `172.17.x.x`.
+Das fragt die drei Werte ab und schreibt `.env`. Die Adresse wird aus einer
+Liste **ausgewählt statt getippt** — sie landet im QR-Code auf dem Aushang, und
+ein Zahlendreher darin fällt erst auf, wenn das erste Handy nirgends ankommt.
 
-### 2. `.env` anlegen
+Ist [gum](https://github.com/charmbracelet/gum) installiert, läuft die Abfrage
+darüber; ist es das nicht, fragt die Task mit Bordmitteln. Der Abend hängt an
+keinem Werkzeug, das jemand mitbringen muss.
+
+Wer es lieber selbst schreibt: `task office:ip` listet die Adressen, und `.env`
+sieht so aus.
 
 ```sh
 SP_PUBLIC_BASE_URL=http://192.168.1.23:8080
@@ -28,7 +31,12 @@ SP_KIOSK_TOKEN=turnier2026
 SP_SESSION_KEY=<Ausgabe von: openssl rand -hex 32>
 ```
 
-Die Datei steht in `.gitignore` und darf dort auch bleiben.
+Gesucht ist die Adresse aus dem Büronetz — typischerweise `192.168.x.x` oder
+`10.x.x.x`, nicht `127.0.0.1` und nicht die Docker-Bridges (`docker0`, `br-…`).
+`office:setup` sortiert die Bridges nach unten, entscheiden musst du trotzdem.
+
+Die Datei steht in `.gitignore`, wird mit `chmod 600` angelegt und darf dort
+auch bleiben.
 
 **`SP_PUBLIC_BASE_URL`** ist die Adresse, die auf dem Aushang im QR-Code landet.
 Sie muss gesetzt sein: den Aushang öffnet jemand am Laptop, also sagt die
@@ -74,14 +82,62 @@ alte Adresse.
 
 ## Während des Turniers
 
-Wer sein Handy dabeihat, scannt den Aushang, trägt beim ersten Mal seinen Namen
-ein und danach nur noch Ergebnisse. Der Gegner bestätigt, erst dann zählt das
-Match für die Wertung.
+Es gibt zwei Wege ein Ergebnis einzutragen, und sie unterscheiden sich in genau
+einem Punkt: wer bestätigt.
 
-Am Laptop läuft der Kiosk. Dort werden Spieler ohne Gerät angelegt und
-Ergebnisse für zwei beliebige Spieler eingetragen. Diese Ergebnisse gelten
-sofort und brauchen keine Bestätigung: wer sie eintippt, steht neben der Platte
-und hat das Match gesehen.
+### Vom Handy
+
+Aushang scannen, beim ersten Mal den eigenen Namen eintragen, danach nur noch
+Ergebnisse. **Der Gegner bestätigt** — erst dann zählt das Match für die
+Wertung. Bis dahin steht es unter „Eingetragen", der Gegner sieht es in seiner
+Liste, und in der Rangliste ändert sich nichts.
+
+Das ist Absicht: ohne Bestätigung könnte jeder beliebige Ergebnisse eintragen,
+und die Tabelle wäre wertlos.
+
+### Am Laptop: der Kiosk
+
+Der Kiosk ist die Antwort auf „ich hab mein Handy nicht dabei" und auf „ich
+richte jetzt nicht erst was ein". Eine Person tippt für alle.
+
+**Freischalten.** Einmal die Adresse mit dem Token öffnen, die `office:up`
+ausgibt:
+
+```
+http://192.168.1.23:8080/kiosk?token=turnier2026
+```
+
+Die Seite springt auf `/kiosk` um, das Token verschwindet aus der Adresszeile.
+Ab da trägt ein signiertes Cookie die Freischaltung, **zwölf Stunden lang** —
+das Token selbst steht in keiner Antwort mehr und ist nicht aus dem Browser
+auszulesen. Neu laden, Tab schließen, Seite wechseln: alles unproblematisch.
+Nur ein anderes Gerät bekommt auf `/kiosk` eine **403**, solange es den Link
+mit Token nicht selbst geöffnet hat.
+
+**Spieler anlegen.** Name eintragen, fertig. Der Spieler bekommt keinen Zugang
+und keine Sitzung — er existiert in der Rangliste und kann eingetragen werden.
+Wer später doch sein Handy nimmt, legt sich dort einen eigenen Eintrag an; die
+beiden zusammenzuführen geht im MVP nicht.
+
+**Ergebnis eintragen.** Zwei Spieler wählen, Modus einstellen, Sätze eintragen.
+Die Zeilen richten sich nach dem Modus: Best of 3 zeigt drei, Best of 7 sieben.
+
+**Diese Ergebnisse zählen sofort.** Keine Bestätigung, keine Warteschlange —
+wer sie eintippt, steht neben der Platte und hat das Match gesehen. Die
+Rangliste unter dem Formular aktualisiert sich mit.
+
+**Vertippt? Dann steht es so.** Ein Ergebnis aus dem Kiosk ist sofort gewertet
+und damit bestätigt — und ein bestätigtes Match taucht in keiner Liste mehr
+auf, die man bestreiten könnte. Der Widerspruchsweg gilt nur für Ergebnisse,
+die noch auf eine Bestätigung warten. Im MVP gibt es dafür keinen Weg zurück;
+also lieber einmal mehr hinsehen, bevor du auf *Eintragen und werten* drückst.
+
+### „Warum steht bei Spiele 0?"
+
+Weil das Match noch auf die Bestätigung des Gegners wartet. Die Rangliste zählt
+ausschließlich **bestätigte** Matches — TTR, Spiele und Bilanz bewegen sich
+alle drei erst danach. Ein Ergebnis aus dem Kiosk ist sofort bestätigt und
+taucht sofort auf.
 
 ## Danach
 

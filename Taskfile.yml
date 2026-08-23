@@ -59,22 +59,73 @@ tasks:
     desc: "Show the addresses this machine answers on, for SP_PUBLIC_BASE_URL"
     silent: true
     cmds:
+      - sh scripts/addresses.sh
       - |
-        if command -v ip >/dev/null 2>&1; then
-          ip -4 -o addr show scope global | awk '{split($4, a, "/"); print $2 "\t" a[1]}'
-        elif command -v ipconfig >/dev/null 2>&1; then
-          for i in $(ifconfig -l); do
-            a=$(ipconfig getifaddr "$i" 2>/dev/null) && [ -n "$a" ] && printf '%s\t%s\n' "$i" "$a"
-          done
-        elif hostname -I >/dev/null 2>&1; then
-          # No interface names from this one, only the addresses.
-          for a in $(hostname -I); do printf '?\t%s\n' "$a"; done
-        else
-          echo "No ip, ipconfig or hostname -I here — read the address off the network settings." >&2
-          exit 1
-        fi
         echo
-        echo "Then: SP_PUBLIC_BASE_URL=http://<address>:8080 SP_KIOSK_TOKEN=... SP_SESSION_KEY=... task office:up"
+        echo "task office:setup writes .env for you, or set the three by hand:"
+        echo "SP_PUBLIC_BASE_URL=http://<address>:8080 SP_KIOSK_TOKEN=... SP_SESSION_KEY=... task office:up"
+
+  office:setup:
+    desc: "Fill .env for an evening: address, kiosk token, session key"
+    # The address is the one value a typo ruins silently: it is printed into
+    # the QR code, and nobody finds out until a phone lands nowhere. So it is
+    # picked from a list rather than typed.
+    interactive: true
+    silent: true
+    cmds:
+      - |
+        if [ -f .env ]; then
+          if command -v gum >/dev/null 2>&1; then
+            gum confirm ".env exists. Overwrite it?" || { echo "Kept the existing .env."; exit 0; }
+          else
+            printf '.env exists. Overwrite it? [y/N] '
+            read -r reply
+            case "$reply" in [yYjJ]*) ;; *) echo "Kept the existing .env."; exit 0 ;; esac
+          fi
+        fi
+
+        addresses=$(sh scripts/addresses.sh)
+        [ -n "$addresses" ] || { echo "No address found." >&2; exit 1; }
+
+        # gum where it is installed, plain read where it is not: the evening
+        # must not depend on a tool nobody remembered to bring.
+        if command -v gum >/dev/null 2>&1; then
+          picked=$(printf '%s\n' "$addresses" | gum choose --header "Which address do the phones reach?")
+          token=$(gum input --header "Kiosk token" --value "turnier")
+        else
+          echo "Addresses this machine answers on:"
+          printf '%s\n' "$addresses" | nl -w2 -s'  '
+          printf 'Number of the address the phones reach: '
+          read -r n
+          picked=$(printf '%s\n' "$addresses" | sed -n "${n}p")
+          printf 'Kiosk token [turnier]: '
+          read -r token
+        fi
+
+        [ -n "${picked:-}" ] || { echo "Nothing picked." >&2; exit 1; }
+        address=$(printf '%s' "$picked" | awk '{print $NF}')
+        token=${token:-turnier}
+
+        key=$(openssl rand -hex 32 2>/dev/null || head -c 32 /dev/urandom | od -An -tx1 | tr -d ' \n')
+
+        # Not umask: Task runs these through its own shell interpreter, which
+        # has no umask builtin. Create the file empty, narrow it, then write —
+        # the session key is never briefly world-readable.
+        : > .env
+        chmod 600 .env
+        cat >> .env <<ENV
+        SP_PUBLIC_BASE_URL=http://$address:8080
+        SP_KIOSK_TOKEN=$token
+        SP_SESSION_KEY=$key
+        ENV
+
+        echo
+        echo "Written .env"
+        echo "  everybody:  http://$address:8080/"
+        echo "  the sheet:  http://$address:8080/qr"
+        echo "  the table:  http://$address:8080/kiosk?token=$token"
+        echo
+        echo "Next: task office:up"
 
   office:up:
     desc: "Start for the office: reachable on the network, kiosk unlocked"
