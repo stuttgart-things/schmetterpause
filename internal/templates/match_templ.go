@@ -439,7 +439,7 @@ func setRows(prefix string, sets []SetInput, bestOf, pointsToWin int, homeLabel,
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 39, ", geht der Satz weiter, bis jemand zwei Punkte vorn liegt. Nicht gespielte Sätze leer lassen.</p><div class=\"set set-head\" aria-hidden=\"true\"><span class=\"set-no\"></span> <span class=\"set-side\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 39, ", geht der Satz weiter, bis jemand zwei Punkte vorn liegt. Nicht gespielte Sätze auf 0:0 stehen lassen.</p><div class=\"set set-head\" aria-hidden=\"true\"><span class=\"set-no\"></span> <span class=\"set-side\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -576,9 +576,9 @@ func scoreField(prefix, name, value string, pointsToWin int, label string) templ
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var28 string
-		templ_7745c5c3_Var28, templ_7745c5c3_Err = templ.ResolveAttributeValue(value)
+		templ_7745c5c3_Var28, templ_7745c5c3_Err = templ.ResolveAttributeValue(scoreValue(value))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `match.templ`, Line: 154, Col: 16}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `match.templ`, Line: 154, Col: 28}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var28)
 		if templ_7745c5c3_Err != nil {
@@ -628,9 +628,9 @@ func scoreField(prefix, name, value string, pointsToWin int, label string) templ
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var32 string
-		templ_7745c5c3_Var32, templ_7745c5c3_Err = templ.ResolveAttributeValue(sliderStart(value))
+		templ_7745c5c3_Var32, templ_7745c5c3_Err = templ.ResolveAttributeValue(scoreValue(value))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `match.templ`, Line: 167, Col: 29}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `match.templ`, Line: 167, Col: 28}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var32)
 		if templ_7745c5c3_Err != nil {

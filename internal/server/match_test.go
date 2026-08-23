@@ -453,3 +453,40 @@ func TestTheScoreColumnsSayWhoseTheyAre(t *testing.T) {
 		}
 	})
 }
+
+func TestABoxComesUpWithAZeroInIt(t *testing.T) {
+	// The slider beside it needs something to point at, and nobody should
+	// have to type a zero for a set somebody lost to nil.
+	h, _, cookie := twoPlayers(t)
+
+	body := setsFragment(t, h, cookie, url.Values{
+		"sets_prefix": {"entry"},
+		"best_of":     {"3"},
+	})
+
+	if strings.Contains(body, `value=""`) {
+		t.Errorf("a score box came up empty: %s", body)
+	}
+	if n := strings.Count(body, `value="0"`); n != 12 {
+		// Three sets, two boxes each, box and slider per box.
+		t.Errorf("counted %d zeroes, want 12: %s", n, body)
+	}
+}
+
+func TestARowLeftAtZeroToZeroCountsAsNotPlayed(t *testing.T) {
+	// The other half of the default. Table tennis has no draws — the domain
+	// rejects one — so a row still standing at 0:0 can only mean the set was
+	// not played, and the form may default to it.
+	h, store, cookie := twoPlayers(t)
+	bodo := opponentID(t, store, "Bodo")
+
+	// The third row is left exactly as the form served it.
+	rec := recordMatch(t, h, cookie, bodo, 3, 11, "11:7", "11:9", "0:0")
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200: %s", rec.Code, rec.Body.String())
+	}
+	if !strings.Contains(rec.Body.String(), "2:0") {
+		t.Errorf("the untouched third row was counted: %s", rec.Body.String())
+	}
+}

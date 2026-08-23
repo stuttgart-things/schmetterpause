@@ -219,7 +219,12 @@ func parseResultForm(r *http.Request) (matchForm, string) {
 		form.typed[i] = templates.SetInput{Home: home, Away: away}
 
 		switch {
-		case home == "" && away == "":
+		// Empty or 0:0 both mean "not played". The boxes come up with a zero
+		// in them so the slider beside each one has something to point at,
+		// and a set that ended 0:0 does not exist — table tennis has no
+		// draws, which is why the domain rejects one. Reading the two the
+		// same way is what lets the form have a default at all.
+		case unplayed(home, away):
 			ended = true
 			continue
 		case ended:
@@ -288,6 +293,19 @@ func describeRejection(err error) string {
 		return fmt.Sprintf("Nach Satz %d war das Match schon entschieden.", rejection.SetNo-1)
 	}
 	return "Das Ergebnis ist so nicht möglich."
+}
+
+// unplayed reports whether a row carries no result: both boxes empty, both
+// zero, or one of each.
+func unplayed(home, away string) bool {
+	blank := func(v string) bool {
+		if v == "" {
+			return true
+		}
+		n, err := strconv.Atoi(v)
+		return err == nil && n == 0
+	}
+	return blank(home) && blank(away)
 }
 
 // setsPrefixFallback is the form the fragment renders into when the request

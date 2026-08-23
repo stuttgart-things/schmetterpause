@@ -622,6 +622,24 @@ grep -q ">Gegner<" "$sides" || {
 	exit 1
 }
 
+# Every box comes up with a zero in it, so the slider beside it has something
+# to point at and nobody types a zero for a set lost to nil.
+if tr "<" "\n" < "$sides" | grep "type=\"number\"" | grep -q "value=\"\""; then
+	echo "a score box came up empty"
+	exit 1
+fi
+
+echo "== the script is not held for an hour =="
+# A deployment replaces the HTML at once and a cached script not at all, and
+# the old script against new markup is a feature that is drawn and does not
+# work. Seen once, hence the check.
+cache=$(curl -fsS -o /dev/null -D - http://app:8080/static/js/app.js | tr -d "\r" \
+	| grep -i "^cache-control:" | cut -d" " -f2-)
+[ "$cache" = "no-cache" ] || {
+	echo "app.js is served with Cache-Control: $cache, expected no-cache"
+	exit 1
+}
+
 echo "== a rejected form reaches the page =="
 size=$(curl -fsS http://app:8080/static/js/app.js | wc -c)
 [ "$size" -gt 100 ] || {
