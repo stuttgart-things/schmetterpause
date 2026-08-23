@@ -28,13 +28,14 @@ type memStore struct {
 }
 
 func newMemStore() *memStore {
-	matches := &memMatches{}
+	history := &memHistory{}
+	matches := &memMatches{history: history}
 	players := &memPlayers{matches: matches}
 	return &memStore{
 		players:    players,
 		identities: &memIdentities{players: players},
 		matches:    matches,
-		history:    &memHistory{},
+		history:    history,
 	}
 }
 
@@ -198,6 +199,11 @@ type memMatches struct {
 	repository.MatchRepository
 	mu   sync.Mutex
 	rows []domain.Match
+	// history is what the schema cascades to when a match is deleted. The
+	// fake has to do by hand what "on delete cascade" does in Postgres, or
+	// an undo would leave the rating history behind and the next one would
+	// refuse to run.
+	history *memHistory
 }
 
 func (m *memMatches) Create(_ context.Context, in domain.Match) (domain.Match, error) {
@@ -294,6 +300,25 @@ func (m *memMatches) SetStatus(_ context.Context, id uuid.UUID, status domain.Ma
 	return domain.ErrNotFound
 }
 
+// Delete mirrors the Postgres statement, cascade included: the sets live on
+// the row here, and the history is dropped alongside because the schema does.
+func (m *memMatches) Delete(_ context.Context, id uuid.UUID) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	for i := range m.rows {
+		if m.rows[i].ID != id || m.rows[i].Status != domain.MatchConfirmed {
+			continue
+		}
+		m.rows = append(m.rows[:i], m.rows[i+1:]...)
+		if m.history != nil {
+			m.history.dropMatch(id)
+		}
+		return nil
+	}
+	return domain.ErrNotFound
+}
+
 // ReplaceResult mirrors the Postgres statement, including that the status is
 // part of the condition rather than checked before it.
 func (m *memMatches) ReplaceResult(_ context.Context, id uuid.UUID, corrected domain.Match) error {
@@ -341,14 +366,44 @@ func (h *memHistory) Append(_ context.Context, changes []domain.TTRChange) error
 	return nil
 }
 
-func (h *memHistory) ForPlayer(_ context.Context, playerID uuid.UUID, limit int) ([]domain.TTRChange, error) {
+func (h *memHistory) ForMatch(_ context.Context, matchID uuid.UUID) ([]domain.TTRChange, error) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 
 	var out []domain.TTRChange
 	for _, c := range h.rows {
-		if c.PlayerID == playerID {
+		if c.MatchID == matchID {
 			out = append(out, c)
+		}
+	}
+	return out, nil
+}
+
+// dropMatch is the cascade, called from memMatches.Delete.
+func (h *memHistory) dropMatch(matchID uuid.UUID) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+
+	kept := h.rows[:0]
+	for _, c := range h.rows {
+		if c.MatchID != matchID {
+			kept = append(kept, c)
+		}
+	}
+	h.rows = kept
+}
+
+func (h *memHistory) ForPlayer(_ context.Context, playerID uuid.UUID, limit int) ([]domain.TTRChange, error) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+
+	// Newest first, like the "order by created_at desc" in Postgres. The
+	// fake used to hand them back oldest first, which made ForPlayer answer
+	// a different question here than in production.
+	var out []domain.TTRChange
+	for i := len(h.rows) - 1; i >= 0; i-- {
+		if h.rows[i].PlayerID == playerID {
+			out = append(out, h.rows[i])
 		}
 		if len(out) == limit {
 			break

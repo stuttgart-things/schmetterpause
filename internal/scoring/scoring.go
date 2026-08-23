@@ -43,6 +43,21 @@ var (
 	// the answer a sentence rather than a constraint violation.
 	ErrSamePlayer = errors.New("a player cannot play themselves")
 
+	// ErrNotUndoable reports a match that cannot be taken back: not
+	// confirmed, or already gone.
+	ErrNotUndoable = errors.New("match cannot be taken back")
+
+	// ErrTooLate reports a match confirmed longer ago than UndoWindow. The
+	// undo exists for a typo somebody notices at once, not for editing an
+	// evening afterwards.
+	ErrTooLate = errors.New("match was confirmed too long ago to take back")
+
+	// ErrNotLast reports a match that is no longer the newest one for both
+	// of its players. Taking it back writes the ratings from before it
+	// straight back, and that is only correct while nothing has happened
+	// since — otherwise the later match would be silently undone as well.
+	ErrNotLast = errors.New("a newer match has counted since")
+
 	// ErrNotDisputed reports a match that is not contested. Only a contested
 	// result can be corrected: a pending one is still waiting for a plain yes
 	// or no, and a confirmed one has already moved two ratings.
@@ -352,4 +367,96 @@ func toResult(m domain.Match) match.Result {
 		Mode: match.Mode{BestOf: m.BestOf, PointsToWin: m.PointsToWin},
 		Sets: sets,
 	}
+}
+
+// UndoWindow is how long a settled result can be taken back.
+//
+// Ten minutes: long enough for "wrong player, wrong set" to be noticed by the
+// person still standing at the table, short enough that nobody edits the
+// evening afterwards. The other guard is the one that keeps the arithmetic
+// honest, and it has no clock in it — see ErrNotLast.
+const UndoWindow = 10 * time.Minute
+
+// Undone is what taking a result back amounted to.
+type Undone struct {
+	// Home and Away are the players as they are again, with the ratings
+	// from before the match restored.
+	Home, Away domain.Player
+	// HomeSets and AwaySets are what the deleted result said, so a caller
+	// can name what disappeared.
+	HomeSets, AwaySets int
+}
+
+// Undo removes a settled match and puts both ratings back where they were.
+//
+// It exists because a result entered at the kiosk counts immediately: there is
+// no pending state to dispute and nothing left to correct, so a typo would
+// otherwise stand for good.
+//
+// Two conditions, and the second is the one that matters. The window is a
+// question of manners. The check that this is still the newest match for both
+// players is a question of correctness: the ratings are restored by writing
+// ttr_before back, which is right only while nothing has counted since. A
+// match played in between would be undone along with it, silently.
+func Undo(ctx context.Context, store repository.Store, matchID uuid.UUID, at time.Time) (Undone, error) {
+	var undone Undone
+
+	err := store.InTx(ctx, func(tx repository.Store) error {
+		m, err := tx.Matches().ByID(ctx, matchID)
+		if err != nil {
+			return err
+		}
+		if m.Status != domain.MatchConfirmed || m.ConfirmedAt == nil {
+			return fmt.Errorf("match %s is %s: %w", m.ID, m.Status, ErrNotUndoable)
+		}
+		if at.Sub(*m.ConfirmedAt) > UndoWindow {
+			return fmt.Errorf("match %s was confirmed at %s: %w", m.ID, m.ConfirmedAt, ErrTooLate)
+		}
+
+		changes, err := tx.TTRHistory().ForMatch(ctx, m.ID)
+		if err != nil {
+			return err
+		}
+		if len(changes) == 0 {
+			// Confirmed without history is a match that was never settled,
+			// which means something else wrote that status.
+			return fmt.Errorf("match %s has no rating history: %w", m.ID, ErrNotUndoable)
+		}
+
+		for _, change := range changes {
+			newest, err := tx.TTRHistory().ForPlayer(ctx, change.PlayerID, 1)
+			if err != nil {
+				return err
+			}
+			if len(newest) == 0 || newest[0].MatchID != m.ID {
+				return fmt.Errorf("player %s has counted a newer match: %w", change.PlayerID, ErrNotLast)
+			}
+			if err := tx.Players().UpdateTTR(ctx, change.PlayerID, change.TTRBefore); err != nil {
+				return err
+			}
+		}
+
+		// The sets and the history go with it, cascaded by the schema.
+		if err := tx.Matches().Delete(ctx, m.ID); err != nil {
+			return err
+		}
+
+		outcome, err := match.Validate(toResult(m))
+		if err != nil {
+			return fmt.Errorf("stored match %s is not a possible result: %w", m.ID, err)
+		}
+		undone.HomeSets, undone.AwaySets = outcome.HomeSets, outcome.AwaySets
+
+		if undone.Home, err = tx.Players().ByID(ctx, m.HomeID); err != nil {
+			return err
+		}
+		if undone.Away, err = tx.Players().ByID(ctx, m.AwayID); err != nil {
+			return err
+		}
+		return nil
+	})
+	if err != nil {
+		return Undone{}, err
+	}
+	return undone, nil
 }

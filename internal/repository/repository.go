@@ -75,6 +75,14 @@ type MatchRepository interface {
 	PendingCountFor(ctx context.Context, playerID uuid.UUID) (int, error)
 	// RecentFor returns a player's most recent matches.
 	RecentFor(ctx context.Context, playerID uuid.UUID, limit int) ([]domain.Match, error)
+	// Delete removes a confirmed match along with its sets and its rating
+	// history, which the schema cascades. It exists for one case: a result
+	// entered at the kiosk counts at once, so a mistyped one has to be
+	// removable rather than corrected — there is nothing left to correct.
+	//
+	// It refuses anything that is not confirmed, so it cannot be used as a
+	// way around the confirmation path.
+	Delete(ctx context.Context, id uuid.UUID) error
 	// SetStatus writes the confirmation state. confirmedAt is set exactly
 	// when status is domain.MatchConfirmed.
 	SetStatus(ctx context.Context, id uuid.UUID, status domain.MatchStatus, confirmedAt *time.Time) error
@@ -94,5 +102,13 @@ type TTRHistoryRepository interface {
 	// Append writes the entries of one rating event. Callers use InTx so the
 	// history and the player rating cannot drift apart.
 	Append(ctx context.Context, changes []domain.TTRChange) error
+	// ForPlayer returns a player's entries, **newest first**, at most limit
+	// of them. The order is part of the contract: callers take the first
+	// entry to mean the most recent rating change, and a store that returns
+	// them the other way round answers a different question.
 	ForPlayer(ctx context.Context, playerID uuid.UUID, limit int) ([]domain.TTRChange, error)
+	// ForMatch returns the entries one match produced — one per player.
+	// Taking a match back means writing ttr_before straight back, and that
+	// is where the number lives.
+	ForMatch(ctx context.Context, matchID uuid.UUID) ([]domain.TTRChange, error)
 }

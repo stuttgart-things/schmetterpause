@@ -589,3 +589,89 @@ func TestRecordRefusesAPlayerAgainstThemselves(t *testing.T) {
 		t.Errorf("Record() against themselves = %v, want ErrSamePlayer", err)
 	}
 }
+
+// TestUndoPutsBothRatingsBack is the answer to a kiosk typo: a result there
+// counts at once, so there is nothing to dispute and nothing to correct.
+func TestUndoPutsBothRatingsBack(t *testing.T) {
+	store, ctx := newStore(t)
+	anna, bodo, m := pendingMatch(ctx, t, store)
+
+	settled, err := scoring.Confirm(ctx, store, m.ID, bodo.ID, time.Now())
+	if err != nil {
+		t.Fatalf("Confirm(): %v", err)
+	}
+	if ttrOf(ctx, t, store, anna.ID) == domain.DefaultTTR {
+		t.Fatal("the rating did not move, so there is nothing to take back")
+	}
+
+	undone, err := scoring.Undo(ctx, store, settled.Match.ID, time.Now())
+	if err != nil {
+		t.Fatalf("Undo(): %v", err)
+	}
+
+	if got := ttrOf(ctx, t, store, anna.ID); got != domain.DefaultTTR {
+		t.Errorf("Anna is on %d, want %d", got, domain.DefaultTTR)
+	}
+	if got := ttrOf(ctx, t, store, bodo.ID); got != domain.DefaultTTR {
+		t.Errorf("Bodo is on %d, want %d", got, domain.DefaultTTR)
+	}
+	if undone.HomeSets != 2 || undone.AwaySets != 0 {
+		t.Errorf("undone says %d:%d, want 2:0", undone.HomeSets, undone.AwaySets)
+	}
+
+	// The match and everything the schema hangs off it are gone.
+	if _, err := store.Matches().ByID(ctx, settled.Match.ID); !errors.Is(err, domain.ErrNotFound) {
+		t.Errorf("the match is still there: %v", err)
+	}
+	history, err := store.TTRHistory().ForPlayer(ctx, anna.ID, 10)
+	if err != nil {
+		t.Fatalf("ForPlayer(): %v", err)
+	}
+	if len(history) != 0 {
+		t.Errorf("the rating history survived the undo: %+v", history)
+	}
+}
+
+func TestUndoRefusesOnceSomethingElseHasCounted(t *testing.T) {
+	// Putting the ratings back means writing ttr_before straight back, and
+	// that is right only while nothing has counted since. A later match
+	// would be undone along with it, silently.
+	store, ctx := newStore(t)
+	anna, bodo, first := pendingMatch(ctx, t, store)
+
+	if _, err := scoring.Confirm(ctx, store, first.ID, bodo.ID, time.Now()); err != nil {
+		t.Fatalf("Confirm(): %v", err)
+	}
+	if _, err := scoring.Record(ctx, store, bodo.ID, anna.ID, match.Result{
+		Mode: match.Mode{BestOf: 3, PointsToWin: 11},
+		Sets: []match.Set{{Home: 11, Away: 4}, {Home: 11, Away: 6}},
+	}, time.Now()); err != nil {
+		t.Fatalf("Record(): %v", err)
+	}
+
+	before := ttrOf(ctx, t, store, anna.ID)
+
+	_, err := scoring.Undo(ctx, store, first.ID, time.Now())
+	if !errors.Is(err, scoring.ErrNotLast) {
+		t.Fatalf("Undo() = %v, want ErrNotLast", err)
+	}
+	if got := ttrOf(ctx, t, store, anna.ID); got != before {
+		t.Errorf("the refused undo moved the rating anyway: %d, want %d", got, before)
+	}
+}
+
+func TestUndoRefusesAnOldResult(t *testing.T) {
+	store, ctx := newStore(t)
+	_, bodo, m := pendingMatch(ctx, t, store)
+
+	if _, err := scoring.Confirm(ctx, store, m.ID, bodo.ID, time.Now()); err != nil {
+		t.Fatalf("Confirm(): %v", err)
+	}
+
+	// Asked for an hour later: the undo is for a typo somebody is still
+	// looking at, not for editing the evening afterwards.
+	_, err := scoring.Undo(ctx, store, m.ID, time.Now().Add(time.Hour))
+	if !errors.Is(err, scoring.ErrTooLate) {
+		t.Errorf("Undo() = %v, want ErrTooLate", err)
+	}
+}
