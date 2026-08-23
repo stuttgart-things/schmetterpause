@@ -147,6 +147,10 @@ func (s *Server) handleKioskRecord(w http.ResponseWriter, r *http.Request) {
 	s.renderKiosk(w, r, templates.KioskView{
 		Note: winner.DisplayName + " schlägt " + loser.DisplayName + " " +
 			strconv.Itoa(winnerSets) + ":" + strconv.Itoa(loserSets) + ".",
+		// Offered only here, in the answer to the entry that just happened.
+		// A reload loses the button, which is right: this is for the typo
+		// somebody is still looking at.
+		UndoID: settlement.Match.ID.String(),
 	})
 }
 
@@ -166,7 +170,11 @@ func (s *Server) renderKiosk(w http.ResponseWriter, r *http.Request, view templa
 		http.Error(w, "Kiosk nicht verfügbar", http.StatusInternalServerError)
 		return
 	}
-	filled.Note, filled.Error = view.Note, view.Error
+	// Everything the caller owns, in one place: kioskView builds the page and
+	// knows nothing about what just happened, so anything it does not set has
+	// to be carried across here. A field forgotten in this line is a field
+	// that silently never reaches the page.
+	filled.Note, filled.Error, filled.UndoID = view.Note, view.Error, view.UndoID
 	s.render(w, r, templates.Kiosk(filled))
 }
 
@@ -240,4 +248,49 @@ func (s *Server) kioskCookieValue() string {
 
 func (s *Server) kioskTokenMatches(token string) bool {
 	return subtle.ConstantTimeCompare([]byte(token), []byte(s.cfg.KioskToken)) == 1
+}
+
+// handleKioskUndo takes back the result the kiosk just entered.
+//
+// A kiosk result counts at once, so there is no pending state to dispute and
+// nothing to correct — without this, a mistyped one stands for good and two
+// ratings stay wrong. See issue #49.
+func (s *Server) handleKioskUndo(w http.ResponseWriter, r *http.Request) {
+	if !s.kioskUnlocked(r) {
+		http.Error(w, "Zugang nötig", http.StatusForbidden)
+		return
+	}
+
+	id, err := uuid.Parse(strings.TrimSpace(r.PathValue("id")))
+	if err != nil {
+		s.rejectKiosk(w, r, "Dieses Ergebnis gibt es nicht.", "")
+		return
+	}
+
+	undone, err := scoring.Undo(r.Context(), s.store, id, time.Now())
+	switch {
+	case err == nil:
+	case errors.Is(err, domain.ErrNotFound), errors.Is(err, scoring.ErrNotUndoable):
+		s.rejectKiosk(w, r, "Dieses Ergebnis lässt sich nicht mehr zurücknehmen.", "")
+		return
+	case errors.Is(err, scoring.ErrTooLate):
+		s.rejectKiosk(w, r, "Zu spät — zurücknehmen geht nur kurz nach dem Eintragen.", "")
+		return
+	case errors.Is(err, scoring.ErrNotLast):
+		s.rejectKiosk(w, r,
+			"Seit diesem Ergebnis wurde schon ein weiteres gewertet. Zurücknehmen würde das mit rückgängig machen.", "")
+		return
+	default:
+		s.log.ErrorContext(r.Context(), "taking a match back failed", "match_id", id, "error", err)
+		s.rejectKiosk(w, r, "Das hat gerade nicht geklappt.", "")
+		return
+	}
+
+	s.log.InfoContext(r.Context(), "kiosk took a match back", "match_id", id)
+
+	s.renderKiosk(w, r, templates.KioskView{
+		Note: "Zurückgenommen: " + undone.Home.DisplayName + " gegen " +
+			undone.Away.DisplayName + " " + strconv.Itoa(undone.HomeSets) + ":" +
+			strconv.Itoa(undone.AwaySets) + ". Beide Wertungen stehen wieder wie vorher.",
+	})
 }

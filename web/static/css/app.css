@@ -843,6 +843,11 @@ tr.self td { background: color-mix(in srgb, var(--accent) 8%, transparent); }
    use. Loud on purpose: at a tournament the laptop is read from two metres
    away, between matches. */
 .kiosk-note {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 1rem;
+	flex-wrap: wrap;
 	margin: 0 0 1rem;
 	padding: 0.8rem 1.1rem;
 	background: color-mix(in srgb, var(--ok) 14%, var(--card));
@@ -851,3 +856,8 @@ tr.self td { background: color-mix(in srgb, var(--accent) 8%, transparent); }
 	font-size: 1.05rem;
 	font-weight: 600;
 }
+
+/* The note carries the way back with it: the button belongs to this one
+   result, so it lives in the box that names it and nowhere else. */
+.kiosk-note p,
+.kiosk-note form { margin: 0; }

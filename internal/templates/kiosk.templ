@@ -19,7 +19,17 @@ templ Kiosk(v KioskView) {
 			@PageMascot()
 		</div>
 		if v.Note != "" {
-			<p class="kiosk-note" role="status">{ v.Note }</p>
+			<div class="kiosk-note" role="status">
+				<p>{ v.Note }</p>
+				if v.UndoID != "" {
+					// A kiosk result counts at once, so there is nothing to
+					// dispute and nothing to correct. This is the only way
+					// back, and it is only here.
+					<form method="post" action={ templ.SafeURL("/kiosk/matches/" + v.UndoID + "/undo") }>
+						<button class="secondary" type="submit">Zurücknehmen</button>
+					</form>
+				}
+			</div>
 		}
 		if v.Error != "" {
 			<p class="fail" role="alert">{ v.Error }</p>
