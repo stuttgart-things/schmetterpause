@@ -164,6 +164,26 @@ tasks:
       - 'docker compose exec -T db pg_dump -U schmetterpause schmetterpause > schmetterpause-{{now | date "2006-01-02-1504"}}.sql'
       - 'echo "Written: schmetterpause-{{now | date "2006-01-02-1504"}}.sql"'
 
+  office:dod:
+    desc: "Read the Definition of Done out of the database: 5 working days, 10 matches, 5 players"
+    silent: true
+    vars:
+      # A tournament is not the measurement (#43), and the database cannot
+      # tell one from a normal day — a kiosk entry credits the home player.
+      # SINCE is how the count starts after such an evening.
+      SINCE: '{{.SINCE | default "1970-01-01"}}'
+      # Grouping into days only means something in the office's own time.
+      ZONE: '{{.ZONE | default "Europe/Berlin"}}'
+    cmds:
+      - |
+        docker compose exec -T db \
+          psql -U schmetterpause -d schmetterpause \
+          -v since='{{.SINCE}}' -v zone='{{.ZONE}}' \
+          -f - < scripts/definition-of-done.sql
+      - |
+        echo "Counting from {{.SINCE}} in {{.ZONE}}."
+        echo "After a tournament: task office:dod SINCE=<the day after>"
+
   psql:
     desc: "psql session on the development database"
     interactive: true
