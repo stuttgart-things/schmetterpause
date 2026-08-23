@@ -418,6 +418,32 @@ button.secondary:hover {
 	margin-bottom: 0.5rem;
 }
 
+/* Box on top, slider directly under it and exactly as wide: the slider has to
+   look like it belongs to that box and to no other. Stacked rather than side
+   by side, because two boxes and two sliders in one row do not fit a phone. */
+.score {
+	display: inline-flex;
+	flex-direction: column;
+	gap: 0.25rem;
+}
+
+.score-slider {
+	width: 4.5rem;
+	height: 1rem;
+	margin: 0;
+	accent-color: var(--accent);
+	cursor: pointer;
+}
+
+/* A slider always has a position, so an untouched one sits at zero and looks
+   like it means it. Dim until the box beside it holds a number, so "leave
+   unplayed sets empty" still reads as empty.
+
+   Dim is the default rather than the exception: a freshly swapped row starts
+   empty, and this way it starts right without anything having to run. */
+.score .score-slider { opacity: 0.3; }
+.score.has-score .score-slider { opacity: 1; }
+
 .set-side {
 	width: 4.5rem;
 	text-align: center;

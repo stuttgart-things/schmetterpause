@@ -369,9 +369,14 @@ func TestTheDeuceRuleIsWrittenWhereTheScoresAreTyped(t *testing.T) {
 		if !strings.Contains(body, tc.deuce) {
 			t.Errorf("points_to_win=%s: the rule does not say when a set runs on", tc.pointsToWin)
 		}
-		if strings.Contains(body, `max="`) {
-			t.Errorf("points_to_win=%s: a box carries a maximum, which would reject %s and worse",
-				tc.pointsToWin, "12:10")
+		// The slider beside the box carries a max, and should. The box must
+		// not: a set to eleven can end 12:10 or 13:11.
+		for _, field := range strings.Split(body, "<input")[1:] {
+			field = field[:strings.Index(field, ">")]
+			if strings.Contains(field, `type="number"`) && strings.Contains(field, `max="`) {
+				t.Errorf("points_to_win=%s: a score box carries a maximum, which would reject 12:10: %s",
+					tc.pointsToWin, field)
+			}
 		}
 	}
 }

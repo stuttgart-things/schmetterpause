@@ -125,34 +125,60 @@ templ setRows(prefix string, sets []SetInput, bestOf, pointsToWin int, homeLabel
 		for i, s := range SetRows(sets, bestOf) {
 			<div class="set">
 				<span class="set-no">{ strconv.Itoa(i + 1) }.</span>
-				<input
-					type="number"
-					name={ "set_home_" + strconv.Itoa(i+1) }
-					value={ s.Home }
-					min="0"
-					inputmode="numeric"
-					aria-label={ "Satz " + strconv.Itoa(i+1) + ", Punkte " + homeLabel }
-					aria-describedby={ "sets-rule-" + prefix }
-				/>
+				@scoreField(prefix, "set_home_"+strconv.Itoa(i+1), s.Home, pointsToWin,
+					"Satz "+strconv.Itoa(i+1)+", Punkte "+homeLabel)
 				<span class="colon">:</span>
-				<input
-					type="number"
-					name={ "set_away_" + strconv.Itoa(i+1) }
-					value={ s.Away }
-					min="0"
-					inputmode="numeric"
-					aria-label={ "Satz " + strconv.Itoa(i+1) + ", Punkte " + awayLabel }
-					aria-describedby={ "sets-rule-" + prefix }
-				/>
+				@scoreField(prefix, "set_away_"+strconv.Itoa(i+1), s.Away, pointsToWin,
+					"Satz "+strconv.Itoa(i+1)+", Punkte "+awayLabel)
 			</div>
 		}
 	</fieldset>
+}
+
+// scoreField is one score: the box that is submitted, and a slider under it
+// that sets the same value.
+//
+// The box stays the input of record, and the slider carries no name, so it
+// submits nothing. That is what keeps an unplayed set empty — a slider always
+// has a position, and "leave unplayed sets empty" would stop working if the
+// position were the value.
+//
+// The slider only reaches its own box; the wiring is four lines in app.js,
+// because there is no HTML that links two inputs.
+templ scoreField(prefix, name, value string, pointsToWin int, label string) {
+	<span class="score">
+		<input
+			type="number"
+			id={ prefix + "-" + name }
+			name={ name }
+			value={ value }
+			min="0"
+			inputmode="numeric"
+			aria-label={ label }
+			aria-describedby={ "sets-rule-" + prefix }
+		/>
+		// Up to ten past the target, which covers a deuce nobody in an office
+		// has ever played out. Beyond that the box still takes anything.
+		<input
+			class="score-slider"
+			type="range"
+			min="0"
+			max={ strconv.Itoa(pointsToWin + 10) }
+			value={ sliderStart(value) }
+			data-score={ prefix + "-" + name }
+			aria-label={ label + ", Schieberegler" }
+			tabindex="-1"
+		/>
+	</span>
 }
 
 // SetsFragment is the set rows on their own, for the swap that follows a
 // change of mode. Every form on the page has its own, told apart by prefix.
 templ SetsFragment(v SetsView) {
 	@setRows(v.Prefix, v.Sets, v.BestOf, v.PointsToWin, v.HomeLabel, v.AwayLabel)
+	if v.Picker != nil {
+		@PlayerPickerOOB(*v.Picker)
+	}
 }
 
 // MatchRecorded confirms the entry and says what happens next. It is

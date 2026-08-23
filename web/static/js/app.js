@@ -15,3 +15,53 @@ document.addEventListener('htmx:beforeSwap', function (event) {
 		event.detail.isError = false;
 	}
 });
+
+// The sliders under the score boxes. There is no HTML that links two inputs,
+// so this is the second thing HTMX does not reach.
+//
+// One delegated listener rather than one per slider: the set rows are swapped
+// out whenever the mode or a player changes, and listeners bound to the old
+// elements would go with them.
+document.addEventListener('input', function (event) {
+	var el = event.target;
+
+	if (el.classList && el.classList.contains('score-slider')) {
+		var box = document.getElementById(el.dataset.score);
+		if (box) {
+			box.value = el.value;
+		}
+		return;
+	}
+
+	// Typing in the box moves the slider back under it. Without this the two
+	// disagree the moment somebody uses the keypad, and the slider then jumps
+	// from a stale position the next time it is touched.
+	if (el.id) {
+		var slider = document.querySelector('.score-slider[data-score="' + el.id + '"]');
+		if (slider && el.value !== '') {
+			slider.value = el.value;
+		}
+	}
+
+	mark(el.closest && el.closest('.score'));
+});
+
+// A slider under an empty box is dim, so a set nobody played does not look
+// like a set that ended 0:0. The stylesheet dims by default; this marks the
+// ones that hold a number.
+function mark(score) {
+	if (!score) {
+		return;
+	}
+	var box = score.querySelector('input[type="number"]');
+	score.classList.toggle('has-score', box !== null && box.value !== '');
+}
+
+function markAll() {
+	document.querySelectorAll('.score').forEach(mark);
+}
+
+// The set rows are replaced whenever the mode or a player changes, and the
+// replacement arrives with whatever was already typed in it.
+document.addEventListener('htmx:afterSwap', markAll);
+document.addEventListener('DOMContentLoaded', markAll);

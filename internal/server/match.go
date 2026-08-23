@@ -305,14 +305,74 @@ func (s *Server) handleSetsFragment(w http.ResponseWriter, r *http.Request) {
 	form, _ := parseResultForm(r)
 	home, away := s.setsColumns(r)
 
-	s.render(w, r, templates.SetsFragment(templates.SetsView{
+	view := templates.SetsView{
 		Prefix:      setsPrefix(r.FormValue("sets_prefix")),
 		BestOf:      form.bestOf,
 		PointsToWin: form.pointsToWin,
 		Sets:        form.typed,
 		HomeLabel:   home,
 		AwayLabel:   away,
-	}))
+	}
+	if view.Prefix == kioskSetsPrefix {
+		view.Picker = s.kioskPicker(r)
+	}
+
+	s.render(w, r, templates.SetsFragment(view))
+}
+
+// kioskSetsPrefix names the kiosk's copy of the set rows.
+const kioskSetsPrefix = "kiosk"
+
+// kioskPicker rebuilds the select the scorekeeper did not just touch, without
+// the player the other one now holds.
+//
+// Nobody plays themselves, and the server says so — but only after the whole
+// match has been typed in, which is too late to be useful. Taking the name out
+// of the other list makes the mistake unavailable instead of punished.
+//
+// If the choice that is kept is the player just taken by the other side, it
+// simply is not in the list any more and the select falls back to "bitte
+// wählen". Better than silently keeping an impossible pair.
+func (s *Server) kioskPicker(r *http.Request) *templates.KioskPicker {
+	const (
+		homeField = "kiosk-home"
+		awayField = "kiosk-away"
+	)
+
+	var target, name, taken, keep string
+	switch r.Header.Get("HX-Trigger") {
+	case homeField:
+		target, name = awayField, "away_id"
+		taken, keep = r.FormValue("home_id"), r.FormValue("away_id")
+	case awayField:
+		target, name = homeField, "home_id"
+		taken, keep = r.FormValue("away_id"), r.FormValue("home_id")
+	default:
+		// A mode change rather than a player change. The two selects already
+		// agree with each other, so leave them alone.
+		return nil
+	}
+
+	players, err := s.store.Players().List(r.Context())
+	if err != nil {
+		s.log.ErrorContext(r.Context(), "rebuilding the kiosk picker failed", "error", err)
+		return nil
+	}
+
+	options := make([]templates.OpponentOption, 0, len(players))
+	for _, player := range players {
+		id := player.ID.String()
+		if id == taken {
+			continue
+		}
+		options = append(options, templates.OpponentOption{
+			ID:          id,
+			DisplayName: player.DisplayName,
+			Selected:    id == keep,
+		})
+	}
+
+	return &templates.KioskPicker{ID: target, Name: name, Players: options}
 }
 
 // setsColumns names the two score columns for whichever form asked.

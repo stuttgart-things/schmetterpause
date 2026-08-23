@@ -595,9 +595,11 @@ if grep -q "set_home_4" "$form"; then
 	echo "best-of-three offers a fourth set"
 	exit 1
 fi
-# No maximum on a box: at eleven, 12:10 and 13:11 are ordinary results, so the
-# rule is written out beside them instead.
-if grep -q "max=" "$form"; then
+# No maximum on a score box: at eleven, 12:10 and 13:11 are ordinary results,
+# so the rule is written out beside them instead. The slider next to the box
+# does carry one, hence the type="number" in the pattern — one element per
+# line first, so the two cannot be confused.
+if tr "<" "\n" < "$form" | grep "type=\"number\"" | grep -q "max="; then
 	echo "a score box carries a maximum, which would reject 12:10"
 	exit 1
 fi
@@ -829,6 +831,25 @@ cara=$(tr "<" "\n" < "$kiosk_page" | grep "option value=\"" | grep "Kiosk Cara" 
 	| sed "s/.*value=\"\([^\"]*\)\".*/\1/" | head -1)
 dirk=$(tr "<" "\n" < "$kiosk_page" | grep "option value=\"" | grep "Kiosk Dirk" \
 	| sed "s/.*value=\"\([^\"]*\)\".*/\1/" | head -1)
+
+# Nobody plays themselves. Picking one side takes that name out of the other
+# list, so the mistake is unavailable rather than punished after the fact.
+picker=$(mktemp)
+curl -fsS -b "$kiosk" -H "HX-Trigger: kiosk-home" \
+	"http://app:8080/fragments/sets?sets_prefix=kiosk&home_id=$cara&best_of=3" > "$picker"
+grep -q "hx-swap-oob" "$picker" || {
+	echo "picking a player did not send the other list back"
+	cat "$picker"
+	exit 1
+}
+if grep -q "value=\"$cara\"" "$picker"; then
+	echo "the opponent list still offers the player who is already on the other side"
+	exit 1
+fi
+grep -q "Kiosk Dirk" "$picker" || {
+	echo "the opponent list lost everybody else as well"
+	exit 1
+}
 [ -n "$cara" ] && [ -n "$dirk" ] || {
 	echo "the kiosk does not offer the players it created"
 	exit 1
