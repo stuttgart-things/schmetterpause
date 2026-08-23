@@ -9,11 +9,15 @@ package templates
 // what people crane their necks at between matches.
 templ Kiosk(v KioskView) {
 	@Layout("Kiosk", HeaderView{}) {
-		@PageMascot()
-		<h1>Kiosk</h1>
-		<p class="kiosk-lead muted">
-			Ergebnisse zählen sofort — hier trägt ein, wer zugesehen hat.
-		</p>
+		<div class="page-head">
+			<div>
+				<h1>Kiosk</h1>
+				<p class="kiosk-lead muted">
+					Ergebnisse zählen sofort — hier trägt ein, wer zugesehen hat.
+				</p>
+			</div>
+			@PageMascot()
+		</div>
 		if v.Note != "" {
 			<p class="kiosk-note" role="status">{ v.Note }</p>
 		}
