@@ -1041,6 +1041,31 @@ curl -fsS -H "X-Forwarded-Proto: https" http://app:8080/qr \
 	exit 1
 }
 
+echo "== the measurement query still fits the schema =="
+# Read against the database the checks above filled, with the migrations this
+# image applied. What rots here is a renamed column, and it would be found on
+# the evening somebody wants the number.
+dod=$(mktemp)
+psql -h db -U schmetterpause -d schmetterpause \
+	-v since=1970-01-01 -v zone=Europe/Berlin -f /dod.sql > "$dod" 2>&1 || {
+	echo "the Definition-of-Done query does not run against this schema"
+	cat "$dod"
+	exit 1
+}
+grep -q "Confirmed results per day" "$dod" || {
+	echo "the query printed no day table"
+	cat "$dod"
+	exit 1
+}
+# One day of results, so the verdict is the one that says so. Asserted rather
+# than ignored: a query that answers nothing at all would pass a check that
+# only looked for the absence of an error.
+grep -q "fewer than five working days" "$dod" || {
+	echo "the verdict does not describe a single day of results"
+	cat "$dod"
+	exit 1
+}
+
 echo
 echo "verify: all checks passed"
 `
