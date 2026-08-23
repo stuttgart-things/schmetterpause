@@ -276,3 +276,60 @@ func TestTheKioskLeadsWithTheThingThatHappensAllEvening(t *testing.T) {
 		t.Error("adding a player comes before entering a result")
 	}
 }
+
+func TestTheKioskCannotPitchAPlayerAgainstThemselves(t *testing.T) {
+	// The server refuses it, but only after the whole match has been typed
+	// in. The name comes out of the other list instead, so the mistake is
+	// unavailable rather than punished.
+	h, store := kioskHandler(t)
+	cookie := unlock(t, h)
+
+	for _, name := range []string{"Anna", "Bodo"} {
+		if _, err := store.Players().Create(t.Context(), name, domain.DefaultTTR); err != nil {
+			t.Fatalf("seeding %s: %v", name, err)
+		}
+	}
+	anna := opponentID(t, store, "Anna")
+
+	r := httptest.NewRequest(http.MethodGet,
+		"/fragments/sets?sets_prefix=kiosk&home_id="+anna+"&best_of=3", nil)
+	r.Header.Set("HX-Trigger", "kiosk-home")
+	r.AddCookie(cookie)
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, r)
+
+	body := rec.Body.String()
+
+	if !strings.Contains(body, `id="kiosk-away"`) {
+		t.Fatalf("the opposite picker did not come back: %s", body)
+	}
+	if !strings.Contains(body, `hx-swap-oob="true"`) {
+		t.Errorf("the picker is not marked for an out-of-band swap: %s", body)
+	}
+	if strings.Contains(body, `value="`+anna+`"`) {
+		t.Errorf("the opponent list still offers the player who is already home: %s", body)
+	}
+	if !strings.Contains(body, "Bodo") {
+		t.Errorf("the opponent list lost everybody else too: %s", body)
+	}
+}
+
+func TestAModeChangeLeavesThePickersAlone(t *testing.T) {
+	// The two selects already agree with each other then, and replacing a
+	// select somebody is not touching is a change they did not ask for.
+	h, store := kioskHandler(t)
+	cookie := unlock(t, h)
+	if _, err := store.Players().Create(t.Context(), "Anna", domain.DefaultTTR); err != nil {
+		t.Fatalf("seeding: %v", err)
+	}
+
+	r := httptest.NewRequest(http.MethodGet, "/fragments/sets?sets_prefix=kiosk&best_of=3", nil)
+	r.Header.Set("HX-Trigger", "kiosk-best-of")
+	r.AddCookie(cookie)
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, r)
+
+	if strings.Contains(rec.Body.String(), "hx-swap-oob") {
+		t.Errorf("a mode change replaced a picker: %s", rec.Body.String())
+	}
+}

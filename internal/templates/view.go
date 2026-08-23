@@ -159,10 +159,31 @@ type SetsView struct {
 	BestOf      int
 	PointsToWin int
 	Sets        []SetInput
+	// Picker carries the opposite player select back with the response, so
+	// it can drop whoever this one just took. Nil everywhere but the kiosk.
+	Picker *KioskPicker
 	// HomeLabel and AwayLabel head the two score columns. Two boxes with a
 	// colon between them do not say which side is which, and at the table
 	// nobody stops to work it out — they type, and the wrong player wins.
 	HomeLabel, AwayLabel string
+}
+
+// KioskPicker is one of the kiosk's two player selects, re-rendered out of
+// band with the other side's choice removed from it.
+type KioskPicker struct {
+	ID      string
+	Name    string
+	Players []OpponentOption
+}
+
+// sliderStart is where the slider sits for a box that has no number in it
+// yet. Zero, and it stays a position rather than a value until somebody
+// moves it — the box is what gets submitted.
+func sliderStart(value string) string {
+	if value == "" {
+		return "0"
+	}
+	return value
 }
 
 // SideDefaults are the column headings before anybody is picked.

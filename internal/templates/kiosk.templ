@@ -27,11 +27,11 @@ templ Kiosk(v KioskView) {
 				<form method="post" action="/kiosk/matches">
 					<div class="row">
 						<label for="kiosk-home">Spieler</label>
-						@playerPicker("kiosk-home", "home_id", v.Players)
+						@playerPicker("kiosk-home", "home_id", v.Players, nil)
 					</div>
 					<div class="row">
 						<label for="kiosk-away">Gegner</label>
-						@playerPicker("kiosk-away", "away_id", v.Players)
+						@playerPicker("kiosk-away", "away_id", v.Players, nil)
 					</div>
 					@modeRow("kiosk", v.BestOf, v.PointsToWin)
 					@setRows("kiosk", v.Sets, v.BestOf, v.PointsToWin, SideHome, SideAway)
@@ -59,8 +59,10 @@ templ Kiosk(v KioskView) {
 }
 
 // The pickers redraw the set rows, because the rows are headed with the two
-// names and a heading that lags behind the picker is worse than none.
-templ playerPicker(id, name string, players []OpponentOption) {
+// names and a heading that lags behind the picker is worse than none. The
+// same response carries the other picker back, without whoever this one now
+// holds — see PlayerPickerOOB.
+templ playerPicker(id, name string, players []OpponentOption, extra templ.Attributes) {
 	<select
 		id={ id }
 		name={ name }
@@ -70,10 +72,18 @@ templ playerPicker(id, name string, players []OpponentOption) {
 		hx-swap="outerHTML"
 		hx-include="closest form"
 		hx-sync="closest form:replace"
+		{ extra... }
 	>
 		<option value="">bitte wählen</option>
 		for _, p := range players {
-			<option value={ p.ID }>{ p.DisplayName }</option>
+			<option value={ p.ID } selected?={ p.Selected }>{ p.DisplayName }</option>
 		}
 	</select>
+}
+
+// PlayerPickerOOB replaces the picker that did not change, so it can no
+// longer offer the player the other one now holds. Nobody plays themselves,
+// and finding that out after typing three sets is finding it out too late.
+templ PlayerPickerOOB(p KioskPicker) {
+	@playerPicker(p.ID, p.Name, p.Players, templ.Attributes{"hx-swap-oob": "true"})
 }
