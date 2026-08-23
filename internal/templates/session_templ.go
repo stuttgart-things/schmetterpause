@@ -105,9 +105,13 @@ func Session(v SessionView) templ.Component {
 	})
 }
 
-// Joined confirms a successful join, once. The line about the device is
-// onboarding rather than status: it answers a question somebody has exactly
-// at this moment and never again, so it is not on the page afterwards.
+// Joined confirms a successful join, once. It is onboarding rather than
+// status: it answers a question somebody has exactly at this moment and never
+// again, so it is not on the page afterwards.
+//
+// It no longer names the player. The same response now puts "Hallo, <name>"
+// in the heading and the name in the top bar, and a third copy of it in a
+// card of its own said nothing the other two did not.
 func Joined(v SessionView) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
@@ -129,20 +133,7 @@ func Joined(v SessionView) templ.Component {
 			templ_7745c5c3_Var6 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "<section id=\"session\" class=\"session\"><p>Angemeldet als <strong>")
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		var templ_7745c5c3_Var7 string
-		templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(v.DisplayName)
-		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `session.templ`, Line: 36, Col: 41}
-		}
-		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
-		if templ_7745c5c3_Err != nil {
-			return templ_7745c5c3_Err
-		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "</strong>.</p><p class=\"muted\">Dieses Gerät erkennt dich wieder — auch nach einem Neustart.</p></section>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "<section id=\"session\" class=\"session\"><p class=\"muted\">Dieses Gerät erkennt dich wieder — auch nach einem Neustart.</p></section>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

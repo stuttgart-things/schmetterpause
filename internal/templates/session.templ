@@ -27,14 +27,15 @@ templ Session(v SessionView) {
 	</section>
 }
 
-// Joined confirms a successful join, once. The line about the device is
-// onboarding rather than status: it answers a question somebody has exactly
-// at this moment and never again, so it is not on the page afterwards.
+// Joined confirms a successful join, once. It is onboarding rather than
+// status: it answers a question somebody has exactly at this moment and never
+// again, so it is not on the page afterwards.
+//
+// It no longer names the player. The same response now puts "Hallo, <name>"
+// in the heading and the name in the top bar, and a third copy of it in a
+// card of its own said nothing the other two did not.
 templ Joined(v SessionView) {
 	<section id="session" class="session">
-		<p>
-			Angemeldet als <strong>{ v.DisplayName }</strong>.
-		</p>
 		<p class="muted">
 			Dieses Gerät erkennt dich wieder — auch nach einem Neustart.
 		</p>
