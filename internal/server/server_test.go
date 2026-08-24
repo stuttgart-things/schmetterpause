@@ -158,7 +158,7 @@ func TestStaticAssetsAreEmbedded(t *testing.T) {
 		"/static/fonts/jetbrains-mono-latin.woff2",
 		"/static/img/mark-32.png",
 		"/static/img/mark-180.png",
-		"/static/img/mascot.png",
+		"/static/img/mascot.svg",
 	} {
 		rec := get(t, h, asset)
 

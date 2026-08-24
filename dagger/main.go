@@ -519,7 +519,7 @@ size=$(curl -fsS http://app:8080/static/fonts/space-grotesk-latin.woff2 | wc -c)
 
 echo "== mark: the icons are embedded and are really images =="
 icon=$(mktemp)
-for path in /static/img/mark-32.png /static/img/mark-180.png /static/img/mascot.png /favicon.ico; do
+for path in /static/img/mark-32.png /static/img/mark-180.png /favicon.ico; do
 	curl -fsS "http://app:8080$path" > "$icon" || {
 		echo "$path is not served"
 		exit 1
@@ -535,6 +535,33 @@ for path in /static/img/mark-32.png /static/img/mark-180.png /static/img/mascot.
 			exit 1
 			;;
 	esac
+done
+
+# The mascot is a vector now, and it is inlined into the pages rather than
+# linked — so it is checked as text, and where it actually has to appear.
+mascot=$(mktemp)
+curl -fsS "http://app:8080/static/img/mascot.svg" > "$mascot" || {
+	echo "the mascot is not served"
+	exit 1
+}
+head -c 5 "$mascot" | grep -q "<svg" || {
+	echo "the mascot is not an SVG"
+	head -c 60 "$mascot"
+	exit 1
+}
+# An SVG behind <img src> cannot be reached by the page's CSS, so a linked
+# one would quietly cost the recolourable blade. See issue #64.
+for page in / /qr; do
+	body=$(mktemp)
+	curl -fsS "http://app:8080$page" > "$body"
+	grep -q "var(--paddle, #c82828)" "$body" || {
+		echo "$page does not carry the mascot inline"
+		exit 1
+	}
+	if grep -q "/static/img/mascot.svg" "$body"; then
+		echo "$page links the mascot instead of inlining it"
+		exit 1
+	fi
 done
 
 echo "== mark: the top bar shows it =="
