@@ -404,6 +404,42 @@ type ProfileView struct {
 	Matches  []ProfileMatchView
 }
 
+// MatchListView is every match the office has played, newest first.
+type MatchListView struct {
+	Header  HeaderView
+	Matches []MatchListRow
+	// Limit is how many rows the list asks for at most. Truncated says the
+	// answer hit it — a capped list that does not say so reads as the whole
+	// history, and this one will not be the whole history forever.
+	Limit     int
+	Truncated bool
+}
+
+// MatchListRow is one match, read from the winner's side.
+//
+// Winner first rather than home first: whoever entered the result decided
+// which side "home" was, which is an artefact of the form and not of the
+// evening. Read winner-first, every row is a sentence — "Anna beat Bodo 2:0,
+// and it was worth eight points".
+type MatchListRow struct {
+	PlayedAt   string
+	WinnerName string
+	LoserName  string
+	WinnerID   string
+	LoserID    string
+	WinnerSets int
+	LoserSets  int
+	// Sets are the individual scores, also from the winner's side.
+	Sets []SetScore
+	// Delta is what the win was worth, and HasDelta is false for anything
+	// that has not been settled. For a single match the two players' changes
+	// are equal and opposite, so the winner's number says it all.
+	Delta    int
+	HasDelta bool
+	Pending  bool
+	Disputed bool
+}
+
 // SparkView is the rating history as ready-to-draw geometry. The arithmetic
 // happens in Go: a template is the wrong place to compute coordinates.
 type SparkView struct {

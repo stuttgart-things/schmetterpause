@@ -67,6 +67,7 @@ func (s *Server) routes() http.Handler {
 	// the same rows.
 	page.HandleFunc("GET /fragments/sets", s.handleSetsFragment)
 	page.HandleFunc("POST /matches", s.handleRecordMatch)
+	page.HandleFunc("GET /matches", s.handleMatchList)
 	page.HandleFunc("GET /fragments/pending", s.handlePendingFragment)
 	page.HandleFunc("POST /matches/{id}/confirm", s.handleConfirmMatch)
 	page.HandleFunc("POST /matches/{id}/dispute", s.handleDisputeMatch)
