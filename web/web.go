@@ -21,3 +21,20 @@ import "embed"
 //
 //go:embed static
 var Static embed.FS
+
+// Mascot is the mark itself, for inlining into a page.
+//
+// Inlined rather than referenced with <img src>: an SVG loaded through <img>
+// is an isolated document that the surrounding CSS cannot reach, and the
+// point of the vector version is that the blade can be recoloured from
+// outside through --paddle. See issue #64.
+//
+// It is also still served as a static file, so anything that only wants to
+// display it — a README, a chat message — can link to it. That means the 7.6 kB
+// are in the binary twice, once in Static and once here. Deliberate: reading it
+// out of Static at init instead would save the copy but turn a missing file
+// from a compile error into a crash on startup, and the file is small enough
+// that the guarantee is worth more.
+//
+//go:embed static/img/mascot.svg
+var Mascot string

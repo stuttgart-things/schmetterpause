@@ -1,6 +1,10 @@
 package templates
 
-import "strconv"
+import (
+	"strconv"
+
+	"github.com/stuttgart-things/schmetterpause/web"
+)
 
 templ Index(v IndexView) {
 	@Layout("Start", v.Header) {
@@ -59,11 +63,16 @@ templ pageHeadBody(v SessionView) {
 	@PageMascot()
 }
 
-// PageMascot is the drawing at the top of a page, above everything a player
-// came to do. Decorative and nothing else, so it carries no alt text and is
-// hidden in print.
+// PageMascot is the drawing beside the heading. Decorative and nothing else,
+// so the SVG carries aria-hidden and is hidden in print.
+//
+// Inlined rather than linked. templ.Raw is safe here for the reason it is
+// usually not: the string is an asset compiled into this binary, not anything
+// that came in with a request.
 templ PageMascot() {
-	<img class="page-mascot" src="/static/img/mascot.png" width="420" height="420" alt=""/>
+	<span class="page-mascot">
+		@templ.Raw(web.Mascot)
+	</span>
 }
 
 // Status is the fragment loaded by HTMX. It proves the path

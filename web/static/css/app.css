@@ -717,9 +717,17 @@ tr.self td { background: color-mix(in srgb, var(--accent) 8%, transparent); }
 .page-mascot {
 	display: block;
 	width: min(28vw, 6.5rem);
-	height: auto;
 	flex: 0 0 auto;
 	margin: 0 0 0 auto;
+}
+
+/* The drawing is inlined rather than linked, so the box around it carries the
+   size and the SVG fills it. Its viewBox keeps the proportions. */
+.page-mascot svg,
+.sheet-mascot svg {
+	display: block;
+	width: 100%;
+	height: auto;
 }
 
 /* --- Stat-Kachel mit Verlauf ------------------------------------------- */
@@ -771,7 +779,6 @@ tr.self td { background: color-mix(in srgb, var(--accent) 8%, transparent); }
    icon, so it is worth the width. */
 .sheet-mascot {
 	width: min(40vw, 9rem);
-	height: auto;
 	margin: 0 auto -0.5rem;
 	display: block;
 }

@@ -1,6 +1,10 @@
 package templates
 
-import "strconv"
+import (
+	"strconv"
+
+	"github.com/stuttgart-things/schmetterpause/web"
+)
 
 // QRSheet is the printable sheet for the wall next to the table.
 //
@@ -12,7 +16,9 @@ templ QRSheet(v QRSheetView) {
 		<article class="sheet">
 			// Decorative: the heading below says what the sheet is for, and a
 			// screen reader gains nothing from hearing the cat described.
-			<img class="sheet-mascot" src="/static/img/mascot.png" width="420" height="420" alt=""/>
+			<span class="sheet-mascot">
+				@templ.Raw(web.Mascot)
+			</span>
 			<h1>Ergebnis eintragen</h1>
 			<p class="sheet-lead">Scannen. Gegner wählen. Sätze eintragen.</p>
 			<figure class="qr">
