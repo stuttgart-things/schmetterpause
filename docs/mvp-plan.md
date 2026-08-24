@@ -36,6 +36,7 @@ Bildschirm und bekommt auch keinen: es ist eine Zahl, die man einmal liest.
 | Bestätigung | Gegner bestätigt oder widerspricht dem eingetragenen Ergebnis |
 | TTR | Berechnung nach Verbandsformel, Historie pro Spieler |
 | Rangliste | Sortiert nach TTR, mit Anzahl Spiele und Bilanz |
+| Match-Historie | Liste aller Matches mit allen Sätzen und der Wertung, neueste zuerst |
 | QR-Eingabe | QR-Code an der Platte öffnet direkt die Ergebniseingabe |
 | Betrieb | Docker Compose lauffähig, CI mit Lint/Build/Verify |
 
