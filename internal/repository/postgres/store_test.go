@@ -541,3 +541,88 @@ func TestInTxCommit(t *testing.T) {
 		t.Errorf("%d players exist after commit, want 1", n)
 	}
 }
+
+// TestRecentAndForMatches covers the two reads the match list is built from:
+// everybody's matches rather than one player's, and what each was worth in
+// one query rather than one per row.
+func TestRecentAndForMatches(t *testing.T) {
+	store, ctx := newStore(t)
+	matches, history := store.Matches(), store.TTRHistory()
+
+	anna := mustPlayer(ctx, t, store, "Anna", domain.DefaultTTR)
+	bodo := mustPlayer(ctx, t, store, "Bodo", domain.DefaultTTR)
+	cara := mustPlayer(ctx, t, store, "Cara", domain.DefaultTTR)
+
+	older, err := matches.Create(ctx, domain.Match{
+		HomeID: anna.ID, AwayID: bodo.ID, BestOf: 3, PointsToWin: 11,
+		ReportedBy: anna.ID, PlayedAt: time.Now().Add(-2 * time.Hour),
+		Sets: []domain.MatchSet{
+			{SetNo: 1, HomePoints: 11, AwayPoints: 7},
+			{SetNo: 2, HomePoints: 11, AwayPoints: 9},
+		},
+	})
+	if err != nil {
+		t.Fatalf("Create(older): %v", err)
+	}
+	newer, err := matches.Create(ctx, domain.Match{
+		HomeID: cara.ID, AwayID: anna.ID, BestOf: 3, PointsToWin: 11,
+		ReportedBy: cara.ID, PlayedAt: time.Now(),
+		Sets: []domain.MatchSet{
+			{SetNo: 1, HomePoints: 5, AwayPoints: 11},
+			{SetNo: 2, HomePoints: 8, AwayPoints: 11},
+		},
+	})
+	if err != nil {
+		t.Fatalf("Create(newer): %v", err)
+	}
+
+	recent, err := matches.Recent(ctx, 10)
+	if err != nil {
+		t.Fatalf("Recent(): %v", err)
+	}
+	if len(recent) != 2 {
+		t.Fatalf("Recent() = %d matches, want 2", len(recent))
+	}
+	// Newest first, and nobody's matches are left out — neither of these two
+	// involves the same pair.
+	if recent[0].ID != newer.ID || recent[1].ID != older.ID {
+		t.Errorf("Recent() is not newest first: %s then %s", recent[0].ID, recent[1].ID)
+	}
+	// The sets come with them, or the list would have to fetch each match
+	// again to say what the result was.
+	if len(recent[0].Sets) != 2 || recent[0].Sets[0].AwayPoints != 11 {
+		t.Errorf("Recent() lost the sets: %+v", recent[0].Sets)
+	}
+
+	if limited, err := matches.Recent(ctx, 1); err != nil || len(limited) != 1 {
+		t.Errorf("Recent(1) = %d matches, err %v", len(limited), err)
+	}
+
+	// Only the older one has been settled, which is the case the list has to
+	// tell apart: a match with no history is not a match worth zero points.
+	if err := history.Append(ctx, []domain.TTRChange{
+		{PlayerID: anna.ID, MatchID: older.ID, TTRBefore: 1000, TTRAfter: 1008},
+		{PlayerID: bodo.ID, MatchID: older.ID, TTRBefore: 1000, TTRAfter: 992},
+	}); err != nil {
+		t.Fatalf("Append(): %v", err)
+	}
+
+	changes, err := history.ForMatches(ctx, []uuid.UUID{older.ID, newer.ID})
+	if err != nil {
+		t.Fatalf("ForMatches(): %v", err)
+	}
+	if len(changes) != 2 {
+		t.Fatalf("ForMatches() = %d entries, want 2", len(changes))
+	}
+	for _, c := range changes {
+		if c.MatchID != older.ID {
+			t.Errorf("ForMatches() returned an entry for the unsettled match: %+v", c)
+		}
+	}
+
+	// An empty request must not become "where match_id = any(null)", which
+	// matches nothing but takes a round trip to find out.
+	if got, err := history.ForMatches(ctx, nil); err != nil || got != nil {
+		t.Errorf("ForMatches(nil) = %v, %v; want nil, nil", got, err)
+	}
+}

@@ -53,6 +53,37 @@ func (r ttrHistoryRepo) ForPlayer(ctx context.Context, playerID uuid.UUID, limit
 	return changes, nil
 }
 
+func (r ttrHistoryRepo) ForMatches(ctx context.Context, matchIDs []uuid.UUID) ([]domain.TTRChange, error) {
+	if len(matchIDs) == 0 {
+		return nil, nil
+	}
+
+	const q = `
+		select id, player_id, match_id, ttr_before, ttr_after, created_at
+		from ttr_history
+		where match_id = any($1)
+		order by created_at`
+
+	rows, err := r.q.Query(ctx, q, matchIDs)
+	if err != nil {
+		return nil, fmt.Errorf("load ttr history of %d matches: %w", len(matchIDs), err)
+	}
+	defer rows.Close()
+
+	var changes []domain.TTRChange
+	for rows.Next() {
+		var c domain.TTRChange
+		if err := rows.Scan(&c.ID, &c.PlayerID, &c.MatchID, &c.TTRBefore, &c.TTRAfter, &c.CreatedAt); err != nil {
+			return nil, fmt.Errorf("read ttr entry: %w", err)
+		}
+		changes = append(changes, c)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("read ttr history of %d matches: %w", len(matchIDs), err)
+	}
+	return changes, nil
+}
+
 func (r ttrHistoryRepo) ForMatch(ctx context.Context, matchID uuid.UUID) ([]domain.TTRChange, error) {
 	const q = `
 		select id, player_id, match_id, ttr_before, ttr_after, created_at

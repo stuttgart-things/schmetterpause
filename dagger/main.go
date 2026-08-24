@@ -1002,6 +1002,51 @@ code=$(curl -sS -b "$kiosk" -o /dev/null -w "%{http_code}" -X POST "http://app:8
 	exit 1
 }
 
+echo "== match list: what happened, read from the winner's side =="
+# One more kiosk result, and this time the away player wins. Whoever was
+# picked first is an artefact of the form, so the row has to turn around.
+curl -fsS -b "$kiosk" -X POST http://app:8080/kiosk/matches \
+	--data "home_id=$cara&away_id=$dirk&best_of=3&points_to_win=11&set_home_1=2&set_away_1=11&set_home_2=4&set_away_2=11" \
+	| grep -q "Kiosk Dirk schlägt Kiosk Cara 2:0" || {
+	echo "the second kiosk result was not recorded"
+	exit 1
+}
+
+list=$(mktemp)
+curl -fsS -b "$cookies" http://app:8080/matches > "$list"
+
+winner=$(tr "<" "\n" < "$list" | grep -n "Kiosk Dirk" | head -1 | cut -d: -f1)
+loser=$(tr "<" "\n" < "$list" | grep -n "Kiosk Cara" | head -1 | cut -d: -f1)
+[ -n "$winner" ] && [ -n "$loser" ] && [ "$winner" -lt "$loser" ] || {
+	echo "the match list does not put the winner first"
+	cat "$list"
+	exit 1
+}
+
+# The sets turn around with the names, or the row contradicts itself. Stored
+# is 2:11 and 4:11 from the home side; the list has to read 11:2 and 11:4.
+grep -q "11:2" "$list" || {
+	echo "the match list does not show the sets from the winner's side"
+	cat "$list"
+	exit 1
+}
+if grep -q "2:11" "$list"; then
+	echo "the match list shows the sets from the losing side"
+	exit 1
+fi
+
+# Everybody's matches, not one player's: what Anna played is in here too.
+grep -q "Verify Anna" "$list" || {
+	echo "the match list only shows the kiosk matches"
+	exit 1
+}
+
+# A page nothing leads to is a page nobody finds.
+curl -fsS -b "$cookies" http://app:8080/ | grep -q "href=\"/matches\"" || {
+	echo "the start page does not link to the match list"
+	exit 1
+}
+
 echo "== profile: the rating history is drawn =="
 pid=$(tr "<" "\n" < /tmp/standings | grep "a href=\"/players/" | head -1 \
 	| sed "s|.*players/\([0-9a-f-]*\)\".*|\1|")

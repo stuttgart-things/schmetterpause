@@ -117,6 +117,24 @@ func (r matchRepo) RecentFor(ctx context.Context, playerID uuid.UUID, limit int)
 	return r.list(ctx, q, playerID, limit)
 }
 
+func (r matchRepo) Recent(ctx context.Context, limit int) ([]domain.Match, error) {
+	// Ordered by played_at rather than confirmed_at: this is a list of what
+	// happened at the table, and a match still waiting for its opponent has
+	// no confirmation time to sort by at all.
+	//
+	// No index for it. matches_status_idx covers the filtered reads; an
+	// unfiltered sort over a few thousand rows costs nothing, and an index
+	// that earns its keep only at a volume this application will not reach
+	// is a migration with no benefit behind it.
+	const q = `
+		select ` + matchColumns + `
+		from matches
+		order by played_at desc
+		limit $1`
+
+	return r.list(ctx, q, limit)
+}
+
 // Delete removes a confirmed match. The schema cascades match_sets and
 // ttr_history, so one statement takes the whole thing with it.
 //

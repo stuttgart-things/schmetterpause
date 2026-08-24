@@ -285,6 +285,22 @@ func (m *memMatches) RecentFor(_ context.Context, playerID uuid.UUID, limit int)
 	return out, nil
 }
 
+func (m *memMatches) Recent(_ context.Context, limit int) ([]domain.Match, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	// Newest first, like "order by played_at desc". Insertion order stands
+	// in for it: the fake stamps PlayedAt as it goes.
+	var out []domain.Match
+	for i := len(m.rows) - 1; i >= 0; i-- {
+		out = append(out, m.rows[i])
+		if len(out) == limit {
+			break
+		}
+	}
+	return out, nil
+}
+
 func (m *memMatches) SetStatus(_ context.Context, id uuid.UUID, status domain.MatchStatus, confirmedAt *time.Time) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -373,6 +389,24 @@ func (h *memHistory) ForMatch(_ context.Context, matchID uuid.UUID) ([]domain.TT
 	var out []domain.TTRChange
 	for _, c := range h.rows {
 		if c.MatchID == matchID {
+			out = append(out, c)
+		}
+	}
+	return out, nil
+}
+
+func (h *memHistory) ForMatches(_ context.Context, matchIDs []uuid.UUID) ([]domain.TTRChange, error) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+
+	wanted := make(map[uuid.UUID]bool, len(matchIDs))
+	for _, id := range matchIDs {
+		wanted[id] = true
+	}
+
+	var out []domain.TTRChange
+	for _, c := range h.rows {
+		if wanted[c.MatchID] {
 			out = append(out, c)
 		}
 	}
