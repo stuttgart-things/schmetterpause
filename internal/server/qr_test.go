@@ -144,7 +144,29 @@ func TestTheSheetCarriesTheMascot(t *testing.T) {
 	if !strings.Contains(body, `class="sheet-mascot"`) {
 		t.Errorf("the sheet has no illustration: %s", body)
 	}
-	if !strings.Contains(body, "/static/img/mascot.png") {
-		t.Errorf("the sheet does not point at the illustration: %s", body)
+	// Inlined, not linked: the drawing itself has to be in the response.
+	// Asserted on the recolourable blade rather than on "<svg", because the
+	// QR code on this page is an svg too and would satisfy a looser check.
+	if !strings.Contains(body, `id="paddle-face"`) {
+		t.Errorf("the sheet does not carry the illustration itself: %s", body)
+	}
+}
+
+// TestTheMascotIsInlinedSoItCanBeRecoloured is the reason the mark became a
+// vector at all. An SVG behind <img src> is an isolated document that the
+// page's CSS cannot reach, so a --paddle set anywhere outside would never
+// arrive. See issue #64.
+func TestTheMascotIsInlinedSoItCanBeRecoloured(t *testing.T) {
+	h := newHandler(newMemStore())
+
+	for _, path := range []string{"/", "/qr"} {
+		body := get(t, h, path).Body.String()
+
+		if strings.Contains(body, "/static/img/mascot.svg") {
+			t.Errorf("%s links the mascot instead of inlining it", path)
+		}
+		if !strings.Contains(body, "var(--paddle, #c82828)") {
+			t.Errorf("%s does not carry the recolourable blade: %s", path, body)
+		}
 	}
 }
