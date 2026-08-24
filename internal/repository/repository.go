@@ -75,6 +75,10 @@ type MatchRepository interface {
 	PendingCountFor(ctx context.Context, playerID uuid.UUID) (int, error)
 	// RecentFor returns a player's most recent matches.
 	RecentFor(ctx context.Context, playerID uuid.UUID, limit int) ([]domain.Match, error)
+	// Recent returns the most recent matches of everybody, newest first, at
+	// most limit of them. Every status, because a list that quietly left out
+	// what is still waiting would answer "where is my match" with silence.
+	Recent(ctx context.Context, limit int) ([]domain.Match, error)
 	// Delete removes a confirmed match along with its sets and its rating
 	// history, which the schema cascades. It exists for one case: a result
 	// entered at the kiosk counts at once, so a mistyped one has to be
@@ -111,4 +115,8 @@ type TTRHistoryRepository interface {
 	// Taking a match back means writing ttr_before straight back, and that
 	// is where the number lives.
 	ForMatch(ctx context.Context, matchID uuid.UUID) ([]domain.TTRChange, error)
+	// ForMatches is ForMatch for many, in one query. A list of matches wants
+	// what each one was worth, and asking per match turns one page into one
+	// round trip per row.
+	ForMatches(ctx context.Context, matchIDs []uuid.UUID) ([]domain.TTRChange, error)
 }
