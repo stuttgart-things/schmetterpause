@@ -60,7 +60,7 @@ templ pageHeadBody(v SessionView) {
 			<p class="muted">Trag deinen Namen ein und spiel mit.</p>
 		}
 	</div>
-	@PageMascot()
+	@PageMascot(PaddleClass(v.PlayerID))
 }
 
 // PageMascot is the drawing beside the heading. Decorative and nothing else,
@@ -69,8 +69,12 @@ templ pageHeadBody(v SessionView) {
 // Inlined rather than linked. templ.Raw is safe here for the reason it is
 // usually not: the string is an asset compiled into this binary, not anything
 // that came in with a request.
-templ PageMascot() {
-	<span class="page-mascot">
+templ PageMascot(paddle string) {
+	// templ.KV rather than the bare string: an empty colour passed straight
+	// into the class list renders as class="page-mascot " with a trailing
+	// space, which is the sort of thing that is harmless right up until
+	// something matches on the attribute.
+	<span class={ "page-mascot", templ.KV(paddle, paddle != "") }>
 		@templ.Raw(web.Mascot)
 	</span>
 }

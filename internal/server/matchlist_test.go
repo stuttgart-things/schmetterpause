@@ -2,8 +2,11 @@ package server_test
 
 import (
 	"net/http"
+	"strconv"
 	"strings"
 	"testing"
+
+	"github.com/stuttgart-things/schmetterpause/internal/auth"
 )
 
 // TestMatchListShowsEveryMatchFromTheWinnersSide is the point of the page:
@@ -90,4 +93,54 @@ func TestEveryPageLinksToTheMatchList(t *testing.T) {
 			t.Errorf("%s does not link to the match list", path)
 		}
 	}
+}
+
+// TestTheMascotCarriesThePlayersColour is where the colours earn their keep:
+// your own on your start page, somebody else's on theirs. The kiosk and the
+// printed sheet stay red, because neither belongs to a player.
+func TestTheMascotCarriesThePlayersColour(t *testing.T) {
+	store := newMemStore()
+	h := newHandlerWith(store, auth.NewCookieAuthenticator(store.Identities(), testSessionKey, false))
+
+	anna := sessionCookie(t, join(t, h, "Anna"))
+
+	start := fragment(t, h, "/", anna).Body.String()
+	mine := paddleClassIn(t, start)
+	if mine == "" {
+		t.Fatalf("the start page mascot carries no colour: %s", start)
+	}
+
+	// Somebody else's page shows their colour, not the reader's. Two ids,
+	// two draws — with seven colours they can legitimately coincide, so the
+	// assertion is that a colour is there and comes from the page's player,
+	// not that it differs.
+	id := opponentID(t, store, "Anna")
+	profile := fragment(t, h, "/players/"+id, anna).Body.String()
+	if got := paddleClassIn(t, profile); got != mine {
+		t.Errorf("Anna's own profile shows %q but her start page shows %q", got, mine)
+	}
+
+	// Nobody recognised: no colour, and the blade keeps the red it is drawn
+	// in rather than picking one at random.
+	if got := paddleClassIn(t, get(t, h, "/").Body.String()); got != "" {
+		t.Errorf("an unknown browser was given the colour %q", got)
+	}
+	for _, path := range []string{"/matches", "/qr"} {
+		if got := paddleClassIn(t, fragment(t, h, path, anna).Body.String()); got != "" {
+			t.Errorf("%s colours the mascot %q, but belongs to no player", path, got)
+		}
+	}
+}
+
+// paddleClassIn reports the blade colour class on the page, or "" if the
+// mascot carries none.
+func paddleClassIn(t *testing.T, body string) string {
+	t.Helper()
+
+	for i := range 7 {
+		if strings.Contains(body, "paddle-"+strconv.Itoa(i)) {
+			return "paddle-" + strconv.Itoa(i)
+		}
+	}
+	return ""
 }

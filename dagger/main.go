@@ -696,6 +696,46 @@ if grep -q "Hallo," "$top"; then
 	exit 1
 fi
 
+echo "== the blade carries the player's colour =="
+# Derived from the id, so the check cannot know which of the seven it will be
+# — only that there is one, that it is the same on the player's own profile,
+# and that pages belonging to nobody keep the red the mark is drawn in.
+paddle_of() {
+	tr " " "\n" < "$1" | grep -o "paddle-[0-6]" | head -1
+}
+
+curl -fsS -b "$cookies" http://app:8080/ > "$top"
+mine=$(paddle_of "$top")
+[ -n "$mine" ] || {
+	echo "the start page mascot carries no colour for a recognised player"
+	exit 1
+}
+
+# The one place somebody sees a colour that is not their own.
+pid=$(tr "<" "\n" < "$top" | grep "a href=\"/players/" | head -1 \
+	| sed "s|.*players/\([0-9a-f-]*\)\".*|\1|")
+[ -n "$pid" ] || {
+	echo "the start page links to no profile"
+	exit 1
+}
+own=$(mktemp)
+curl -fsS -b "$cookies" "http://app:8080/players/$pid" > "$own"
+[ "$(paddle_of "$own")" = "$mine" ] || {
+	echo "the profile shows $(paddle_of "$own") where the start page shows $mine"
+	exit 1
+}
+
+# Nobody recognised, and pages that belong to the table rather than to a
+# player: no class, and the blade keeps its red.
+for page in / /matches /qr; do
+	anon=$(mktemp)
+	curl -fsS "http://app:8080$page" > "$anon"
+	if [ -n "$(paddle_of "$anon")" ]; then
+		echo "$page hands a colour to a browser nobody is recognised in"
+		exit 1
+	fi
+done
+
 echo "== score columns: each one says whose it is =="
 sides=$(mktemp)
 curl -fsS -b "$cookies" "http://app:8080/fragments/sets?sets_prefix=entry&best_of=3&points_to_win=11" > "$sides"

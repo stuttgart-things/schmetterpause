@@ -16,7 +16,8 @@ templ Kiosk(v KioskView) {
 					Ergebnisse zählen sofort — hier trägt ein, wer zugesehen hat.
 				</p>
 			</div>
-			@PageMascot()
+			// No colour: the kiosk belongs to the table, not to a player.
+			@PageMascot("")
 		</div>
 		if v.Note != "" {
 			<div class="kiosk-note" role="status">

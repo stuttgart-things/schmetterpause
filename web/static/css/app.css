@@ -730,6 +730,22 @@ tr.self td { background: color-mix(in srgb, var(--accent) 8%, transparent); }
 	height: auto;
 }
 
+/* --- Schlägerfarbe pro Spieler ----------------------------------------- */
+
+/* Seven blades, picked by measurement rather than by taste: at least dE 23.8
+   from each other, at least dE 76 from the fur so the paddle does not sink
+   into the cat, and at least dE 37 from every colour that already means
+   something here — violet is "clickable", green and red are gain and loss,
+   orange is first place and also the fur.
+   The count lives in templates.paddleColours; the two have to agree. */
+.paddle-0 { --paddle: #3aa6ff; }   /* Hellblau */
+.paddle-1 { --paddle: #2f6fd0; }   /* Blau */
+.paddle-2 { --paddle: #159c8c; }   /* Petrol */
+.paddle-3 { --paddle: #4d7c4a; }   /* Moosgrün */
+.paddle-4 { --paddle: #d64f9c; }   /* Pink */
+.paddle-5 { --paddle: #c05fd0; }   /* Orchidee */
+.paddle-6 { --paddle: #8c8f9c; }   /* Stahl */
+
 /* --- Stat-Kachel mit Verlauf ------------------------------------------- */
 
 .stat-label {

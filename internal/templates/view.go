@@ -6,6 +6,7 @@
 package templates
 
 import (
+	"hash/fnv"
 	"strconv"
 
 	"github.com/stuttgart-things/schmetterpause/internal/match"
@@ -125,6 +126,9 @@ type IndexView struct {
 type SessionView struct {
 	// DisplayName is set once a player is recognised.
 	DisplayName string
+	// PlayerID is what the mascot's blade colour is derived from. Empty
+	// before anybody is recognised, which leaves the blade red.
+	PlayerID string
 	// Name is the value put back into the form after a rejected attempt, so
 	// nobody has to type their name twice.
 	Name string
@@ -389,7 +393,9 @@ func (r StandingRow) Ranked() bool { return r.Rank > 0 }
 
 // ProfileView is one player's page.
 type ProfileView struct {
-	Header      HeaderView
+	Header HeaderView
+	// ID is whose page this is, and what their blade colour comes from.
+	ID          string
 	DisplayName string
 	TTR         int
 	Rank        int
@@ -402,6 +408,34 @@ type ProfileView struct {
 	HasDelta bool
 	Spark    SparkView
 	Matches  []ProfileMatchView
+}
+
+// paddleColours is how many blade colours there are. Named rather than
+// inlined because the count is part of the mapping: change it and every player
+// gets a different colour than they had yesterday.
+const paddleColours = 7
+
+// PaddleClass is the blade colour a player's mascot carries, as a class the
+// stylesheet resolves to a --paddle value.
+//
+// Derived from the id rather than stored: no field, no picker, no migration,
+// and the same colour on every device and after every restart. The cost is
+// that nobody can choose theirs, and that in a group of seven two players will
+// already share one. Which is why the colour is never the only thing telling
+// them apart — the name is always beside it, and the sheet at /qr prints in
+// black and white.
+//
+// Empty for a browser nobody is recognised in: no player, no colour, and the
+// blade keeps the red it is drawn in.
+func PaddleClass(playerID string) string {
+	if playerID == "" {
+		return ""
+	}
+	// FNV-1a: stable across builds and machines, which a map iteration or a
+	// pointer would not be.
+	h := fnv.New32a()
+	_, _ = h.Write([]byte(playerID))
+	return "paddle-" + strconv.Itoa(int(h.Sum32()%paddleColours))
 }
 
 // MatchListView is every match the office has played, newest first.
