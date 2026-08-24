@@ -234,6 +234,10 @@ func (m *Schmetterpause) Verify(
 	// +default="dev"
 	version string,
 ) (string, error) {
+	// One service value, bound to the application and to the checks below.
+	// Building it twice would give the last check its own empty Postgres.
+	db := m.Postgres()
+
 	app := m.Image(source, version, defaultArch).
 		WithEnvVariable("SP_DATABASE_URL", verifyDSN).
 		WithEnvVariable("SP_LOG_LEVEL", "debug").
@@ -245,13 +249,25 @@ func (m *Schmetterpause) Verify(
 		// The kiosk exists only where a token is set, so verify has to set
 		// one to be able to check that it does.
 		WithEnvVariable("SP_KIOSK_TOKEN", verifyKioskToken).
-		WithServiceBinding("db", m.Postgres()).
+		WithServiceBinding("db", db).
 		AsService(dagger.ContainerAsServiceOpts{UseEntrypoint: true})
 
 	out, err := dag.Container().
-		From(toolingImage).
+		// The Postgres image rather than plain Alpine, because the last check
+		// reads the database with psql. It is the same Alpine release as
+		// toolingImage, so apk works identically, and the client is the same
+		// version as the server instead of whichever one a package happens to
+		// carry. Installing a client into the smaller image was the other way
+		// round, and postgresql-client is not a package name Alpine has.
+		From(postgresImage).
 		WithExec([]string{"apk", "add", "--no-cache", "curl"}).
 		WithServiceBinding("app", app).
+		// Bound to the same service value as the application, not to a second
+		// m.Postgres(): a fresh instance would answer the query with an empty
+		// database, and an empty database has a plausible-looking verdict.
+		WithServiceBinding("db", db).
+		WithFile("/dod.sql", source.File("scripts/definition-of-done.sql")).
+		WithEnvVariable("PGPASSWORD", "schmetterpause").
 		// Forces re-evaluation when the version changes.
 		WithEnvVariable("SP_VERIFY_VERSION", version).
 		WithExec([]string{"sh", "-c", verifyScript}).
@@ -1057,9 +1073,18 @@ grep -q "Confirmed results per day" "$dod" || {
 	cat "$dod"
 	exit 1
 }
-# One day of results, so the verdict is the one that says so. Asserted rather
-# than ignored: a query that answers nothing at all would pass a check that
-# only looked for the absence of an error.
+# Today's results have to be in it. This is the check that fails on an empty
+# database: every verdict this query can produce reads plausibly, and "fewer
+# than five working days" is exactly what a Postgres nobody wrote to would
+# answer. Grouped in the same zone the query groups in, or the two disagree
+# for the hour on either side of midnight.
+today=$(TZ=Europe/Berlin date +%Y-%m-%d)
+grep -q "$today" "$dod" || {
+	echo "the day table does not contain today ($today), so it read an empty database"
+	cat "$dod"
+	exit 1
+}
+# One day of results, so the verdict is the one that says so.
 grep -q "fewer than five working days" "$dod" || {
 	echo "the verdict does not describe a single day of results"
 	cat "$dod"
