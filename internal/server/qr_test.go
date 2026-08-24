@@ -141,7 +141,7 @@ func TestTheSheetCarriesTheMascot(t *testing.T) {
 	// drawing is worth its bytes.
 	body := get(t, newHandler(newMemStore()), "/qr").Body.String()
 
-	if !strings.Contains(body, `class="sheet-mascot"`) {
+	if !strings.Contains(body, `class="sheet-mascot`) {
 		t.Errorf("the sheet has no illustration: %s", body)
 	}
 	// Inlined, not linked: the drawing itself has to be in the response.

@@ -725,15 +725,30 @@ curl -fsS -b "$cookies" "http://app:8080/players/$pid" > "$own"
 	exit 1
 }
 
-# Nobody recognised, and pages that belong to the table rather than to a
-# player: no class, and the blade keeps its red.
-for page in / /matches /qr; do
-	anon=$(mktemp)
+# Nobody recognised: no colour on the start page, and the blade keeps its red
+# rather than picking one at random.
+anon=$(mktemp)
+curl -fsS http://app:8080/ > "$anon"
+if [ -n "$(paddle_of "$anon")" ]; then
+	echo "the start page hands a colour to a browser nobody is recognised in"
+	exit 1
+fi
+
+# The pages that belong to nobody carry a colour of their own. It is the
+# page's and not the reader's, so it has to be the same signed in and out —
+# a blade that comes up different on every reload reads as a fault.
+for page in /matches /qr; do
 	curl -fsS "http://app:8080$page" > "$anon"
-	if [ -n "$(paddle_of "$anon")" ]; then
-		echo "$page hands a colour to a browser nobody is recognised in"
+	page_colour=$(paddle_of "$anon")
+	[ -n "$page_colour" ] || {
+		echo "$page has no colour at all"
 		exit 1
-	fi
+	}
+	curl -fsS -b "$cookies" "http://app:8080$page" > "$anon"
+	[ "$(paddle_of "$anon")" = "$page_colour" ] || {
+		echo "$page shows $page_colour signed out and $(paddle_of "$anon") signed in"
+		exit 1
+	}
 done
 
 echo "== score columns: each one says whose it is =="
@@ -1142,7 +1157,7 @@ grep -q "http://app:8080/#match" "$sheet" || {
 	exit 1
 }
 
-grep -q "class=\"sheet-mascot\"" "$sheet" || {
+grep -q "class=\"sheet-mascot" "$sheet" || {
 	echo "the sheet has no illustration"
 	exit 1
 }

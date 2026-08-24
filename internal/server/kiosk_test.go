@@ -346,7 +346,7 @@ func TestBothPagesGreetWithTheMascot(t *testing.T) {
 	if !strings.Contains(kiosk, `class="page-head"`) {
 		t.Errorf("the kiosk has no heading row: %s", kiosk)
 	}
-	if !strings.Contains(kiosk, `class="page-mascot"`) {
+	if !strings.Contains(kiosk, `class="page-mascot`) {
 		t.Errorf("the kiosk has no mascot: %s", kiosk)
 	}
 	if strings.Index(kiosk, "page-mascot") > strings.Index(kiosk, `<section class="match">`) {
@@ -357,7 +357,7 @@ func TestBothPagesGreetWithTheMascot(t *testing.T) {
 		t.Fatalf("seeding: %v", err)
 	}
 	start := get(t, h, "/").Body.String()
-	if !strings.Contains(start, `class="page-mascot"`) {
+	if !strings.Contains(start, `class="page-mascot`) {
 		t.Errorf("the start page has no mascot: %s", start)
 	}
 	if !strings.Contains(start, `class="page-head"`) {

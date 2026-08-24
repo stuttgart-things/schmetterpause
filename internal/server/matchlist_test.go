@@ -125,9 +125,22 @@ func TestTheMascotCarriesThePlayersColour(t *testing.T) {
 	if got := paddleClassIn(t, get(t, h, "/").Body.String()); got != "" {
 		t.Errorf("an unknown browser was given the colour %q", got)
 	}
+
+	// The pages that belong to nobody carry a colour of their own. It is the
+	// page's and not the reader's, so it has to be the same whoever opens it
+	// — and the same again on the next request, or it reads as a glitch.
+	bodo := sessionCookie(t, join(t, h, "Bodo"))
 	for _, path := range []string{"/matches", "/qr"} {
-		if got := paddleClassIn(t, fragment(t, h, path, anna).Body.String()); got != "" {
-			t.Errorf("%s colours the mascot %q, but belongs to no player", path, got)
+		mine := paddleClassIn(t, fragment(t, h, path, anna).Body.String())
+		if mine == "" {
+			t.Errorf("%s has no colour at all", path)
+			continue
+		}
+		if theirs := paddleClassIn(t, fragment(t, h, path, bodo).Body.String()); theirs != mine {
+			t.Errorf("%s shows %q to Anna and %q to Bodo", path, mine, theirs)
+		}
+		if anon := paddleClassIn(t, get(t, h, path).Body.String()); anon != mine {
+			t.Errorf("%s shows %q signed in and %q signed out", path, mine, anon)
 		}
 	}
 }
