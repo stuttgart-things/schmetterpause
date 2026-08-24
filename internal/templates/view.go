@@ -415,6 +415,20 @@ type ProfileView struct {
 // gets a different colour than they had yesterday.
 const paddleColours = 7
 
+// The pages that belong to nobody rather than to a player: the kiosk stands
+// at the table, the list is everybody's, and the sheet goes on a wall. They
+// get a colour too, but a fixed one — a blade that comes up different on every
+// reload reads as something broken rather than as decoration.
+//
+// These three are the widest-apart triple in the palette, no pair closer than
+// dE 73.2, so the pages are told apart at a glance. Which page got which is
+// arbitrary; that it never changes is not.
+const (
+	PaddleKiosk     = "paddle-0" // Hellblau
+	PaddleMatchList = "paddle-3" // Moosgrün
+	PaddleSheet     = "paddle-4" // Pink
+)
+
 // PaddleClass is the blade colour a player's mascot carries, as a class the
 // stylesheet resolves to a --paddle value.
 //

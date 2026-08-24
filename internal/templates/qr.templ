@@ -16,7 +16,7 @@ templ QRSheet(v QRSheetView) {
 		<article class="sheet">
 			// Decorative: the heading below says what the sheet is for, and a
 			// screen reader gains nothing from hearing the cat described.
-			<span class="sheet-mascot">
+			<span class={ "sheet-mascot", PaddleSheet }>
 				@templ.Raw(web.Mascot)
 			</span>
 			<h1>Ergebnis eintragen</h1>

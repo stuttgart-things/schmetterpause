@@ -14,8 +14,8 @@ templ MatchList(v MatchListView) {
 				<h1>Matches</h1>
 				<p class="muted">Alles, was an der Platte passiert ist — neueste zuerst.</p>
 			</div>
-			// No colour: the list belongs to everybody.
-			@PageMascot("")
+			// The list belongs to everybody, so it has a colour of its own.
+			@PageMascot(PaddleMatchList)
 		</div>
 		<section id="matches">
 			if len(v.Matches) == 0 {
