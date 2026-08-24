@@ -7,7 +7,15 @@ import "strconv"
 templ Profile(v ProfileView) {
 	@Layout(v.DisplayName, v.Header) {
 		<p class="back"><a href="/">&larr; Rangliste</a></p>
-		<h1>{ v.DisplayName }</h1>
+		// The mascot carries this player's blade colour. It is the one place
+		// somebody sees a colour that is not their own, which is what makes
+		// the colours worth having at all.
+		<div class="page-head">
+			<div class="page-greeting">
+				<h1>{ v.DisplayName }</h1>
+			</div>
+			@PageMascot(PaddleClass(v.ID))
+		</div>
 		<section class="stat">
 			<p class="stat-label">TTR</p>
 			<p class="stat-value">{ strconv.Itoa(v.TTR) }</p>

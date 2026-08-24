@@ -153,7 +153,7 @@ func (s *Server) handleJoin(w http.ResponseWriter, r *http.Request) {
 	// The corner and the greeting are refreshed out of band in the same
 	// response, so the name appears where it now lives rather than only
 	// after a reload.
-	joined := templates.SessionView{DisplayName: created.DisplayName}
+	joined := templates.SessionView{DisplayName: created.DisplayName, PlayerID: created.ID.String()}
 	s.render(w, r, templates.Joined(joined))
 	s.render(w, r, templates.WhoamiOOB(s.headerView(signedIn)))
 	s.render(w, r, templates.PageHeadOOB(joined))
@@ -183,7 +183,7 @@ func (s *Server) sessionView(ctx context.Context) templates.SessionView {
 			"player_id", id, "error", err)
 		return templates.SessionView{}
 	}
-	return templates.SessionView{DisplayName: player.DisplayName}
+	return templates.SessionView{DisplayName: player.DisplayName, PlayerID: player.ID.String()}
 }
 
 // validateDisplayName reports whether a name is usable, and why not if it is

@@ -104,6 +104,7 @@ func (s *Server) profileView(ctx context.Context, id uuid.UUID) (templates.Profi
 		if row.Record.Player.ID != id {
 			continue
 		}
+		view.ID = row.Record.Player.ID.String()
 		view.DisplayName = row.Record.Player.DisplayName
 		view.TTR = row.Record.Player.TTR
 		view.Rank, view.Shared = row.Rank, row.Shared

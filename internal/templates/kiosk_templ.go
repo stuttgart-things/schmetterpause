@@ -52,7 +52,7 @@ func Kiosk(v KioskView) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = PageMascot().Render(ctx, templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = PageMascot("").Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -68,7 +68,7 @@ func Kiosk(v KioskView) templ.Component {
 				var templ_7745c5c3_Var3 string
 				templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(v.Note)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `kiosk.templ`, Line: 23, Col: 15}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `kiosk.templ`, Line: 24, Col: 15}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 				if templ_7745c5c3_Err != nil {
@@ -86,7 +86,7 @@ func Kiosk(v KioskView) templ.Component {
 					var templ_7745c5c3_Var4 templ.SafeURL
 					templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL("/kiosk/matches/" + v.UndoID + "/undo"))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `kiosk.templ`, Line: 28, Col: 87}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `kiosk.templ`, Line: 29, Col: 87}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 					if templ_7745c5c3_Err != nil {
@@ -114,7 +114,7 @@ func Kiosk(v KioskView) templ.Component {
 				var templ_7745c5c3_Var5 string
 				templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(v.Error)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `kiosk.templ`, Line: 35, Col: 41}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `kiosk.templ`, Line: 36, Col: 41}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 				if templ_7745c5c3_Err != nil {
@@ -218,7 +218,7 @@ func playerPicker(id, name string, players []OpponentOption, extra templ.Attribu
 		var templ_7745c5c3_Var7 string
 		templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.ResolveAttributeValue(id)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `kiosk.templ`, Line: 82, Col: 9}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `kiosk.templ`, Line: 83, Col: 9}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var7)
 		if templ_7745c5c3_Err != nil {
@@ -231,7 +231,7 @@ func playerPicker(id, name string, players []OpponentOption, extra templ.Attribu
 		var templ_7745c5c3_Var8 string
 		templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.ResolveAttributeValue(name)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `kiosk.templ`, Line: 83, Col: 13}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `kiosk.templ`, Line: 84, Col: 13}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var8)
 		if templ_7745c5c3_Err != nil {
@@ -257,7 +257,7 @@ func playerPicker(id, name string, players []OpponentOption, extra templ.Attribu
 			var templ_7745c5c3_Var9 string
 			templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.ResolveAttributeValue(p.ID)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `kiosk.templ`, Line: 94, Col: 23}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `kiosk.templ`, Line: 95, Col: 23}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var9)
 			if templ_7745c5c3_Err != nil {
@@ -280,7 +280,7 @@ func playerPicker(id, name string, players []OpponentOption, extra templ.Attribu
 			var templ_7745c5c3_Var10 string
 			templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinStringErrs(p.DisplayName)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `kiosk.templ`, Line: 94, Col: 66}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `kiosk.templ`, Line: 95, Col: 66}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var10))
 			if templ_7745c5c3_Err != nil {
