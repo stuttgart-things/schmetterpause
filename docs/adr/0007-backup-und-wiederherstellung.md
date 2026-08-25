@@ -1,13 +1,34 @@
-# ADR-0006: Backup und Wiederherstellung über Objektspeicher (Entwurf)
+# ADR-0007: Backup und Wiederherstellung über Objektspeicher (Entwurf)
 
 - **Status:** Entwurf — noch nicht mit dem Team abgestimmt, kein `accepted`
 - **Datum:** 2026-08-25
 - **Betrifft:** Deployment, Betrieb, Daten
-- **Verwandt:** ADR-0005 (Deployment-Ziel), ADR-0001 (Postgres), ADR-0004 (WebAuthn)
+- **Phase:** phase-2. Kubernetes-Deployment ist in `docs/mvp-plan.md` unter
+  "Bewusst nicht enthalten" aufgeführt — dieses ADR greift dem nicht vor,
+  sondern hält fest, was gilt, sobald die Phase erreicht ist.
+- **Verwandt:** ADR-0006 (Deployment-Ziel), ADR-0001 (Postgres), ADR-0004
+  (WebAuthn), ADR-0005 (Custom Resources als Datenspeicher)
+
+## Der laufenden Messung nicht in die Quere kommen
+
+Die MVP-Messung aus #7 läuft ab dem 2026-08-26 und ist frühestens am
+2026-09-01 ablesbar (#68). Sie hängt an genau einer Installation: dem Rechner
+im Büro, gestartet über `task office:up`.
+
+**Nichts aus diesem ADR und nichts aus ADR-0006 wird umgesetzt, solange die
+Messung läuft.** Ein zweites Deployment derselben Anwendung während des
+Messzeitraums erzeugt entweder einen zweiten Datenbestand oder verleitet dazu,
+den laufenden anzufassen — beides macht die Messung wertlos, und die Messung
+ist der Grund, warum es die Anwendung gibt.
+
+Issue #43 (`mvp`) ist davon ausdrücklich nicht betroffen: "irgendwo hinstellen,
+wo das Büro drankommt" meint die einfachste Lösung, die die Messung ermöglicht,
+nicht ein Cluster-Deployment. Die beiden Vorhaben sehen ähnlich aus und sind es
+nicht.
 
 ## Kontext
 
-Die Zielumgebung aus ADR-0005 ist ein Azure-Local-Cluster. Dieser Cluster wird
+Die Zielumgebung aus ADR-0006 ist ein Azure-Local-Cluster. Dieser Cluster wird
 nicht als dauerhaft angenommen: Er wird gelegentlich neu aufgebaut, und
 währenddessen steht die Infrastruktur nicht zur Verfügung. Ein Neubau ist damit
 ein *geplantes* Ereignis, kein Störfall — aber eines, das ohne Vorkehrung alle
@@ -29,7 +50,7 @@ Entscheidung dieses ADR.
 
 | Was | Datenquelle | Begründung |
 | --- | --- | --- |
-| Soll-Zustand: Manifeste, Helm-Chart, Argo-CD-Applications, Namespaces | **Git** | Genau dafür existiert die GitOps-Schicht aus ADR-0005. Eine Kopie davon im Objektspeicher wäre eine zweite Wahrheit und würde die Entscheidung entwerten. |
+| Soll-Zustand: Manifeste, Helm-Chart, Argo-CD-Applications, Namespaces | **Git** | Genau dafür existiert die GitOps-Schicht aus ADR-0006. Eine Kopie davon im Objektspeicher wäre eine zweite Wahrheit und würde die Entscheidung entwerten. |
 | Anwendungsdaten: der Inhalt der Postgres-Datenbank | **Objektspeicher** | Das Einzige, was Git nicht wiederherstellen kann. |
 
 Der Neubau läuft damit in zwei Strängen, die erst im neuen Cluster
@@ -156,6 +177,24 @@ Diese Punkte sind unabhängig von der Wahl A/B/C und wiegen schwerer als sie.
   Ingress-/Netzwerk-Entscheidung, keine ans Backup, fällt aber sonst erst auf,
   wenn WebAuthn bereits ausgeliefert ist.
 
+## Diese Entscheidung hängt an ADR-0005
+
+ADR-0005 hält Kubernetes Custom Resources als Speicher-Kandidaten fest — Status
+`proposed`, ausdrücklich nichts entschieden. Träte dieser Kandidat je ein, wäre
+dieses ADR hinfällig statt anpassbar: Ein Teil des Zustands läge dann in etcd,
+und die Sicherung wäre ein etcd-Backup plus Resource-Export, nicht ein
+Datenbank-Dump.
+
+Das ist kein Grund zu warten. ADR-0005 nennt seine eigene Vorbedingung — es wird
+erst zur Entscheidung, wenn jemand Invariante 1 zur Diskussion stellt, und
+niemand tut das. Der Schnitt, den ADR-0005 vorschlägt, liefe ohnehin auf
+"Matches und TTR-Historie bleiben in einem transaktionalen Speicher" hinaus,
+und genau das ist der Teil, den dieses ADR sichert. Der Dump-Weg bliebe also
+auch dann tragfähig.
+
+Festgehalten trotzdem, damit die Verbindung nicht erst auffällt, wenn jemand
+ADR-0005 aufgreift.
+
 ## Offene Fragen
 
 1. **Welcher Objektspeicher konkret?** Azure Blob Storage liegt nahe, weil die
@@ -163,7 +202,7 @@ Diese Punkte sind unabhängig von der Wahl A/B/C und wiegen schwerer als sie.
    stuttgart-things-Umfeld schon ein Objektspeicher existiert, der die
    Anforderung aus Randbedingung 1 erfüllt.
 2. **Wie wird das Bootstrap-Geheimnis gesät?** Siehe Randbedingung 2. Diese
-   Frage ist gemeinsam mit der GitOps-Entscheidung aus ADR-0005 zu beantworten,
+   Frage ist gemeinsam mit der GitOps-Entscheidung aus ADR-0006 zu beantworten,
    nicht getrennt davon.
 3. **Wie oft wird gesichert?** Der Wert folgt aus der Antwort auf "wie viel
    Neueingabe ist im schlimmsten Fall zumutbar". Vor jedem geplanten Teardown
@@ -191,7 +230,7 @@ Diese Punkte sind unabhängig von der Wahl A/B/C und wiegen schwerer als sie.
 - **Negativ:** Der Wechsel auf Weg B ist später nicht kostenlos — der
   Objektspeicher-Inhalt aus Weg A ist für einen CNPG-Recovery-Bootstrap nicht
   verwendbar, ein Umstieg beginnt mit einem frischen Backup-Bestand.
-- **Risiko:** Als Entwurf steht das unter demselben Vorbehalt wie ADR-0005 —
+- **Risiko:** Als Entwurf steht das unter demselben Vorbehalt wie ADR-0006 —
   echte Constraints aus Azure Local (verfügbare CSI-Treiber, erreichbare
   Objektspeicher, Secret-Verwaltung) können das noch verschieben.
 

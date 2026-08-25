@@ -1,8 +1,11 @@
-# ADR-0005: Deployment-Ziel Azure Local / Kubernetes (Entwurf)
+# ADR-0006: Deployment-Ziel Azure Local / Kubernetes (Entwurf)
 
 - **Status:** Entwurf — noch nicht mit dem Team abgestimmt, kein `accepted`
 - **Datum:** 2026-08-21
 - **Betrifft:** Deployment, Infrastruktur
+- **Phase:** phase-2. Nichts hiervon wird umgesetzt, solange die MVP-Messung
+  aus #7 läuft — siehe den entsprechenden Abschnitt in ADR-0007.
+- **Verwandt:** ADR-0007 (Backup), ADR-0002 (kein Redis)
 
 ## Kontext
 
@@ -20,7 +23,7 @@ eine Arc-Frage.
 
 Dieses ADR behandelt, *wohin* deployt wird. Wie der Zustand einen
 Cluster-Neubau übersteht, ist eine eigene Entscheidung mit eigenem
-Lebenszyklus und steht in ADR-0006.
+Lebenszyklus und steht in ADR-0007.
 
 ## Offene Fragen (noch nicht entschieden)
 
@@ -48,7 +51,7 @@ Lebenszyklus und steht in ADR-0006.
    nach vorne.
 5. **Secret-Verwaltung:** Wie kommen Zugangsdaten in einen frisch gebauten
    Cluster, bevor Argo CD läuft? Betrifft `imagePullSecret` (Punkt 3) und den
-   Objektspeicher-Zugang aus ADR-0006 gleichermaßen — eine Frage, zwei
+   Objektspeicher-Zugang aus ADR-0007 gleichermaßen — eine Frage, zwei
    Anwendungsfälle. Kandidaten: SOPS/age in Git, External Secrets gegen Azure
    Key Vault, manueller Bootstrap-Schritt.
 
