@@ -209,10 +209,18 @@ ADR-0005 aufgreift.
    zusätzlich ein Dump von Hand, unabhängig vom Intervall.
 4. **Wie viele Dumps werden aufbewahrt, und wie lange?** Betrifft auch die
    Frage, ob Ergebnisdaten einer Aufbewahrungsgrenze unterliegen sollen.
-5. **Gehört ein `task`-Ziel dazu?** Der `office:`-Namensraum zeigt, dass
-   Betriebsbefehle in diesem Projekt als Task existieren. Ein Ziel, das den
-   Dump von Hand zieht, wäre die naheliegende Ergänzung — und wäre auch der
-   Weg, das Verfahren lokal zu üben.
+5. **Wie verhält sich das zu `task office:backup`?** Das Ziel existiert seit
+   dem 2026-08-22 und macht bereits das Richtige: `pg_dump` der laufenden
+   Datenbank in eine nach dem Zeitpunkt benannte Datei. Es fehlt nur der
+   zweite Schritt — die Datei landet neben dem Repository, nicht im
+   Objektspeicher, und überlebt damit den Rechner nicht, auf dem sie
+   entstanden ist.
+
+   Das ist eine gute Ausgangslage, keine Doppelarbeit: Der Weg für den
+   geplanten Neubau ist damit schon gebaut und im Betrieb erprobt. Zu klären
+   ist, ob der Upload ein eigenes Ziel wird (`office:backup:push`) oder ob
+   `office:backup` ihn übernimmt, sobald Zugangsdaten gesetzt sind. Für die
+   Variante aus Randbedingung 3 käme `--data-only` als Option dazu.
 
 ## Konsequenzen
 
