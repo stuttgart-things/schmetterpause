@@ -18,6 +18,10 @@ Zielumgebung ist Azure Local. Ein Azure-Local-Cluster registriert sich als
 Azure-Arc-enabled-Kubernetes-Cluster — die Deployment-Frage ist damit auch
 eine Arc-Frage.
 
+Dieses ADR behandelt, *wohin* deployt wird. Wie der Zustand einen
+Cluster-Neubau übersteht, ist eine eigene Entscheidung mit eigenem
+Lebenszyklus und steht in ADR-0006.
+
 ## Offene Fragen (noch nicht entschieden)
 
 1. **GitOps-Mechanismus:** Azure Arc bietet zwei offizielle Wege —
@@ -42,6 +46,11 @@ eine Arc-Frage.
    SSE" als Auslöser für Redis. Sobald das Deployment-Ziel feststeht, prüfen,
    ob Azure Local mit mehr als einer Replica geplant ist — das zieht ADR-0002
    nach vorne.
+5. **Secret-Verwaltung:** Wie kommen Zugangsdaten in einen frisch gebauten
+   Cluster, bevor Argo CD läuft? Betrifft `imagePullSecret` (Punkt 3) und den
+   Objektspeicher-Zugang aus ADR-0006 gleichermaßen — eine Frage, zwei
+   Anwendungsfälle. Kandidaten: SOPS/age in Git, External Secrets gegen Azure
+   Key Vault, manueller Bootstrap-Schritt.
 
 ## Hinweis zur Form
 
