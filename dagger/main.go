@@ -86,6 +86,10 @@ func (m *Schmetterpause) Lint(
 		WithExec([]string{"sh", "-c", checksumCmd + " > /tmp/after"}).
 		WithExec([]string{"sh", "-c", generatedUpToDateCmd}).
 		WithExec([]string{"go", "vet", "./..."}).
+		// The address script runs on nobody's machine but the one standing at
+		// the table, so this is the only place it is exercised at all. What it
+		// gets wrong is printed into a QR code and found out by a phone.
+		WithExec([]string{"sh", "scripts/addresses_test.sh"}).
 		Stdout(ctx)
 	if err != nil {
 		return "", fmt.Errorf("formatting, generated code and go vet: %w", err)

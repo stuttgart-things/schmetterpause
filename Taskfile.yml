@@ -164,6 +164,12 @@ tasks:
       - 'docker compose exec -T db pg_dump -U schmetterpause schmetterpause > schmetterpause-{{now | date "2006-01-02-1504"}}.sql'
       - 'echo "Written: schmetterpause-{{now | date "2006-01-02-1504"}}.sql"'
 
+  office:check:
+    desc: "Check the address script against macOS and Linux"
+    silent: true
+    cmds:
+      - sh scripts/addresses_test.sh
+
   office:dod:
     desc: "Read the Definition of Done out of the database: 5 working days, 10 matches, 5 players"
     silent: true

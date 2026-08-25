@@ -31,7 +31,21 @@ list() {
 
 all=$(list)
 
-# Two passes, both allowed to match nothing: under set -e a grep that finds
+# Interfaces no phone can reach, and the address a machine gives itself when
+# DHCP answered nobody:
+#
+#   docker, br-, veth, virbr, vmnet, bridge   virtual switches for containers and VMs
+#   utun                                      VPN tunnels
+#   awdl, llw                                 AirDrop and friends, macOS
+#   gif, stf, anpi, ap                        macOS pseudo-devices
+#   169.254.x                                 self-assigned, reachable by nobody
+#
+# Sorted down rather than dropped, because "172.x is Docker" is only true until
+# somebody's office network is on 172.16/12 — and because a machine with
+# nothing but these should show them rather than claim to have no address.
+aside='^(docker|br-|veth|virbr|vmnet|utun|awdl|llw|bridge|gif|stf|anpi|ap[0-9])|[[:space:]]169\.254\.'
+
+# Both passes are allowed to match nothing: under set -e a grep that finds
 # nothing would otherwise end the script.
-printf '%s\n' "$all" | grep -Ev '^(docker|br-|veth|virbr|vmnet|utun)' || true
-printf '%s\n' "$all" | grep -E '^(docker|br-|veth|virbr|vmnet|utun)' || true
+printf '%s\n' "$all" | grep -Ev "$aside" || true
+printf '%s\n' "$all" | grep -E "$aside" || true
