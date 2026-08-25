@@ -59,6 +59,29 @@ highest_aside=$(printf '%s\n' "$mac" | grep -nE '^(bridge|awdl|utun)' | head -1 
 [ "$lowest_real" -lt "$highest_aside" ] ||
 	fail "macOS mixes reachable and unreachable addresses" "$mac"
 
+# --- macOS, last interface without an address --------------------------
+# The case that actually broke it, and the reason the check above missed it:
+# the status of a for loop is the status of the last command in its body, and
+# macOS lists its bridges and tunnels after the real interfaces. Every address
+# was found correctly and the script then exited 1 with nothing printed.
+cat > "$work/bin/ifconfig" <<'STUB'
+#!/bin/sh
+[ "$1" = "-l" ] && echo "lo0 en0 utun2 utun3 vmenet0 bridge100 vmenet1 bridge101"
+STUB
+cat > "$work/bin/ipconfig" <<'STUB'
+#!/bin/sh
+case "$2" in
+	en0) echo "10.137.101.29" ;;
+	*) exit 1 ;;
+esac
+STUB
+chmod +x "$work/bin/ifconfig" "$work/bin/ipconfig"
+
+tail=$(PATH="$work/bin:/usr/bin:/bin" sh "$here/addresses.sh") ||
+	fail "macOS exits non-zero when the last interface has no address" "(nothing)"
+[ "$tail" = "en0	10.137.101.29" ] ||
+	fail "macOS did not report the one address it has" "$tail"
+
 # --- Linux -------------------------------------------------------------
 cat > "$work/bin/ip" <<'STUB'
 #!/bin/sh

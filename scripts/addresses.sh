@@ -17,8 +17,18 @@ list() {
 	elif command -v ipconfig >/dev/null 2>&1; then
 		# macOS: ipconfig answers per interface, and only for the ones that
 		# actually have an address.
+		#
+		# Both halves matter under set -e. The || true keeps a failing lookup
+		# from ending the script, and the if keeps the loop from *finishing*
+		# on a false condition: the status of a for loop is the status of the
+		# last command in its body, and the last interface macOS lists is
+		# typically a bridge or a tunnel with no address at all. Written as an
+		# && chain this exited 1 after having found every address correctly.
 		for i in $(ifconfig -l); do
-			a=$(ipconfig getifaddr "$i" 2>/dev/null) && [ -n "$a" ] && printf '%s\t%s\n' "$i" "$a"
+			a=$(ipconfig getifaddr "$i" 2>/dev/null || true)
+			if [ -n "$a" ]; then
+				printf '%s\t%s\n' "$i" "$a"
+			fi
 		done
 	elif hostname -I >/dev/null 2>&1; then
 		# No interface names from this one, only the addresses.
