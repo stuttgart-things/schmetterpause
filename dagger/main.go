@@ -689,10 +689,32 @@ grep -q "<h1>Hallo, Verify Ella</h1>" "$top" || {
 	exit 1
 }
 
+# The reason somebody types their name is to enter a result. Result entry is
+# not on the page before anybody is recognised, so the join has to deliver it
+# in the same response — otherwise it arrives only on the next reload, with
+# nothing on the page saying so. See issue #75.
+grep -q "id=\"match\" class=\"match\" hx-swap-oob" "$top" || {
+	echo "joining does not deliver result entry"
+	cat "$top"
+	exit 1
+}
+grep -q "hx-post=\"/matches\"" "$top" || {
+	echo "the delivered result entry carries no form"
+	cat "$top"
+	exit 1
+}
+
 # Nobody recognised: the heading names the app rather than greeting a stranger.
 curl -fsS http://app:8080/ > "$top"
 grep -q "<h1>Büro-Tischtennis</h1>" "$top" || {
 	echo "the start page does not introduce itself to a browser it does not know"
+	exit 1
+}
+# An out-of-band swap replaces an element that is already in the document, so
+# this empty placeholder is what makes the swap above land anywhere. It has no
+# card class, so it shows nothing until the real form takes its place.
+grep -q "<section id=\"match\"></section>" "$top" || {
+	echo "the signed-out page has nowhere to put result entry"
 	exit 1
 }
 if grep -q "Hallo," "$top"; then
