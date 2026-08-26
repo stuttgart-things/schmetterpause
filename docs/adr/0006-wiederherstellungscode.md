@@ -34,8 +34,10 @@ dauerhaft.
 
 - Beim Anlegen **einmalig angezeigt**, mit dem Hinweis, ihn dort zu speichern, wo
   die Passwörter liegen.
-- **Drei Stellen geben ihn aus:** das Anlegen, die eigene angemeldete Sitzung
-  ("neuen Code erzeugen"), und der Kiosk für jeden Spieler.
+- **Für sich selbst** darf jeder einen erzeugen: beim Anlegen, und danach
+  jederzeit aus der eigenen angemeldeten Sitzung.
+- **Für jemand anderen** nur der Kiosk. Das ist die Wiederherstellung für
+  Leute, die nichts mehr haben.
 - **Ein neuer Code macht den alten sofort ungültig.**
 - **Kein Passwortfeld.** Der Code wird nie selbst gewählt.
 - Als **Code**, nicht als Link, nicht als Datei, nicht als Wallet-Pass.
@@ -83,6 +85,24 @@ Gerät bräuchte es eine zweite Kamera oder einen Datei-Upload.
 Ein dauerhaftes Token kann man nur entwerten, indem man den Besitzer mit
 aussperrt. Ein ersetzbarer Code hat einen Rücknahmeweg, der nichts kostet: wer
 den Verdacht hat, dass sein Code irgendwo gelandet ist, erzeugt einen neuen.
+
+### Für sich selbst ja, für andere nur am Kiosk
+
+Der Verdacht liegt nahe, dass ein neuer Code eine Admin-Handlung sein müsste.
+Er zeigt aber in die falsche Richtung.
+
+**Einen Code für sich selbst zu erzeugen, ist keine Rechteerweiterung.** Wer das
+tut, hält bereits eine gültige Sitzung — er *hat* den Zugang. Die Handlung
+verschafft ihm nichts Neues, sie nimmt dem alten Code die Gültigkeit. Das ist
+"Passwort ändern, während man angemeldet ist", und daraus eine fremde
+Entscheidung zu machen, macht es schlechter: wer den Verdacht hat, sein Code sei
+irgendwo gelandet, müsste erst zum Laptop laufen. In einer normalen Woche steht
+da keiner, also bliebe der geleakte Code bis zum nächsten Turnierabend gültig.
+
+**Mächtig ist die andere Richtung:** einen Code für einen Spieler ausstellen,
+der nicht dabei ist. Das kann nur der Kiosk, und dort ist die Bedingung der
+Raum — jemand steht daneben, und die Leute kennen sich. Genau deshalb bleibt
+dieser Weg an den Kiosk gebunden und wandert nicht in die normale Oberfläche.
 
 ### Drei Ausgabestellen, nicht eine
 
@@ -158,3 +178,11 @@ Bewusst nicht entschieden, weil sie die Entscheidung oben nicht berühren:
    erlaubt und dafür bei einem Schlüsselwechsel alle Codes entwertet.
 4. **Ein Code pro Spieler oder mehrere?** Mehrere wären "ein Code pro Gerät" und
    damit näher an Passkeys — aber auch mehr, was verloren gehen kann.
+5. **Es gibt keine Administration.** Dieses ADR lehnt sich für "einen Code für
+   jemand anderen" an den Kiosk an, und der ist als Fundament dünn: sein Cookie
+   ist ein konstanter Wert aus Session-Key und Token, in jedem Browser identisch,
+   der die Token-Adresse je geöffnet hat, zwölf Stunden gültig — und
+   zurücknehmen lässt er sich nur, indem man das Token ändert und neu startet.
+   Für diesen einen Zweck reicht das. Phase 2 bringt weitere Handlungen, die
+   jemanden brauchen, dem man das zutraut, und dann ist es keine Frage der
+   Codes mehr. Eigenes Thema.
