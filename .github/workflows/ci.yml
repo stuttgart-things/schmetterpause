@@ -1,6 +1,11 @@
 # Deliberately thin: this workflow installs the Dagger CLI and calls the same
 # function that "task ci" runs locally. It holds no build logic — that lives in
 # dagger/main.go and behaves identically here and on a developer machine.
+#
+# The one exception is the image scan, which calls a shared workflow from
+# stuttgart-things/github-workflow-templates. It is not build logic and there
+# is nothing about it to reproduce locally: it reads an image that has already
+# been published. See issue #85 for what else moves there, and what does not.
 name: CI
 
 on:
@@ -56,6 +61,8 @@ jobs:
     permissions:
       contents: read
       packages: write
+    outputs:
+      image-ref: ${{ steps.publish.outputs.image-ref }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -68,6 +75,7 @@ jobs:
           dagger version
 
       - name: Publish to GHCR
+        id: publish
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -81,9 +89,54 @@ jobs:
             latest=true
           fi
 
-          dagger call release \
+          # dagger writes the function's result to stdout and its progress to
+          # stderr, so the reference Publish returns can be captured here. It
+          # carries the digest, which is what the scan below is handed: what
+          # gets scanned is then exactly what was pushed, not whatever a
+          # mutable tag points at by the time the scan runs.
+          ref="$(dagger call release \
             --source=. \
             --version="${version}" \
             --registry-token=env:GITHUB_TOKEN \
             --username="${GITHUB_ACTOR}" \
-            --latest="${latest}"
+            --latest="${latest}")"
+
+          # Fail loudly rather than handing the scan something that is not a
+          # reference. A silently empty output would leave the scan job
+          # reporting on nothing while looking green.
+          case "${ref}" in
+            ghcr.io/*) ;;
+            *)
+              echo "release did not return an image reference: ${ref}" >&2
+              exit 1
+              ;;
+          esac
+
+          echo "published ${ref}"
+          echo "image-ref=${ref}" >> "$GITHUB_OUTPUT"
+
+  # Trivy against the image that was just published. Report-only for now
+  # (continue-on-error): this repository has never been scanned, so the first
+  # run is a measurement, not a verdict. Making it blocking today would mean
+  # every build failing on findings nobody has looked at yet. Flipping it to
+  # false is a separate, deliberate step once the list is known and empty.
+  #
+  # Only on a push, because that is the only event that publishes an image —
+  # a pull request has nothing to scan. That is a real gap: a vulnerable
+  # dependency is caught on main rather than in review. Closing it needs a
+  # PR image build, which is issue #85's second stage.
+  #
+  # No secrets are passed: the package is public, so the scan pulls
+  # anonymously and the called workflow gets nothing from us. That is also
+  # why @main is acceptable here — an upstream change to a report-only job
+  # that holds no credentials cannot break a build or leak anything. A
+  # workflow that gates or publishes deserves a pinned revision; see #85.
+  scan:
+    needs: release
+    uses: stuttgart-things/github-workflow-templates/.github/workflows/call-dagger-trivy-image-scan.yaml@main
+    with:
+      runs-on: ubuntu-latest
+      image-ref: ${{ needs.release.outputs.image-ref }}
+      severity: HIGH,CRITICAL
+      artifact-name: trivy-image-report
+      continue-on-error: true
