@@ -2,46 +2,69 @@ package templates
 
 import "strconv"
 
-// MatchForm renders result entry. The mode controls come pre-set to
-// best-of-five to eleven, so the common case costs no interaction at all —
-// the budget in AP7 is three from scanning the code to a submitted result.
+// MatchForm renders result entry.
 templ MatchForm(v MatchFormView) {
 	<section id="match" class="match">
-		<h2>Ergebnis eintragen</h2>
-		if len(v.Opponents) == 0 {
-			<p class="muted">
-				Sobald jemand anderes mitspielt, kannst du hier ein Ergebnis
-				eintragen.
-			</p>
-		} else {
-			<form hx-post="/matches" hx-target="#match" hx-swap="outerHTML">
-				<div class="row">
-					<label for="opponent">Gegner</label>
-					<select
-						id="opponent"
-						name="opponent_id"
-						required
-						hx-get="/fragments/sets"
-						hx-target="#sets-entry"
-						hx-swap="outerHTML"
-						hx-include="closest form"
-						hx-sync="closest form:replace"
-					>
-						<option value="">bitte wählen</option>
-						for _, o := range v.Opponents {
-							<option value={ o.ID } selected?={ o.Selected }>{ o.DisplayName }</option>
-						}
-					</select>
-				</div>
-				@modeRow("entry", v.BestOf, v.PointsToWin)
-				@setRows("entry", v.Sets, v.BestOf, v.PointsToWin, SideYourself, v.AwayLabel())
-				<button type="submit">Eintragen</button>
-				if v.Error != "" {
-					<p class="fail" role="alert">{ v.Error }</p>
-				}
-			</form>
-		}
+		@matchFormBody(v)
 	</section>
+}
+
+// MatchFormOOB is MatchForm marked for an out-of-band swap, so joining puts
+// result entry on the page in the same response that creates the player.
+templ MatchFormOOB(v MatchFormView) {
+	<section id="match" class="match" hx-swap-oob="true">
+		@matchFormBody(v)
+	</section>
+}
+
+// matchPlaceholder holds the place of result entry while nobody is signed in.
+//
+// Empty, and without the card class, so it shows nothing at all — the same
+// arrangement the pending list uses for the same reason. What it does is
+// exist, so the response to a join has an element to swap the real form into.
+templ matchPlaceholder() {
+	<section id="match"></section>
+}
+
+// matchFormBody is the form itself. The mode controls come pre-set to
+// match.DefaultBestOf to eleven, so the common case costs no interaction at
+// all — the budget in AP7 is three from scanning the code to a submitted
+// result.
+templ matchFormBody(v MatchFormView) {
+	<h2>Ergebnis eintragen</h2>
+	if len(v.Opponents) == 0 {
+		<p class="muted">
+			Sobald jemand anderes mitspielt, kannst du hier ein Ergebnis
+			eintragen.
+		</p>
+	} else {
+		<form hx-post="/matches" hx-target="#match" hx-swap="outerHTML">
+			<div class="row">
+				<label for="opponent">Gegner</label>
+				<select
+					id="opponent"
+					name="opponent_id"
+					required
+					hx-get="/fragments/sets"
+					hx-target="#sets-entry"
+					hx-swap="outerHTML"
+					hx-include="closest form"
+					hx-sync="closest form:replace"
+				>
+					<option value="">bitte wählen</option>
+					for _, o := range v.Opponents {
+						<option value={ o.ID } selected?={ o.Selected }>{ o.DisplayName }</option>
+					}
+				</select>
+			</div>
+			@modeRow("entry", v.BestOf, v.PointsToWin)
+			@setRows("entry", v.Sets, v.BestOf, v.PointsToWin, SideYourself, v.AwayLabel())
+			<button type="submit">Eintragen</button>
+			if v.Error != "" {
+				<p class="fail" role="alert">{ v.Error }</p>
+			}
+		</form>
+	}
 }
 
 // modeRow is the best-of and points-per-set pair, shared by result entry and

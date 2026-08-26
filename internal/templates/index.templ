@@ -10,9 +10,17 @@ templ Index(v IndexView) {
 	@Layout("Start", v.Header) {
 		@PageHead(v.Session)
 		@Session(v.Session)
+		// Both sections stay in the document for a reader nobody is signed
+		// in as, empty and unstyled. Joining fills them from the same
+		// response that creates the player, and an out-of-band swap can only
+		// replace an element that is already there — rendering them only
+		// under ShowMatch left a new player with nowhere to enter a result
+		// until they reloaded. See issue #75.
+		@PendingList(v.Pending)
 		if v.ShowMatch {
-			@PendingList(v.Pending)
 			@MatchForm(v.Match)
+		} else {
+			@matchPlaceholder()
 		}
 		@Standings(v.Standings)
 		<section

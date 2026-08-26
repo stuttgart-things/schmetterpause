@@ -353,6 +353,48 @@ func TestTheBadgeCountsWhatIsWaiting(t *testing.T) {
 	}
 }
 
+// TestJoiningPutsResultEntryOnThePage is issue #75: the reason somebody types
+// their name is to enter a result, and until this the form arrived only on the
+// next reload — with nothing on the page saying so.
+//
+// The two halves have to hold together. An out-of-band swap replaces an
+// element that is already in the document, so the empty placeholder on the
+// signed-out page is what makes the swap in the join response land anywhere.
+func TestJoiningPutsResultEntryOnThePage(t *testing.T) {
+	store := newMemStore()
+	if _, err := store.Players().Create(t.Context(), "Bea", domain.DefaultTTR); err != nil {
+		t.Fatalf("Create(): %v", err)
+	}
+	h := newHandlerWith(store, auth.NewCookieAuthenticator(store.Identities(), testSessionKey, false))
+
+	// Present, and showing nothing: no heading, and no card class, so a
+	// visitor who has not joined sees an empty box nowhere on the page.
+	if body := get(t, h, "/").Body.String(); !strings.Contains(body, `<section id="match"></section>`) {
+		t.Errorf("the signed-out page has nowhere to put result entry: %s", body)
+	}
+
+	body := join(t, h, "Anna").Body.String()
+
+	start := strings.Index(body, `<section id="match"`)
+	if start < 0 {
+		t.Fatalf("joining does not deliver result entry: %s", body)
+	}
+	// Cut the section out rather than searching the whole response: the
+	// standings arrive in the same body and name every player, so "Bea"
+	// found anywhere would not prove she is in the opponent list.
+	end := strings.Index(body[start:], "</section>")
+	if end < 0 {
+		t.Fatalf("the result entry section is not closed: %s", body[start:])
+	}
+	entry := body[start : start+end]
+
+	for _, want := range []string{`hx-swap-oob="true"`, "Ergebnis eintragen", `hx-post="/matches"`, "Bea"} {
+		if !strings.Contains(entry, want) {
+			t.Errorf("the delivered result entry does not contain %q: %s", want, entry)
+		}
+	}
+}
+
 // TestJoiningSaysItOnce keeps the onboarding line where it belongs: it
 // answers a question somebody has exactly once, so it is not on the page
 // afterwards.

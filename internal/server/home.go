@@ -158,6 +158,19 @@ func (s *Server) handleJoin(w http.ResponseWriter, r *http.Request) {
 	s.render(w, r, templates.WhoamiOOB(s.headerView(signedIn)))
 	s.render(w, r, templates.PageHeadOOB(joined))
 	s.render(w, r, templates.StandingsOOB(table))
+
+	// And so does result entry, which is the whole reason somebody just
+	// typed their name. Without this the form arrives only on the next
+	// reload, with nothing on the page saying so — see issue #75.
+	opponents, err := s.opponentOptions(signedIn, created.ID, uuid.Nil)
+	if err != nil {
+		// Same trade as the standings above: the player exists and is
+		// signed in. A reload brings the form; discarding the join would
+		// bring nothing.
+		s.log.ErrorContext(r.Context(), "loading the opponents failed", "error", err)
+		return
+	}
+	s.render(w, r, templates.MatchFormOOB(templates.NewMatchFormView(opponents)))
 }
 
 // rejectJoin re-renders the form with the reason, keeping what was typed.
