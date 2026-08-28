@@ -72,6 +72,33 @@ type Identity struct {
 	CreatedAt time.Time
 }
 
+// CredentialKind names a sort of shared secret a player can prove themselves
+// with. Both kinds are bearer credentials: whoever holds one is the player,
+// and the blast radius stays the one docs/adr/0004 accepts.
+type CredentialKind string
+
+const (
+	// CredentialRecovery is the generated recovery code. Everybody gets one
+	// at join without doing anything, and it is the only kind a third party
+	// may issue — that is what the kiosk does (docs/adr/0006).
+	CredentialRecovery CredentialKind = "recovery"
+	// CredentialPIN is the digits a player chose. Optional, memorable, and
+	// nobody else can set it (docs/adr/0007).
+	CredentialPIN CredentialKind = "pin"
+)
+
+// Credential is one player's secret of one kind, stored as a hash and never
+// in the clear. A player holds at most one per kind: a new secret replaces
+// the old one, which is what makes a new recovery code invalidate the
+// previous one immediately.
+type Credential struct {
+	PlayerID uuid.UUID
+	Kind     CredentialKind
+	// Hash is the encoded Argon2id digest, parameters and salt included.
+	Hash      string
+	UpdatedAt time.Time
+}
+
 // MatchStatus is a match's confirmation state. Only a match in state
 // MatchConfirmed enters the rating.
 type MatchStatus string
