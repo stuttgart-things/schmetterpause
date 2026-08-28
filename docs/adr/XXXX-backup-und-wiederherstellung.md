@@ -300,21 +300,27 @@ ADR-0005 aufgreift.
 - **Positiv:** Der Cluster-Neubau verliert seinen Schrecken. Git stellt die
   Infrastruktur her, der Objektspeicher die Daten, beide Wege sind einzeln
   prüfbar.
-- **Positiv:** Kein zusätzlicher Operator, keine neue Betriebskomponente. Die
-  Datenbank bleibt ein gewöhnlicher Postgres-Container, wie in ADR-0001
-  angenommen.
+- **Positiv:** Kein *zweites* Backup-System. CloudNativePG kommt ohnehin (#78),
+  Velero läuft ohnehin — Weg A kommt mit dem aus, was da ist. Die erste Fassung
+  zählte hier „kein Operator" als Gewinn; das gilt nicht mehr, und ADR-0001s
+  Annahme eines gewöhnlichen Postgres-Containers ist mit #78 überholt.
 - **Positiv:** Der Restore-Weg wird bei jedem Neubau begangen und verrottet
   deshalb nicht.
-- **Negativ:** Zwischen zwei Dumps liegt ein Fenster, in dem Ergebnisse verloren
-  gehen können. Bei einem geplanten Neubau lässt sich das auf null drücken, bei
-  einem ungeplanten Verlust nicht.
-- **Negativ:** Der Wechsel auf Weg B ist später nicht kostenlos — der
-  Objektspeicher-Inhalt aus Weg A ist für einen CNPG-Recovery-Bootstrap nicht
-  verwendbar, ein Umstieg beginnt mit einem frischen Backup-Bestand.
+- **Negativ:** Zwischen zwei Sicherungsläufen liegt ein Fenster, in dem
+  Ergebnisse verloren gehen können. Bei einem geplanten Neubau lässt sich das
+  auf null drücken, bei einem ungeplanten Verlust nicht.
+- **Negativ:** Der Wechsel auf Weg B ist später nicht kostenlos — die von Velero
+  abgelegten Dumps sind für einen CNPG-Recovery-Bootstrap nicht verwendbar, ein
+  Umstieg beginnt mit einem frischen Backup-Bestand.
+- **Negativ, neu:** Auf der Zielumgebung hängt jeder Lauf am WAN-Link, weil
+  Azure Local keinen Objektspeicher mitbringt. Bei dieser Datenmenge egal —
+  festgehalten, damit es nicht als Überraschung durchgeht, falls sie wächst.
 - **Risiko:** Als Entwurf steht das unter demselben Vorbehalt wie das
-  Deployment-Ziel-ADR —
-  echte Constraints aus Azure Local (verfügbare CSI-Treiber, erreichbare
-  Objektspeicher, Secret-Verwaltung) können das noch verschieben.
+  Deployment-Ziel-ADR. Zwei der damals genannten Unbekannten sind inzwischen
+  bekannt und beide ungünstig: Auf AKS enabled by Azure Arc gibt es keine
+  Volume-Snapshots, und einen Objektspeicher gibt es dort auch nicht. Was
+  offen bleibt, ist der Vergleich selbst — er ist in #84 angelegt und noch
+  nicht gelaufen.
 
 ## Wenn Weg B gebaut wird, dann über das Plugin
 

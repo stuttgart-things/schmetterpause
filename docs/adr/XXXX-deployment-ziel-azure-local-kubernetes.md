@@ -172,7 +172,6 @@ Arc](https://learn.microsoft.com/en-us/azure/azure-arc/kubernetes/conceptual-git
    wer die Zone besitzt.
 
 ## Hinweis zur Form
-## Hinweis zur Form
 
 Das Team trackt offene Punkte als GitHub-Issues statt als ADR-Prosa — ADRs für
 Entscheidungen mit Bestand, Issues für Fragen, die noch offen sind. Genau das
