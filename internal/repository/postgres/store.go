@@ -99,6 +99,9 @@ func (s *Store) Players() repository.PlayerRepository { return playerRepo{s.q} }
 // Identities returns the identity repository.
 func (s *Store) Identities() repository.IdentityRepository { return identityRepo{s.q} }
 
+// Credentials returns the credential repository.
+func (s *Store) Credentials() repository.CredentialRepository { return credentialRepo{s.q} }
+
 // Matches returns the match repository.
 func (s *Store) Matches() repository.MatchRepository { return matchRepo{s.q} }
 

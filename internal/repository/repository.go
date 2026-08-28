@@ -18,6 +18,7 @@ import (
 type Store interface {
 	Players() PlayerRepository
 	Identities() IdentityRepository
+	Credentials() CredentialRepository
 	Matches() MatchRepository
 	TTRHistory() TTRHistoryRepository
 
@@ -57,6 +58,21 @@ type IdentityRepository interface {
 	// error is domain.ErrNotFound.
 	PlayerBy(ctx context.Context, provider domain.Provider, subject string) (domain.Player, error)
 	ForPlayer(ctx context.Context, playerID uuid.UUID) ([]domain.Identity, error)
+}
+
+// CredentialRepository stores the shared secrets a player proves themselves
+// with. It never sees a secret in the clear — hashing happens in the
+// credential package, and only the encoding it produces reaches here.
+type CredentialRepository interface {
+	// Put writes the hash for one kind, replacing whatever stood there. That
+	// replacement is the point: issuing a new recovery code has to invalidate
+	// the previous one in the same step, or the old one stays valid because
+	// somebody forgot the delete (docs/adr/0006).
+	Put(ctx context.Context, playerID uuid.UUID, kind domain.CredentialKind, hash string) error
+	// ForPlayer returns one player's credential of one kind. A player who has
+	// none of that kind is domain.ErrNotFound — the ordinary state for a PIN,
+	// since setting one is optional (docs/adr/0007).
+	ForPlayer(ctx context.Context, playerID uuid.UUID, kind domain.CredentialKind) (domain.Credential, error)
 }
 
 // MatchRepository manages encounters along with their sets.
