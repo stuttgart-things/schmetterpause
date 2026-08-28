@@ -7,8 +7,12 @@
   Git meldet das nicht.
 - **Datum:** 2026-08-21
 - **Betrifft:** Deployment, Infrastruktur
-- **Phase:** phase-2. Nichts hiervon wird umgesetzt, solange die MVP-Messung
-  aus #7 läuft — siehe den entsprechenden Abschnitt im Backup-ADR.
+- **Phase:** phase-3, entsprechend #89. Die ursprüngliche Einordnung als
+  phase-2 mitsamt Sperre bis zum Ende der MVP-Messung war zu weit gefasst:
+  #89 hält Phase 3 ausdrücklich unabhängig von der Messung — gebunden ist
+  allein, dass die Office-Compose-Installation unangetastet weiterläuft.
+  Planen und Schreiben waren nie das Problem, das Anfassen der laufenden
+  Installation ist es.
 - **Verwandt:** das Backup-ADR aus demselben Branch, ADR-0002 (kein Redis)
 
 ## Kontext

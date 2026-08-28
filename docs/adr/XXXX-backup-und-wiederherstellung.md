@@ -7,9 +7,10 @@
   Git meldet das nicht.
 - **Datum:** 2026-08-25
 - **Betrifft:** Deployment, Betrieb, Daten
-- **Phase:** phase-2. Kubernetes-Deployment ist in `docs/mvp-plan.md` unter
-  "Bewusst nicht enthalten" aufgeführt — dieses ADR greift dem nicht vor,
-  sondern hält fest, was gilt, sobald die Phase erreicht ist.
+- **Phase:** phase-5, entsprechend #84. Nichts hiervon wird vorgezogen: Vor
+  #78 und #81 gibt es keinen CloudNativePG-Cluster, der gesichert werden
+  könnte. Die ursprüngliche Einordnung als phase-2 war eine Fehleinschätzung
+  des Zeitpunkts, nicht des Inhalts.
 - **Verwandt:** das Deployment-Ziel-ADR aus demselben Branch, ADR-0001
   (Postgres), ADR-0004 (WebAuthn), ADR-0005 (Custom Resources als Datenspeicher)
 
