@@ -148,6 +148,26 @@ Arc](https://learn.microsoft.com/en-us/azure/azure-arc/kubernetes/conceptual-git
    `imagePullSecret` aus Punkt 3 hängt weiterhin daran, ob das GHCR-Package
    öffentlich ist. Ungeprüft.
 
+6. **Wie kommt Argo CD auf Azure Local?** #81 stellt die Frage nicht, weil dort
+   bereits eine Instanz läuft. Auf der Zielumgebung gibt es zwei Wege:
+
+   | | Dafür | Dagegen |
+   | --- | --- | --- |
+   | **Arc-Extension** `microsoft.argocd` | Portal-Integration, Workload Identity Federation gegen ACR und Azure DevOps — also wieder Zugang ohne Langzeit-Credentials, wie bei Punkt 5 | **Public Preview**, nicht GA. Ein Preview-Dienst im Pfad jedes Deploys |
+   | **Argo selbst per Helm** | Kein Preview-Risiko, identisch mit dem sthings-Cluster, ein Betriebsmodell statt zwei | Die Arc-Vorteile fallen weg, Betrieb liegt bei uns |
+
+   Schwer rückabzuwickeln, deshalb hier und nicht nebenbei. Betrifft nur die
+   Zielumgebung — der Übergang ist davon unberührt.
+7. **Hostname und DNS.** Nicht technisch schwierig, aber mit der längsten
+   Halbwertszeit im ganzen Vorhaben: **Der Name muss den Cluster-Neubau
+   überleben, und er muss über Übergangs- und Zielumgebung tragen.** ADR-0004
+   legt uns auf WebAuthn fest, und Passkeys hängen an der Relying-Party-ID,
+   also am Hostnamen. Ein Wechsel der URL entwertet sie — auch bei
+   fehlerfreiem Datenbank-Restore. #74 löst sich mit Gateway API sonst in zwei
+   Zeilen Profil auf; diese eine Zeile bleibt und gehört nicht uns. Zu klären,
+   wer die Zone besitzt.
+
+## Hinweis zur Form
 ## Hinweis zur Form
 
 Das Team trackt "Offene Punkte" aus `docs/mvp-plan.md` inzwischen als
