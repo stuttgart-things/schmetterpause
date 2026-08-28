@@ -49,6 +49,11 @@ Configuration comes exclusively from environment variables:
                         serve, at least 32 characters
                         (openssl rand -base64 32)
   SP_COOKIE_SECURE      send the cookie over HTTPS only, default "true"
+  SP_KIOSK_TOKEN        unlocks /kiosk; unset means the kiosk does not exist
+  SP_PUBLIC_BASE_URL    scheme and host the QR code points at; unset reads it
+                        off the request
+  SP_BOOTSTRAP_ADMIN    display name of the player who gets the admin flag at
+                        startup (docs/adr/0008); unset grants nothing
 `
 
 func main() {
@@ -120,6 +125,11 @@ func serve(ctx context.Context) error {
 	sessions := auth.NewCookieAuthenticator(store.Identities(), cfg.SessionKey, cfg.CookieSecure)
 
 	srv := server.New(cfg, store, log, sessions, version)
+
+	// After the migrations, because the flag it writes is a column they add.
+	// Never fatal: a name nobody has yet is the ordinary state when the
+	// variable is set before the person has joined (docs/adr/0008).
+	srv.GrantBootstrapAdmin(ctx)
 
 	if err := srv.Run(ctx); err != nil {
 		return err
