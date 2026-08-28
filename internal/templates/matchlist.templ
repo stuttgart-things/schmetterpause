@@ -52,24 +52,12 @@ templ MatchList(v MatchListView) {
 									<td class="name">
 										<a href={ templ.SafeURL("/players/" + m.LoserID) }>{ m.LoserName }</a>
 									</td>
-									<td class="num">
+									<td class="num score">
 										{ strconv.Itoa(m.WinnerSets) }:{ strconv.Itoa(m.LoserSets) }
+										@matchState(m.Pending, m.Disputed)
 									</td>
 									<td class="num">
-										// Same three states as the profile, and for the same
-										// reason: a match that is not settled has no rating
-										// change, and "±0" would claim it moved nothing.
-										if m.Disputed {
-											<span class="muted" title="Widersprochen, zählt nicht">strittig</span>
-										} else if m.Pending {
-											<span class="muted" title="Wartet auf Bestätigung">offen</span>
-										} else if m.HasDelta && m.Delta > 0 {
-											<span class="gain">+{ strconv.Itoa(m.Delta) }</span>
-										} else if m.HasDelta && m.Delta < 0 {
-											<span class="loss">{ strconv.Itoa(m.Delta) }</span>
-										} else {
-											<span class="muted">±0</span>
-										}
+										@matchDelta(m.Pending, m.Disputed, m.HasDelta, m.Delta)
 									</td>
 									<td class="sets-line">
 										for i, s := range m.Sets {
@@ -93,5 +81,48 @@ templ MatchList(v MatchListView) {
 				}
 			}
 		</section>
+	}
+}
+
+// matchState is the badge beside the set score, and it is the answer to issue
+// #76.
+//
+// The state used to stand *in place of* the rating change, in the TTR column,
+// with the explanation in a title attribute. Two things were wrong with that.
+// A row waiting for your confirmation looked like a row whose rating simply
+// had not moved, which is what somebody read it as on the row that mattered to
+// them. And a title attribute is invisible on a phone, because a phone has no
+// hover — and this table is read on a phone.
+//
+// Beside the score rather than in a column of its own: the list already
+// carries six columns, and at 390px only Verlauf may leave the box (#51, #63).
+// A seventh is not free, and the badge sits where the eye already is.
+//
+// The profile's match list uses this too. The same three states appeared
+// there, and one of them being explained differently would be worse than
+// either wording.
+templ matchState(pending, disputed bool) {
+	if disputed {
+		<span class="state state-disputed" title="Widersprochen, zählt nicht">strittig</span>
+	} else if pending {
+		<span class="state state-pending" title="Wartet auf Bestätigung">offen</span>
+	}
+}
+
+// matchDelta is the TTR cell, and now numbers only.
+//
+// A dash for anything unsettled rather than a word: the word is on the badge,
+// and a match that has not counted has no rating change to show. "±0" is kept
+// for the settled ones that really did move nothing, which happens whenever a
+// strong favourite beats somebody they were expected to beat.
+templ matchDelta(pending, disputed, hasDelta bool, delta int) {
+	if pending || disputed {
+		<span class="muted" aria-label="noch keine Wertung">&ndash;</span>
+	} else if hasDelta && delta > 0 {
+		<span class="gain">+{ strconv.Itoa(delta) }</span>
+	} else if hasDelta && delta < 0 {
+		<span class="loss">{ strconv.Itoa(delta) }</span>
+	} else {
+		<span class="muted">&plusmn;0</span>
 	}
 }

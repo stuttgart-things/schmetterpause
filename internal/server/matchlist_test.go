@@ -157,3 +157,58 @@ func paddleClassIn(t *testing.T, body string) string {
 	}
 	return ""
 }
+
+// Issue #76: the state used to stand in the TTR column *in place of* the
+// rating change, with the explanation in a title attribute. A row waiting for
+// your confirmation therefore looked like a row whose rating had simply not
+// moved — and a phone never shows a title, because a phone has no hover.
+func TestAnUnsettledMatchSaysSoBesideTheScore(t *testing.T) {
+	h, store, anna, _ := twoBrowsers(t)
+
+	reportedByAnna(t, h, store, anna)
+
+	body := fragment(t, h, "/matches", anna).Body.String()
+
+	if !strings.Contains(body, `class="state state-pending"`) {
+		t.Errorf("the state is not a badge of its own: %s", body)
+	}
+	// The badge sits in the score cell, which is where the eye already is.
+	// A seventh column is not free at 390px (#51, #63).
+	score := body[strings.Index(body, `<td class="num score">`):]
+	if i := strings.Index(score, "</td>"); i < 0 || !strings.Contains(score[:i], "offen") {
+		t.Errorf("the badge is not beside the set score: %s", body)
+	}
+	// And the TTR column carries numbers only now, so nothing there can be
+	// mistaken for a rating that did not move.
+	if !strings.Contains(body, `aria-label="noch keine Wertung"`) {
+		t.Errorf("the TTR cell does not say there is no rating yet: %s", body)
+	}
+}
+
+// The same three states appear on the profile, and one of them being explained
+// differently there would be worse than either wording.
+func TestTheProfileMarksAnUnsettledMatchTheSameWay(t *testing.T) {
+	h, store, anna, _ := twoBrowsers(t)
+
+	reportedByAnna(t, h, store, anna)
+
+	players, err := store.Players().List(t.Context())
+	if err != nil {
+		t.Fatalf("List(): %v", err)
+	}
+	var id string
+	for _, p := range players {
+		if p.DisplayName == "Anna" {
+			id = p.ID.String()
+		}
+	}
+
+	body := fragment(t, h, "/players/"+id, anna).Body.String()
+
+	if !strings.Contains(body, `class="state state-pending"`) {
+		t.Errorf("the profile does not mark an unsettled match: %s", body)
+	}
+	if !strings.Contains(body, `aria-label="noch keine Wertung"`) {
+		t.Errorf("the profile's TTR cell does not say there is no rating yet: %s", body)
+	}
+}

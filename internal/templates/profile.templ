@@ -82,8 +82,9 @@ templ Profile(v ProfileView) {
 							<tr>
 								<td class="when">{ m.PlayedAt }</td>
 								<td class="name">{ m.OpponentName }</td>
-								<td class="num">
+								<td class="num score">
 									{ strconv.Itoa(m.OwnSets) }:{ strconv.Itoa(m.OpponentSets) }
+									@matchState(m.Pending, m.Disputed)
 								</td>
 								<td class="sets-line">
 									for i, s := range m.Sets {
@@ -94,17 +95,7 @@ templ Profile(v ProfileView) {
 									}
 								</td>
 								<td class="num">
-									if m.Disputed {
-										<span class="muted" title="Widersprochen, zählt nicht">strittig</span>
-									} else if m.Pending {
-										<span class="muted" title="Wartet auf Bestätigung">offen</span>
-									} else if m.HasDelta && m.Delta > 0 {
-										<span class="gain">+{ strconv.Itoa(m.Delta) }</span>
-									} else if m.HasDelta && m.Delta < 0 {
-										<span class="loss">{ strconv.Itoa(m.Delta) }</span>
-									} else {
-										<span class="muted">±0</span>
-									}
+									@matchDelta(m.Pending, m.Disputed, m.HasDelta, m.Delta)
 								</td>
 							</tr>
 						}

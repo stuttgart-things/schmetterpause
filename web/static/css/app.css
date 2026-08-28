@@ -399,6 +399,43 @@ h2 {
 .recovery-lead strong { color: var(--fg); }
 .recovery p:last-child { margin-bottom: 0; }
 
+/* --- Status eines Matches ----------------------------------------------- */
+
+/* The badge that says a result is not settled yet, beside the set score.
+   Issue #76: the state used to sit in the TTR column in place of the number,
+   so a row waiting for your confirmation looked like a row whose rating had
+   simply not moved — and the explanation lived in a title attribute, which a
+   phone never shows because a phone has no hover. */
+.matches td.score { white-space: nowrap; }
+
+.state {
+	display: inline-block;
+	margin-left: 0.4rem;
+	padding: 0.05rem 0.42rem;
+	border-radius: 999px;
+	font-family: var(--font-mono);
+	font-size: 0.62rem;
+	font-weight: 700;
+	letter-spacing: 0.06em;
+	text-transform: uppercase;
+	vertical-align: middle;
+}
+
+/* Waiting is not failure, so it does not get the failure colour: a result
+   nobody has confirmed yet is the ordinary state of a match somebody entered
+   a minute ago. */
+.state-pending {
+	color: var(--fg);
+	background: color-mix(in srgb, var(--accent) 30%, transparent);
+}
+
+/* Contested is louder, because it stays that way until somebody does
+   something about it. */
+.state-disputed {
+	color: var(--bad);
+	background: color-mix(in srgb, var(--bad) 18%, transparent);
+}
+
 /* --- PIN ---------------------------------------------------------------- */
 
 /* The rule between the code and the PIN offer on the join card. They are two
