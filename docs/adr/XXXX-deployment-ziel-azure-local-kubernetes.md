@@ -29,6 +29,60 @@ Dieses ADR behandelt, *wohin* deployt wird. Wie der Zustand einen
 Cluster-Neubau übersteht, ist eine eigene Entscheidung mit eigenem
 Lebenszyklus und steht im Backup-ADR.
 
+## Zielumgebung Azure Local, Übergang auf dem bestehenden Cluster
+
+Aus der Statusbesprechung vom 2026-08-28: **Azure Local ist das Ziel in der
+finalen Konfiguration. Steht die Azure-Local-Seite nicht rechtzeitig bereit,
+wird übergangsweise auf den bestehenden stuttgart-things-Cluster deployt.**
+
+Das ist die Information, die #89 fehlt, und sie erklärt, warum dort weder
+Azure Local noch Arc vorkommen: #78, #81 und #82 beschreiben durchgehend eine
+Umgebung, in der Gateway, Argo CD, Vault und Velero bereits laufen —
+`sthings-gateway` in `ingress-system`, `stuttgart-things/argocd`,
+`infra/velero`. Für den Übergang trifft das zu. Für die Zielumgebung ist jede
+dieser Voraussetzungen ein eigenes Stück Arbeit, das in Phase 3 bisher
+nirgends steht.
+
+Zwei Dinge folgen daraus:
+
+- **Die Manifestform darf nicht an der Umgebung hängen.** Invariante 1 fordert
+  ein Image für alle Ziele; dasselbe muss für die kustomize-Base gelten. Sonst
+  hat der Übergang eine andere Wahrheit als das Ziel, und der Wechsel dorthin
+  wird eine zweite Migration statt eines Umzugs. Wo Azure Local etwas nicht
+  mitbringt, wird es **dort nachgerüstet** — nicht die Base umgeschrieben.
+- **Zwei Umgebungen sind zwei Stages.** Läuft Phase 3 erst auf dem
+  sthings-Cluster und kommt Azure Local danach dazu, ist der erste Auslöser
+  aus #83 erfüllt: zwei Umgebungen mit einer echten Entscheidung dazwischen.
+  Das ist kein Grund, Kargo jetzt zu bauen. Aber #83 nimmt an, dieser Fall sei
+  fern, und das stimmt dann nicht mehr.
+
+## Was Azure Local nicht mitbringt
+
+AKS enabled by Azure Arc auf Azure Local ist Kubernetes, aber nicht dasselbe
+Kubernetes, gegen das Phase 3 geschrieben ist. Sieben Unterschiede, die vor
+dem ersten Deploy dorthin geklärt sein müssen — Stand der
+Microsoft-Dokumentation am 2026-08-28:
+
+| Baustein | Im sthings-Cluster | AKS enabled by Azure Arc | Folge |
+| --- | --- | --- | --- |
+| Arc-Registrierung | nicht relevant | AKS auf Azure Local ist **ab Werk Arc-registriert** | Entlastung. Der Kontext oben formuliert das noch als eigenen Vorgang; das ist er nicht. |
+| Ingress | Cilium Gateway API, Zertifikat am Listener des Gateways | Dokumentierter Weg ist der **NGINX Ingress Controller**. Ein Gateway-API-Controller ist nicht vorinstalliert | **Größter Posten.** `httproute.k` aus #78 setzt eine Gateway-API-Implementierung voraus. Nach der Regel oben wird sie auf Azure Local nachgerüstet. |
+| Externe IPs | vorhanden | **MetalLB** als Arc-Extension oder ein eigener Loadbalancer. Der IP-Bereich darf nicht mit Arc-VM-Logical-Networks oder Control-Plane-IPs kollidieren | Ein IP-Bereich muss reserviert und dokumentiert sein, bevor überhaupt etwas erreichbar ist. |
+| GitOps-Installation | Argo CD läuft, gepflegt in `stuttgart-things/argocd` | Zwei Wege: Arc-Extension `microsoft.argocd` (**Public Preview**) oder Argo selbst per Helm. Die Flux-Extension ist GA — aber #81 hat Argo entschieden | Eigene Entscheidung, siehe offene Frage 6. |
+| StorageClass | vorhanden | `disk.csi.akshci.com`, VHDX-gestützt. **Linux-Workloads brauchen eine eigene StorageClass mit `fsType: ext4`** — die Default genügt nicht | Die CloudNativePG-`Cluster`-Ressource braucht eine explizit gesetzte `storageClass`. Fällt sonst erst beim ersten Pod auf. |
+| Volume-Snapshots | vorhanden | **werden nicht unterstützt** | Betrifft das Backup-ADR und #84: Velero muss dort auf Datei-Backup (restic/kopia) ausweichen. |
+| Objektspeicher | Velero-Bucket vorhanden (`infra/velero`) | Azure Local bringt **keinen S3-Dienst** mit. Ziel wäre Azure Blob Storage in Azure | Die Randbedingung „außerhalb des Clusters" aus dem Backup-ADR erfüllt sich von selbst. Dafür hängt das Backup am WAN-Link. |
+
+Belege: [CSI-Disk-Treiber in AKS
+Arc](https://learn.microsoft.com/en-us/azure/aks/aksarc/container-storage-interface-disks),
+[Backup mit Velero — keine
+Volume-Snapshots](https://learn.microsoft.com/en-us/azure/aks/aksarc/backup-workload-cluster),
+[MetalLB-Übersicht](https://learn.microsoft.com/en-us/azure/aks/aksarc/load-balancer-overview),
+[Ingress in AKS
+Arc](https://learn.microsoft.com/en-us/azure/aks/aksarc/create-ingress-controller),
+[Argo-CD-Extension für
+Arc](https://learn.microsoft.com/en-us/azure/azure-arc/kubernetes/conceptual-gitops-argocd).
+
 ## Offene Fragen (noch nicht entschieden)
 
 1. ~~**GitOps-Mechanismus**~~ — **entschieden** (Issue #81, 2026-08-26):
