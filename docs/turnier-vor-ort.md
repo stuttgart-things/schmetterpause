@@ -14,7 +14,7 @@ sind drei Umgebungsvariablen und eine zweite Compose-Datei, die sie einfordert.
 task office:setup
 ```
 
-Das fragt die drei Werte ab und schreibt `.env`. Die Adresse wird aus einer
+Das fragt die vier Werte ab und schreibt `.env`. Die Adresse wird aus einer
 Liste **ausgewählt statt getippt** — sie landet im QR-Code auf dem Aushang, und
 ein Zahlendreher darin fällt erst auf, wenn das erste Handy nirgends ankommt.
 
@@ -29,6 +29,7 @@ sieht so aus.
 SP_PUBLIC_BASE_URL=http://192.168.1.23:8080
 SP_KIOSK_TOKEN=turnier2026
 SP_SESSION_KEY=<Ausgabe von: openssl rand -hex 32>
+SP_BOOTSTRAP_ADMIN=Anna
 ```
 
 Gesucht ist die Adresse aus dem Büronetz — typischerweise `192.168.x.x` oder
@@ -50,7 +51,18 @@ das erste Ergebnis eingetragen werden kann.
 **`SP_SESSION_KEY`** muss mindestens 32 Zeichen haben und **über den ganzen
 Abend derselbe bleiben**. Ändert er sich, ist jeder Browser wieder ein Fremder
 und der Kiosk muss neu freigeschaltet werden. Die Ergebnisse in der Datenbank
-sind davon nicht betroffen, die Zuordnung Browser → Spieler schon.
+sind davon nicht betroffen, die Zuordnung Browser → Spieler schon. Auch PIN und
+Wiederherstellungscode überleben einen Schlüsselwechsel — sie sind gesalzen
+gehasht und hängen nicht am Schlüssel (`docs/adr/0007`).
+
+**`SP_BOOTSTRAP_ADMIN`** darf leer bleiben. Am Tisch braucht niemand einen
+Admin — aber wer während des Abends ein Kiosk-Gerät zurücknehmen will, braucht
+einen, und das ist nichts, was man merkt, während jemand danebensteht.
+
+Die Variable nennt einen **Anzeigenamen** und wirkt **beim Start**. Daraus folgt
+eine Reihenfolge, die sich nicht umdrehen lässt: die Person tritt erst bei, dann
+`task office:up` noch einmal. Vorher gibt es niemanden, dem das Flag gehören
+könnte. `office:setup` schreibt das auch noch einmal auf den Bildschirm.
 
 ## Starten
 
@@ -92,6 +104,13 @@ Ergebnisse. **Der Gegner bestätigt** — erst dann zählt das Match für die
 Wertung. Bis dahin steht es unter „Eingetragen", der Gegner sieht es in seiner
 Liste, und in der Rangliste ändert sich nichts.
 
+**Sag dem Raum, was der Code ist.** Wer beitritt, bekommt einen
+Wiederherstellungscode **einmal** angezeigt — Screenshot machen oder in den
+Passwortmanager. Ohne diesen Satz verpufft die Anzeige an genau den Leuten,
+für die sie da ist. Wer mag, setzt gleich darunter eine PIN; die merkt man
+sich, den Code nicht. Beides zusammen ist der Weg zurück, wenn ein Handy
+seinen Spieler vergisst — und das passiert.
+
 Das ist Absicht: ohne Bestätigung könnte jeder beliebige Ergebnisse eintragen,
 und die Tabelle wäre wertlos.
 
@@ -108,16 +127,39 @@ http://192.168.1.23:8080/kiosk?token=turnier2026
 ```
 
 Die Seite springt auf `/kiosk` um, das Token verschwindet aus der Adresszeile.
-Ab da trägt ein signiertes Cookie die Freischaltung, **zwölf Stunden lang** —
-das Token selbst steht in keiner Antwort mehr und ist nicht aus dem Browser
-auszulesen. Neu laden, Tab schließen, Seite wechseln: alles unproblematisch.
-Nur ein anderes Gerät bekommt auf `/kiosk` eine **403**, solange es den Link
-mit Token nicht selbst geöffnet hat.
+Ab da trägt ein Cookie die Freischaltung, **zwölf Stunden lang** — das Token
+selbst steht in keiner Antwort mehr. Neu laden, Tab schließen, Seite wechseln:
+alles unproblematisch. Ein anderes Gerät bekommt auf `/kiosk` eine **403**,
+solange es den Link mit Token nicht selbst geöffnet hat.
 
-**Spieler anlegen.** Name eintragen, fertig. Der Spieler bekommt keinen Zugang
-und keine Sitzung — er existiert in der Rangliste und kann eingetragen werden.
-Wer später doch sein Handy nimmt, legt sich dort einen eigenen Eintrag an; die
-beiden zusammenzuführen geht im MVP nicht.
+**Jedes Gerät bekommt eine eigene Freigabe.** Zwei Laptops, die das Token
+öffnen, halten zwei verschiedene Cookies — und das ist der Unterschied, der
+zählt, wenn jemand das Token über die Schulter mitgelesen hat. Unter `/admin`
+steht, welche Geräte gerade freigeschaltet sind, wann sie zuletzt gesehen
+wurden und wann sie ablaufen; daneben ein Knopf pro Zeile.
+
+- **Ein Gerät zurücknehmen** trifft nur dieses eine. Der Laptop am Tisch läuft
+  weiter.
+- **Alle zurücknehmen** nimmt den Tisch mit. Das ist der Sinn: es ist für den
+  Moment, in dem das Token durchgesickert ist, und dann muss alles weg. Der
+  Laptop kommt zurück, indem er das Token erneut eingibt.
+
+Dafür braucht es einen Admin — siehe `SP_BOOTSTRAP_ADMIN` oben.
+
+**Spieler anlegen.** Name eintragen, fertig. Der Spieler bekommt keine Sitzung
+— er existiert in der Rangliste und kann eingetragen werden.
+
+**Zugang wiederherstellen.** Weiter unten auf derselben Seite: Spieler wählen,
+*Neuen Code ausgeben*. Der Code steht dann **einmal** auf dem Laptop, zum
+Vorlesen oder Abschreiben. Damit kommt jemand, der am Kiosk angelegt wurde,
+auf sein eigenes Handy — und ebenso jemand, dessen Handy ihn vergessen hat.
+Das ist die Stelle, an der der letzte Messlauf gescheitert ist.
+
+Der Kiosk kann **keine PIN** für jemanden setzen. Eine PIN, die jemand anderes
+kennt, ist keine. Die vergibt jeder selbst, sobald er wieder angemeldet ist.
+
+Wer sich trotzdem unter einem zweiten Namen einträgt, steht zweimal in der
+Rangliste; die beiden zusammenzuführen geht weiterhin nicht.
 
 **Ergebnis eintragen.** Zwei Spieler wählen, Modus einstellen, Sätze eintragen.
 Die Zeilen richten sich nach dem Modus: Best of 3 zeigt drei, Best of 7 sieben.
@@ -126,11 +168,16 @@ Die Zeilen richten sich nach dem Modus: Best of 3 zeigt drei, Best of 7 sieben.
 wer sie eintippt, steht neben der Platte und hat das Match gesehen. Die
 Rangliste unter dem Formular aktualisiert sich mit.
 
-**Vertippt? Dann steht es so.** Ein Ergebnis aus dem Kiosk ist sofort gewertet
-und damit bestätigt — und ein bestätigtes Match taucht in keiner Liste mehr
-auf, die man bestreiten könnte. Der Widerspruchsweg gilt nur für Ergebnisse,
-die noch auf eine Bestätigung warten. Im MVP gibt es dafür keinen Weg zurück;
-also lieber einmal mehr hinsehen, bevor du auf *Eintragen und werten* drückst.
+**Vertippt?** Ein Ergebnis aus dem Kiosk ist sofort gewertet und damit
+bestätigt — und ein bestätigtes Match taucht in keiner Liste mehr auf, die man
+bestreiten könnte. Der Widerspruchsweg gilt nur für Ergebnisse, die noch auf
+eine Bestätigung warten.
+
+Es gibt genau einen Weg zurück: **Zurücknehmen**, direkt in der Meldung, die
+das Eintragen erzeugt hat. Zehn Minuten lang, und nur solange für beide
+Spieler kein neueres Match gewertet wurde — die Wertung wird zurückgeschrieben,
+und das stimmt nur, wenn seitdem nichts passiert ist. Also lieber einmal mehr
+hinsehen, bevor du auf *Eintragen und werten* drückst.
 
 ### „Warum steht bei Spiele 0?"
 
@@ -181,8 +228,13 @@ Turnier, das komplett von Handys eingetragen wurde, weil ein Spielplan die
 Leute dazu angehalten hat. Das ist immer noch kein freiwilliges Eintragen.
 
 ```sh
-task office:dod SINCE=2026-08-26   # der Tag nach dem Turnier
+task office:dod SINCE=2026-08-31   # der erste Tag, der zählen soll
 ```
+
+`SINCE` ist auch die Antwort auf Daten, die schon dastehen und nicht dazu
+gehören — ein Probelauf, ein Test zu zweit, ein Abend von früher. Der andere
+Weg ist ein sauberer Start: `task office:backup`, dann `task down` und wieder
+hoch. Aber nur, wenn die Sicherung wirklich geschrieben wurde.
 
 Dass niemand erinnert wurde, steht weiterhin in keiner Spalte. Das weißt nur
 du.
@@ -211,3 +263,22 @@ muss bestätigt werden.
 **Es läuft über HTTP, nicht HTTPS.** Im lokalen Netz für einen Abend in
 Ordnung, und die Cookies sind entsprechend ohne `Secure` gesetzt. Ins Internet
 gehört diese Konfiguration nicht.
+
+**„Mein Handy kennt mich nicht mehr."** Das hat den Messlauf vom 26.08.
+gekippt: Wer sein Cookie verlor, wurde beim Beitritt unter demselben Namen
+abgewiesen und kam nie wieder an seinen Spieler. Jetzt gibt es drei Wege
+zurück, in dieser Reihenfolge auszuprobieren:
+
+1. **Anmelden** auf der Startseite — „Schon dabei, aber dieses Gerät kennt dich
+   nicht?". Namen wählen, PIN oder Wiederherstellungscode eingeben.
+2. **Ein anderer Browser** auf demselben Gerät hat die Sitzung oft noch, denn
+   das Cookie hängt am Browser.
+3. **Der Kiosk** stellt einen neuen Code aus, wenn die Person danebensteht.
+   Der alte gilt dann nicht mehr.
+
+Wer nach vier Fehlversuchen eine Wartezeit bekommt: das ist die Bremse gegen
+Durchprobieren, sie läuft von selbst ab und sperrt niemanden dauerhaft aus.
+
+**Das Token hat jemand mitgelesen.** Unter `/admin` stehen die freigeschalteten
+Geräte; einzeln zurücknehmen oder alle. Kein Neustart nötig, und das Token
+selbst muss nicht geändert werden.
