@@ -451,3 +451,62 @@ func TestTheStartPageShowsWhatIsWaiting(t *testing.T) {
 		t.Errorf("the start page offers no way to disagree: %s", body)
 	}
 }
+
+// TestRefreshBringsSomebodyElsesResultOntoThePage is what the button is for.
+//
+// The three things that change because *somebody else* acted — the ranking,
+// the results waiting on you, and the badge — never moved without a reload.
+// The badge polled and the list under it did not, so the bar could say one
+// result was waiting while the page below showed nothing.
+func TestRefreshBringsSomebodyElsesResultOntoThePage(t *testing.T) {
+	h, store, anna, bodo := twoBrowsers(t)
+
+	if body := fragment(t, h, "/fragments/refresh", bodo).Body.String(); strings.Contains(body, "Zu bestätigen") {
+		t.Fatalf("something is waiting on Bodo before anybody played: %s", body)
+	}
+
+	reportedByAnna(t, h, store, anna)
+
+	rec := fragment(t, h, "/fragments/refresh", bodo)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200: %s", rec.Code, rec.Body.String())
+	}
+	body := rec.Body.String()
+
+	// All three arrive out of band, so one press catches the page up rather
+	// than three presses catching up one region each.
+	for _, want := range []string{`id="standings"`, `id="pending"`, `id="whoami"`} {
+		if !strings.Contains(body, want) {
+			t.Errorf("the refresh does not carry %s: %s", want, body)
+		}
+	}
+	if strings.Count(body, "hx-swap-oob") != 3 {
+		t.Errorf("%d out-of-band swaps, want 3: %s", strings.Count(body, "hx-swap-oob"), body)
+	}
+
+	// And the content, not just the shape: Anna's report is now on Bodo's
+	// page without him having reloaded it.
+	if !strings.Contains(body, "Zu bestätigen") {
+		t.Errorf("the result Anna reported did not reach Bodo: %s", body)
+	}
+	if !strings.Contains(body, "Anna") {
+		t.Errorf("the waiting result does not name who reported it: %s", body)
+	}
+}
+
+// TestRefreshSignedOutOnlyBringsTheRanking: there is nothing waiting on a
+// reader nobody is recognised as, and asking for it would need a player id
+// that does not exist.
+func TestRefreshSignedOutOnlyBringsTheRanking(t *testing.T) {
+	h, store, anna, _ := twoBrowsers(t)
+	reportedByAnna(t, h, store, anna)
+
+	body := fragment(t, h, "/fragments/refresh", nil).Body.String()
+
+	if !strings.Contains(body, `id="standings"`) {
+		t.Errorf("a signed-out refresh does not carry the ranking: %s", body)
+	}
+	if strings.Contains(body, `id="pending"`) {
+		t.Errorf("a signed-out refresh carries a pending list: %s", body)
+	}
+}

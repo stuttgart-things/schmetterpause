@@ -289,6 +289,26 @@ h2 {
 	border-radius: var(--radius);
 }
 
+/* Heading and the refresh button on one line. The button sits at the end of
+   the row rather than under the heading, so the card does not grow taller for
+   a control most readers never press. */
+.standings-head {
+	display: flex;
+	align-items: baseline;
+	justify-content: space-between;
+	gap: 0.75rem;
+}
+
+.standings-head h2 { margin: 0; }
+
+/* Quiet on purpose: pressing it is never the point of the visit, and a button
+   the size of "Eintragen" would say otherwise. */
+.refresh {
+	flex: none;
+	padding: 0.3rem 0.7rem;
+	font-size: 0.8rem;
+}
+
 /* --- Statuskästchen ---------------------------------------------------- */
 
 .status {
