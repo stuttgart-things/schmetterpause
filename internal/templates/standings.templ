@@ -9,7 +9,7 @@ import "strconv"
 // up while ratings move.
 templ Standings(v StandingsView) {
 	<section id="standings" class="standings">
-		<h2>Rangliste</h2>
+		@standingsHead()
 		@standingsBody(v)
 	</section>
 }
@@ -18,9 +18,34 @@ templ Standings(v StandingsView) {
 // can refresh the ranking in the same response that settles the match.
 templ StandingsOOB(v StandingsView) {
 	<section id="standings" class="standings" hx-swap-oob="true">
-		<h2>Rangliste</h2>
+		@standingsHead()
 		@standingsBody(v)
 	</section>
+}
+
+// standingsHead is the heading and the way to bring the page up to date.
+//
+// The ranking only ever changed when the reader themselves did something —
+// somebody else's confirmed match sat there unseen until a reload. The button
+// answers that, and it fetches the pending list and the badge along with it,
+// because those go stale for the same reason and pressing three things to
+// catch up would be a worse answer than pressing none.
+//
+// hx-swap="none": everything in the response is swapped out of band, so there
+// is nothing to put where the button is. hx-disabled-elt stops an impatient
+// second press from queueing a second round trip.
+templ standingsHead() {
+	<div class="standings-head">
+		<h2>Rangliste</h2>
+		<button
+			class="secondary refresh"
+			hx-get="/fragments/refresh"
+			hx-swap="none"
+			hx-disabled-elt="this"
+		>
+			Aktualisieren
+		</button>
+	</div>
 }
 
 templ standingsBody(v StandingsView) {

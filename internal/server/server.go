@@ -60,6 +60,7 @@ func (s *Server) routes() http.Handler {
 	page.HandleFunc("GET /fragments/status", s.handleStatusFragment)
 	page.HandleFunc("GET /fragments/whoami", s.handleWhoami)
 	page.HandleFunc("GET /fragments/standings", s.handleStandingsFragment)
+	page.HandleFunc("GET /fragments/refresh", s.handleRefresh)
 	page.HandleFunc("GET /players/{id}", s.handleProfile)
 	page.HandleFunc("POST /players", s.handleJoin)
 	page.HandleFunc("GET /fragments/match", s.handleMatchForm)

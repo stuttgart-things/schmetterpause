@@ -42,6 +42,45 @@ func (s *Server) handleStandingsFragment(w http.ResponseWriter, r *http.Request)
 	s.render(w, r, templates.Standings(view))
 }
 
+// handleRefresh brings the start page up to date in one request.
+//
+// Everything it returns is swapped out of band, so the caller needs no target:
+// the ranking, the results waiting on the reader, and the badge in the top
+// bar. Those are exactly the three things that change because somebody *else*
+// did something, and until this existed none of them moved without a reload —
+// the badge polls, but the list under it did not, so the bar could say one
+// result was waiting while the page below showed nothing.
+//
+// Signed out, only the ranking is refreshed. There is nothing waiting on a
+// reader nobody is recognised as, and asking for it would need a player id
+// that does not exist.
+func (s *Server) handleRefresh(w http.ResponseWriter, r *http.Request) {
+	table, err := s.standingsView(r.Context())
+	if err != nil {
+		s.log.ErrorContext(r.Context(), "loading the standings failed", "error", err)
+		// User-facing text stays German; see CLAUDE.md.
+		http.Error(w, "Rangliste nicht verfügbar", http.StatusInternalServerError)
+		return
+	}
+	s.render(w, r, templates.StandingsOOB(table))
+
+	self, ok := auth.PlayerID(r.Context())
+	if !ok {
+		return
+	}
+
+	pending, err := s.pendingListView(r.Context(), self)
+	if err != nil {
+		// The ranking is already on its way, so this is logged rather than
+		// turned into an error: a refresh that delivered most of the page
+		// beats one that reports a failure over a page that did update.
+		s.log.ErrorContext(r.Context(), "loading the pending matches failed", "error", err)
+		return
+	}
+	s.render(w, r, templates.PendingListOOB(pending))
+	s.render(w, r, templates.WhoamiOOB(s.headerView(r.Context())))
+}
+
 // handleProfile renders one player's page.
 func (s *Server) handleProfile(w http.ResponseWriter, r *http.Request) {
 	id, err := uuid.Parse(r.PathValue("id"))

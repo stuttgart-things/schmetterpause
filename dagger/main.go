@@ -880,6 +880,49 @@ curl -fsS -b "$second" http://app:8080/fragments/whoami | grep -q "whoami-badge"
 	exit 1
 }
 
+echo "== refresh: one press catches up what somebody else did =="
+# The ranking, the results waiting on the reader and the badge all change
+# because somebody *else* acted, and none of them moved without a reload. The
+# badge polled and the list under it did not, so the bar could say one result
+# was waiting while the page below showed nothing.
+refresh=$(mktemp)
+curl -fsS -b "$second" http://app:8080/fragments/refresh > "$refresh"
+
+for region in "id=\"standings\"" "id=\"pending\"" "id=\"whoami\""; do
+	grep -q "$region" "$refresh" || {
+		echo "the refresh does not carry $region"
+		cat "$refresh"
+		exit 1
+	}
+done
+
+# Three out-of-band swaps and nothing else: one press, the whole page current.
+swaps=$(grep -o "hx-swap-oob" "$refresh" | wc -l)
+[ "$swaps" -eq 3 ] || {
+	echo "$swaps out-of-band swaps in the refresh, expected 3"
+	cat "$refresh"
+	exit 1
+}
+
+# The content, not only the shape: the result Anna reported is on Bodo's page
+# without him having reloaded it.
+grep -q "Zu best" "$refresh" || {
+	echo "the refresh does not bring the waiting result"
+	cat "$refresh"
+	exit 1
+}
+
+# Nothing waits on a reader nobody is recognised as.
+curl -fsS http://app:8080/fragments/refresh > "$refresh"
+grep -q "id=\"standings\"" "$refresh" || {
+	echo "a signed-out refresh does not even carry the ranking"
+	exit 1
+}
+if grep -q "id=\"pending\"" "$refresh"; then
+	echo "a signed-out refresh carries a pending list"
+	exit 1
+fi
+
 echo "== confirmation: only the opponent settles a result =="
 mid=$(curl -fsS -b "$second" http://app:8080/fragments/pending \
 	| tr "<" "\n" | grep "li id=\"pending-" | head -1 \
