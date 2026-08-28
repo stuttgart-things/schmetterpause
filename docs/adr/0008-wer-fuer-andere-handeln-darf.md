@@ -1,6 +1,6 @@
 # ADR-0008: Wer für andere handeln darf
 
-- **Status:** proposed — Vorschlag, nicht entschieden
+- **Status:** accepted
 - **Datum:** 2026-08-28
 - **Betrifft:** Authentifizierung, Datenmodell, Betrieb
 - **Bezug:** beantwortet den offenen Punkt 5 aus `0006-wiederherstellungscode`,
