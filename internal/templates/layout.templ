@@ -47,6 +47,9 @@ templ Layout(title string, header HeaderView) {
 			<footer class="footer">
 				<a href="/matches">Alle Matches</a>
 				<a href="/qr">QR-Aushang</a>
+				if header.IsAdmin {
+					<a href="/admin">Rechte</a>
+				}
 			</footer>
 		</body>
 	</html>

@@ -46,6 +46,16 @@ type PlayerRepository interface {
 	Records(ctx context.Context) ([]domain.PlayerRecord, error)
 	Count(ctx context.Context) (int, error)
 	UpdateTTR(ctx context.Context, id uuid.UUID, ttr int) error
+	// ByDisplayName resolves a name to a player, matched the way the unique
+	// index is: trimmed and case-folded. Its consumer is the bootstrap in
+	// docs/adr/0008, which names an admin by the name people call them.
+	ByDisplayName(ctx context.Context, name string) (domain.Player, error)
+	// Admins returns everybody who may act for other people, by name.
+	Admins(ctx context.Context) ([]domain.Player, error)
+	// SetAdmin grants or withdraws the flag. A flag rather than roles, and a
+	// property of the person rather than of a browser — which is what makes
+	// it revocable and lets a log line name somebody (docs/adr/0008).
+	SetAdmin(ctx context.Context, id uuid.UUID, isAdmin bool) error
 }
 
 // IdentityRepository links provider proofs to players. Outside this interface

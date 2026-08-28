@@ -77,6 +77,19 @@ type Config struct {
 	// the application already lets anybody do and which docs/adr/0004
 	// answers socially rather than technically.
 	KioskToken string
+	// BootstrapAdmin names the player who gets the admin flag at startup, by
+	// display name. Empty by default, and then nothing is granted.
+	//
+	// docs/adr/0008 makes this the way the first admin comes into being:
+	// issue #73 names "a way to grant it that is not psql" as the price of a
+	// flag on the player, and an environment variable is that way and the
+	// only form that fits invariant 2 — no config file in the image, no
+	// reaching into the database by hand.
+	//
+	// It is read on every start rather than only the first. That is
+	// deliberate: somebody who withdraws the flag from the last admin gets
+	// back in by restarting with the variable set, not by opening psql.
+	BootstrapAdmin string
 	// PublicBaseURL is the address a phone has to reach, scheme and host and
 	// nothing else. Empty by default: the QR sheet then reads the address off
 	// the request, which is right wherever the application is reached
@@ -159,6 +172,8 @@ func Load() (Config, error) {
 	cfg.SessionKey = []byte(env("SESSION_KEY", ""))
 
 	cfg.KioskToken = env("KIOSK_TOKEN", "")
+
+	cfg.BootstrapAdmin = env("BOOTSTRAP_ADMIN", "")
 
 	if raw := env("PUBLIC_BASE_URL", ""); raw != "" {
 		base, err := parseBaseURL(raw)

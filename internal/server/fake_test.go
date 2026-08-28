@@ -2,6 +2,7 @@ package server_test
 
 import (
 	"context"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -103,6 +104,48 @@ func (p *memPlayers) Records(ctx context.Context) ([]domain.PlayerRecord, error)
 		records = append(records, record)
 	}
 	return records, nil
+}
+
+func (p *memPlayers) ByDisplayName(_ context.Context, name string) (domain.Player, error) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
+	// Mirrors players_display_name_key: trimmed and folded.
+	for _, row := range p.rows {
+		if strings.EqualFold(strings.TrimSpace(row.DisplayName), strings.TrimSpace(name)) {
+			return row, nil
+		}
+	}
+	return domain.Player{}, domain.ErrNotFound
+}
+
+func (p *memPlayers) Admins(_ context.Context) ([]domain.Player, error) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
+	var admins []domain.Player
+	for _, row := range p.rows {
+		if row.IsAdmin {
+			admins = append(admins, row)
+		}
+	}
+	slices.SortFunc(admins, func(a, b domain.Player) int {
+		return strings.Compare(strings.ToLower(a.DisplayName), strings.ToLower(b.DisplayName))
+	})
+	return admins, nil
+}
+
+func (p *memPlayers) SetAdmin(_ context.Context, id uuid.UUID, isAdmin bool) error {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
+	for i := range p.rows {
+		if p.rows[i].ID == id {
+			p.rows[i].IsAdmin = isAdmin
+			return nil
+		}
+	}
+	return domain.ErrNotFound
 }
 
 func (p *memPlayers) Create(_ context.Context, displayName string, ttr int) (domain.Player, error) {

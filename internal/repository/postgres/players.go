@@ -17,11 +17,11 @@ func (r playerRepo) Create(ctx context.Context, displayName string, initialTTR i
 	const q = `
 		insert into players (display_name, ttr)
 		values ($1, $2)
-		returning id, display_name, ttr, created_at`
+		returning id, display_name, ttr, created_at, is_admin`
 
 	var p domain.Player
 	err := r.q.QueryRow(ctx, q, displayName, initialTTR).
-		Scan(&p.ID, &p.DisplayName, &p.TTR, &p.CreatedAt)
+		Scan(&p.ID, &p.DisplayName, &p.TTR, &p.CreatedAt, &p.IsAdmin)
 	if err != nil {
 		if isUniqueViolation(err) {
 			return domain.Player{}, fmt.Errorf("create player %q: %w", displayName, domain.ErrConflict)
@@ -32,10 +32,10 @@ func (r playerRepo) Create(ctx context.Context, displayName string, initialTTR i
 }
 
 func (r playerRepo) ByID(ctx context.Context, id uuid.UUID) (domain.Player, error) {
-	const q = `select id, display_name, ttr, created_at from players where id = $1`
+	const q = `select id, display_name, ttr, created_at, is_admin from players where id = $1`
 
 	var p domain.Player
-	err := r.q.QueryRow(ctx, q, id).Scan(&p.ID, &p.DisplayName, &p.TTR, &p.CreatedAt)
+	err := r.q.QueryRow(ctx, q, id).Scan(&p.ID, &p.DisplayName, &p.TTR, &p.CreatedAt, &p.IsAdmin)
 	switch {
 	case errors.Is(err, pgx.ErrNoRows):
 		return domain.Player{}, fmt.Errorf("player %s: %w", id, domain.ErrNotFound)
@@ -47,7 +47,7 @@ func (r playerRepo) ByID(ctx context.Context, id uuid.UUID) (domain.Player, erro
 
 func (r playerRepo) List(ctx context.Context) ([]domain.Player, error) {
 	const q = `
-		select id, display_name, ttr, created_at
+		select id, display_name, ttr, created_at, is_admin
 		from players
 		order by ttr desc, lower(display_name)`
 
@@ -60,7 +60,7 @@ func (r playerRepo) List(ctx context.Context) ([]domain.Player, error) {
 	var players []domain.Player
 	for rows.Next() {
 		var p domain.Player
-		if err := rows.Scan(&p.ID, &p.DisplayName, &p.TTR, &p.CreatedAt); err != nil {
+		if err := rows.Scan(&p.ID, &p.DisplayName, &p.TTR, &p.CreatedAt, &p.IsAdmin); err != nil {
 			return nil, fmt.Errorf("read player: %w", err)
 		}
 		players = append(players, p)
@@ -123,6 +123,72 @@ func (r playerRepo) Records(ctx context.Context) ([]domain.PlayerRecord, error) 
 		return nil, fmt.Errorf("read player records: %w", err)
 	}
 	return records, nil
+}
+
+// ByDisplayName resolves the name SP_BOOTSTRAP_ADMIN carries.
+//
+// Matched the way players_display_name_key is unique — trimmed and folded —
+// so the variable does not have to reproduce whatever casing somebody typed
+// into the join form.
+func (r playerRepo) ByDisplayName(ctx context.Context, name string) (domain.Player, error) {
+	const q = `
+		select id, display_name, ttr, created_at, is_admin
+		from players
+		where lower(btrim(display_name)) = lower(btrim($1))`
+
+	var p domain.Player
+	err := r.q.QueryRow(ctx, q, name).Scan(&p.ID, &p.DisplayName, &p.TTR, &p.CreatedAt, &p.IsAdmin)
+	switch {
+	case errors.Is(err, pgx.ErrNoRows):
+		return domain.Player{}, fmt.Errorf("player %q: %w", name, domain.ErrNotFound)
+	case err != nil:
+		return domain.Player{}, fmt.Errorf("load player %q: %w", name, err)
+	}
+	return p, nil
+}
+
+// Admins returns everybody holding the flag, by name.
+//
+// By name rather than by rating: this list answers "who may act for other
+// people", and the ranking order would suggest the two have something to do
+// with each other.
+func (r playerRepo) Admins(ctx context.Context) ([]domain.Player, error) {
+	const q = `
+		select id, display_name, ttr, created_at, is_admin
+		from players
+		where is_admin
+		order by lower(btrim(display_name))`
+
+	rows, err := r.q.Query(ctx, q)
+	if err != nil {
+		return nil, fmt.Errorf("load admins: %w", err)
+	}
+	defer rows.Close()
+
+	var admins []domain.Player
+	for rows.Next() {
+		var p domain.Player
+		if err := rows.Scan(&p.ID, &p.DisplayName, &p.TTR, &p.CreatedAt, &p.IsAdmin); err != nil {
+			return nil, fmt.Errorf("read admin: %w", err)
+		}
+		admins = append(admins, p)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("read admins: %w", err)
+	}
+	return admins, nil
+}
+
+// SetAdmin grants or withdraws the flag.
+func (r playerRepo) SetAdmin(ctx context.Context, id uuid.UUID, isAdmin bool) error {
+	tag, err := r.q.Exec(ctx, `update players set is_admin = $2 where id = $1`, id, isAdmin)
+	if err != nil {
+		return fmt.Errorf("set admin flag of player %s: %w", id, err)
+	}
+	if tag.RowsAffected() == 0 {
+		return fmt.Errorf("player %s: %w", id, domain.ErrNotFound)
+	}
+	return nil
 }
 
 func (r playerRepo) Count(ctx context.Context) (int, error) {

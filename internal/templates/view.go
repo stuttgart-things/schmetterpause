@@ -77,6 +77,10 @@ type HeaderView struct {
 	ProfileURL string
 	// Pending is how many results wait on this player.
 	Pending int
+	// IsAdmin shows the link to /admin. Only to somebody who holds the flag:
+	// a link everybody sees to a page only some may open is a link that
+	// mostly produces a refusal.
+	IsAdmin bool
 }
 
 // SignedIn reports whether anybody is recognised.
@@ -543,6 +547,21 @@ func PaddleClass(playerID string) string {
 	h := fnv.New32a()
 	_, _ = h.Write([]byte(playerID))
 	return "paddle-" + strconv.Itoa(int(h.Sum32()%paddleColours))
+}
+
+// AdminView is the page that answers who may act for other people.
+type AdminView struct {
+	Header HeaderView
+	People []AdminPerson
+}
+
+// AdminPerson is one holder of the flag.
+type AdminPerson struct {
+	ID          string
+	DisplayName string
+	// IsSelf marks the reader, so somebody checking whether they have it
+	// does not have to look for their own name.
+	IsSelf bool
 }
 
 // MatchListView is every match the office has played, newest first.
