@@ -63,6 +63,12 @@ func (s *Server) routes() http.Handler {
 	page.HandleFunc("GET /fragments/refresh", s.handleRefresh)
 	page.HandleFunc("GET /players/{id}", s.handleProfile)
 	page.HandleFunc("POST /players", s.handleJoin)
+	// The way back for a browser that lost its cookie (issue #70). Both
+	// fragments serve the same region, so the two ways in replace each other
+	// on the start page rather than sitting side by side.
+	page.HandleFunc("GET /fragments/signin", s.handleSignInForm)
+	page.HandleFunc("GET /fragments/join", s.handleJoinForm)
+	page.HandleFunc("POST /signin", s.handleSignIn)
 	page.HandleFunc("GET /fragments/match", s.handleMatchForm)
 	// Not behind a player check: the kiosk has no player session and needs
 	// the same rows.

@@ -157,41 +157,15 @@ func (s *Server) handleJoin(w http.ResponseWriter, r *http.Request) {
 
 	s.auth.SetCookie(w, subject)
 
-	signedIn := auth.WithPlayerID(r.Context(), created.ID)
-
-	table, err := s.standingsView(signedIn)
-	if err != nil {
-		// The player exists and is signed in; only the ranking is missing.
-		// Saying so beats discarding a successful join.
-		s.log.ErrorContext(r.Context(), "loading the standings failed", "error", err)
-	}
-
-	// The corner and the greeting are refreshed out of band in the same
-	// response, so the name appears where it now lives rather than only
-	// after a reload.
-	joined := templates.SessionView{
+	// The rest of the page is refreshed out of band by the same helper that
+	// serves a sign-in, so the two cannot drift apart. What differs is only
+	// the region itself: this one carries the code, and it carries it once.
+	s.renderSession(w, r, created, templates.Joined(templates.SessionView{
 		DisplayName: created.DisplayName,
 		PlayerID:    created.ID.String(),
-		// The one response that ever carries the code in the clear.
+		// The one response that ever holds the code in the clear.
 		RecoveryCode: code,
-	}
-	s.render(w, r, templates.Joined(joined))
-	s.render(w, r, templates.WhoamiOOB(s.headerView(signedIn)))
-	s.render(w, r, templates.PageHeadOOB(joined))
-	s.render(w, r, templates.StandingsOOB(table))
-
-	// And so does result entry, which is the whole reason somebody just
-	// typed their name. Without this the form arrives only on the next
-	// reload, with nothing on the page saying so — see issue #75.
-	opponents, err := s.opponentOptions(signedIn, created.ID, uuid.Nil)
-	if err != nil {
-		// Same trade as the standings above: the player exists and is
-		// signed in. A reload brings the form; discarding the join would
-		// bring nothing.
-		s.log.ErrorContext(r.Context(), "loading the opponents failed", "error", err)
-		return
-	}
-	s.render(w, r, templates.MatchFormOOB(templates.NewMatchFormView(opponents)))
+	}))
 }
 
 // rejectJoin re-renders the form with the reason, keeping what was typed.

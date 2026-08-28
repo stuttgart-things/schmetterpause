@@ -23,6 +23,22 @@ templ Session(v SessionView) {
 					<p class="fail" role="alert">{ v.Error }</p>
 				}
 			</form>
+			// The second door, and the whole answer to issue #70: a browser
+			// with no cookie used to have this form and nothing else, and
+			// typing a name that already exists was refused. Quiet, because
+			// joining is what almost everybody arriving here needs.
+			<p class="session-alt">
+				Schon dabei, aber dieses Gerät kennt dich nicht?
+				<button
+					type="button"
+					class="linklike"
+					hx-get="/fragments/signin"
+					hx-target="#session"
+					hx-swap="outerHTML"
+				>
+					Anmelden
+				</button>
+			</p>
 		}
 	</section>
 }

@@ -141,8 +141,36 @@ type SessionView struct {
 	Error string
 }
 
+// SignInView drives the sign-in form: who is signing in, and why the last
+// attempt was refused.
+type SignInView struct {
+	// Players is everybody, by name. Publishing the list costs nothing —
+	// the ranking, /matches and the sheet on the wall all name everybody —
+	// and with a salt per row there is no way to find a credential from the
+	// secret alone, so the name has to come first (docs/adr/0007).
+	//
+	// OpponentOption because a picker is a picker; the kiosk reuses it for
+	// its two selects for the same reason.
+	Players []OpponentOption
+	// Error explains why the last attempt was refused, in one wording for
+	// every reason. Which half was wrong is deliberately not said.
+	Error string
+}
+
 // SignedIn reports whether a player is recognised.
 func (v SessionView) SignedIn() bool { return v.DisplayName != "" }
+
+// anySelected reports whether the picker already stands on somebody, which
+// is the case after a refused attempt. Without it the placeholder would take
+// the selection back and the name would have to be found twice.
+func (v SignInView) anySelected() bool {
+	for _, p := range v.Players {
+		if p.Selected {
+			return true
+		}
+	}
+	return false
+}
 
 // MaxSetRows is how many set rows a submitted form can carry. Best-of-seven
 // is the longest mode, so seven rows can hold any legal result. What a form
