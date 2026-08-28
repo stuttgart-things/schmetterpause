@@ -8,12 +8,14 @@ import (
 	"encoding/base64"
 	"errors"
 	"net/http"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/google/uuid"
 
+	"github.com/stuttgart-things/schmetterpause/internal/auth"
 	"github.com/stuttgart-things/schmetterpause/internal/domain"
 	"github.com/stuttgart-things/schmetterpause/internal/match"
 	"github.com/stuttgart-things/schmetterpause/internal/scoring"
@@ -111,6 +113,13 @@ func (s *Server) handleKioskRecord(w http.ResponseWriter, r *http.Request) {
 
 	if msg != "" {
 		s.rejectKiosk(w, r, msg, "")
+		return
+	}
+
+	if s.kioskSelfEntry(r, homeID, awayID) {
+		s.rejectKiosk(w, r,
+			"Dein eigenes Spiel nicht hier — trag es auf der Startseite ein, "+
+				"dann bestätigt es dein Gegner.", "")
 		return
 	}
 
@@ -250,6 +259,28 @@ func (s *Server) kioskTokenMatches(token string) bool {
 	return subtle.ConstantTimeCompare([]byte(token), []byte(s.cfg.KioskToken)) == 1
 }
 
+// kioskSelfEntry reports whether the player signed in on this browser is one
+// of the players named.
+//
+// A kiosk result counts at once, so the opponent never gets to agree with it.
+// That is right for somebody at the table writing down other people's games,
+// and wrong for entering your own — it removes the one check the application
+// has. See issue #90.
+//
+// This is a speed bump and not a boundary, and the difference matters. The
+// kiosk deliberately holds no identity of its own, so all this can see is a
+// player signed in on this very browser; the same person in a private window
+// is invisible to it. What it stops is the convenient path, which is the one
+// that actually gets taken. The boundary is issue #73, where the kiosk gets
+// an operator instead of a shared token.
+func (s *Server) kioskSelfEntry(r *http.Request, players ...uuid.UUID) bool {
+	self, ok := auth.PlayerID(r.Context())
+	if !ok {
+		return false
+	}
+	return slices.Contains(players, self)
+}
+
 // handleKioskUndo takes back the result the kiosk just entered.
 //
 // A kiosk result counts at once, so there is no pending state to dispute and
@@ -264,6 +295,16 @@ func (s *Server) handleKioskUndo(w http.ResponseWriter, r *http.Request) {
 	id, err := uuid.Parse(strings.TrimSpace(r.PathValue("id")))
 	if err != nil {
 		s.rejectKiosk(w, r, "Dieses Ergebnis gibt es nicht.", "")
+		return
+	}
+
+	// The same rule as recording: taking back a result you played in is the
+	// same act from the other side. A match that cannot be read is left to
+	// scoring.Undo below, which says why in the words the page already has.
+	if m, err := s.store.Matches().ByID(r.Context(), id); err == nil &&
+		s.kioskSelfEntry(r, m.HomeID, m.AwayID) {
+		s.rejectKiosk(w, r, "Ein Ergebnis, in dem du selbst mitspielst, "+
+			"kannst du hier nicht zurücknehmen.", "")
 		return
 	}
 

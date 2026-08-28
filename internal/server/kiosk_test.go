@@ -143,6 +143,126 @@ func TestTheKioskRefusesATakenName(t *testing.T) {
 	}
 }
 
+// kioskPostAs is kioskPost with a player session alongside the kiosk cookie —
+// one browser that is both, which is the situation issue #90 is about.
+func kioskPostAs(t *testing.T, h http.Handler, path string,
+	kiosk, session *http.Cookie, form url.Values) *httptest.ResponseRecorder {
+	t.Helper()
+
+	r := httptest.NewRequest(http.MethodPost, path, strings.NewReader(form.Encode()))
+	r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	r.AddCookie(kiosk)
+	r.AddCookie(session)
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, r)
+	return rec
+}
+
+// TestTheKioskRefusesYourOwnMatch is issue #90: a kiosk result settles at
+// once, so entering your own game there removes the one check the application
+// has — the opponent agreeing with it.
+//
+// The guard can only see a player signed in on this very browser, which is
+// exactly what this sets up. Somebody using a private window is invisible to
+// it; that limit is recorded in the handler rather than pretended away here.
+func TestTheKioskRefusesYourOwnMatch(t *testing.T) {
+	h, store := kioskHandler(t)
+	kiosk := unlock(t, h)
+
+	// Anna joins normally, so this browser holds a session of her own.
+	session := sessionCookie(t, join(t, h, "Anna"))
+	kioskPost(t, h, "/kiosk/players", kiosk, url.Values{"display_name": {"Bodo"}})
+	ids := kioskPlayers(t, store, "Anna", "Bodo")
+
+	rec := kioskPostAs(t, h, "/kiosk/matches", kiosk, session,
+		kioskResult(ids[0], ids[1], 3, 11, "11:9", "12:10"))
+
+	if rec.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("status = %d, want 422: %s", rec.Code, rec.Body.String())
+	}
+	if !strings.Contains(rec.Body.String(), "Startseite") {
+		t.Errorf("the refusal does not point at the way that does ask the opponent: %s",
+			rec.Body.String())
+	}
+
+	// Nothing was written. A refusal that still counted would be worse than
+	// none, because it would look handled.
+	matches, err := store.Matches().Recent(t.Context(), 10)
+	if err != nil {
+		t.Fatalf("Recent(): %v", err)
+	}
+	if len(matches) != 0 {
+		t.Errorf("%d matches were recorded, want 0", len(matches))
+	}
+}
+
+// TestTheKioskRefusesTakingBackYourOwnMatch is the same rule from the other
+// side: taking back a result you played in is entering one, in reverse.
+func TestTheKioskRefusesTakingBackYourOwnMatch(t *testing.T) {
+	h, store := kioskHandler(t)
+	kiosk := unlock(t, h)
+
+	session := sessionCookie(t, join(t, h, "Anna"))
+	kioskPost(t, h, "/kiosk/players", kiosk, url.Values{"display_name": {"Bodo"}})
+	ids := kioskPlayers(t, store, "Anna", "Bodo")
+
+	// Entered without the session cookie — the ordinary tournament case,
+	// which has to keep working, and does: this is where the id comes from.
+	id := undoLink(t, kioskEnter(t, h, kiosk, ids[1], ids[0]))
+
+	rec := kioskPostAs(t, h, "/kiosk/matches/"+id+"/undo", kiosk, session, url.Values{})
+
+	if rec.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("status = %d, want 422: %s", rec.Code, rec.Body.String())
+	}
+	if !strings.Contains(rec.Body.String(), "selbst mitspielst") {
+		t.Errorf("the refusal does not say why: %s", rec.Body.String())
+	}
+
+	matches, err := store.Matches().Recent(t.Context(), 10)
+	if err != nil {
+		t.Fatalf("Recent(): %v", err)
+	}
+	if len(matches) != 1 {
+		t.Fatalf("%d matches remain, want the entered one to still be there", len(matches))
+	}
+	if matches[0].Status != domain.MatchConfirmed {
+		t.Errorf("the match is %q, want it still confirmed", matches[0].Status)
+	}
+}
+
+// TestTheKioskStillWorksForOtherPeoplesMatches guards the guard: the whole
+// point of the kiosk is entering games you are not playing in, and a check
+// that also stopped that would be a regression rather than a fix.
+func TestTheKioskStillWorksForOtherPeoplesMatches(t *testing.T) {
+	h, store := kioskHandler(t)
+	kiosk := unlock(t, h)
+
+	// Signed in as Anna, entering a match between two other people.
+	session := sessionCookie(t, join(t, h, "Anna"))
+	kioskPost(t, h, "/kiosk/players", kiosk, url.Values{"display_name": {"Bodo"}})
+	kioskPost(t, h, "/kiosk/players", kiosk, url.Values{"display_name": {"Cara"}})
+	ids := kioskPlayers(t, store, "Bodo", "Cara")
+
+	rec := kioskPostAs(t, h, "/kiosk/matches", kiosk, session,
+		kioskResult(ids[0], ids[1], 3, 11, "11:9", "12:10"))
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200: %s", rec.Code, rec.Body.String())
+	}
+
+	matches, err := store.Matches().Recent(t.Context(), 10)
+	if err != nil {
+		t.Fatalf("Recent(): %v", err)
+	}
+	if len(matches) != 1 {
+		t.Fatalf("%d matches were recorded, want 1", len(matches))
+	}
+	if matches[0].Status != domain.MatchConfirmed {
+		t.Errorf("the match is %q, want it settled at once", matches[0].Status)
+	}
+}
+
 // kioskPlayers returns the ids of the seeded players, by name.
 func kioskPlayers(t *testing.T, store *memStore, names ...string) []string {
 	t.Helper()

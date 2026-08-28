@@ -1054,6 +1054,45 @@ ttr_of() {
 		| head -1 | sed "s|.*num\">||"
 }
 
+# A kiosk result counts on submit, so entering your own game there is the one
+# way around the opponent's confirmation. Refused when this browser is signed
+# in as one of the two — see issue #90. Not a boundary: a private window with
+# only the kiosk cookie still gets through, and the handler says so.
+anna=$(tr "<" "\n" < "$kiosk_page" | grep "option value=\"" | grep "Verify Anna" \
+	| sed "s/.*value=\"\([^\"]*\)\".*/\1/" | head -1)
+[ -n "$anna" ] || {
+	echo "the kiosk does not list the player who joined normally"
+	exit 1
+}
+
+both=$(mktemp)
+cat "$kiosk" "$cookies" > "$both"
+
+ttr_page_before=$(mktemp)
+curl -fsS -b "$kiosk" http://app:8080/kiosk > "$ttr_page_before"
+anna_before=$(ttr_of "$ttr_page_before" "Verify Anna")
+
+refused=$(mktemp)
+code=$(curl -sS -o "$refused" -w "%{http_code}" -b "$both" -X POST \
+	http://app:8080/kiosk/matches \
+	--data "home_id=$anna&away_id=$dirk&best_of=3&points_to_win=11&set_home_1=11&set_away_1=2")
+[ "$code" = "422" ] || {
+	echo "the kiosk accepted a match from a browser signed in as one of the players ($code)"
+	exit 1
+}
+grep -q "Startseite" "$refused" || {
+	echo "the refusal does not point at the way that does ask the opponent"
+	exit 1
+}
+
+ttr_page_after=$(mktemp)
+curl -fsS -b "$kiosk" http://app:8080/kiosk > "$ttr_page_after"
+anna_after=$(ttr_of "$ttr_page_after" "Verify Anna")
+[ "$anna_before" = "$anna_after" ] || {
+	echo "the refused entry still moved a rating: $anna_before -> $anna_after"
+	exit 1
+}
+
 # Nobody is left to ask, so the result counts on submit.
 recorded=$(mktemp)
 curl -fsS -b "$kiosk" -X POST http://app:8080/kiosk/matches \
