@@ -101,6 +101,7 @@ func (s *Server) routes() http.Handler {
 	if s.cfg.KioskToken != "" {
 		page.HandleFunc("GET /kiosk", s.handleKiosk)
 		page.HandleFunc("POST /kiosk/players", s.handleKioskAddPlayer)
+		page.HandleFunc("POST /kiosk/credentials", s.handleKioskIssueCode)
 		page.HandleFunc("POST /kiosk/matches", s.handleKioskRecord)
 		page.HandleFunc("POST /kiosk/matches/{id}/undo", s.handleKioskUndo)
 	}

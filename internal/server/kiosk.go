@@ -16,6 +16,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/stuttgart-things/schmetterpause/internal/auth"
+	"github.com/stuttgart-things/schmetterpause/internal/credential"
 	"github.com/stuttgart-things/schmetterpause/internal/domain"
 	"github.com/stuttgart-things/schmetterpause/internal/match"
 	"github.com/stuttgart-things/schmetterpause/internal/scoring"
@@ -66,10 +67,11 @@ func (s *Server) handleKiosk(w http.ResponseWriter, r *http.Request) {
 // session. Eight players entered from one laptop must not leave the laptop
 // signed in as the eighth.
 //
-// A player created here holds no identity and cannot sign in from their own
-// phone afterwards. That is the honest cost of entering somebody into a
-// tournament while they are standing at the table; issue #37 is where a way
-// back from it would live.
+// A player created here holds no identity, so their own phone does not know
+// them yet. The way from here to there is a recovery code, which the kiosk
+// can issue on demand — see handleKioskIssueCode. It is not issued
+// automatically, because the code would then be on the laptop's screen at a
+// moment when the person it belongs to may be three tables away.
 func (s *Server) handleKioskAddPlayer(w http.ResponseWriter, r *http.Request) {
 	if !s.kioskUnlocked(r) {
 		http.Error(w, "Zugang nötig", http.StatusForbidden)
@@ -94,6 +96,68 @@ func (s *Server) handleKioskAddPlayer(w http.ResponseWriter, r *http.Request) {
 	}
 
 	s.renderKiosk(w, r, templates.KioskView{Note: name + " ist dabei."})
+}
+
+// handleKioskIssueCode issues a recovery code for somebody standing at the
+// table with nothing left: no cookie, no code, no PIN.
+//
+// The only place in the application where a credential is made for another
+// person, and the condition is the room — somebody is standing there and the
+// people know each other. That is the whole justification, and it is why this
+// stays bound to the kiosk instead of moving into the ordinary interface
+// (docs/adr/0006).
+//
+// It cannot set a PIN. A PIN somebody else knows is not a PIN, so the player
+// sets that themselves once they are back in (docs/adr/0007, open point 3).
+//
+// The new code invalidates whatever they had, which is the same trade as
+// anywhere else: somebody who turns up saying they lost it is far more likely
+// to have lost it than to be somebody else.
+func (s *Server) handleKioskIssueCode(w http.ResponseWriter, r *http.Request) {
+	if !s.kioskUnlocked(r) {
+		http.Error(w, "Zugang nötig", http.StatusForbidden)
+		return
+	}
+
+	playerID, err := uuid.Parse(strings.TrimSpace(r.FormValue("player_id")))
+	if err != nil {
+		s.rejectKiosk(w, r, "Erst den Spieler wählen.", "")
+		return
+	}
+
+	player, err := s.store.Players().ByID(r.Context(), playerID)
+	switch {
+	case errors.Is(err, domain.ErrNotFound):
+		s.rejectKiosk(w, r, "Diesen Spieler gibt es nicht.", "")
+		return
+	case err != nil:
+		s.log.ErrorContext(r.Context(), "loading the player failed", "player_id", playerID, "error", err)
+		s.rejectKiosk(w, r, "Das hat gerade nicht geklappt.", "")
+		return
+	}
+
+	code, hash := credential.NewRecoveryCode()
+	if err := s.store.Credentials().Put(r.Context(), playerID, domain.CredentialRecovery, hash); err != nil {
+		s.log.ErrorContext(r.Context(), "issuing a recovery code failed", "player_id", playerID, "error", err)
+		s.rejectKiosk(w, r, "Das hat gerade nicht geklappt.", "")
+		return
+	}
+
+	// Whoever is being helped is standing right there, and a brake left over
+	// from their own wrong guesses would keep them out of the code they just
+	// watched somebody issue.
+	s.signInByPlayer.Succeeded(playerID.String())
+
+	// Issuing a credential for somebody else is the one kiosk action worth a
+	// line in the log. Recording and undo already have one; issue #77 asks
+	// for this to have it too.
+	s.log.InfoContext(r.Context(), "recovery code issued at the kiosk",
+		"player_id", playerID, "display_name", player.DisplayName)
+
+	s.renderKiosk(w, r, templates.KioskView{
+		IssuedCode: code,
+		IssuedFor:  player.DisplayName,
+	})
 }
 
 // handleKioskRecord stores a result between any two players and settles it at
@@ -184,6 +248,7 @@ func (s *Server) renderKiosk(w http.ResponseWriter, r *http.Request, view templa
 	// to be carried across here. A field forgotten in this line is a field
 	// that silently never reaches the page.
 	filled.Note, filled.Error, filled.UndoID = view.Note, view.Error, view.UndoID
+	filled.IssuedCode, filled.IssuedFor = view.IssuedCode, view.IssuedFor
 	s.render(w, r, templates.Kiosk(filled))
 }
 

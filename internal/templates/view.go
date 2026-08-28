@@ -60,6 +60,12 @@ type KioskView struct {
 	UndoID string
 	// Error explains a refusal. Empty otherwise.
 	Error string
+	// IssuedCode is a recovery code just made for somebody else, in the
+	// clear, and shown once. IssuedFor names whose it is, because the person
+	// reading the screen is not the person it belongs to — which is the whole
+	// difference between this display and the one after joining.
+	IssuedCode string
+	IssuedFor  string
 }
 
 // HeaderView is the state in the top bar: who this is, and how much is
