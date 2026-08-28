@@ -57,10 +57,18 @@ Lebenszyklus und steht im Backup-ADR.
    zieht Images von GHCR — bei privatem Package braucht der Azure-Local-
    Cluster ein `imagePullSecret`, bei öffentlichem nicht. Muss noch geprüft
    werden, wie das GHCR-Package aktuell sichtbar ist.
-4. **Skalierung / Redis-Trigger:** ADR-0002 nennt "mehr als eine Replica +
-   SSE" als Auslöser für Redis. Sobald das Deployment-Ziel feststeht, prüfen,
-   ob Azure Local mit mehr als einer Replica geplant ist — das zieht ADR-0002
-   nach vorne.
+4. ~~**Skalierung / Redis-Trigger**~~ — **entschieden** (Issue #78): Es bleibt
+   bei `replicas: 1` mit `strategy: Recreate`.
+
+   Ausschlaggebend ist nicht die Last, sondern die Migration.
+   `postgres.Migrate` ruft `goose.UpContext` über die Paket-API auf, und die
+   nimmt keinen Session-Lock — den gibt es nur auf goose' Provider-API. Zwei
+   gleichzeitig migrierende Replicas sind damit tatsächlich unsicher, nicht
+   theoretisch. Mehr als eine Replica ist ausdrücklich eigene Arbeit
+   (Advisory-Lock um die Migration, oder ein Job vor dem Rollout).
+
+   Damit ist der Auslöser aus ADR-0002 nicht erfüllt, und ADR-0002 bleibt
+   unangetastet. Das ist eine Antwort, kein Aufschub.
 5. **Secret-Verwaltung:** Wie kommen Zugangsdaten in einen frisch gebauten
    Cluster, bevor Argo CD läuft? Betrifft `imagePullSecret` (Punkt 3) und den
    Objektspeicher-Zugang aus dem Backup-ADR gleichermaßen — eine Frage, zwei
