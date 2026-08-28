@@ -1,13 +1,17 @@
-# ADR-0007: Backup und Wiederherstellung über Objektspeicher (Entwurf)
+# ADR: Backup und Wiederherstellung über Objektspeicher (Entwurf)
 
 - **Status:** Entwurf — noch nicht mit dem Team abgestimmt, kein `accepted`
+- **Nummer:** noch nicht vergeben. Wird beim Merge zugeteilt; bis dahin trägt
+  der Dateiname `XXXX`. Grund: Auf `main` entstehen parallel ADRs, und zwei
+  gleich nummerierte Dateien mit verschiedenen Namen mergen konfliktfrei —
+  Git meldet das nicht.
 - **Datum:** 2026-08-25
 - **Betrifft:** Deployment, Betrieb, Daten
 - **Phase:** phase-2. Kubernetes-Deployment ist in `docs/mvp-plan.md` unter
   "Bewusst nicht enthalten" aufgeführt — dieses ADR greift dem nicht vor,
   sondern hält fest, was gilt, sobald die Phase erreicht ist.
-- **Verwandt:** ADR-0006 (Deployment-Ziel), ADR-0001 (Postgres), ADR-0004
-  (WebAuthn), ADR-0005 (Custom Resources als Datenspeicher)
+- **Verwandt:** das Deployment-Ziel-ADR aus demselben Branch, ADR-0001
+  (Postgres), ADR-0004 (WebAuthn), ADR-0005 (Custom Resources als Datenspeicher)
 
 ## Der laufenden Messung nicht in die Quere kommen
 
@@ -15,7 +19,8 @@ Die MVP-Messung aus #7 läuft ab dem 2026-08-26 und ist frühestens am
 2026-09-01 ablesbar (#68). Sie hängt an genau einer Installation: dem Rechner
 im Büro, gestartet über `task office:up`.
 
-**Nichts aus diesem ADR und nichts aus ADR-0006 wird umgesetzt, solange die
+**Nichts aus diesem ADR und nichts aus dem Deployment-Ziel-ADR wird umgesetzt,
+solange die
 Messung läuft.** Ein zweites Deployment derselben Anwendung während des
 Messzeitraums erzeugt entweder einen zweiten Datenbestand oder verleitet dazu,
 den laufenden anzufassen — beides macht die Messung wertlos, und die Messung
@@ -28,7 +33,7 @@ nicht.
 
 ## Kontext
 
-Die Zielumgebung aus ADR-0006 ist ein Azure-Local-Cluster. Dieser Cluster wird
+Die Zielumgebung aus dem Deployment-Ziel-ADR ist ein Azure-Local-Cluster. Dieser Cluster wird
 nicht als dauerhaft angenommen: Er wird gelegentlich neu aufgebaut, und
 währenddessen steht die Infrastruktur nicht zur Verfügung. Ein Neubau ist damit
 ein *geplantes* Ereignis, kein Störfall — aber eines, das ohne Vorkehrung alle
@@ -50,7 +55,7 @@ Entscheidung dieses ADR.
 
 | Was | Datenquelle | Begründung |
 | --- | --- | --- |
-| Soll-Zustand: Manifeste, Helm-Chart, Argo-CD-Applications, Namespaces | **Git** | Genau dafür existiert die GitOps-Schicht aus ADR-0006. Eine Kopie davon im Objektspeicher wäre eine zweite Wahrheit und würde die Entscheidung entwerten. |
+| Soll-Zustand: Manifeste, Helm-Chart, Argo-CD-Applications, Namespaces | **Git** | Genau dafür existiert die GitOps-Schicht aus dem Deployment-Ziel-ADR. Eine Kopie davon im Objektspeicher wäre eine zweite Wahrheit und würde die Entscheidung entwerten. |
 | Anwendungsdaten: der Inhalt der Postgres-Datenbank | **Objektspeicher** | Das Einzige, was Git nicht wiederherstellen kann. |
 
 Der Neubau läuft damit in zwei Strängen, die erst im neuen Cluster
@@ -202,7 +207,8 @@ ADR-0005 aufgreift.
    stuttgart-things-Umfeld schon ein Objektspeicher existiert, der die
    Anforderung aus Randbedingung 1 erfüllt.
 2. **Wie wird das Bootstrap-Geheimnis gesät?** Siehe Randbedingung 2. Diese
-   Frage ist gemeinsam mit der GitOps-Entscheidung aus ADR-0006 zu beantworten,
+   Frage ist gemeinsam mit der GitOps-Entscheidung aus dem Deployment-Ziel-ADR zu
+   beantworten,
    nicht getrennt davon.
 3. **Wie oft wird gesichert?** Der Wert folgt aus der Antwort auf "wie viel
    Neueingabe ist im schlimmsten Fall zumutbar". Vor jedem geplanten Teardown
@@ -238,7 +244,8 @@ ADR-0005 aufgreift.
 - **Negativ:** Der Wechsel auf Weg B ist später nicht kostenlos — der
   Objektspeicher-Inhalt aus Weg A ist für einen CNPG-Recovery-Bootstrap nicht
   verwendbar, ein Umstieg beginnt mit einem frischen Backup-Bestand.
-- **Risiko:** Als Entwurf steht das unter demselben Vorbehalt wie ADR-0006 —
+- **Risiko:** Als Entwurf steht das unter demselben Vorbehalt wie das
+  Deployment-Ziel-ADR —
   echte Constraints aus Azure Local (verfügbare CSI-Treiber, erreichbare
   Objektspeicher, Secret-Verwaltung) können das noch verschieben.
 
