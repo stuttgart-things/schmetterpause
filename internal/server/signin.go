@@ -4,9 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net"
 	"net/http"
 	"slices"
+	"strconv"
 	"strings"
+	"time"
 
 	"github.com/a-h/templ"
 	"github.com/google/uuid"
@@ -14,7 +17,40 @@ import (
 	"github.com/stuttgart-things/schmetterpause/internal/auth"
 	"github.com/stuttgart-things/schmetterpause/internal/credential"
 	"github.com/stuttgart-things/schmetterpause/internal/domain"
+	"github.com/stuttgart-things/schmetterpause/internal/ratelimit"
 	"github.com/stuttgart-things/schmetterpause/internal/templates"
+)
+
+// The brake on the sign-in form, and a shipping condition rather than
+// follow-up work (docs/adr/0007). Both dimensions grow the wait instead of
+// slamming a door, because the same ADR forbids a limit that can lock a
+// player out for good — that would rebuild issue #70 by another route.
+var (
+	// Per player. Three free tries, because mistyping a sixteen-character
+	// code is what the person this exists for actually does. Past that the
+	// wait doubles to five minutes, and working through six digits at five
+	// minutes a guess takes years.
+	signInPlayerPolicy = ratelimit.Policy{
+		Free:   3,
+		Step:   2 * time.Second,
+		Max:    5 * time.Minute,
+		Forget: time.Hour,
+	}
+	// Per address, and deliberately gentler. Its job is to stop one machine
+	// walking the roster, not to police a person.
+	//
+	// The cap is low on purpose. Behind a proxy every request in the building
+	// arrives from the same address, and a strict ceiling would then take the
+	// whole office out — which is the failure this must not have. Thirty
+	// seconds degrades to a short pause in that case while still leaving
+	// guessing hopeless, and the per-player half is the one carrying the
+	// weight anyway.
+	signInAddressPolicy = ratelimit.Policy{
+		Free:   15,
+		Step:   time.Second,
+		Max:    30 * time.Second,
+		Forget: 15 * time.Minute,
+	}
 )
 
 // signInRefused is the answer to every failed attempt, whichever half was
@@ -55,9 +91,24 @@ func (s *Server) handleJoinForm(w http.ResponseWriter, r *http.Request) {
 // public regardless — the ranking, /matches and the sheet on the wall all
 // name everybody.
 func (s *Server) handleSignIn(w http.ResponseWriter, r *http.Request) {
+	// The address is checked before anything is parsed, looked up or hashed.
+	// Argon2id is deliberately expensive — 64 MiB a run — so a form nobody
+	// checks first is not only a way to guess, it is a way to spend the
+	// machine's memory.
+	address := requestAddress(r)
+	if wait := s.signInByAddress.Retry(address); wait > 0 {
+		s.refuseForNow(w, r, uuid.Nil, wait)
+		return
+	}
+
 	playerID, err := uuid.Parse(strings.TrimSpace(r.FormValue("player_id")))
 	if err != nil {
 		s.rejectSignIn(w, r, uuid.Nil, "Wähl erst deinen Namen.")
+		return
+	}
+
+	if wait := s.signInByPlayer.Retry(playerID.String()); wait > 0 {
+		s.refuseForNow(w, r, playerID, wait)
 		return
 	}
 
@@ -70,6 +121,10 @@ func (s *Server) handleSignIn(w http.ResponseWriter, r *http.Request) {
 	player, err := s.store.Players().ByID(r.Context(), playerID)
 	switch {
 	case errors.Is(err, domain.ErrNotFound):
+		// Only the address is charged for a name nobody has. Counting an
+		// id that resolves to nothing would let anybody fill the map with
+		// invented ones.
+		s.signInByAddress.Failed(address)
 		s.rejectSignIn(w, r, uuid.Nil, signInRefused)
 		return
 	case err != nil:
@@ -80,15 +135,26 @@ func (s *Server) handleSignIn(w http.ResponseWriter, r *http.Request) {
 
 	ok, err := s.secretMatches(r.Context(), playerID, secret)
 	if err != nil {
+		// A database that is down is not a wrong guess, so nothing is
+		// charged for it. Otherwise an outage would leave everybody waiting
+		// once it came back.
 		s.log.ErrorContext(r.Context(), "checking the credential failed", "player_id", playerID, "error", err)
 		s.rejectSignIn(w, r, playerID, "Das hat gerade nicht geklappt. Versuch es noch einmal.")
 		return
 	}
 	if !ok {
-		s.log.InfoContext(r.Context(), "sign-in refused", "player_id", playerID)
+		s.signInByPlayer.Failed(playerID.String())
+		s.signInByAddress.Failed(address)
+		s.log.InfoContext(r.Context(), "sign-in refused", "player_id", playerID, "address", address)
 		s.rejectSignIn(w, r, playerID, signInRefused)
 		return
 	}
+
+	// Only the player half is cleared. Clearing the address half too would
+	// hand anybody with an account of their own a way to reset the budget
+	// every few guesses — and the address wait tops out at thirty seconds,
+	// so leaving it standing costs a legitimate browser very little.
+	s.signInByPlayer.Succeeded(playerID.String())
 
 	// A new subject rather than the one this player already has somewhere.
 	// A player holds several identities by design (docs/adr/0003), so signing
@@ -108,6 +174,64 @@ func (s *Server) handleSignIn(w http.ResponseWriter, r *http.Request) {
 		DisplayName: player.DisplayName,
 		PlayerID:    player.ID.String(),
 	}))
+}
+
+// refuseForNow answers an attempt the brake is holding back.
+//
+// It says how long is left rather than only that something went wrong.
+// "Versuch es später" is what a dead end sounds like, and this form exists
+// because of a dead end.
+func (s *Server) refuseForNow(w http.ResponseWriter, r *http.Request, selected uuid.UUID, wait time.Duration) {
+	view, err := s.signInView(r.Context(), selected)
+	if err != nil {
+		s.log.ErrorContext(r.Context(), "loading the player list failed", "error", err)
+		http.Error(w, "Anmeldung gerade nicht möglich", http.StatusInternalServerError)
+		return
+	}
+	view.Error = "Zu viele Fehlversuche. Probier es in " + waitInWords(wait) + " noch einmal."
+
+	// Retry-After is in seconds and has to be at least one, or a client that
+	// reads it learns nothing.
+	w.Header().Set("Retry-After", strconv.Itoa(max(int(wait.Round(time.Second)/time.Second), 1)))
+	// 429 rather than 422: the request was fine, there have just been too
+	// many of them. web/static/js/app.js knows to swap this one too.
+	w.WriteHeader(http.StatusTooManyRequests)
+	s.render(w, r, templates.SignIn(view))
+}
+
+// waitInWords puts a duration in the words somebody would use for it. Rounded
+// up, because being told to wait five seconds and finding out at five that it
+// was really six is worse than being told six.
+func waitInWords(d time.Duration) string {
+	if d < time.Minute {
+		seconds := int((d + time.Second - 1) / time.Second)
+		if seconds <= 1 {
+			return "einer Sekunde"
+		}
+		return strconv.Itoa(seconds) + " Sekunden"
+	}
+
+	minutes := int((d + time.Minute - 1) / time.Minute)
+	if minutes <= 1 {
+		return "einer Minute"
+	}
+	return strconv.Itoa(minutes) + " Minuten"
+}
+
+// requestAddress is the address an attempt came from.
+//
+// RemoteAddr and nothing else. X-Forwarded-For is not read, because a header
+// nobody verified is a header anybody sets — and a limit keyed on a value the
+// caller chooses is not a limit. Behind a proxy this makes every request in
+// the building one address, which the gentle per-address policy is chosen for;
+// doing better needs a trusted-proxy setting, and that belongs with the
+// cluster work in issue #89.
+func requestAddress(r *http.Request) string {
+	host, _, err := net.SplitHostPort(r.RemoteAddr)
+	if err != nil {
+		return r.RemoteAddr
+	}
+	return host
 }
 
 // secretMatches reports whether typed is one of this player's credentials.

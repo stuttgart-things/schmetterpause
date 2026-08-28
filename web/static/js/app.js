@@ -9,8 +9,14 @@
 //
 // The alternative was to answer 200 for a rejected form. The status is worth
 // keeping honest: it is what the tests assert on and what a log is read with.
+//
+// 429 is here for the same reason. The sign-in form answers it when the brake
+// on guessing is holding an attempt back, and the response carries the one
+// thing somebody needs at that moment: how long is left. Dropping it would
+// leave them pressing a button that does nothing.
 document.addEventListener('htmx:beforeSwap', function (event) {
-	if (event.detail.xhr.status === 422) {
+	var status = event.detail.xhr.status;
+	if (status === 422 || status === 429) {
 		event.detail.shouldSwap = true;
 		event.detail.isError = false;
 	}

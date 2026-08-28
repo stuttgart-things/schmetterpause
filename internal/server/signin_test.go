@@ -4,12 +4,15 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stuttgart-things/schmetterpause/internal/auth"
 	"github.com/stuttgart-things/schmetterpause/internal/credential"
 	"github.com/stuttgart-things/schmetterpause/internal/domain"
+	"github.com/stuttgart-things/schmetterpause/internal/server"
 )
 
 func signIn(t *testing.T, h http.Handler, playerID, secret string) *httptest.ResponseRecorder {
@@ -284,5 +287,160 @@ func TestSigningInAlsoTakesAPIN(t *testing.T) {
 	}
 	if got := recognisedAs(t, h, sessionCookie(t, rec)); got != "Anna" {
 		t.Errorf("after signing in with a PIN the page greets %q, want %q", got, "Anna")
+	}
+}
+
+// The brake is a shipping condition, not a nicety (ADR-0007).
+//
+// Three failures cost nothing — mistyping a sixteen-character code is what
+// the person this whole way back exists for actually does. The fourth earns
+// a wait, and the fifth attempt is the one that runs into it.
+func TestSigningInSlowsDownAfterWrongGuesses(t *testing.T) {
+	store := newMemStore()
+	h := newHandlerWith(store, auth.NewCookieAuthenticator(store.Identities(), testSessionKey, false))
+
+	join(t, h, "Anna")
+	players, _ := store.Players().List(t.Context())
+	anna := players[0]
+
+	for i := range 4 {
+		if got := signIn(t, h, anna.ID.String(), "XXXX-XXXX-XXXX-XXXX").Code; got != http.StatusUnprocessableEntity {
+			t.Fatalf("guess %d = %d, want %d", i+1, got, http.StatusUnprocessableEntity)
+		}
+	}
+
+	rec := signIn(t, h, anna.ID.String(), "XXXX-XXXX-XXXX-XXXX")
+	if rec.Code != http.StatusTooManyRequests {
+		t.Fatalf("the fifth guess = %d, want %d", rec.Code, http.StatusTooManyRequests)
+	}
+	if got := rec.Header().Get("Retry-After"); got == "" || got == "0" {
+		t.Errorf("Retry-After = %q, want a number of seconds", got)
+	}
+	if !strings.Contains(rec.Body.String(), "Zu viele Fehlversuche") {
+		t.Errorf("the refusal does not say what happened: %s", rec.Body.String())
+	}
+}
+
+// Being held back must not become being locked out. The right code has to
+// work again once the wait has run out — this is the property that keeps the
+// brake from rebuilding issue #70.
+func TestTheBrakeLetsGoAgain(t *testing.T) {
+	store := newMemStore()
+	h := newHandlerWith(store, auth.NewCookieAuthenticator(store.Identities(), testSessionKey, false))
+
+	code := codeInPage.FindStringSubmatch(join(t, h, "Anna").Body.String())
+	players, _ := store.Players().List(t.Context())
+	anna := players[0]
+
+	for range 4 {
+		signIn(t, h, anna.ID.String(), "XXXX-XXXX-XXXX-XXXX")
+	}
+
+	// Even the right code is held back now. That is the point: the brake
+	// cannot know which this is without paying for the guess.
+	blocked := signIn(t, h, anna.ID.String(), code[1])
+	if blocked.Code != http.StatusTooManyRequests {
+		t.Fatalf("the brake is not holding: %d", blocked.Code)
+	}
+
+	// The wait is two seconds at this point, per signInPlayerPolicy.
+	wait, err := strconv.Atoi(blocked.Header().Get("Retry-After"))
+	if err != nil {
+		t.Fatalf("Retry-After is not a number: %v", err)
+	}
+	if wait > 5 {
+		t.Fatalf("the first wait is %ds, too long to sit out in a test", wait)
+	}
+	time.Sleep(time.Duration(wait)*time.Second + 200*time.Millisecond)
+
+	rec := signIn(t, h, anna.ID.String(), code[1])
+	if rec.Code != http.StatusOK {
+		t.Fatalf("after sitting out the wait, signIn() = %d, want %d: %s",
+			rec.Code, http.StatusOK, rec.Body.String())
+	}
+	if got := recognisedAs(t, h, sessionCookie(t, rec)); got != "Anna" {
+		t.Errorf("the page greets %q, want %q", got, "Anna")
+	}
+}
+
+// One player's wrong guesses must not slow down anybody else, or a single
+// person hammering the form takes the office out with them.
+func TestOnePlayersGuessesDoNotBlockAnother(t *testing.T) {
+	store := newMemStore()
+	h := newHandlerWith(store, auth.NewCookieAuthenticator(store.Identities(), testSessionKey, false))
+
+	join(t, h, "Anna")
+	bodoJoin := join(t, h, "Bodo")
+	bodoCode := codeInPage.FindStringSubmatch(bodoJoin.Body.String())
+
+	players, _ := store.Players().List(t.Context())
+	var anna, bodo domain.Player
+	for _, p := range players {
+		switch p.DisplayName {
+		case "Anna":
+			anna = p
+		case "Bodo":
+			bodo = p
+		}
+	}
+
+	for range 4 {
+		signIn(t, h, anna.ID.String(), "XXXX-XXXX-XXXX-XXXX")
+	}
+	if signIn(t, h, anna.ID.String(), "XXXX-XXXX-XXXX-XXXX").Code != http.StatusTooManyRequests {
+		t.Fatal("anna is not being held back")
+	}
+
+	if got := signIn(t, h, bodo.ID.String(), bodoCode[1]).Code; got != http.StatusOK {
+		t.Errorf("bodo is held back by anna's guesses: %d", got)
+	}
+}
+
+// A right answer clears the count, so the next honest mistake starts from the
+// free tries again rather than from where the guessing left off.
+func TestSigningInClearsTheCount(t *testing.T) {
+	store := newMemStore()
+	h := newHandlerWith(store, auth.NewCookieAuthenticator(store.Identities(), testSessionKey, false))
+
+	code := codeInPage.FindStringSubmatch(join(t, h, "Anna").Body.String())
+	players, _ := store.Players().List(t.Context())
+	anna := players[0]
+
+	for range 3 {
+		signIn(t, h, anna.ID.String(), "XXXX-XXXX-XXXX-XXXX")
+	}
+	if got := signIn(t, h, anna.ID.String(), code[1]).Code; got != http.StatusOK {
+		t.Fatalf("signIn() with the right code = %d, want %d", got, http.StatusOK)
+	}
+
+	// The free tries are back, rather than the count carrying on from three.
+	for i := range 4 {
+		if got := signIn(t, h, anna.ID.String(), "XXXX-XXXX-XXXX-XXXX").Code; got != http.StatusUnprocessableEntity {
+			t.Fatalf("guess %d after a success = %d, want %d", i+1, got, http.StatusUnprocessableEntity)
+		}
+	}
+}
+
+func TestWaitInWords(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		in   time.Duration
+		want string
+	}{
+		{500 * time.Millisecond, "einer Sekunde"},
+		{time.Second, "einer Sekunde"},
+		{2 * time.Second, "2 Sekunden"},
+		{2500 * time.Millisecond, "3 Sekunden"},
+		{59 * time.Second, "59 Sekunden"},
+		{time.Minute, "einer Minute"},
+		{90 * time.Second, "2 Minuten"},
+		{5 * time.Minute, "5 Minuten"},
+	}
+
+	for _, tc := range tests {
+		if got := server.WaitInWords(tc.in); got != tc.want {
+			t.Errorf("WaitInWords(%s) = %q, want %q", tc.in, got, tc.want)
+		}
 	}
 }

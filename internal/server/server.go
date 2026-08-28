@@ -16,6 +16,7 @@ import (
 
 	"github.com/stuttgart-things/schmetterpause/internal/auth"
 	"github.com/stuttgart-things/schmetterpause/internal/config"
+	"github.com/stuttgart-things/schmetterpause/internal/ratelimit"
 	"github.com/stuttgart-things/schmetterpause/internal/repository"
 )
 
@@ -27,12 +28,22 @@ type Server struct {
 	auth    auth.SessionAuthenticator
 	version string
 	handler http.Handler
+
+	// The two halves of the brake on guessing at a credential. One alone is
+	// not a limit: per player, somebody walks the roster; per address,
+	// a second phone starts over. See signin.go for the policies.
+	signInByPlayer  *ratelimit.Limiter
+	signInByAddress *ratelimit.Limiter
 }
 
 // New wires up the server. The authenticator is an interface so that later
 // providers (OIDC, WebAuthn) take effect without touching any handler.
 func New(cfg config.Config, store repository.Store, log *slog.Logger, a auth.SessionAuthenticator, version string) *Server {
-	s := &Server{cfg: cfg, store: store, log: log, auth: a, version: version}
+	s := &Server{
+		cfg: cfg, store: store, log: log, auth: a, version: version,
+		signInByPlayer:  ratelimit.New(signInPlayerPolicy),
+		signInByAddress: ratelimit.New(signInAddressPolicy),
+	}
 	s.handler = s.routes()
 	return s
 }
