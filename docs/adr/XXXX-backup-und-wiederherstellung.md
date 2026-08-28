@@ -203,10 +203,35 @@ Diese Punkte sind unabhängig von der Wahl A/B und wiegen schwerer als sie.
 
 ## Was am Zustand hängt, aber nicht in der Datenbank steht
 
-- **`SP_SESSION_KEY`** — signiert das Wiedererkennungs-Cookie. Ändert er sich
-  beim Neubau, sind alle Cookies ungültig und jeder meldet sich neu an. Das ist
-  verschmerzbar und muss nicht gesichert werden; man sollte es nur nicht für
-  einen Fehler halten.
+- **`SP_SESSION_KEY`** — signiert das Wiedererkennungs-Cookie. Die erste Fassung
+  dieses ADR nannte einen Verlust „verschmerzbar, jeder meldet sich neu an".
+  **Das war falsch, solange es keine Anmeldung gab**, auf die man sich dabei
+  berufen könnte: Bis heute *ist* das Cookie die Identität. Scheitert die
+  Signaturprüfung, landet jeder auf dem Beitrittsformular und legt einen
+  **neuen** Spieler an, während die alte Zeile samt TTR-Historie verwaist
+  danebenliegt. `TestARestartWithADifferentKeyForgetsEverybody` beweist genau
+  das, und die Konfiguration hat aus demselben Grund keinen Default. #84 stuft
+  den Schlüssel deshalb als so wichtig wie die Datenbank ein — zu Recht, für
+  den heutigen Stand.
+
+  **Für den Zeitpunkt, an dem dieses ADR umgesetzt wird, gilt das nicht mehr.**
+  Backup ist phase-5, die Anmeldung aus #88 ist phase-2 und damit vorher da.
+  Mit Wiederherstellungscode (ADR-0006) und PIN (ADR-0007) hängt sich ein
+  Spieler nach einem Schlüsselwechsel wieder an seine alte Zeile — aus
+  Datenverlust wird eine Unbequemlichkeit.
+
+  Zwei Dinge, die dabei nicht untergehen dürfen:
+
+  - **Die Codes überleben den Schlüsselwechsel nur, weil ADR-0007 sie salzt.**
+    ADR-0006 hatte als Alternative einen deterministischen Keyed Hash (HMAC mit
+    dem Session-Key) erwogen, der einen Index erlaubt hätte; entschieden wurde
+    Argon2id mit Salt pro Zeile. Mit der HMAC-Variante hätte ein
+    Schlüsselwechsel *auch alle Wiederherstellungscodes* entwertet und das
+    Argument oben zerstört. #89 führt diesen Fall noch als offene Möglichkeit —
+    er ist entschieden, und zwar günstig.
+  - **Bis #88 ausgeliefert ist, gehört der Schlüssel in dieselbe Sicherung wie
+    die Datenbank.** Das ist die ganze Zeit dazwischen, und in genau der läuft
+    die Messung.
 
 - **Der Hostname, unter dem die Anwendung erreichbar ist** — das ist der
   unangenehmere Punkt, und er reicht über dieses ADR hinaus. ADR-0004 legt uns
