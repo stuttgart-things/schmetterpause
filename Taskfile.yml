@@ -9,6 +9,10 @@ vars:
   DSN: postgres://schmetterpause:schmetterpause@127.0.0.1:5432/schmetterpause?sslmode=disable
   VERSION:
     sh: git describe --tags --always --dirty 2>/dev/null || echo dev
+  # The ko that builds the image here. Keep it in lockstep with koVersion in
+  # dagger/main.go: one build path only holds as long as a laptop and the
+  # pipeline run the same builder (docs/adr/0009).
+  KO_VERSION: v0.19.1
   # Development only. Fixed so a restart keeps recognising the same browser.
   DEV_SESSION_KEY: development-session-key-not-for-production
 
@@ -24,6 +28,7 @@ tasks:
   up:
     desc: "Start the Compose environment (app + Postgres)"
     cmds:
+      - task: image:ensure
       - task: compose:up
         vars: { SERVICES: "" }
       - 'echo "Schmetterpause is running on http://127.0.0.1:8080"'
@@ -138,7 +143,8 @@ tasks:
       # loopback: the phones are not on this machine.
       SP_BIND_ADDR: 0.0.0.0
     cmds:
-      - docker compose -f compose.yaml -f compose.office.yaml up --build --detach --wait
+      - task: image:ensure
+      - docker compose -f compose.yaml -f compose.office.yaml up --detach --wait
       - |
         echo
         echo "Ranking and result entry:  $SP_PUBLIC_BASE_URL/"
@@ -251,6 +257,34 @@ tasks:
       # truncating over each other.
       - go test -race -count=1 -p 1 ./internal/repository/... ./internal/scoring/...
 
+  image:
+    desc: "Build the container image with ko into the local Docker daemon"
+    deps: [generate]
+    env:
+      # With --bare this is the image name, unchanged: schmetterpause:dev.
+      KO_DOCKER_REPO: schmetterpause
+      # Read by the ldflags template in .ko.yaml.
+      VERSION: '{{.VERSION}}'
+    cmds:
+      # One architecture, this machine's: the Docker daemon cannot load a
+      # manifest list. The release covers both, see .ko.yaml.
+      - >
+        go run github.com/google/ko@{{.KO_VERSION}} build
+        --bare --local --tags dev --platform linux/{{ARCH}}
+        ./cmd/schmetterpause
+      - 'echo "schmetterpause:dev built from {{.VERSION}}"'
+
+  image:ensure:
+    internal: true
+    silent: true
+    cmds:
+      - |
+        if [ -n "${SP_IMAGE:-}" ]; then
+          echo "SP_IMAGE=${SP_IMAGE} — running the published image, nothing to build."
+          exit 0
+        fi
+        task image
+
   # ------------------------------------------------------------------ Dagger
   # These tasks invoke the same pipeline that runs in CI.
 
@@ -260,22 +294,27 @@ tasks:
     cmds:
       - dagger call lint --source=.
 
-  build:
-    desc: "Dagger build: binary and image, emitted as an OCI artefact"
-    deps: [dagger:check]
-    cmds:
-      - mkdir -p build
-      - dagger call build --source=. --version={{.VERSION}} export --path=build/schmetterpause-oci.tar
-      - 'echo "OCI artefact: build/schmetterpause-oci.tar"'
-
   verify:
-    desc: "Dagger verify: the built image against a fresh Postgres"
+    desc: "Dagger verify: the pushed image against a fresh Postgres"
     deps: [dagger:check]
     cmds:
-      - dagger call verify --source=. --version={{.VERSION}}
+      # Verify checks a reference rather than a local build, so the image is
+      # staged in ttl.sh first — the same order the pipeline uses.
+      - |
+        ref=$(dagger call publish --source=. --version={{.VERSION}} --ttl=10m)
+        echo "staged: $ref"
+        dagger call verify --source=. --image-ref="$ref"
+
+  scan:
+    desc: "Dagger scan: trivy against the staged image"
+    deps: [dagger:check]
+    cmds:
+      - |
+        ref=$(dagger call publish --source=. --version={{.VERSION}} --ttl=10m)
+        dagger call scan --image-ref="$ref"
 
   ci:
-    desc: "lint + test + build + verify, identical to the pipeline"
+    desc: "lint + test + image + verify + scan, identical to the pipeline"
     deps: [dagger:check]
     cmds:
       - dagger call ci --source=. --version={{.VERSION}}
@@ -290,7 +329,7 @@ tasks:
       - 'echo "Expires in {{.TTL}}. ttl.sh is public — pull it, do not store anything in it."'
 
   release:
-    desc: "Push the image to GHCR — needs GITHUB_TOKEN and GITHUB_USER"
+    desc: "The whole pipeline, then promote to GHCR — needs GITHUB_TOKEN and GITHUB_USER"
     deps: [dagger:check]
     preconditions:
       - sh: '[ -n "$GITHUB_TOKEN" ]'
@@ -323,7 +362,7 @@ tasks:
     # too many when a service refuses to start — so it is printed here.
     cmds:
       - |
-        if docker compose up --build --detach --wait {{.SERVICES}}; then
+        if docker compose up --detach --wait {{.SERVICES}}; then
           exit 0
         fi
 

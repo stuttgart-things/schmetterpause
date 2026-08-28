@@ -10,6 +10,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -17,20 +18,31 @@ import (
 )
 
 const (
-	// goImage must carry at least the Go version from go.mod, and must match
-	// the builder stage in the Dockerfile — otherwise the pipeline verifies an
-	// image built by a different compiler than the one the Dockerfile uses.
+	// goImage carries the Go that lint and test run on. It must be at least
+	// the version from go.mod. The image is built by ko instead (koVersion
+	// below), so this no longer has to match a second builder.
 	goImage           = "golang:1.27-alpine"
 	golangciLintImage = "golangci/golangci-lint:v2.13.2-alpine"
 	postgresImage     = "postgres:18-alpine"
-	runtimeImage      = "gcr.io/distroless/static-debian12:nonroot"
 	toolingImage      = "alpine:3.24"
 
-	// defaultArch is the target architecture when none is given.
-	defaultArch = "amd64"
+	// koVersion pins the builder that produces the runtime image. The shared
+	// module turns it into ghcr.io/ko-build/ko:<version>. Keep it in lockstep
+	// with KO_VERSION in the Taskfile: one build path only holds as long as
+	// the pipeline and a laptop run the same ko (docs/adr/0009).
+	koVersion = "v0.19.1"
 
-	// nonrootUID is the distroless image's user.
-	nonrootUID = "65532:65532"
+	// mainPackage is what ko builds. Base image, platforms and ldflags for it
+	// are in .ko.yaml.
+	mainPackage = "./cmd/schmetterpause"
+
+	// trivyVersion pins the scanner, so a release is not blocked or waved
+	// through by whichever version happened to be latest that morning.
+	trivyVersion = "0.64.1"
+
+	// scanSeverity is what the pipeline stops on. Anything below it is
+	// trivy's to report and nobody's to block a release on.
+	scanSeverity = "HIGH,CRITICAL"
 
 	// ephemeralRegistry is ttl.sh: no account, no token, and images expire on
 	// their own. For handing a build to someone before it is merged.
@@ -45,12 +57,6 @@ const (
 	// releaseRegistry holds the artefacts meant to last. Same account as the
 	// repository, so GITHUB_TOKEN with packages:write is all it needs.
 	releaseRegistry = "ghcr.io"
-
-	// releasePlatforms are the architectures a release covers. Compose and
-	// Azure Container Apps are amd64; arm64 is there so the image also runs
-	// on an Apple-silicon laptop and on arm nodes.
-	releasePlatformAmd64 = "amd64"
-	releasePlatformArm64 = "arm64"
 
 	// verifyDSN is the address at which the application reaches the Postgres
 	// service during verify. It applies only inside the pipeline.
@@ -142,68 +148,69 @@ func (m *Schmetterpause) Test(
 	return out, nil
 }
 
-// Binary builds the statically linked binary. CGO is off so it runs in the
-// distroless image without libc.
-func (m *Schmetterpause) Binary(
-	// +defaultPath="/"
-	// +ignore=["**/.git", "build", ".task", "dagger/internal", "dagger/dagger.gen.go"]
+// koPush builds the runtime image with ko and pushes it.
+//
+// This is the only place an image is built. Compose, verify, the scan and the
+// release all consume what comes out of here, which is what invariant 1 asks
+// for and what a Dockerfile next to a Dagger build never quite delivered
+// (docs/adr/0009).
+//
+// The builder container comes from the shared module, so the ko version is
+// pinned in one place. The flags stay here: a ttl.sh push needs a bare image
+// name and an explicit tag, and the module's own KoBuild exposes neither.
+//
+// Returns the reference ko pushed to, digest included.
+func (m *Schmetterpause) koPush(
+	ctx context.Context,
 	source *dagger.Directory,
-	// +optional
-	// +default="dev"
 	version string,
-	// +optional
-	// +default="amd64"
-	goarch string,
-) *dagger.File {
-	return m.goBase(source).
-		WithEnvVariable("CGO_ENABLED", "0").
-		WithEnvVariable("GOOS", "linux").
-		WithEnvVariable("GOARCH", goarch).
+	repo string,
+	tag string,
+) (string, error) {
+	ref := repo + ":" + tag
+
+	out, err := dag.Go().
+		GetKoContainer(dagger.GoGetKoContainerOpts{KoVersion: koVersion}).
+		WithMountedCache("/go/pkg/mod", dag.CacheVolume("schmetterpause-go-mod")).
+		WithMountedCache("/root/.cache/go-build", dag.CacheVolume("schmetterpause-go-build")).
+		WithDirectory("/src", source).
+		WithWorkdir("/src").
+		WithEnvVariable("KO_DOCKER_REPO", repo).
+		// Read by the ldflags template in .ko.yaml.
+		WithEnvVariable("VERSION", version).
+		// Without .git in the context, -buildvcs would otherwise fail.
+		WithEnvVariable("GOFLAGS", "-buildvcs=false").
+		// The ko image ships whichever Go it was built with. auto lets go.mod
+		// pull its own toolchain rather than failing on a newer one.
+		WithEnvVariable("GOTOOLCHAIN", "auto").
 		WithExec([]string{
-			"go", "build",
-			"-trimpath",
-			"-ldflags", "-s -w -X main.version=" + version,
-			"-o", "/out/schmetterpause",
-			"./cmd/schmetterpause",
+			"ko", "build",
+			// The image is named exactly as given, with no import path
+			// appended — ttl.sh and GHCR are both addressed that way.
+			"--bare",
+			"--tags", tag,
+			// Points the GHCR package at this repository once the image is
+			// promoted there.
+			"--image-label", "org.opencontainers.image.source=https://github.com/stuttgart-things/schmetterpause",
+			"--image-label", "org.opencontainers.image.version=" + version,
+			mainPackage,
 		}).
-		File("/out/schmetterpause")
-}
+		Stdout(ctx)
+	if err != nil {
+		return "", fmt.Errorf("ko build %s: %w", ref, err)
+	}
 
-// Image builds the runtime image. It matches the Dockerfile: the same image
-// for Compose, Kubernetes and Azure Container Apps (invariant 1).
-func (m *Schmetterpause) Image(
-	// +defaultPath="/"
-	// +ignore=["**/.git", "build", ".task", "dagger/internal", "dagger/dagger.gen.go"]
-	source *dagger.Directory,
-	// +optional
-	// +default="dev"
-	version string,
-	// +optional
-	// +default="amd64"
-	goarch string,
-) *dagger.Container {
-	return dag.Container(dagger.ContainerOpts{Platform: dagger.Platform("linux/" + goarch)}).
-		From(runtimeImage).
-		WithFile("/usr/local/bin/schmetterpause", m.Binary(source, version, goarch)).
-		WithUser(nonrootUID).
-		WithExposedPort(8080).
-		WithEntrypoint([]string{"/usr/local/bin/schmetterpause"}).
-		WithDefaultArgs([]string{"serve"})
-}
-
-// Build emits the runtime image as an OCI tarball.
-func (m *Schmetterpause) Build(
-	// +defaultPath="/"
-	// +ignore=["**/.git", "build", ".task", "dagger/internal", "dagger/dagger.gen.go"]
-	source *dagger.Directory,
-	// +optional
-	// +default="dev"
-	version string,
-	// +optional
-	// +default="amd64"
-	goarch string,
-) *dagger.File {
-	return m.Image(source, version, goarch).AsTarball()
+	// ko writes its progress to stderr and the finished reference to stdout.
+	// The last line is taken rather than the whole output, so a future ko that
+	// prints something ahead of it does not turn into an unusable reference.
+	pushed := strings.TrimSpace(out)
+	if i := strings.LastIndex(pushed, "\n"); i >= 0 {
+		pushed = strings.TrimSpace(pushed[i+1:])
+	}
+	if pushed == "" {
+		return "", fmt.Errorf("ko build %s: no image reference on stdout", ref)
+	}
+	return pushed, nil
 }
 
 // Postgres starts a fresh database as a Dagger service.
@@ -218,11 +225,15 @@ func (m *Schmetterpause) Postgres() *dagger.Service {
 		AsService(dagger.ContainerAsServiceOpts{UseEntrypoint: true})
 }
 
-// Verify checks the built image against a fresh Postgres.
+// Verify checks a pushed image against a fresh Postgres.
 //
 // The step deliberately tests the image and not the source: it catches faults
 // that "go test" never sees — migrations missing from the image, broken env
 // defaults, templates or assets that did not get embedded.
+//
+// It takes a reference rather than building its own image, so what is checked
+// here is the artefact that the scan looks at and that the release promotes,
+// down to the digest.
 //
 // The session check covers the Definition of Done of AP2 against the built
 // image: join, keep the cookie, be recognised on the next request.
@@ -234,15 +245,15 @@ func (m *Schmetterpause) Verify(
 	// +defaultPath="/"
 	// +ignore=["**/.git", "build", ".task", "dagger/internal", "dagger/dagger.gen.go"]
 	source *dagger.Directory,
-	// +optional
-	// +default="dev"
-	version string,
+	// The image to check, as pushed by publish.
+	imageRef string,
 ) (string, error) {
 	// One service value, bound to the application and to the checks below.
 	// Building it twice would give the last check its own empty Postgres.
 	db := m.Postgres()
 
-	app := m.Image(source, version, defaultArch).
+	app := dag.Container().
+		From(imageRef).
 		WithEnvVariable("SP_DATABASE_URL", verifyDSN).
 		WithEnvVariable("SP_LOG_LEVEL", "debug").
 		WithEnvVariable("SP_SESSION_KEY", verifySessionKey).
@@ -272,8 +283,8 @@ func (m *Schmetterpause) Verify(
 		WithServiceBinding("db", db).
 		WithFile("/dod.sql", source.File("scripts/definition-of-done.sql")).
 		WithEnvVariable("PGPASSWORD", "schmetterpause").
-		// Forces re-evaluation when the version changes.
-		WithEnvVariable("SP_VERIFY_VERSION", version).
+		// Forces re-evaluation when a different image is checked.
+		WithEnvVariable("SP_VERIFY_IMAGE", imageRef).
 		WithExec([]string{"sh", "-c", verifyScript}).
 		Stdout(ctx)
 	if err != nil {
@@ -282,45 +293,12 @@ func (m *Schmetterpause) Verify(
 	return out, nil
 }
 
-// Ci runs lint, test, build and verify in that order. The two source-level
-// steps come first because they are the cheap ones; verify depends on the
-// build artefact rather than on the source, so it comes last. If a step
-// fails, the following ones are skipped.
-func (m *Schmetterpause) Ci(
-	ctx context.Context,
-	// +defaultPath="/"
-	// +ignore=["**/.git", "build", ".task", "dagger/internal", "dagger/dagger.gen.go"]
-	source *dagger.Directory,
-	// +optional
-	// +default="dev"
-	version string,
-) (string, error) {
-	lintOut, err := m.Lint(ctx, source)
-	if err != nil {
-		return "", err
-	}
-
-	testOut, err := m.Test(ctx, source)
-	if err != nil {
-		return "", err
-	}
-
-	if _, err := m.Image(source, version, defaultArch).Sync(ctx); err != nil {
-		return "", fmt.Errorf("build: %w", err)
-	}
-
-	verifyOut, err := m.Verify(ctx, source, version)
-	if err != nil {
-		return "", err
-	}
-
-	return fmt.Sprintf(
-		"== lint ==\n%s\n== test ==\n%s\n== build ==\nimage built (version %s)\n\n== verify ==\n%s",
-		lintOut, testOut, version, verifyOut), nil
-}
-
-// Publish pushes the runtime image to ttl.sh so it can be handed to somebody
-// for a look.
+// Publish builds the image and pushes it to ttl.sh.
+//
+// Every run of the pipeline goes through here: the image is staged in a
+// throwaway registry first, gets verified and scanned there, and only then is
+// copied to the registry that keeps it. The same call hands somebody a build
+// to look at before it is merged.
 //
 // Needs no account and no token. The tag *is* the lifetime: ttl.sh deletes
 // the image once it expires, so nothing has to be cleaned up afterwards.
@@ -338,26 +316,236 @@ func (m *Schmetterpause) Publish(
 	// +optional
 	// +default="1h"
 	ttl string,
-	// +optional
-	// +default="amd64"
-	goarch string,
 ) (string, error) {
-	ref := fmt.Sprintf("%s/schmetterpause-%s:%s", ephemeralRegistry, imageNameSafe(version), ttl)
+	repo := fmt.Sprintf("%s/schmetterpause-%s", ephemeralRegistry, imageNameSafe(version))
 
-	published, err := m.Image(source, version, goarch).Publish(ctx, ref)
+	published, err := m.koPush(ctx, source, version, repo, ttl)
 	if err != nil {
 		return "", fmt.Errorf("publish to %s: %w", ephemeralRegistry, err)
 	}
 	return published, nil
 }
 
-// Release pushes the runtime image to the registry that keeps it, tagged with
-// version and covering both architectures in one manifest.
+// Scan checks a pushed image with trivy and reports what it found.
+//
+// The gate sits between the throwaway registry and the one that keeps things:
+// what gets promoted has been scanned as the artefact it will be, not as a
+// source tree that resembles it.
+//
+// The scanner always returns a report, including when trivy itself fell over,
+// so the verdict is read out of the report rather than off an exit code — an
+// unreadable report is a failed scan, not a clean one.
+func (m *Schmetterpause) Scan(
+	ctx context.Context,
+	// The image to scan, as pushed by publish.
+	imageRef string,
+	// +optional
+	// +default="HIGH,CRITICAL"
+	severity string,
+	// Report the findings instead of failing on them. The way out when a
+	// vulnerability has no fixed version yet and a release cannot wait for
+	// one — the finding stays in the log either way.
+	// +optional
+	accept bool,
+) (string, error) {
+	raw, err := dag.Trivy().
+		ScanImage(imageRef, dagger.TrivyScanImageOpts{
+			Severity:     severity,
+			TrivyVersion: trivyVersion,
+		}).
+		Contents(ctx)
+	if err != nil {
+		return "", fmt.Errorf("scan %s: %w", imageRef, err)
+	}
+
+	var report struct {
+		Results []struct {
+			Target          string `json:"Target"`
+			Vulnerabilities []struct {
+				VulnerabilityID  string `json:"VulnerabilityID"`
+				PkgName          string `json:"PkgName"`
+				InstalledVersion string `json:"InstalledVersion"`
+				FixedVersion     string `json:"FixedVersion"`
+				Severity         string `json:"Severity"`
+			} `json:"Vulnerabilities"`
+		} `json:"Results"`
+	}
+	if err := json.Unmarshal([]byte(raw), &report); err != nil {
+		return "", fmt.Errorf("scan %s: the report is not the JSON trivy writes (%w): %s",
+			imageRef, err, excerpt(raw))
+	}
+
+	var findings []string
+	for _, result := range report.Results {
+		for _, v := range result.Vulnerabilities {
+			fixed := v.FixedVersion
+			if fixed == "" {
+				fixed = "no fix yet"
+			}
+			findings = append(findings, fmt.Sprintf("%s  %s  %s %s (fixed: %s)  [%s]",
+				v.Severity, v.VulnerabilityID, v.PkgName, v.InstalledVersion, fixed, result.Target))
+		}
+	}
+
+	if len(findings) == 0 {
+		return fmt.Sprintf("trivy: no %s findings in %s\n", severity, imageRef), nil
+	}
+
+	out := fmt.Sprintf("trivy: %d %s finding(s) in %s\n%s\n",
+		len(findings), severity, imageRef, strings.Join(findings, "\n"))
+	if accept {
+		return out + "accepted on request, the image is promoted anyway\n", nil
+	}
+	return "", fmt.Errorf("%s\nthe image is not promoted; run with --accept to release anyway", out)
+}
+
+// Promote copies a scanned image to the registry that keeps it.
+//
+// A copy, not a second build: the digest that verify and the scan passed is
+// the digest that ends up in GHCR. Building again for the release would put an
+// artefact there that nothing in the pipeline has ever looked at.
 //
 // registryToken is a token with write access to the package — in Actions the
 // job's GITHUB_TOKEN with packages:write is enough.
 //
-// Returns the reference the image was pushed to.
+// Returns the reference the image was copied to.
+func (m *Schmetterpause) Promote(
+	ctx context.Context,
+	// The staged image, as pushed by publish.
+	sourceRef string,
+	// The version to tag. No default on purpose: an artefact tagged "dev"
+	// in a registry that keeps things is worse than no artefact.
+	version string,
+	// Token with write access to the package.
+	registryToken *dagger.Secret,
+	// The account the token belongs to.
+	username string,
+	// The repository to push to. A "+default" pragma takes a literal, so
+	// this string is the single place the release repository is named.
+	// +optional
+	// +default="ghcr.io/stuttgart-things/schmetterpause"
+	image string,
+	// +optional
+	// Also move the "latest" tag to this image.
+	latest bool,
+) (string, error) {
+	if version == "" || version == "dev" {
+		return "", fmt.Errorf("a release needs a real version, got %q", version)
+	}
+
+	target := image + ":" + imageTagSafe(version)
+	if _, err := m.copyImage(ctx, sourceRef, target, username, registryToken); err != nil {
+		return "", fmt.Errorf("promote %s to %s: %w", sourceRef, target, err)
+	}
+
+	if latest {
+		if _, err := m.copyImage(ctx, sourceRef, image+":latest", username, registryToken); err != nil {
+			return "", fmt.Errorf("move the latest tag: %w", err)
+		}
+	}
+
+	return target, nil
+}
+
+// copyImage copies one reference to another, keeping every architecture.
+func (m *Schmetterpause) copyImage(
+	ctx context.Context,
+	sourceRef string,
+	target string,
+	username string,
+	registryToken *dagger.Secret,
+) (string, error) {
+	return dag.Crane().Copy(ctx, sourceRef, target, dagger.CraneCopyOpts{
+		TargetRegistry: releaseRegistry,
+		TargetUsername: username,
+		TargetPassword: registryToken,
+		// Copies the whole manifest list. A concrete platform here would
+		// flatten the image to one architecture on the way over.
+		Platform: "all",
+	})
+}
+
+// pipeline is what ci and release both run: everything that has to hold
+// before an image may leave the throwaway registry.
+//
+// The order is by cost and by dependency. Lint and test are the cheap
+// source-level steps and come first; the image is built once and then
+// verified and scanned as the artefact it is.
+//
+// Returns the staged reference and the report.
+func (m *Schmetterpause) pipeline(
+	ctx context.Context,
+	source *dagger.Directory,
+	version string,
+	ttl string,
+	accept bool,
+) (string, string, error) {
+	lintOut, err := m.Lint(ctx, source)
+	if err != nil {
+		return "", "", err
+	}
+
+	testOut, err := m.Test(ctx, source)
+	if err != nil {
+		return "", "", err
+	}
+
+	ref, err := m.Publish(ctx, source, version, ttl)
+	if err != nil {
+		return "", "", err
+	}
+
+	verifyOut, err := m.Verify(ctx, source, ref)
+	if err != nil {
+		return "", "", err
+	}
+
+	scanOut, err := m.Scan(ctx, ref, scanSeverity, accept)
+	if err != nil {
+		return "", "", err
+	}
+
+	return ref, fmt.Sprintf(
+		"== lint ==\n%s\n== test ==\n%s\n== image ==\n%s\n\n== verify ==\n%s\n== scan ==\n%s",
+		lintOut, testOut, ref, verifyOut, scanOut), nil
+}
+
+// Ci runs lint, test, image, verify and scan in that order. If a step fails,
+// the following ones are skipped.
+//
+// The image is pushed to ttl.sh on the way, because verify and the scan work
+// on a reference rather than on a local build. That costs a push and buys the
+// guarantee that both looked at the same artefact.
+func (m *Schmetterpause) Ci(
+	ctx context.Context,
+	// +defaultPath="/"
+	// +ignore=["**/.git", "build", ".task", "dagger/internal", "dagger/dagger.gen.go"]
+	source *dagger.Directory,
+	// +optional
+	// +default="dev"
+	version string,
+	// +optional
+	// +default="1h"
+	ttl string,
+	// +optional
+	accept bool,
+) (string, error) {
+	_, report, err := m.pipeline(ctx, source, version, ttl, accept)
+	if err != nil {
+		return "", err
+	}
+	return report, nil
+}
+
+// Release runs the whole pipeline and copies the image it produced to the
+// registry that keeps it, tagged with version and covering both architectures
+// in one manifest.
+//
+// It repeats what ci does rather than trusting an earlier run: a release that
+// promotes an image nothing checked in this session is a release that promotes
+// whatever the cache happened to hold.
+//
+// Returns the report and the reference the image was promoted to.
 func (m *Schmetterpause) Release(
 	ctx context.Context,
 	// +defaultPath="/"
@@ -368,43 +556,46 @@ func (m *Schmetterpause) Release(
 	version string,
 	// Token with write access to the package.
 	registryToken *dagger.Secret,
-	// The repository to push to. A "+default" pragma takes a literal, so
-	// this string is the single place the release repository is named.
+	// The account the token belongs to.
+	username string,
+	// The repository to push to.
 	// +optional
 	// +default="ghcr.io/stuttgart-things/schmetterpause"
 	image string,
-	// The account the token belongs to.
-	username string,
 	// +optional
 	// Also move the "latest" tag to this image.
 	latest bool,
+	// +optional
+	// +default="1h"
+	ttl string,
+	// +optional
+	accept bool,
 ) (string, error) {
 	if version == "" || version == "dev" {
-		return "", fmt.Errorf("release needs a real version, got %q", version)
+		return "", fmt.Errorf("a release needs a real version, got %q", version)
 	}
 
-	variants := []*dagger.Container{
-		m.Image(source, version, releasePlatformAmd64),
-		m.Image(source, version, releasePlatformArm64),
-	}
-
-	authed := dag.Container().
-		WithRegistryAuth(releaseRegistry, username, registryToken)
-
-	published, err := authed.Publish(ctx, image+":"+imageTagSafe(version),
-		dagger.ContainerPublishOpts{PlatformVariants: variants})
+	ref, report, err := m.pipeline(ctx, source, version, ttl, accept)
 	if err != nil {
-		return "", fmt.Errorf("publish %s to %s: %w", version, releaseRegistry, err)
+		return "", err
 	}
 
-	if latest {
-		if _, err := authed.Publish(ctx, image+":latest",
-			dagger.ContainerPublishOpts{PlatformVariants: variants}); err != nil {
-			return "", fmt.Errorf("move the latest tag: %w", err)
-		}
+	promoted, err := m.Promote(ctx, ref, version, registryToken, username, image, latest)
+	if err != nil {
+		return "", err
 	}
 
-	return published, nil
+	return report + fmt.Sprintf("\n== release ==\n%s\n", promoted), nil
+}
+
+// excerpt shortens output that goes into an error message.
+func excerpt(s string) string {
+	const max = 200
+	s = strings.TrimSpace(s)
+	if len(s) > max {
+		return s[:max] + "…"
+	}
+	return s
 }
 
 // imageNameSafe turns a version into something usable as a repository name.

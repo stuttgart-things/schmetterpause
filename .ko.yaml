@@ -1,0 +1,34 @@
+# ko builds the runtime image. It is the only build path there is: what
+# Compose starts, what verify drives and what ends up in GHCR all come out of
+# this configuration (invariant 1, docs/adr/0009). There is no Dockerfile
+# anymore — its builder stage is the ko build below, its runtime stage is
+# defaultBaseImage.
+#
+# ko names the binary /ko-app/schmetterpause and makes it the entrypoint. It
+# sets no CMD, which is why "serve" is the default subcommand in
+# cmd/schmetterpause/main.go rather than an argument in the image.
+#
+# VERSION has to be set in the environment: the pipeline sets it, "task image"
+# takes it from git describe. Building with VERSION unset fails rather than
+# shipping a binary that reports a version nobody can find in the history.
+
+defaultBaseImage: gcr.io/distroless/static-debian12:nonroot
+
+# Compose and Azure Container Apps are amd64; arm64 is there so the image also
+# runs on an Apple-silicon laptop and on arm nodes.
+defaultPlatforms:
+  - linux/amd64
+  - linux/arm64
+
+builds:
+  - id: schmetterpause
+    main: ./cmd/schmetterpause
+    env:
+      # No libc in the distroless image.
+      - CGO_ENABLED=0
+    flags:
+      - -trimpath
+    ldflags:
+      - -s
+      - -w
+      - -X main.version={{.Env.VERSION}}

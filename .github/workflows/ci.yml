@@ -24,7 +24,11 @@ env:
   DAGGER_VERSION: "0.21.8"
 
 jobs:
+  # Pull requests stop after the checks. The image they build is pushed to
+  # ttl.sh, which needs no token — so this job also works from a fork, and it
+  # expires on its own.
   ci:
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -39,7 +43,7 @@ jobs:
             | DAGGER_VERSION="${DAGGER_VERSION}" BIN_DIR=/usr/local/bin sudo -E sh
           dagger version
 
-      - name: lint, test, build, verify
+      - name: lint, test, build, verify, scan
         run: |
           dagger call ci \
             --source=. \
@@ -48,9 +52,14 @@ jobs:
   # Artefacts that are meant to last go to GHCR. Only on a push — a pull
   # request from a fork must not be able to write to the package, and there is
   # nothing to keep from a branch that may never merge. See issue #20.
+  #
+  # This runs the same checks as the ci job and then copies the image it built
+  # to GHCR: the digest that was verified and scanned is the one that ships.
+  # That is why there is no separate ci job here to depend on — a second job
+  # would have to build the image again, and would then promote something no
+  # step of this run ever looked at.
   release:
     if: github.event_name == 'push'
-    needs: ci
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
@@ -67,7 +76,7 @@ jobs:
             | DAGGER_VERSION="${DAGGER_VERSION}" BIN_DIR=/usr/local/bin sudo -E sh
           dagger version
 
-      - name: Publish to GHCR
+      - name: Pipeline, then promote to GHCR
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |

@@ -4,5 +4,22 @@
   "sdk": {
     "source": "go"
   },
+  "dependencies": [
+    {
+      "name": "go",
+      "source": "github.com/stuttgart-things/dagger/go@v0.127.0",
+      "pin": "190b89fab8658042777909990771de19657ae00c"
+    },
+    {
+      "name": "trivy",
+      "source": "github.com/stuttgart-things/dagger/trivy@v0.127.0",
+      "pin": "190b89fab8658042777909990771de19657ae00c"
+    },
+    {
+      "name": "crane",
+      "source": "github.com/stuttgart-things/dagger/crane@v0.127.0",
+      "pin": "190b89fab8658042777909990771de19657ae00c"
+    }
+  ],
   "source": "dagger"
 }

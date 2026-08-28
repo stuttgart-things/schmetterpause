@@ -23,10 +23,12 @@ services:
       retries: 20
 
   app:
-    build:
-      context: .
-      args:
-        VERSION: ${VERSION:-dev}
+    # No build stanza: the image comes from ko, which is the only build path
+    # there is (invariant 1, docs/adr/0009). "task up" builds it into the
+    # local Docker daemon beforehand. SP_IMAGE points the stack at a published
+    # image instead — a ttl.sh reference somebody handed over, or the GHCR one
+    # for an evening in the office.
+    image: ${SP_IMAGE:-schmetterpause:dev}
     environment:
       SP_DATABASE_URL: postgres://schmetterpause:schmetterpause@db:5432/schmetterpause?sslmode=disable
       SP_LOG_LEVEL: ${SP_LOG_LEVEL:-debug}
@@ -59,7 +61,7 @@ services:
     healthcheck:
       # The distroless image has no shell and no curl — the binary brings the
       # check along itself.
-      test: ["CMD", "/usr/local/bin/schmetterpause", "healthcheck"]
+      test: ["CMD", "/ko-app/schmetterpause", "healthcheck"]
       interval: 5s
       timeout: 5s
       retries: 10
