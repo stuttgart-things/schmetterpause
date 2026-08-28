@@ -187,7 +187,8 @@ func (s *Server) handleKioskRecord(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	settlement, err := scoring.Record(r.Context(), s.store, homeID, awayID, form.result, time.Now())
+	settlement, err := scoring.Record(r.Context(), s.store, homeID, awayID, form.result,
+		domain.EnteredViaKiosk, time.Now())
 
 	var rejection *match.Rejection
 	switch {

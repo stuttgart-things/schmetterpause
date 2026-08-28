@@ -167,21 +167,25 @@ Arbeitstagen mit einem klaren `PASSED` oder `not yet`. Gezählt werden nur
 Ergebnis. Wochenendspiele stehen in der Tagesliste, zählen aber in keinem
 Fenster: gefragt sind Arbeitstage.
 
-**Ein Turnierabend ist nicht diese Messung, und die Datenbank kann den
-Unterschied nicht sehen.** Ein Kiosk-Eintrag wird dem Heimspieler
-gutgeschrieben — ein Abend, den ein Schriftführer eingetippt hat, sieht darin
-exakt aus wie zehn Leute, die ihre eigenen Matches eingetragen haben. Acht
-Spieler im Modus "jeder gegen jeden" sind 28 Matches, fast das Dreifache der
-Hürde. Mitgezählt wäre die Messung bestanden und hätte nichts gezeigt.
+**Ein Turnierabend ist nicht diese Messung.** Acht Spieler im Modus "jeder
+gegen jeden" sind 28 Matches, fast das Dreifache der Hürde. Mitgezählt wäre die
+Messung bestanden und hätte nichts gezeigt.
 
-Deshalb: Turnier spielen, Daten behalten, und den Zähler in einer normalen
-Woche danach starten.
+Seit Issue #71 sieht die Datenbank den Unterschied selbst: jedes Ergebnis trägt
+in `entered_via`, ob es ein Spieler selbst eingetragen hat oder der Kiosk.
+`task office:dod` zählt nur die eigenen Einträge und weist die Kiosk-Zeilen
+daneben aus. Du musst dafür nichts mehr von Hand ausklammern.
+
+`SINCE` bleibt trotzdem nützlich, für den Fall, den keine Spalte sieht: ein
+Turnier, das komplett von Handys eingetragen wurde, weil ein Spielplan die
+Leute dazu angehalten hat. Das ist immer noch kein freiwilliges Eintragen.
 
 ```sh
 task office:dod SINCE=2026-08-26   # der Tag nach dem Turnier
 ```
 
-Dass niemand erinnert wurde, steht in keiner Spalte. Das weißt nur du.
+Dass niemand erinnert wurde, steht weiterhin in keiner Spalte. Das weißt nur
+du.
 
 ## Was schiefgehen kann
 

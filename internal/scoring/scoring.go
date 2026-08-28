@@ -288,11 +288,18 @@ func settle(ctx context.Context, tx repository.Store, m domain.Match, at time.Ti
 // Everything else is the ordinary path — the same validation, the same
 // rating, the same history — and it all happens in one transaction, so a
 // failure leaves no half-recorded match behind.
+//
+// via is a parameter rather than a constant in here, even though the kiosk is
+// the only caller today. The column exists so that the measurement can tell a
+// tournament evening from a normal Tuesday (issue #71), and a second caller
+// that silently inherited "kiosk" would put back exactly the confusion it was
+// added to remove.
 func Record(
 	ctx context.Context,
 	store repository.Store,
 	homeID, awayID uuid.UUID,
 	result match.Result,
+	via domain.EnteredVia,
 	at time.Time,
 ) (Settlement, error) {
 	if homeID == awayID {
@@ -324,6 +331,7 @@ func Record(
 			Status:     domain.MatchPending,
 			ReportedBy: homeID,
 			PlayedAt:   at,
+			EnteredVia: via,
 			Sets:       sets,
 		})
 		if err != nil {

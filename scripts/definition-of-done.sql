@@ -6,13 +6,24 @@
 -- reached the ranking, and a result the opponent never agreed to is not
 -- evidence that the thing works.
 --
--- Two halves of the question this cannot see, and both inflate the number:
+-- Only results players entered themselves count towards the verdict. A kiosk
+-- entry is a scorekeeper typing in an evening, which is not the question —
+-- eight players round robin is twenty-eight matches, nearly three times the
+-- bar, and counted in by accident the measurement passes and proves nothing.
+-- They are reported beside it rather than hidden, because "how much did the
+-- kiosk do" is worth knowing too.
+--
+-- The column that makes this possible arrived with issue #71. Rows written
+-- before it say 'kiosk' only where the migration guessed from
+-- confirmed_at = played_at, and that guess is written down as one in
+-- db/migrations/20260828100000_matches_entered_via.sql.
+--
+-- What this still cannot see, and it inflates the number:
 --
 --   * Being reminded leaves no trace in the database at all.
---   * Neither does a tournament. A kiosk entry credits reported_by to the
---     home player, so an evening one scorekeeper typed in looks exactly like
---     ten people logging their own matches. Start the window after such a day
---     with SINCE=<date>.
+--   * A tournament played entirely from phones — everybody entering their own
+--     result because a schedule told them to — is still not voluntary logging,
+--     and no column can see that. SINCE stays useful for exactly that case.
 --
 -- Weekend results are visible in the per-day table but do not count towards a
 -- window: the measurement asks about working days.
@@ -26,11 +37,14 @@
 select to_char(day, 'YYYY-MM-DD Dy') as "day",
        matches,
        reporters,
+       kiosk as "of which kiosk",
        case when extract(isodow from day) > 5 then 'weekend' else '' end as "note"
 from (
-	select (m.confirmed_at at time zone :'zone')::date as day,
-	       count(*)                                    as matches,
-	       count(distinct m.reported_by)               as reporters
+	select (m.confirmed_at at time zone :'zone')::date                     as day,
+	       count(*) filter (where m.entered_via = 'player')                as matches,
+	       count(distinct m.reported_by) filter (where m.entered_via = 'player')
+	                                                                       as reporters,
+	       count(*) filter (where m.entered_via = 'kiosk')                 as kiosk
 	from matches m
 	where m.status = 'confirmed'
 	  and (m.confirmed_at at time zone :'zone')::date >= :'since'::date
@@ -51,6 +65,7 @@ with bounds as (
 	                (now() at time zone :'zone')::date)                          as last_day
 	from matches
 	where status = 'confirmed'
+	  and entered_via = 'player'
 	  and (confirmed_at at time zone :'zone')::date >= :'since'::date
 ),
 working_days as (
@@ -76,6 +91,9 @@ scored as (
 	from windows w
 	left join matches m
 	       on m.status = 'confirmed'
+	      -- The whole point of the column: a scorekeeper's evening is not
+	      -- somebody logging their own match (issue #71).
+	      and m.entered_via = 'player'
 	      and (m.confirmed_at at time zone :'zone')::date between w.from_day and w.to_day
 	      and extract(isodow from (m.confirmed_at at time zone :'zone')) < 6
 	group by 1, 2
@@ -102,5 +120,6 @@ from (select 1) one
 left join best on true;
 
 \echo ''
-\echo '  A tournament is not this measurement. See issue #43.'
+\echo '  Kiosk entries are excluded from the verdict and shown per day.'
+\echo '  Being reminded is still in no column. See issue #43.'
 \echo ''

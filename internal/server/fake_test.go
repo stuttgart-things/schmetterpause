@@ -261,6 +261,11 @@ func (m *memMatches) Create(_ context.Context, in domain.Match) (domain.Match, e
 	if in.Status == "" {
 		in.Status = domain.MatchPending
 	}
+	// Mirrors the column default, so a handler that forgets to set it looks
+	// the same here as it does against Postgres.
+	if in.EnteredVia == "" {
+		in.EnteredVia = domain.EnteredViaPlayer
+	}
 	m.rows = append(m.rows, in)
 	return in, nil
 }

@@ -113,6 +113,24 @@ const (
 	MatchDisputed MatchStatus = "disputed"
 )
 
+// EnteredVia records how a result reached the database.
+//
+// It answers a question the measurement has to be able to ask and could not
+// (issue #71): whether a row is somebody logging their own match, which is
+// what the Definition of Done counts, or a scorekeeper typing in an evening,
+// which is not. Eight players round robin is twenty-eight matches — counted in
+// by accident, the measurement passes and proves nothing.
+type EnteredVia string
+
+const (
+	// EnteredViaPlayer is a player entering a result themselves. The default,
+	// and the only kind that answers the question the MVP asks.
+	EnteredViaPlayer EnteredVia = "player"
+	// EnteredViaKiosk is the machine at the table, where one person enters
+	// for everybody.
+	EnteredViaKiosk EnteredVia = "kiosk"
+)
+
 // Match is a singles encounter between two players. Doubles do not count
 // towards TTR and would need a rating of their own if they ever arrive.
 type Match struct {
@@ -126,7 +144,10 @@ type Match struct {
 	PlayedAt    time.Time
 	// ConfirmedAt is set exactly when Status is MatchConfirmed.
 	ConfirmedAt *time.Time
-	Sets        []MatchSet
+	// EnteredVia is how the result reached the database. Empty means
+	// EnteredViaPlayer, which is what the column defaults to.
+	EnteredVia EnteredVia
+	Sets       []MatchSet
 }
 
 // MatchSet is a single set within a match.

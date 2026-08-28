@@ -174,9 +174,10 @@ tasks:
     desc: "Read the Definition of Done out of the database: 5 working days, 10 matches, 5 players"
     silent: true
     vars:
-      # A tournament is not the measurement (#43), and the database cannot
-      # tell one from a normal day — a kiosk entry credits the home player.
-      # SINCE is how the count starts after such an evening.
+      # Kiosk entries are excluded by the query itself since #71, so a
+      # tournament no longer has to be cut out by hand. SINCE is still here
+      # for the case no column can see: an evening everybody entered from
+      # their own phone because a schedule told them to.
       SINCE: '{{.SINCE | default "1970-01-01"}}'
       # Grouping into days only means something in the office's own time.
       ZONE: '{{.ZONE | default "Europe/Berlin"}}'
@@ -188,7 +189,8 @@ tasks:
           -f - < scripts/definition-of-done.sql
       - |
         echo "Counting from {{.SINCE}} in {{.ZONE}}."
-        echo "After a tournament: task office:dod SINCE=<the day after>"
+        echo "Kiosk entries do not count towards the verdict; they are listed per day."
+        echo "For an evening everybody typed in themselves: task office:dod SINCE=<the day after>"
 
   psql:
     desc: "psql session on the development database"
