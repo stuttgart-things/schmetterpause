@@ -31,16 +31,24 @@ Lebenszyklus und steht im Backup-ADR.
 
 ## Offene Fragen (noch nicht entschieden)
 
-1. **GitOps-Mechanismus:** Azure Arc bietet zwei offizielle Wege —
-   [Flux v2](https://learn.microsoft.com/en-us/azure/azure-arc/kubernetes/conceptual-gitops-flux2)
-   oder eine
-   [Argo-CD-Extension](https://learn.microsoft.com/en-us/azure/azure-arc/kubernetes/conceptual-gitops-argocd).
-   Tendenz: Argo CD, weil [Kargo](https://kargo.io/) (Continuous-Promotion
-   über mehrere Stages) direkt darauf aufsetzt und von denselben Maintainern
-   kommt — vermeidet einen zweiten GitOps-Stack für später.
-2. **Wie viele Stages?** Mindestens dev/prod plausibel. Kargo lohnt sich erst
-   ab mindestens zwei Stufen mit echter Promotion dazwischen — bei nur einer
-   Stage reicht Argo CD allein.
+1. ~~**GitOps-Mechanismus**~~ — **entschieden** (Issue #81, 2026-08-26):
+   Argo CD. Flux wird für diese Anwendung nicht verfolgt.
+
+   Die Begründung ist eine andere als die hier ursprünglich vermutete. Nicht
+   Kargo gab den Ausschlag, sondern der `pullRequest`-Generator eines
+   `ApplicationSet`: Die Vorschau-Umgebung je Pull Request (#82) hängt daran,
+   und Flux hat dafür kein Gegenstück. Kargo ist inzwischen ein eigenes Issue
+   (#83, phase-4) mit vier Auslösern, von denen keiner erfüllt ist — dasselbe
+   Muster wie ADR-0002.
+
+   Offen bleibt die Frage, die #81 nicht stellt, weil sie sich dort nicht
+   stellt: *wie* Argo CD auf Azure Local dorthin kommt. Siehe den Abschnitt
+   zur Zielumgebung.
+2. ~~**Wie viele Stages?**~~ — beantwortet, mit einem Vorbehalt: Phase 3 baut
+   genau eine. Der Vorbehalt steht im Abschnitt zur Zielumgebung — trägt der
+   sthings-Cluster den Übergang und kommt Azure Local danach dazu, sind es
+   zwei, und der erste Kargo-Auslöser aus #83 ist erfüllt, bevor jemand ihn
+   geprüft hat.
 3. ~~**Registry**~~ — **entschieden** (Issue #20, 2026-08-21): `ttl.sh` für
    Wegwerf-Builds, `ghcr.io/stuttgart-things/schmetterpause` für alles
    Bleibende. Multi-Arch (amd64+arm64), Push bei jedem `main`-Merge als
