@@ -91,6 +91,50 @@ func Middleware(a Authenticator, log *slog.Logger) func(http.Handler) http.Handl
 	}
 }
 
+// AdminCheck answers whether a player_id holds the admin flag.
+//
+// A function rather than the repository itself, so this package keeps knowing
+// nothing about storage — and so a test can say "this one is an admin"
+// without a database.
+type AdminCheck func(ctx context.Context, id uuid.UUID) (bool, error)
+
+// RequireAdmin lets through only requests from somebody who may act for other
+// people (docs/adr/0008).
+//
+// It sits on top of RequirePlayer rather than beside it: an admin acts in
+// their own signed-in session, which is the property that makes an action
+// attributable to a person instead of to a browser. Without that, this would
+// be the kiosk again with a different name.
+//
+// A failed check is refused rather than logged and waved through. That is the
+// opposite of what Middleware does with a failed identification, and the
+// reason is the direction of the mistake: a page that cannot say who you are
+// should still render, and an action on somebody else's record should not
+// happen if we are not sure who asked.
+func RequireAdmin(is AdminCheck, log *slog.Logger) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return RequirePlayer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			id, _ := PlayerID(r.Context())
+
+			ok, err := is(r.Context(), id)
+			if err != nil {
+				log.ErrorContext(r.Context(), "checking the admin flag failed",
+					"player_id", id, "path", r.URL.Path, "error", err)
+				// User-facing text stays German; see CLAUDE.md.
+				http.Error(w, "Das hat gerade nicht geklappt", http.StatusInternalServerError)
+				return
+			}
+			if !ok {
+				log.WarnContext(r.Context(), "admin route refused",
+					"player_id", id, "path", r.URL.Path)
+				http.Error(w, "Dafür fehlen dir die Rechte", http.StatusForbidden)
+				return
+			}
+			next.ServeHTTP(w, r)
+		}))
+	}
+}
+
 // RequirePlayer lets through only requests attributed to a player.
 func RequirePlayer(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

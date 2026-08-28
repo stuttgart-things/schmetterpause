@@ -1,0 +1,96 @@
+package templates
+
+// Admin is the page that answers "who may act for other people".
+//
+// The Definition of Done in issue #88 asks for exactly that, and until
+// docs/adr/0008 there was no answer: the only elevated thing was a cookie
+// whose value is identical in every browser that ever opened the kiosk token
+// URL, which names a machine and never a person.
+//
+// The boundary is written out here rather than left in the ADR. Somebody who
+// wonders whether the laptop at the table can delete a result is standing in
+// front of the application, not in front of the repository.
+templ Admin(v AdminView) {
+	@Layout("Rechte", v.Header) {
+		<p class="back"><a href="/">&larr; Rangliste</a></p>
+		<div class="page-head">
+			<div class="page-greeting">
+				<h1>Wer für andere handeln darf</h1>
+				<p class="muted">
+					Eine Stufe, keine Rollen. Wer sie hat, handelt in seiner
+					eigenen Sitzung, und jede solche Handlung steht im Log.
+				</p>
+			</div>
+		</div>
+		<section class="session">
+			<h2>Admins</h2>
+			if len(v.People) == 0 {
+				<p class="muted">
+					Niemand. Der erste kommt über <code>SP_BOOTSTRAP_ADMIN</code>
+					beim Start — der Anzeigename genügt.
+				</p>
+			} else {
+				<ul class="admin-list">
+					for _, p := range v.People {
+						<li>
+							<a href={ templ.SafeURL("/players/" + p.ID) }>{ p.DisplayName }</a>
+							if p.IsSelf {
+								<span class="muted">(du)</span>
+							}
+						</li>
+					}
+				</ul>
+			}
+		</section>
+		<section class="session">
+			<h2>Die Grenze</h2>
+			<div class="table-scroll" tabindex="0" role="region" aria-label="Wer was darf">
+				<table class="matches">
+					<thead>
+						<tr>
+							<th scope="col">Handlung</th>
+							<th scope="col">Kiosk</th>
+							<th scope="col">Admin</th>
+						</tr>
+					</thead>
+					<tbody>
+						@rightsRow("Ergebnis für beliebige Spieler eintragen", true, false)
+						@rightsRow("Ein Ergebnis binnen zehn Minuten zurücknehmen", true, false)
+						@rightsRow("Wiederherstellungscode für jemanden im Raum", true, false)
+						@rightsRow("Gewertetes Ergebnis korrigieren oder entfernen", false, true)
+						@rightsRow("Zwei Spieler zusammenführen", false, true)
+						@rightsRow("Einen Spieler entfernen", false, true)
+						@rightsRow("Ein Turnier abrechnen", false, true)
+						@rightsRow("Eine PIN für jemand anderen setzen", false, false)
+					</tbody>
+				</table>
+			</div>
+			<p class="muted">
+				Die letzte Zeile ist Absicht: eine PIN, die jemand anderes
+				kennt, ist keine PIN. Die vergibt jeder nur für sich selbst.
+				Nachzulesen in <code>docs/adr/0008</code>.
+			</p>
+		</section>
+	}
+}
+
+// rightsRow is one line of the boundary table. Ja and nein rather than ticks:
+// a tick and an empty cell are told apart by whoever already knows which
+// column means what.
+templ rightsRow(action string, kiosk, admin bool) {
+	<tr>
+		<td>{ action }</td>
+		<td>@yesNo(kiosk)
+</td>
+		<td>@yesNo(admin)
+</td>
+	</tr>
+}
+
+templ yesNo(allowed bool) {
+	if allowed {
+		<span class="state state-pending">ja</span>
+	} else {
+		<span class="muted">nein</span>
+	}
+}

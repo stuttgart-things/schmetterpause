@@ -48,6 +48,7 @@ func (s *Server) headerView(ctx context.Context) templates.HeaderView {
 	view := templates.HeaderView{
 		DisplayName: player.DisplayName,
 		ProfileURL:  "/players/" + player.ID.String(),
+		IsAdmin:     player.IsAdmin,
 	}
 
 	waiting, err := s.store.Matches().PendingCountFor(ctx, id)

@@ -399,6 +399,24 @@ h2 {
 .recovery-lead strong { color: var(--fg); }
 .recovery p:last-child { margin-bottom: 0; }
 
+/* --- Rechte -------------------------------------------------------------- */
+
+/* A list, not a table: it has one column, and a table would promise more. */
+.admin-list {
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.admin-list li {
+	padding: 0.4rem 0;
+	border-bottom: 1px solid var(--line);
+}
+
+.admin-list li:last-child { border-bottom: none; }
+
+.admin-list a { color: var(--fg); }
+
 /* --- Status eines Matches ----------------------------------------------- */
 
 /* The badge that says a result is not settled yet, beside the set score.

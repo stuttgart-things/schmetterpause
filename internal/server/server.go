@@ -96,6 +96,10 @@ func (s *Server) routes() http.Handler {
 	page.HandleFunc("POST /matches/{id}/dispute", s.handleDisputeMatch)
 	page.HandleFunc("POST /matches/{id}/correct", s.handleCorrectMatch)
 	page.HandleFunc("GET /qr", s.handleQRSheet)
+	// Who may act for other people (docs/adr/0008). Behind the flag itself:
+	// the list is the record of who holds power over other people's records,
+	// and that is not a public page.
+	page.Handle("GET /admin", auth.RequireAdmin(s.isAdmin, s.log)(http.HandlerFunc(s.handleAdmin)))
 	// Unset token, no routes: the kiosk does not exist rather than existing
 	// unlocked, and /kiosk is a 404 like any other unknown path.
 	if s.cfg.KioskToken != "" {
