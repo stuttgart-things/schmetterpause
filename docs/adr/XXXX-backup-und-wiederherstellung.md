@@ -14,21 +14,25 @@
 - **Verwandt:** das Deployment-Ziel-ADR aus demselben Branch, ADR-0001
   (Postgres), ADR-0004 (WebAuthn), ADR-0005 (Custom Resources als Datenspeicher)
 
-## Der laufenden Messung nicht in die Quere kommen
+## Der Office-Installation nicht in die Quere kommen
 
-Die MVP-Messung aus #7 läuft ab dem 2026-08-26 und ist frühestens am
-2026-09-01 ablesbar (#68). Sie hängt an genau einer Installation: dem Rechner
-im Büro, gestartet über `task office:up`.
+Die erste Fassung sperrte dieses ADR und das Deployment-Ziel-ADR pauschal, bis
+die MVP-Messung aus #7 abgelesen ist (ab 2026-08-26, frühestens 2026-09-01
+ablesbar, #68). Diese Sperre war zu breit gefasst. #89 hält Phase 3
+ausdrücklich unabhängig von der Messung: Eine enttäuschende Zahl entscheidet,
+wozu die Anwendung wird, nicht ob sie auf Kubernetes läuft.
 
-**Nichts aus diesem ADR und nichts aus dem Deployment-Ziel-ADR wird umgesetzt,
-solange die
-Messung läuft.** Ein zweites Deployment derselben Anwendung während des
-Messzeitraums erzeugt entweder einen zweiten Datenbestand oder verleitet dazu,
-den laufenden anzufassen — beides macht die Messung wertlos, und die Messung
-ist der Grund, warum es die Anwendung gibt.
+**Was bleibt, ist die schmalere und dauerhaftere Fassung**, und sie steht in
+#89 als Punkt 3 der Definition of Done: *`task office:up` auf einem Laptop
+funktioniert weiterhin unverändert.* Der Rechner im Büro trägt die Messung, und
+er trägt sie unabhängig davon, was im Cluster passiert. Nicht anzufassen ist
+also die laufende Installation — nicht das Nachdenken über ihre Nachfolge.
 
-Issue #43 (`mvp`) ist davon ausdrücklich nicht betroffen: "irgendwo hinstellen,
-wo das Büro drankommt" meint die einfachste Lösung, die die Messung ermöglicht,
+Für dieses ADR ist der Punkt ohnehin entschärft: Als phase-5 kommt es zeitlich
+weit nach allem, was die Messung berühren könnte.
+
+Issue #43 (`mvp`) bleibt davon ausdrücklich unberührt: „irgendwo hinstellen, wo
+das Büro drankommt" meint die einfachste Lösung, die die Messung ermöglicht,
 nicht ein Cluster-Deployment. Die beiden Vorhaben sehen ähnlich aus und sind es
 nicht.
 
@@ -263,14 +267,16 @@ ADR-0005 aufgreift.
 
 ## Offene Fragen
 
-1. **Welcher Objektspeicher konkret?** Azure Blob Storage liegt nahe, weil die
-   Umgebung ohnehin an Azure hängt. Zu klären, ob im
-   stuttgart-things-Umfeld schon ein Objektspeicher existiert, der die
-   Anforderung aus Randbedingung 1 erfüllt.
-2. **Wie wird das Bootstrap-Geheimnis gesät?** Siehe Randbedingung 2. Diese
-   Frage ist gemeinsam mit der GitOps-Entscheidung aus dem Deployment-Ziel-ADR zu
-   beantworten,
-   nicht getrennt davon.
+1. **Welcher Objektspeicher konkret?** Auf Azure Local **Azure Blob Storage** —
+   eine echte Alternative gibt es dort nicht, siehe Randbedingung 1. Offen ist
+   nur noch, ob im Firmenumfeld ein Storage-Account existiert, den wir
+   mitbenutzen dürfen, oder ob ein eigener angelegt wird. Auf der
+   Übergangsumgebung ist die Frage eine andere: dort liegt der Velero-Bucket
+   nahe (#84), und dort muss Randbedingung 1 tatsächlich geprüft werden.
+2. ~~**Wie wird das Bootstrap-Geheimnis gesät?**~~ — für die Zielumgebung
+   beantwortet: gar nicht, es gibt keines. Managed Identity statt Zugangsdaten,
+   siehe Randbedingung 2. Für die Übergangsumgebung bleibt die Frage offen und
+   gehört weiterhin zur GitOps-Entscheidung, nicht neben sie.
 3. **Wie oft wird gesichert?** Der Wert folgt aus der Antwort auf "wie viel
    Neueingabe ist im schlimmsten Fall zumutbar". Vor jedem geplanten Teardown
    zusätzlich ein Dump von Hand, unabhängig vom Intervall.
