@@ -157,7 +157,15 @@ func Joined(v SessionView) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "</code></p><p class=\"recovery-lead\">Speicher ihn da, wo deine Passwörter liegen. Er wird <strong>nur dieses eine Mal</strong> angezeigt.</p><p class=\"muted\">Dieses Gerät erkennt dich wieder, auch nach einem Neustart. Den Code brauchst du erst, wenn es dich vergisst oder du auf ein neues wechselst.</p></section>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "</code></p><p class=\"recovery-lead\">Speicher ihn da, wo deine Passwörter liegen. Er wird <strong>nur dieses eine Mal</strong> angezeigt.</p><p class=\"muted\">Dieses Gerät erkennt dich wieder, auch nach einem Neustart. Den Code brauchst du erst, wenn es dich vergisst oder du auf ein neues wechselst.</p><hr class=\"hairline\">")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = PINForm(PINFormView{}).Render(ctx, templ_7745c5c3_Buffer)
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "</section>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

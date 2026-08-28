@@ -29,6 +29,17 @@ const codeLen = 16
 // and NormalizeCode throws them away again.
 const groupLen = 4
 
+// The bounds on a PIN. docs/adr/0007 sets the floor at six digits, which only
+// holds up because of the brake in front of it; the ceiling is here so the
+// field cannot become an essay, and nothing needs it.
+//
+// They live in this package rather than beside the handler because the form
+// that collects a PIN needs them too, and two copies of a rule drift.
+const (
+	MinPINLength = 6
+	MaxPINLength = 32
+)
+
 // NewCode returns a fresh recovery code, formatted for reading aloud.
 //
 // Generated, never chosen. docs/adr/0006 is explicit about why: a field

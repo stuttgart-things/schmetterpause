@@ -51,6 +51,15 @@ templ Profile(v ProfileView) {
 				<li class="chip">{ strconv.Itoa(v.Won) + ":" + strconv.Itoa(v.Lost) }</li>
 			}
 		</ul>
+		if v.IsSelf {
+			// Only on your own page, and low down: this is the drawer people
+			// open once, not what they came to look at. The rating is.
+			@RecoveryCard(RecoveryCardView{})
+			<section class="session pin-card">
+				<h2>PIN</h2>
+				@PINForm(PINFormView{Set: v.HasPIN})
+			</section>
+		}
 		<h2>Letzte Matches</h2>
 		if len(v.Matches) == 0 {
 			<p class="muted">Noch keine Matches.</p>

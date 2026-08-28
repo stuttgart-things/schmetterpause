@@ -399,6 +399,33 @@ h2 {
 .recovery-lead strong { color: var(--fg); }
 .recovery p:last-child { margin-bottom: 0; }
 
+/* --- PIN ---------------------------------------------------------------- */
+
+/* The rule between the code and the PIN offer on the join card. They are two
+   different things about the same subject, and without a line the second one
+   reads as a footnote to the first — which issue #88 asks it not to be. */
+.hairline {
+	height: 0;
+	margin: 1.1rem 0;
+	border: 0;
+	border-top: 1px solid var(--line);
+}
+
+.pin-offer label {
+	display: block;
+	margin-bottom: 0.15rem;
+}
+
+/* The explanation sits between the label and the field rather than under the
+   whole form, because it answers the question somebody has while looking at
+   the empty box: how long, and does this replace my code. */
+.pin-offer .muted {
+	margin: 0 0 0.6rem;
+	font-size: 0.85rem;
+}
+
+.pin-card, .recovery-card { margin-top: 1.5rem; }
+
 /* Heading and the refresh button on one line. The button sits at the end of
    the row rather than under the heading, so the card does not grow taller for
    a control most readers never press. */

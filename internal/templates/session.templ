@@ -74,5 +74,14 @@ templ Joined(v SessionView) {
 			Neustart. Den Code brauchst du erst, wenn es dich vergisst oder
 			du auf ein neues wechselst.
 		</p>
+		// On the same card and under a rule, not behind a link. The code is
+		// the perishable half and goes first, but issue #88 is explicit that
+		// the PIN must not end up buried behind it: realistically few people
+		// save a code, and then the PIN is what carries the daily load.
+		//
+		// It swaps itself and nothing else, so setting a PIN here leaves the
+		// code on the screen.
+		<hr class="hairline"/>
+		@PINForm(PINFormView{})
 	</section>
 }

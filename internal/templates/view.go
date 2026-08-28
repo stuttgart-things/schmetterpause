@@ -9,6 +9,7 @@ import (
 	"hash/fnv"
 	"strconv"
 
+	"github.com/stuttgart-things/schmetterpause/internal/credential"
 	"github.com/stuttgart-things/schmetterpause/internal/match"
 )
 
@@ -138,6 +139,53 @@ type SessionView struct {
 	// keeps only a hash (docs/adr/0006).
 	RecoveryCode string
 	// Error explains why the last attempt was rejected. Empty on success.
+	Error string
+}
+
+// PINFormView drives the form that sets a PIN.
+type PINFormView struct {
+	// Set reports whether this player already has one. Only the wording
+	// depends on it — setting and replacing are the same write.
+	Set bool
+	// Done marks the response that follows a successful change. What was
+	// typed is never handed back, so there is nothing else to say.
+	Done bool
+	// Error explains a refusal.
+	Error string
+}
+
+// Heading labels the field.
+func (v PINFormView) Heading() string {
+	if v.Set {
+		return "Neue PIN"
+	}
+	return "PIN, wenn du magst"
+}
+
+// Action labels the button.
+func (v PINFormView) Action() string {
+	if v.Set {
+		return "PIN ändern"
+	}
+	return "PIN setzen"
+}
+
+// The PIN bounds as strings, for the field attributes and the sentence above
+// them. Read from the credential package rather than written out here, so the
+// form, the browser and the server cannot disagree about what is allowed.
+var (
+	MinPIN = strconv.Itoa(credential.MinPINLength)
+	MaxPIN = strconv.Itoa(credential.MaxPINLength)
+)
+
+// RecoveryCardView is the recovery code on somebody's own profile.
+type RecoveryCardView struct {
+	// Code is a freshly issued one, in the clear, set only in the response
+	// that produced it. Empty on the ordinary render, which offers to make
+	// one rather than showing the one that exists — the server holds only a
+	// hash and could not show it if it wanted to.
+	Code string
+	// Error explains a refusal.
 	Error string
 }
 
@@ -441,6 +489,12 @@ type ProfileView struct {
 	HasDelta bool
 	Spark    SparkView
 	Matches  []ProfileMatchView
+	// IsSelf marks the reader's own page, which is the only one carrying the
+	// access section. Somebody else's PIN is none of their business, and the
+	// page is otherwise public.
+	IsSelf bool
+	// HasPIN changes the wording from setting one to replacing one.
+	HasPIN bool
 }
 
 // paddleColours is how many blade colours there are. Named rather than

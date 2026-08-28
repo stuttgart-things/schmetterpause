@@ -100,6 +100,13 @@ func (s *Server) handleProfile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// The access section is the reader's own business and nobody else's, so
+	// it is decided here rather than in the template.
+	if self, ok := auth.PlayerID(r.Context()); ok && self == id {
+		view.IsSelf = true
+		view.HasPIN = s.hasPIN(r.Context(), self)
+	}
+
 	s.render(w, r, templates.Profile(view))
 }
 

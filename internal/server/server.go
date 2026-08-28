@@ -80,6 +80,11 @@ func (s *Server) routes() http.Handler {
 	page.HandleFunc("GET /fragments/signin", s.handleSignInForm)
 	page.HandleFunc("GET /fragments/join", s.handleJoinForm)
 	page.HandleFunc("POST /signin", s.handleSignIn)
+	// Only ever for yourself, which is what RequirePlayer says here. Issuing
+	// a credential for somebody else is the kiosk's job and nobody else's
+	// (docs/adr/0006).
+	page.Handle("POST /credentials/pin", auth.RequirePlayer(http.HandlerFunc(s.handleSetPIN)))
+	page.Handle("POST /credentials/recovery", auth.RequirePlayer(http.HandlerFunc(s.handleNewRecoveryCode)))
 	page.HandleFunc("GET /fragments/match", s.handleMatchForm)
 	// Not behind a player check: the kiosk has no player session and needs
 	// the same rows.
