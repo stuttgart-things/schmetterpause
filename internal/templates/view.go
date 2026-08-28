@@ -560,6 +560,30 @@ func PaddleClass(playerID string) string {
 type AdminView struct {
 	Header HeaderView
 	People []AdminPerson
+	// Kiosks is which machines are unlocked right now. Issue #77 filed
+	// exactly this question, and the old derived cookie could not answer it:
+	// it was the same value in every browser that had ever seen the token.
+	Kiosks []KioskGrantView
+}
+
+// KioskGrantView is one unlocked machine.
+type KioskGrantView struct {
+	ID string
+	// UserAgent is what the browser said it was. A label so the row reads as
+	// a machine rather than as an identifier — never treated as identity.
+	UserAgent string
+	Unlocked  string
+	LastSeen  string
+	Expires   string
+}
+
+// Label is what to call this machine in a list. The user agent when there is
+// one, and otherwise something that is at least not empty.
+func (v KioskGrantView) Label() string {
+	if v.UserAgent == "" {
+		return "Unbekanntes Gerät"
+	}
+	return v.UserAgent
 }
 
 // AdminPerson is one holder of the flag.

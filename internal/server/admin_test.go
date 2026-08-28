@@ -22,10 +22,14 @@ func adminHandler(t *testing.T, bootstrap string) (*server.Server, *memStore) {
 	cfg.SessionKey = testSessionKey
 	cfg.BootstrapAdmin = bootstrap
 
-	log := slog.New(slog.NewTextHandler(io.Discard, &slog.HandlerOptions{Level: slog.LevelError}))
-	srv := server.New(cfg, store, log,
+	srv := server.New(cfg, store, discardLogger(),
 		auth.NewCookieAuthenticator(store.Identities(), testSessionKey, false), "test")
 	return srv, store
+}
+
+// discardLogger keeps the test output about the tests.
+func discardLogger() *slog.Logger {
+	return slog.New(slog.NewTextHandler(io.Discard, &slog.HandlerOptions{Level: slog.LevelError}))
 }
 
 func getWith(t *testing.T, h http.Handler, path string, cookie *http.Cookie) *httptest.ResponseRecorder {

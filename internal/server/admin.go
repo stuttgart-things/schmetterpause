@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/google/uuid"
 
@@ -58,7 +59,84 @@ func (s *Server) handleAdmin(w http.ResponseWriter, r *http.Request) {
 			IsSelf:      p.ID == self,
 		})
 	}
+
+	// The second question this page answers, and the one issue #77 filed:
+	// which machines are kiosks right now. A derived cookie could not answer
+	// it, because it was the same value everywhere.
+	grants, err := s.store.KioskGrants().Active(r.Context(), time.Now())
+	if err != nil {
+		s.log.ErrorContext(r.Context(), "loading the kiosk grants failed", "error", err)
+		http.Error(w, "Liste nicht verfügbar", http.StatusInternalServerError)
+		return
+	}
+	view.Kiosks = kioskGrantViews(grants)
+
 	s.render(w, r, templates.Admin(view))
+}
+
+// kioskGrantViews puts the grants into the words the page uses.
+func kioskGrantViews(grants []domain.KioskGrant) []templates.KioskGrantView {
+	views := make([]templates.KioskGrantView, 0, len(grants))
+	for _, g := range grants {
+		views = append(views, templates.KioskGrantView{
+			ID:        g.ID.String(),
+			UserAgent: g.UserAgent,
+			Unlocked:  g.CreatedAt.Local().Format("02.01.2006 15:04"),
+			LastSeen:  g.LastSeenAt.Local().Format("02.01.2006 15:04"),
+			Expires:   g.ExpiresAt.Local().Format("02.01.2006 15:04"),
+		})
+	}
+	return views
+}
+
+// handleRevokeKiosk takes one machine back.
+//
+// The thing the old cookie could not do. It was base64(HMAC(session key,
+// "kiosk:" + token)) — a constant — so revoking one browser meant changing
+// the token and restarting, which logged out the laptop at the table along
+// with everybody else (issue #77).
+func (s *Server) handleRevokeKiosk(w http.ResponseWriter, r *http.Request) {
+	self, _ := auth.PlayerID(r.Context())
+
+	id, err := uuid.Parse(r.PathValue("id"))
+	if err != nil {
+		http.Error(w, "Dieses Gerät gibt es nicht", http.StatusNotFound)
+		return
+	}
+
+	if err := s.store.KioskGrants().Revoke(r.Context(), id, time.Now()); err != nil {
+		s.log.ErrorContext(r.Context(), "revoking the kiosk grant failed",
+			"grant_id", id, "error", err)
+		http.Error(w, "Das hat gerade nicht geklappt", http.StatusInternalServerError)
+		return
+	}
+
+	// Named, because that is the half of #77 that is not about revocation:
+	// the log says who took it back, not that "the kiosk" did something.
+	s.log.InfoContext(r.Context(), "kiosk grant revoked", "grant_id", id, "by", self)
+
+	http.Redirect(w, r, "/admin", http.StatusSeeOther)
+}
+
+// handleRevokeAllKiosks takes every unlocked machine back at once.
+//
+// The answer to "somebody read the token over a shoulder" that does not
+// involve a restart. It logs out the laptop at the table too, on purpose —
+// whoever presses this wants exactly that, and the laptop gets back in by
+// entering the token again.
+func (s *Server) handleRevokeAllKiosks(w http.ResponseWriter, r *http.Request) {
+	self, _ := auth.PlayerID(r.Context())
+
+	n, err := s.store.KioskGrants().RevokeAll(r.Context(), time.Now())
+	if err != nil {
+		s.log.ErrorContext(r.Context(), "revoking all kiosk grants failed", "error", err)
+		http.Error(w, "Das hat gerade nicht geklappt", http.StatusInternalServerError)
+		return
+	}
+
+	s.log.InfoContext(r.Context(), "all kiosk grants revoked", "count", n, "by", self)
+
+	http.Redirect(w, r, "/admin", http.StatusSeeOther)
 }
 
 // GrantBootstrapAdmin gives the flag to the player SP_BOOTSTRAP_ADMIN names.
