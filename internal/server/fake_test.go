@@ -24,6 +24,7 @@ type memStore struct {
 	players     *memPlayers
 	identities  *memIdentities
 	credentials *memCredentials
+	kiosks      *memKioskGrants
 	matches     *memMatches
 	history     *memHistory
 	pingErr     error
@@ -37,6 +38,7 @@ func newMemStore() *memStore {
 		players:     players,
 		identities:  &memIdentities{players: players},
 		credentials: &memCredentials{},
+		kiosks:      &memKioskGrants{},
 		matches:     matches,
 		history:     history,
 	}
@@ -48,8 +50,9 @@ func (m *memStore) Identities() repository.IdentityRepository { return m.identit
 func (m *memStore) Credentials() repository.CredentialRepository {
 	return m.credentials
 }
-func (m *memStore) Matches() repository.MatchRepository         { return m.matches }
-func (m *memStore) TTRHistory() repository.TTRHistoryRepository { return m.history }
+func (m *memStore) KioskGrants() repository.KioskGrantRepository { return m.kiosks }
+func (m *memStore) Matches() repository.MatchRepository          { return m.matches }
+func (m *memStore) TTRHistory() repository.TTRHistoryRepository  { return m.history }
 
 // InTx runs fn against the same store. There is no rollback here, which is
 // fine for handler tests — that transactions actually hold is covered against
@@ -289,6 +292,112 @@ func (c *memCredentials) ForPlayer(_ context.Context, playerID uuid.UUID, kind d
 		return domain.Credential{}, domain.ErrNotFound
 	}
 	return row, nil
+}
+
+// memKioskGrants mirrors kiosk_grants: one row per unlocked machine, keyed on
+// the hash of the secret its cookie carries.
+type memKioskGrants struct {
+	repository.KioskGrantRepository
+	mu   sync.Mutex
+	rows []domain.KioskGrant
+	// secrets maps the hash to the row, the way the unique index does.
+	secrets map[string]uuid.UUID
+}
+
+func (k *memKioskGrants) Create(
+	_ context.Context, secretHash []byte, expiresAt time.Time, userAgent string,
+) (domain.KioskGrant, error) {
+	k.mu.Lock()
+	defer k.mu.Unlock()
+
+	if k.secrets == nil {
+		k.secrets = map[string]uuid.UUID{}
+	}
+	now := time.Now()
+	g := domain.KioskGrant{
+		ID:         uuid.New(),
+		CreatedAt:  now,
+		LastSeenAt: now,
+		ExpiresAt:  expiresAt,
+		UserAgent:  userAgent,
+	}
+	k.rows = append(k.rows, g)
+	k.secrets[string(secretHash)] = g.ID
+	return g, nil
+}
+
+func (k *memKioskGrants) BySecret(_ context.Context, secretHash []byte) (domain.KioskGrant, error) {
+	k.mu.Lock()
+	defer k.mu.Unlock()
+
+	id, ok := k.secrets[string(secretHash)]
+	if !ok {
+		return domain.KioskGrant{}, domain.ErrNotFound
+	}
+	for _, g := range k.rows {
+		if g.ID == id {
+			return g, nil
+		}
+	}
+	return domain.KioskGrant{}, domain.ErrNotFound
+}
+
+func (k *memKioskGrants) Touch(_ context.Context, id uuid.UUID, at time.Time) error {
+	k.mu.Lock()
+	defer k.mu.Unlock()
+
+	for i := range k.rows {
+		if k.rows[i].ID == id {
+			k.rows[i].LastSeenAt = at
+		}
+	}
+	return nil
+}
+
+func (k *memKioskGrants) Revoke(_ context.Context, id uuid.UUID, at time.Time) error {
+	k.mu.Lock()
+	defer k.mu.Unlock()
+
+	for i := range k.rows {
+		// Only the first revocation counts, the same as the where clause
+		// against Postgres.
+		if k.rows[i].ID == id && k.rows[i].RevokedAt == nil {
+			when := at
+			k.rows[i].RevokedAt = &when
+		}
+	}
+	return nil
+}
+
+func (k *memKioskGrants) RevokeAll(_ context.Context, at time.Time) (int, error) {
+	k.mu.Lock()
+	defer k.mu.Unlock()
+
+	n := 0
+	for i := range k.rows {
+		if k.rows[i].Active(at) {
+			when := at
+			k.rows[i].RevokedAt = &when
+			n++
+		}
+	}
+	return n, nil
+}
+
+func (k *memKioskGrants) Active(_ context.Context, at time.Time) ([]domain.KioskGrant, error) {
+	k.mu.Lock()
+	defer k.mu.Unlock()
+
+	var active []domain.KioskGrant
+	for _, g := range k.rows {
+		if g.Active(at) {
+			active = append(active, g)
+		}
+	}
+	slices.SortFunc(active, func(a, b domain.KioskGrant) int {
+		return b.LastSeenAt.Compare(a.LastSeenAt)
+	})
+	return active, nil
 }
 
 type memMatches struct {
