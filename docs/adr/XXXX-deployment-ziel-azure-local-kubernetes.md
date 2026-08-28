@@ -123,11 +123,30 @@ Arc](https://learn.microsoft.com/en-us/azure/azure-arc/kubernetes/conceptual-git
 
    Damit ist der Auslöser aus ADR-0002 nicht erfüllt, und ADR-0002 bleibt
    unangetastet. Das ist eine Antwort, kein Aufschub.
-5. **Secret-Verwaltung:** Wie kommen Zugangsdaten in einen frisch gebauten
-   Cluster, bevor Argo CD läuft? Betrifft `imagePullSecret` (Punkt 3) und den
-   Objektspeicher-Zugang aus dem Backup-ADR gleichermaßen — eine Frage, zwei
-   Anwendungsfälle. Kandidaten: SOPS/age in Git, External Secrets gegen Azure
-   Key Vault, manueller Bootstrap-Schritt.
+5. **Secret-Verwaltung** — kleiner geworden, aber noch offen. Die Frage lautete
+   allgemein: Wie kommen Zugangsdaten in einen frisch gebauten Cluster, bevor
+   Argo CD läuft? Drei Fälle fallen inzwischen auseinander:
+
+   - **`SP_DATABASE_URL` löst sich von selbst.** CloudNativePG erzeugt ein
+     `<cluster>-app`-Secret mit fertiger Connection-URI (#78). Der DSN steht
+     damit nirgends in unseren Manifesten.
+   - **Der Objektspeicher-Zugang löst sich auf Azure Local von selbst.** Das
+     barman-cloud-Plugin kann sich über `inheritFromAzureAD` beziehungsweise
+     die Default-Credential-Kette gegen Azure Blob Storage authentifizieren —
+     **ohne gespeichertes Geheimnis**. Das ist der Fall, den das Backup-ADR
+     als „der Punkt, der bei einer echten Wiederherstellung tatsächlich
+     schmerzt" benennt, und auf der Zielumgebung schmerzt er weniger als auf
+     der Übergangsumgebung. Ein Argument für Azure Local, das dort noch fehlt.
+   - **Bleiben `SP_SESSION_KEY` und `SP_KIOSK_TOKEN`.** Zwei Werte, die sich
+     nie ändern dürfen. *Vorschlag: für die erste Runde von Hand angelegt, als
+     dokumentierter Schritt null.* Zwei unveränderliche Werte rechtfertigen
+     keinen Tresor, und External Secrets gegen Key Vault ist später
+     nachrüstbar, ohne dass sich an den Manifesten etwas ändert — die Base
+     referenziert sie ohnehin nur per Namen (#78: „referenced, never
+     rendered").
+
+   `imagePullSecret` aus Punkt 3 hängt weiterhin daran, ob das GHCR-Package
+   öffentlich ist. Ungeprüft.
 
 ## Hinweis zur Form
 
