@@ -228,4 +228,61 @@ func RecoveryCard(v RecoveryCardView) templ.Component {
 	})
 }
 
+// SignOut makes this browser a stranger again.
+//
+// It rebuilds the state issue #70 describes, deliberately, and is only
+// defensible now that the issue is closed: before the recovery code and the
+// PIN, a button that forgot you was a trapdoor with nothing at the bottom.
+//
+// So the text names the price rather than asking "are you sure", which is a
+// question nobody reads. Somebody without a PIN is told what that costs them,
+// because they are the one person who should think twice.
+//
+// A plain form, no HTMX: the page after this is a different page, and a real
+// navigation is what makes a cleared cookie take effect in front of somebody
+// instead of on their next click.
+func SignOut(v SignOutView) templ.Component {
+	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
+		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
+		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
+			return templ_7745c5c3_CtxErr
+		}
+		templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
+		if !templ_7745c5c3_IsBuffer {
+			defer func() {
+				templ_7745c5c3_BufErr := templruntime.ReleaseBuffer(templ_7745c5c3_Buffer)
+				if templ_7745c5c3_Err == nil {
+					templ_7745c5c3_Err = templ_7745c5c3_BufErr
+				}
+			}()
+		}
+		ctx = templ.InitializeContext(ctx)
+		templ_7745c5c3_Var11 := templ.GetChildren(ctx)
+		if templ_7745c5c3_Var11 == nil {
+			templ_7745c5c3_Var11 = templ.NopComponent
+		}
+		ctx = templ.ClearChildren(ctx)
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 20, "<section class=\"session\"><h2>Abmelden</h2><p class=\"muted\">Dieses Gerät vergisst dich dann. Andere Geräte, auf denen du angemeldet bist, bleiben es.</p>")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		if v.HasPIN {
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 21, "<p class=\"muted\">Zum Zurückkommen nimmst du deine PIN oder deinen Wiederherstellungscode.</p>")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+		} else {
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 22, "<p class=\"fail\">Du hast keine PIN. Zum Zurückkommen brauchst du deinen Wiederherstellungscode — und wenn du den nicht mehr hast, geht es nur noch über den Kiosk.</p>")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 23, "<form method=\"post\" action=\"/signout\"><button class=\"secondary\" type=\"submit\">Auf diesem Gerät abmelden</button></form></section>")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		return nil
+	})
+}
+
 var _ = templruntime.GeneratedTemplate
