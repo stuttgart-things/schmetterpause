@@ -52,6 +52,13 @@ type Player struct {
 	DisplayName string
 	TTR         int
 	CreatedAt   time.Time
+	// IsAdmin marks somebody who may act for other people: correcting a
+	// counted result, merging two players, closing a tournament
+	// (docs/adr/0008). One level, not roles.
+	//
+	// A property of the person rather than of a browser, which is what makes
+	// it revocable and what makes a log line name somebody.
+	IsAdmin bool
 }
 
 // PlayerRecord is a player with their confirmed match tally. Only confirmed
