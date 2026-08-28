@@ -170,7 +170,11 @@ Bewusst nicht entschieden, weil sie die Entscheidung oben nicht berühren:
 2. **Läuft der Code ab?** Neigung: nein, er gilt bis zum Ersetzen. Ein
    Wiederherstellungscode, der abläuft, ist einer, der genau dann nicht geht,
    wenn man ihn braucht.
-3. **Wie wird nachgeschlagen?** Ein Passwort-Hash mit eigenem Salt pro Zeile
+3. **Wie wird nachgeschlagen?** — *Beantwortet in ADR-0007: Salt pro Zeile mit
+   Argon2id, in einer eigenen Tabelle, und die Anmeldung fragt zuerst nach dem
+   Namen. Die PIN lässt keine andere Wahl.*
+
+   Ein Passwort-Hash mit eigenem Salt pro Zeile
    erzwingt einen Scan über alle Spieler, weil man ohne Kandidaten nicht weiß,
    gegen welchen Salt zu prüfen ist. Bei einigen Dutzend Spielern ist das
    folgenlos, aber es ist eine Entscheidung: Scan mit Salt, oder ein
