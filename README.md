@@ -20,10 +20,15 @@ generierten Teile des Pipeline-Moduls.
 
 ```sh
 task up        # Compose-Umgebung starten (App + Postgres)
-task ci        # lint, test, build, verify — identisch zur Pipeline
+task ci        # lint, test, image, verify, scan — identisch zur Pipeline
 task office:setup # .env für einen Abend an der Platte
 task office:up    # starten, im Netz erreichbar
 ```
+
+Das Image baut ko (`.ko.yaml`), einmal für Compose, Kubernetes und Azure
+Container Apps — ein Dockerfile gibt es nicht, siehe `docs/adr/0009`. `task up`
+baut es vorher lokal; mit `SP_IMAGE=<referenz> task up` startet stattdessen ein
+veröffentlichtes Image.
 
 Alle Befehle laufen über [Task](https://taskfile.dev/). Die eigentliche
 Pipeline-Logik steckt in [Dagger](https://dagger.io/) und läuft lokal wie in der

@@ -104,8 +104,8 @@ wären nicht nachträglich rekonstruierbar.
 
 Go-Modul, Verzeichnisstruktur, templ- und HTMX-Setup, Postgres-Migrations
 (goose), Repository-Interfaces, `/healthz` und `/readyz`, Dockerfile
-(Multi-Stage, distroless), `compose.yaml` mit App und Postgres, Taskfile,
-Dagger-Pipeline.
+(Multi-Stage, distroless; seit ADR-0009 durch ko ersetzt), `compose.yaml` mit
+App und Postgres, Taskfile, Dagger-Pipeline.
 
 *Fertig, wenn:* `task up` startet die Anwendung, `task ci` läuft lokal grün
 durch und liefert dasselbe Ergebnis wie in der Pipeline.
@@ -221,9 +221,10 @@ und nur dort kaputtgeht.
 | `task migrate` | Migrations gegen die lokale DB anwenden |
 | `task test` | Unit- und Repository-Tests, einzeln aufrufbar |
 | `task lint` | Dagger-Lint |
-| `task build` | Dagger-Build, erzeugt Binary und Image |
+| `task image` | ko-Build in den lokalen Docker-Daemon, für Compose |
 | `task verify` | Dagger-Verify: End-to-End gegen das gebaute Image |
-| `task ci` | lint + test + build + verify, wie in der Pipeline |
+| `task scan` | Dagger-Scan: Trivy gegen das gebaute Image |
+| `task ci` | lint + test + image + verify + scan, wie in der Pipeline |
 
 ### Dagger-Funktionen
 
@@ -231,8 +232,17 @@ und nur dort kaputtgeht.
 uncommittete Änderungen nach `go generate` (fängt vergessene Regenerierung von
 templ-Dateien).
 
-**`build`** — Cross-Build des statischen Binaries, Bau des Container-Images,
-Ausgabe als OCI-Artefakt. Version aus Git-Tag bzw. Commit-SHA.
+**`publish`** — Baut das Image mit ko und schiebt es nach ttl.sh. Version aus
+Git-Tag bzw. Commit-SHA. Seit ADR-0009 der einzige Bau-Pfad: dasselbe Image
+läuft in Compose, K8s und ACA und wird von verify, scan und release
+weiterverwendet.
+
+**`scan`** — Trivy gegen das geschobene Image. Findet der Scan HIGH oder
+CRITICAL, wird das Image nicht nach GHCR übernommen.
+
+**`promote`** — Kopiert das geprüfte Image von ttl.sh nach GHCR (crane, alle
+Architekturen). Eine Kopie, kein zweiter Bau: was geprüft wurde, wird
+ausgeliefert.
 
 **`verify`** — Startet Postgres als Dagger-Service, wendet Migrations an, fährt
 das gebaute Image hoch, prüft `/healthz` und fährt einen End-to-End-Pfad durch:
@@ -246,13 +256,16 @@ Templates, die im Container nicht eingebettet sind.
 ### Reihenfolge in `task ci`
 
 ```
-lint  →  test  →  build  →  verify
+lint  →  test  →  publish (ttl.sh)  →  verify  →  scan
 ```
 
 Die beiden quellcodenahen Schritte laufen zuerst, weil sie die billigen sind:
 ein fehlgeschlagener Unit-Test soll nicht erst auf einen Image-Bau warten.
-Verify hängt vom Build-Artefakt ab, nicht vom Quellcode, und steht deshalb am
-Ende. Wenn ein Schritt scheitert, brechen die folgenden ab.
+Verify und scan hängen vom Build-Artefakt ab, nicht vom Quellcode, und stehen
+deshalb am Ende. Wenn ein Schritt scheitert, brechen die folgenden ab.
+
+`task release` hängt einen Schritt an: Das Image, das verify und scan bestanden
+hat, wird nach GHCR kopiert (ADR-0009).
 
 **`test` und `verify` messen nicht dasselbe.** Verify fährt genau einen Pfad
 durch das gebaute Image und sieht nur, was dieser Pfad berührt. Die Tests

@@ -10,7 +10,9 @@ nachfragen — nicht stillschweigend abweichen.
 
 1. **Ein Binary, ein Image.** Dasselbe Image läuft in Docker Compose, Kubernetes
    und Azure Container Apps. Keine umgebungsspezifischen Builds, keine
-   Build-Tags für Deployment-Ziele.
+   Build-Tags für Deployment-Ziele. Gebaut wird ausschließlich mit ko
+   (`.ko.yaml`, `docs/adr/0009`) — es gibt kein Dockerfile, und Compose baut
+   nicht selbst.
 2. **Konfiguration ausschließlich über Environment-Variablen.** Keine
    Config-Dateien im Image, keine hartkodierten Hosts, Ports oder URLs. Defaults
    gehören in den Code, nicht in eine mitgelieferte Datei.
