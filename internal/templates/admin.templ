@@ -80,10 +80,12 @@ templ Admin(v AdminView) {
 templ rightsRow(action string, kiosk, admin bool) {
 	<tr>
 		<td>{ action }</td>
-		<td>@yesNo(kiosk)
-</td>
-		<td>@yesNo(admin)
-</td>
+		<td>
+			@yesNo(kiosk)
+		</td>
+		<td>
+			@yesNo(admin)
+		</td>
 	</tr>
 }
 
