@@ -82,53 +82,73 @@ flowchart LR
 
 ## Entscheidung
 
-*Vorschlag zur Diskussion, noch nicht beschlossen.*
+*Vorschlag zur Diskussion, noch nicht beschlossen. Gegenüber der ersten Fassung
+neu geschnitten — siehe den Abschnitt darunter.*
 
-**Der Zustand der Anwendung wird als logischer Datenbank-Dump in einen
-Objektspeicher außerhalb des Clusters gesichert. Der Restore ist ein eigener,
-bewusster Schritt nach dem Neubau — kein Bootstrap-Modus der Datenbank.**
+**Der Zustand der Anwendung wird in einen Objektspeicher außerhalb des Clusters
+gesichert, und der Restore ist ein eigener, bewusster Schritt nach dem Neubau —
+kein Bootstrap-Modus der Datenbank.** Das bleibt.
 
-Dagegen wird ein Postgres-Operator mit kontinuierlichem WAL-Archiving
-(CloudNativePG) *nicht* eingeführt, solange keiner der unten genannten Auslöser
-eintritt. Das folgt dem Muster aus ADR-0002: die schwerere Lösung benannt und
-vorbereitet, aber nicht ohne Anlass gebaut.
+Was nicht bleibt, ist die Begründung. Diese Fassung argumentierte gegen
+CloudNativePG mit dem Muster aus ADR-0002: die schwerere Lösung benennen, aber
+nicht ohne Anlass bauen. **Dieses Argument ist hinfällig — #78 setzt
+CloudNativePG als Betriebsweise der Datenbank, nicht als Backup-Entscheidung.**
+Der Operator ist ohnehin da. „Kein Operator" ist damit kein Preis mehr, den man
+sparen kann.
 
-### Die drei erwogenen Wege
+### Die Wege, neu geschnitten
+
+Damit läuft der Vergleich nicht mehr zwischen „Dump" und „Operator", sondern
+zwischen zwei Arten, denselben Operator zu sichern. #84 hat denselben Schnitt
+unabhängig gefunden und ihn als Vergleich mit Messkriterien angelegt:
 
 | | Mechanik | Preis | RPO |
 | --- | --- | --- | --- |
-| **A — Dump/Restore** *(gewählt)* | Geplanter Job erzeugt einen Dump und legt ihn im Objektspeicher ab. Nach dem Neubau spielt ein Job den jüngsten Dump ein. | Nahezu nichts. Kein Operator, keine neue Betriebskomponente. | Dump-Intervall |
-| **B — CloudNativePG** | Operator mit kontinuierlichem WAL-Archiving. Der neue Cluster startet mit `bootstrap.recovery` gegen denselben Objektspeicher und zieht sich selbst hoch. | Ein Operator mehr. Die Datenbank ist kein einfacher Container mehr. | nahe null, Point-in-Time-Recovery |
-| **C — Velero mit CSI-Snapshots** | Sichert ganze Namespaces samt PersistentVolumes. | Setzt CSI-Snapshot-Unterstützung auf Azure Local voraus. Volume-Snapshots einer laufenden Datenbank sind crash-, nicht anwendungskonsistent. | Schedule |
+| **A — Velero mit Dump-Hook** | Velero sichert den Namespace; ein `hooks.resources[]`-Eintrag lässt vorher `pg_dump` im CNPG-Pod laufen, der Dump liegt auf dem mitgesicherten Volume | Ein System statt zwei — Velero wird ohnehin betrieben | Schedule |
+| **B — barman-cloud** | CNPG-Plugin schiebt Basisbackup und WAL laufend in den Objektspeicher; der neue Cluster zieht sich mit `bootstrap.recovery` selbst hoch | Ein zweites Backup-System neben Velero | nahe null, Point-in-Time-Recovery |
 
-Weg B beschreibt wörtlich das ursprünglich angedachte Bild — der Objektspeicher
-als Datenbasis, aus der sich der neue Cluster selbst herstellt. Er ist der
-technisch elegantere Weg und bleibt das benannte Ziel. Weg A wird trotzdem
-zuerst gebaut:
+Was aus der ersten Fassung **erhalten bleibt**: Weg B beschreibt wörtlich das
+ursprünglich angedachte Bild — der Objektspeicher als Datenbasis, aus der sich
+der neue Cluster selbst herstellt. Und der Grund, ihn trotzdem nicht zuerst zu
+bauen, trägt weiter: Ein geplanter Neubau ist kein Datenverlust, weil sich vor
+dem Teardown ein letzter Sicherungslauf ziehen lässt. Das Intervall-RPO deckt
+nur den *ungeplanten* Verlust ab, und der ist bislang hypothetisch.
 
-- **Ein geplanter Neubau ist kein Datenverlust.** Vor dem Teardown lässt sich
-  ein letzter Dump ziehen, damit ist der RPO für genau den Fall, um den es hier
-  geht, null. Das Intervall-RPO deckt nur den *ungeplanten* Verlust ab — und
-  der ist bislang hypothetisch.
-- **Die Datenmenge rechtfertigt die Maschinerie nicht.** Point-in-Time-Recovery
-  für fünf Tabellen mit wenigen tausend Zeilen steht in keinem Verhältnis.
-- **Weg A lässt sich lokal üben.** Dump und Rückspielen funktionieren gegen die
-  Compose-Umgebung. Ein Recovery-Bootstrap braucht einen Cluster zum Testen —
-  und damit lässt sich das Verfahren erst dann prüfen, wenn es gebraucht wird.
+Was **wegfällt**: „Weg A lässt sich lokal üben." Ein Velero-Hook lässt sich
+gegen die Compose-Umgebung nicht üben — der Vorteil gehörte dem
+Dump-Job-Entwurf, nicht dem Velero-Weg. `task office:backup` bleibt davon
+unberührt und deckt den lokalen Fall weiterhin ab.
 
-Weg C wird nicht verfolgt. Er sichert primär das, was ohnehin aus Git kommt, und
-löst den Datenteil schlechter als A und B.
+Was **neu dazukommt** und in #84 noch fehlt: **Auf AKS enabled by Azure Arc
+gibt es keine Volume-Snapshots.** Velero muss dort auf Datei-Backup (restic
+beziehungsweise kopia) ausweichen. Weg A funktioniert also, aber nicht so, wie
+#84 ihn beschreibt — das ändert Laufzeit und Wiederherstellungsdauer und damit
+zwei der Messkriterien, bevor der Vergleich überhaupt läuft. Auf der
+Übergangsumgebung stellt sich die Frage nicht.
 
-### Auslöser für den Wechsel auf Weg B
+### Die Entscheidungsregel
+
+Von #84 übernommen, weil sie richtig ist und vorher feststehen soll:
+**Weg A, es sei denn, er fällt bei einem Kriterium durch, das zählt.** Der
+Ausschlag gibt „ein System statt zwei" — ein Zeitplan, ein Bucket, eine Stelle
+zum Nachsehen, ob er gelaufen ist. Weg B, wenn der Restore messbar schneller
+oder kürzer ist, oder wenn A sich im Versuch mit dem Operator beißt.
+
+**Point-in-Time-Recovery ist kein Kriterium.** „Letzte Nacht" ist hier die
+richtige Auflösung; niemand stellt diese Datenbank auf 14:32 zurück.
+
+### Auslöser, die den Vergleich vorziehen
+
+Unverändert gültig, jetzt als Auslöser für „Weg B ernst nehmen" statt für
+„überhaupt einen Operator einführen":
 
 1. Ein Cluster geht **ungeplant** verloren, oder es zeichnet sich ab, dass das
-   passieren kann. Dann trägt das Argument "vor dem Teardown ein Dump" nicht
+   passieren kann. Dann trägt das Argument „vor dem Teardown ein Lauf" nicht
    mehr.
 2. Der **Ligamodus (M2)** ist in Betrieb und Tabellenstände hängen an
    Ergebnissen. Ein Verlust der letzten Stunden ist dann nicht mehr die
    Neueingabe weniger Matches, sondern eine inkonsistente Tabelle.
-3. Die Datenbank soll **hochverfügbar** laufen. Dann ist ohnehin ein Operator im
-   Spiel, und dessen Backup-Funktion mitzunehmen kostet nichts extra.
+3. Die Datenbank soll **hochverfügbar** laufen.
 
 ## Randbedingungen, die für jeden der drei Wege gelten
 
