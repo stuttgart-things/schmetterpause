@@ -20,11 +20,12 @@ import (
 // intended — it surfaces immediately rather than returning a quiet zero value.
 type memStore struct {
 	repository.Store
-	players    *memPlayers
-	identities *memIdentities
-	matches    *memMatches
-	history    *memHistory
-	pingErr    error
+	players     *memPlayers
+	identities  *memIdentities
+	credentials *memCredentials
+	matches     *memMatches
+	history     *memHistory
+	pingErr     error
 }
 
 func newMemStore() *memStore {
@@ -32,16 +33,20 @@ func newMemStore() *memStore {
 	matches := &memMatches{history: history}
 	players := &memPlayers{matches: matches}
 	return &memStore{
-		players:    players,
-		identities: &memIdentities{players: players},
-		matches:    matches,
-		history:    history,
+		players:     players,
+		identities:  &memIdentities{players: players},
+		credentials: &memCredentials{},
+		matches:     matches,
+		history:     history,
 	}
 }
 
-func (m *memStore) Ping(context.Context) error                  { return m.pingErr }
-func (m *memStore) Players() repository.PlayerRepository        { return m.players }
-func (m *memStore) Identities() repository.IdentityRepository   { return m.identities }
+func (m *memStore) Ping(context.Context) error                { return m.pingErr }
+func (m *memStore) Players() repository.PlayerRepository      { return m.players }
+func (m *memStore) Identities() repository.IdentityRepository { return m.identities }
+func (m *memStore) Credentials() repository.CredentialRepository {
+	return m.credentials
+}
 func (m *memStore) Matches() repository.MatchRepository         { return m.matches }
 func (m *memStore) TTRHistory() repository.TTRHistoryRepository { return m.history }
 
@@ -193,6 +198,45 @@ func (i *memIdentities) PlayerBy(ctx context.Context, provider domain.Provider, 
 		return domain.Player{}, domain.ErrNotFound
 	}
 	return i.players.ByID(ctx, id)
+}
+
+// memCredentials mirrors the primary key on player_credentials: one row per
+// player and kind, so a second Put of the same kind replaces the first.
+type memCredentials struct {
+	repository.CredentialRepository
+	mu   sync.Mutex
+	rows map[string]domain.Credential
+}
+
+func (c *memCredentials) key(playerID uuid.UUID, kind domain.CredentialKind) string {
+	return playerID.String() + "\x00" + string(kind)
+}
+
+func (c *memCredentials) Put(_ context.Context, playerID uuid.UUID, kind domain.CredentialKind, hash string) error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	if c.rows == nil {
+		c.rows = map[string]domain.Credential{}
+	}
+	c.rows[c.key(playerID, kind)] = domain.Credential{
+		PlayerID:  playerID,
+		Kind:      kind,
+		Hash:      hash,
+		UpdatedAt: time.Now(),
+	}
+	return nil
+}
+
+func (c *memCredentials) ForPlayer(_ context.Context, playerID uuid.UUID, kind domain.CredentialKind) (domain.Credential, error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	row, ok := c.rows[c.key(playerID, kind)]
+	if !ok {
+		return domain.Credential{}, domain.ErrNotFound
+	}
+	return row, nil
 }
 
 type memMatches struct {

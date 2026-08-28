@@ -289,6 +289,61 @@ h2 {
 	border-radius: var(--radius);
 }
 
+/* --- Wiederherstellungscode -------------------------------------------- */
+
+/* The one card on the page that breaks the house pattern, on purpose.
+   ADR-0006 asks for a display that cannot be read past, and the house style
+   for a card heading — muted, uppercase, mono, the size of a label — is a
+   fair description of what gets read past. So this heading is full size and
+   in the foreground colour, and the card carries the accent along its left
+   edge instead of the usual even outline. */
+.recovery { border-left: 3px solid var(--accent); }
+
+.recovery h2 {
+	font-family: var(--font-ui);
+	font-size: 1.15rem;
+	font-weight: 700;
+	letter-spacing: -0.01em;
+	text-transform: none;
+	color: var(--fg);
+	margin: 0 0 0.75rem;
+}
+
+.recovery-code {
+	margin: 0 0 0.85rem;
+	padding: 0.8rem 0.9rem;
+	background: var(--panel);
+	border: 1px solid var(--line);
+	border-radius: var(--radius-sm);
+	text-align: center;
+	overflow-wrap: anywhere;
+}
+
+/* clamp rather than a fixed size: nineteen monospaced characters with letter
+   spacing do not fit a 390px phone at the size this deserves on a laptop, and
+   a code that wraps mid-group is a code somebody mistypes.
+
+   The spacing is not decoration. The alphabet exists so that no two
+   characters are confused when the code is read aloud (see internal/credential),
+   and setting it tight would hand that back.
+
+   user-select: all so one tap takes the whole thing. Dragging a selection
+   across sixteen characters on a phone is the step at which people give up
+   and decide not to save it after all. */
+.recovery-code code {
+	font-family: var(--font-mono);
+	font-size: clamp(1rem, 4.6vw, 1.4rem);
+	font-weight: 700;
+	letter-spacing: 0.08em;
+	color: var(--fg);
+	user-select: all;
+	-webkit-user-select: all;
+}
+
+.recovery-lead { margin: 0 0 0.75rem; }
+.recovery-lead strong { color: var(--fg); }
+.recovery p:last-child { margin-bottom: 0; }
+
 /* Heading and the refresh button on one line. The button sits at the end of
    the row rather than under the heading, so the card does not grow taller for
    a control most readers never press. */

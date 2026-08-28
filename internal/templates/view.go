@@ -132,6 +132,11 @@ type SessionView struct {
 	// Name is the value put back into the form after a rejected attempt, so
 	// nobody has to type their name twice.
 	Name string
+	// RecoveryCode is the freshly issued code, in the clear, and it is set
+	// in exactly one response: the one that created the player. It is shown
+	// once and never stored anywhere it could be shown again — the server
+	// keeps only a hash (docs/adr/0006).
+	RecoveryCode string
 	// Error explains why the last attempt was rejected. Empty on success.
 	Error string
 }

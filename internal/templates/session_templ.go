@@ -105,13 +105,24 @@ func Session(v SessionView) templ.Component {
 	})
 }
 
-// Joined confirms a successful join, once. It is onboarding rather than
-// status: it answers a question somebody has exactly at this moment and never
-// again, so it is not on the page afterwards.
+// Joined is the one-time display of the recovery code, and the only place
+// that code is ever readable — the server keeps a hash of it and nothing else.
 //
-// It no longer names the player. The same response now puts "Hallo, <name>"
-// in the heading and the name in the top bar, and a third copy of it in a
-// card of its own said nothing the other two did not.
+// docs/adr/0006 is explicit about the shape: the display must be unmistakable
+// and must not look like a confirmation message somebody reads past. The
+// house style for a card heading is a muted uppercase label, which is exactly
+// what "read past" looks like, so this one card breaks the pattern on
+// purpose — see the .recovery block in app.css.
+//
+// The order is deliberate. The code comes before the instruction because it
+// is the thing on the screen; the instruction says where to put it rather
+// than that it exists; and the reassurance about this device comes last,
+// because it is true whether or not anybody reads it.
+//
+// No copy button. navigator.clipboard is undefined outside a secure context,
+// and during the measurement this is served over http:// on an IP address
+// (docs/adr/0007) — the button would be dead in exactly the place it is
+// needed. Selectable text instead, which every password manager can take.
 func Joined(v SessionView) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
@@ -133,7 +144,20 @@ func Joined(v SessionView) templ.Component {
 			templ_7745c5c3_Var6 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "<section id=\"session\" class=\"session\"><p class=\"muted\">Dieses Gerät erkennt dich wieder — auch nach einem Neustart.</p></section>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "<section id=\"session\" class=\"session recovery\"><h2>Heb diesen Code auf</h2><p class=\"recovery-code\"><code>")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		var templ_7745c5c3_Var7 string
+		templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(v.RecoveryCode)
+		if templ_7745c5c3_Err != nil {
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `session.templ`, Line: 51, Col: 49}
+		}
+		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "</code></p><p class=\"recovery-lead\">Speicher ihn da, wo deine Passwörter liegen. Er wird <strong>nur dieses eine Mal</strong> angezeigt.</p><p class=\"muted\">Dieses Gerät erkennt dich wieder, auch nach einem Neustart. Den Code brauchst du erst, wenn es dich vergisst oder du auf ein neues wechselst.</p></section>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

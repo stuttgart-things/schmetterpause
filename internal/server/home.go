@@ -10,6 +10,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/stuttgart-things/schmetterpause/internal/auth"
+	"github.com/stuttgart-things/schmetterpause/internal/credential"
 	"github.com/stuttgart-things/schmetterpause/internal/domain"
 	"github.com/stuttgart-things/schmetterpause/internal/repository"
 	"github.com/stuttgart-things/schmetterpause/internal/templates"
@@ -97,12 +98,17 @@ func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 	s.render(w, r, templates.Index(view))
 }
 
-// handleJoin creates a player and starts a session for them.
+// handleJoin creates a player, starts a session for them and issues their
+// recovery code.
 //
 // AP2 has no password and no verification: a display name is all it takes.
 // The realistic abuse case for this app is a colleague entering a joke result,
 // and the answer to that is the opponent confirming the match (AP5), not a
 // login wall — see the threat-model note in docs/adr/0004.
+//
+// The code costs no interaction — it is generated, not chosen, and only
+// displayed — so the interaction budget AP7 measures is unchanged
+// (docs/adr/0006).
 func (s *Server) handleJoin(w http.ResponseWriter, r *http.Request) {
 	name := strings.TrimSpace(r.FormValue("display_name"))
 
@@ -111,10 +117,17 @@ func (s *Server) handleJoin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// The player and the identity that points at them have to appear
-	// together. A player nobody can be recognised as is unreachable, and an
-	// identity pointing at nothing breaks the next lookup.
+	// The player, the identity that points at them and the way back have to
+	// appear together. A player nobody can be recognised as is unreachable,
+	// an identity pointing at nothing breaks the next lookup, and a player
+	// with no recovery code is one browser away from issue #70.
 	subject := auth.NewSubject()
+
+	// Hashed out here rather than inside the transaction: Argon2id is
+	// deliberately slow, and holding a write transaction open for a tenth of
+	// a second of it buys nothing.
+	code, codeHash := credential.NewRecoveryCode()
+
 	var created domain.Player
 
 	err := s.store.InTx(r.Context(), func(tx repository.Store) error {
@@ -123,6 +136,9 @@ func (s *Server) handleJoin(w http.ResponseWriter, r *http.Request) {
 			return err
 		}
 		if err := tx.Identities().Link(r.Context(), domain.ProviderLocal, subject, player.ID); err != nil {
+			return err
+		}
+		if err := tx.Credentials().Put(r.Context(), player.ID, domain.CredentialRecovery, codeHash); err != nil {
 			return err
 		}
 		created = player
@@ -153,7 +169,12 @@ func (s *Server) handleJoin(w http.ResponseWriter, r *http.Request) {
 	// The corner and the greeting are refreshed out of band in the same
 	// response, so the name appears where it now lives rather than only
 	// after a reload.
-	joined := templates.SessionView{DisplayName: created.DisplayName, PlayerID: created.ID.String()}
+	joined := templates.SessionView{
+		DisplayName: created.DisplayName,
+		PlayerID:    created.ID.String(),
+		// The one response that ever carries the code in the clear.
+		RecoveryCode: code,
+	}
 	s.render(w, r, templates.Joined(joined))
 	s.render(w, r, templates.WhoamiOOB(s.headerView(signedIn)))
 	s.render(w, r, templates.PageHeadOOB(joined))
