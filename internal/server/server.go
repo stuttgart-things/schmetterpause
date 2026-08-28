@@ -16,6 +16,7 @@ import (
 
 	"github.com/stuttgart-things/schmetterpause/internal/auth"
 	"github.com/stuttgart-things/schmetterpause/internal/config"
+	"github.com/stuttgart-things/schmetterpause/internal/ratelimit"
 	"github.com/stuttgart-things/schmetterpause/internal/repository"
 )
 
@@ -27,12 +28,22 @@ type Server struct {
 	auth    auth.SessionAuthenticator
 	version string
 	handler http.Handler
+
+	// The two halves of the brake on guessing at a credential. One alone is
+	// not a limit: per player, somebody walks the roster; per address,
+	// a second phone starts over. See signin.go for the policies.
+	signInByPlayer  *ratelimit.Limiter
+	signInByAddress *ratelimit.Limiter
 }
 
 // New wires up the server. The authenticator is an interface so that later
 // providers (OIDC, WebAuthn) take effect without touching any handler.
 func New(cfg config.Config, store repository.Store, log *slog.Logger, a auth.SessionAuthenticator, version string) *Server {
-	s := &Server{cfg: cfg, store: store, log: log, auth: a, version: version}
+	s := &Server{
+		cfg: cfg, store: store, log: log, auth: a, version: version,
+		signInByPlayer:  ratelimit.New(signInPlayerPolicy),
+		signInByAddress: ratelimit.New(signInAddressPolicy),
+	}
 	s.handler = s.routes()
 	return s
 }
@@ -63,6 +74,17 @@ func (s *Server) routes() http.Handler {
 	page.HandleFunc("GET /fragments/refresh", s.handleRefresh)
 	page.HandleFunc("GET /players/{id}", s.handleProfile)
 	page.HandleFunc("POST /players", s.handleJoin)
+	// The way back for a browser that lost its cookie (issue #70). Both
+	// fragments serve the same region, so the two ways in replace each other
+	// on the start page rather than sitting side by side.
+	page.HandleFunc("GET /fragments/signin", s.handleSignInForm)
+	page.HandleFunc("GET /fragments/join", s.handleJoinForm)
+	page.HandleFunc("POST /signin", s.handleSignIn)
+	// Only ever for yourself, which is what RequirePlayer says here. Issuing
+	// a credential for somebody else is the kiosk's job and nobody else's
+	// (docs/adr/0006).
+	page.Handle("POST /credentials/pin", auth.RequirePlayer(http.HandlerFunc(s.handleSetPIN)))
+	page.Handle("POST /credentials/recovery", auth.RequirePlayer(http.HandlerFunc(s.handleNewRecoveryCode)))
 	page.HandleFunc("GET /fragments/match", s.handleMatchForm)
 	// Not behind a player check: the kiosk has no player session and needs
 	// the same rows.
@@ -79,6 +101,7 @@ func (s *Server) routes() http.Handler {
 	if s.cfg.KioskToken != "" {
 		page.HandleFunc("GET /kiosk", s.handleKiosk)
 		page.HandleFunc("POST /kiosk/players", s.handleKioskAddPlayer)
+		page.HandleFunc("POST /kiosk/credentials", s.handleKioskIssueCode)
 		page.HandleFunc("POST /kiosk/matches", s.handleKioskRecord)
 		page.HandleFunc("POST /kiosk/matches/{id}/undo", s.handleKioskUndo)
 	}

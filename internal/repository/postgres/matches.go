@@ -15,12 +15,13 @@ import (
 type matchRepo struct{ q queryer }
 
 const matchColumns = `id, home_id, away_id, best_of, points_to_win, status,
-	reported_by, played_at, confirmed_at`
+	reported_by, played_at, confirmed_at, entered_via`
 
 func (r matchRepo) Create(ctx context.Context, m domain.Match) (domain.Match, error) {
 	const insertMatch = `
-		insert into matches (home_id, away_id, best_of, points_to_win, status, reported_by, played_at)
-		values ($1, $2, $3, $4, $5, $6, coalesce($7, now()))
+		insert into matches (home_id, away_id, best_of, points_to_win, status,
+		                     reported_by, played_at, entered_via)
+		values ($1, $2, $3, $4, $5, $6, coalesce($7, now()), $8)
 		returning ` + matchColumns
 
 	var playedAt *time.Time
@@ -31,9 +32,17 @@ func (r matchRepo) Create(ctx context.Context, m domain.Match) (domain.Match, er
 	if status == "" {
 		status = domain.MatchPending
 	}
+	// An unset EnteredVia is a player's own entry, matching the column
+	// default. A caller that forgets it gets the truthful answer for the
+	// path almost every row takes, not a constraint violation.
+	via := m.EnteredVia
+	if via == "" {
+		via = domain.EnteredViaPlayer
+	}
 
 	created, err := scanMatch(r.q.QueryRow(ctx, insertMatch,
-		m.HomeID, m.AwayID, m.BestOf, m.PointsToWin, string(status), m.ReportedBy, playedAt))
+		m.HomeID, m.AwayID, m.BestOf, m.PointsToWin, string(status), m.ReportedBy,
+		playedAt, string(via)))
 	if err != nil {
 		return domain.Match{}, fmt.Errorf("create match: %w", err)
 	}
@@ -280,12 +289,14 @@ func scanMatch(row pgx.Row) (domain.Match, error) {
 	var (
 		m      domain.Match
 		status string
+		via    string
 	)
 	err := row.Scan(&m.ID, &m.HomeID, &m.AwayID, &m.BestOf, &m.PointsToWin,
-		&status, &m.ReportedBy, &m.PlayedAt, &m.ConfirmedAt)
+		&status, &m.ReportedBy, &m.PlayedAt, &m.ConfirmedAt, &via)
 	if err != nil {
 		return domain.Match{}, err
 	}
 	m.Status = domain.MatchStatus(status)
+	m.EnteredVia = domain.EnteredVia(via)
 	return m, nil
 }

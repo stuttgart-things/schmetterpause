@@ -9,6 +9,7 @@ import (
 	"hash/fnv"
 	"strconv"
 
+	"github.com/stuttgart-things/schmetterpause/internal/credential"
 	"github.com/stuttgart-things/schmetterpause/internal/match"
 )
 
@@ -59,6 +60,12 @@ type KioskView struct {
 	UndoID string
 	// Error explains a refusal. Empty otherwise.
 	Error string
+	// IssuedCode is a recovery code just made for somebody else, in the
+	// clear, and shown once. IssuedFor names whose it is, because the person
+	// reading the screen is not the person it belongs to — which is the whole
+	// difference between this display and the one after joining.
+	IssuedCode string
+	IssuedFor  string
 }
 
 // HeaderView is the state in the top bar: who this is, and how much is
@@ -132,12 +139,92 @@ type SessionView struct {
 	// Name is the value put back into the form after a rejected attempt, so
 	// nobody has to type their name twice.
 	Name string
+	// RecoveryCode is the freshly issued code, in the clear, and it is set
+	// in exactly one response: the one that created the player. It is shown
+	// once and never stored anywhere it could be shown again — the server
+	// keeps only a hash (docs/adr/0006).
+	RecoveryCode string
 	// Error explains why the last attempt was rejected. Empty on success.
+	Error string
+}
+
+// PINFormView drives the form that sets a PIN.
+type PINFormView struct {
+	// Set reports whether this player already has one. Only the wording
+	// depends on it — setting and replacing are the same write.
+	Set bool
+	// Done marks the response that follows a successful change. What was
+	// typed is never handed back, so there is nothing else to say.
+	Done bool
+	// Error explains a refusal.
+	Error string
+}
+
+// Heading labels the field.
+func (v PINFormView) Heading() string {
+	if v.Set {
+		return "Neue PIN"
+	}
+	return "PIN, wenn du magst"
+}
+
+// Action labels the button.
+func (v PINFormView) Action() string {
+	if v.Set {
+		return "PIN ändern"
+	}
+	return "PIN setzen"
+}
+
+// The PIN bounds as strings, for the field attributes and the sentence above
+// them. Read from the credential package rather than written out here, so the
+// form, the browser and the server cannot disagree about what is allowed.
+var (
+	MinPIN = strconv.Itoa(credential.MinPINLength)
+	MaxPIN = strconv.Itoa(credential.MaxPINLength)
+)
+
+// RecoveryCardView is the recovery code on somebody's own profile.
+type RecoveryCardView struct {
+	// Code is a freshly issued one, in the clear, set only in the response
+	// that produced it. Empty on the ordinary render, which offers to make
+	// one rather than showing the one that exists — the server holds only a
+	// hash and could not show it if it wanted to.
+	Code string
+	// Error explains a refusal.
+	Error string
+}
+
+// SignInView drives the sign-in form: who is signing in, and why the last
+// attempt was refused.
+type SignInView struct {
+	// Players is everybody, by name. Publishing the list costs nothing —
+	// the ranking, /matches and the sheet on the wall all name everybody —
+	// and with a salt per row there is no way to find a credential from the
+	// secret alone, so the name has to come first (docs/adr/0007).
+	//
+	// OpponentOption because a picker is a picker; the kiosk reuses it for
+	// its two selects for the same reason.
+	Players []OpponentOption
+	// Error explains why the last attempt was refused, in one wording for
+	// every reason. Which half was wrong is deliberately not said.
 	Error string
 }
 
 // SignedIn reports whether a player is recognised.
 func (v SessionView) SignedIn() bool { return v.DisplayName != "" }
+
+// anySelected reports whether the picker already stands on somebody, which
+// is the case after a refused attempt. Without it the placeholder would take
+// the selection back and the name would have to be found twice.
+func (v SignInView) anySelected() bool {
+	for _, p := range v.Players {
+		if p.Selected {
+			return true
+		}
+	}
+	return false
+}
 
 // MaxSetRows is how many set rows a submitted form can carry. Best-of-seven
 // is the longest mode, so seven rows can hold any legal result. What a form
@@ -408,6 +495,12 @@ type ProfileView struct {
 	HasDelta bool
 	Spark    SparkView
 	Matches  []ProfileMatchView
+	// IsSelf marks the reader's own page, which is the only one carrying the
+	// access section. Somebody else's PIN is none of their business, and the
+	// page is otherwise public.
+	IsSelf bool
+	// HasPIN changes the wording from setting one to replacing one.
+	HasPIN bool
 }
 
 // paddleColours is how many blade colours there are. Named rather than

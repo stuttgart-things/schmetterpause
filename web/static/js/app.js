@@ -9,8 +9,14 @@
 //
 // The alternative was to answer 200 for a rejected form. The status is worth
 // keeping honest: it is what the tests assert on and what a log is read with.
+//
+// 429 is here for the same reason. The sign-in form answers it when the brake
+// on guessing is holding an attempt back, and the response carries the one
+// thing somebody needs at that moment: how long is left. Dropping it would
+// leave them pressing a button that does nothing.
 document.addEventListener('htmx:beforeSwap', function (event) {
-	if (event.detail.xhr.status === 422) {
+	var status = event.detail.xhr.status;
+	if (status === 422 || status === 429) {
 		event.detail.shouldSwap = true;
 		event.detail.isError = false;
 	}
@@ -73,3 +79,35 @@ function markAll() {
 // replacement arrives with whatever was already typed in it.
 document.addEventListener('htmx:afterSwap', markAll);
 document.addEventListener('DOMContentLoaded', markAll);
+
+// The reveal button on the sign-in field. There is no HTML that turns a
+// password field into a text field, so this is the third thing HTMX does not
+// reach.
+//
+// It exists because of what the field holds: sixteen characters read off a
+// password manager and typed into a phone. Typed blind, a single wrong
+// character comes back as "das passt nicht", which is indistinguishable from
+// having the wrong code entirely — and that is the dead end this whole way
+// back was built to remove.
+//
+// Delegated, like the sliders above: the form is swapped in and out of the
+// page by HTMX, and a listener bound to the button would go with it.
+document.addEventListener('click', function (event) {
+	var button = event.target.closest && event.target.closest('.secret-reveal');
+	if (!button) {
+		return;
+	}
+
+	var field = document.getElementById(button.dataset.reveal);
+	if (!field) {
+		return;
+	}
+
+	var shown = field.type === 'text';
+	field.type = shown ? 'password' : 'text';
+	button.textContent = shown ? 'Zeigen' : 'Verbergen';
+	button.setAttribute('aria-pressed', shown ? 'false' : 'true');
+	// Back to where they were typing, rather than leaving focus on a button
+	// they have to tab off again.
+	field.focus();
+});

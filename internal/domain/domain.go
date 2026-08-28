@@ -72,6 +72,33 @@ type Identity struct {
 	CreatedAt time.Time
 }
 
+// CredentialKind names a sort of shared secret a player can prove themselves
+// with. Both kinds are bearer credentials: whoever holds one is the player,
+// and the blast radius stays the one docs/adr/0004 accepts.
+type CredentialKind string
+
+const (
+	// CredentialRecovery is the generated recovery code. Everybody gets one
+	// at join without doing anything, and it is the only kind a third party
+	// may issue — that is what the kiosk does (docs/adr/0006).
+	CredentialRecovery CredentialKind = "recovery"
+	// CredentialPIN is the digits a player chose. Optional, memorable, and
+	// nobody else can set it (docs/adr/0007).
+	CredentialPIN CredentialKind = "pin"
+)
+
+// Credential is one player's secret of one kind, stored as a hash and never
+// in the clear. A player holds at most one per kind: a new secret replaces
+// the old one, which is what makes a new recovery code invalidate the
+// previous one immediately.
+type Credential struct {
+	PlayerID uuid.UUID
+	Kind     CredentialKind
+	// Hash is the encoded Argon2id digest, parameters and salt included.
+	Hash      string
+	UpdatedAt time.Time
+}
+
 // MatchStatus is a match's confirmation state. Only a match in state
 // MatchConfirmed enters the rating.
 type MatchStatus string
@@ -84,6 +111,24 @@ const (
 	// MatchDisputed has been contested by the opponent and blocks rating.
 	// Resolvable only by hand in the MVP.
 	MatchDisputed MatchStatus = "disputed"
+)
+
+// EnteredVia records how a result reached the database.
+//
+// It answers a question the measurement has to be able to ask and could not
+// (issue #71): whether a row is somebody logging their own match, which is
+// what the Definition of Done counts, or a scorekeeper typing in an evening,
+// which is not. Eight players round robin is twenty-eight matches — counted in
+// by accident, the measurement passes and proves nothing.
+type EnteredVia string
+
+const (
+	// EnteredViaPlayer is a player entering a result themselves. The default,
+	// and the only kind that answers the question the MVP asks.
+	EnteredViaPlayer EnteredVia = "player"
+	// EnteredViaKiosk is the machine at the table, where one person enters
+	// for everybody.
+	EnteredViaKiosk EnteredVia = "kiosk"
 )
 
 // Match is a singles encounter between two players. Doubles do not count
@@ -99,7 +144,10 @@ type Match struct {
 	PlayedAt    time.Time
 	// ConfirmedAt is set exactly when Status is MatchConfirmed.
 	ConfirmedAt *time.Time
-	Sets        []MatchSet
+	// EnteredVia is how the result reached the database. Empty means
+	// EnteredViaPlayer, which is what the column defaults to.
+	EnteredVia EnteredVia
+	Sets       []MatchSet
 }
 
 // MatchSet is a single set within a match.

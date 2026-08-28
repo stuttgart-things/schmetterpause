@@ -83,7 +83,10 @@ func (s *Server) handleRecordMatch(w http.ResponseWriter, r *http.Request) {
 		Status:      domain.MatchPending,
 		ReportedBy:  self,
 		PlayedAt:    time.Now(),
-		Sets:        sets,
+		// Somebody entering their own result on their own phone. This is the
+		// kind the Definition of Done counts (issue #71).
+		EnteredVia: domain.EnteredViaPlayer,
+		Sets:       sets,
 	})
 	if err != nil {
 		s.log.ErrorContext(r.Context(), "recording the match failed", "error", err)

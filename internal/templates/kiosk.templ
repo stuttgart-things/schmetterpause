@@ -35,6 +35,26 @@ templ Kiosk(v KioskView) {
 		if v.Error != "" {
 			<p class="fail" role="alert">{ v.Error }</p>
 		}
+		if v.IssuedCode != "" {
+			// The one place a credential is shown to somebody it does not
+			// belong to. It says whose it is in the heading, because a laptop
+			// at a table has more than one person looking at it and a bare
+			// code on the screen tells nobody who should write it down.
+			<section class="session recovery">
+				<h2>{ "Neuer Code für " + v.IssuedFor }</h2>
+				<p class="recovery-code"><code>{ v.IssuedCode }</code></p>
+				<p class="recovery-lead">
+					Vorlesen oder abschreiben lassen, jetzt. Er steht
+					<strong>nur hier und nur einmal</strong>, und der alte
+					Code von { v.IssuedFor } gilt ab sofort nicht mehr.
+				</p>
+				<p class="muted">
+					Eine PIN kann der Kiosk nicht setzen. Die vergibt
+					{ v.IssuedFor } selbst, sobald das eigene Handy wieder
+					angemeldet ist.
+				</p>
+			</section>
+		}
 		<section class="match">
 			<h2>Ergebnis eintragen</h2>
 			if len(v.Players) < 2 {
@@ -70,6 +90,31 @@ templ Kiosk(v KioskView) {
 				<button type="submit">Anlegen</button>
 			</form>
 		</section>
+		if len(v.Players) > 0 {
+			// The last resort, and the reason it is here rather than in the
+			// ordinary interface: this is for somebody who has lost the code
+			// *and* every device that knew them, so nothing they hold can
+			// prove who they are. What stands in for the proof is the room —
+			// somebody is beside them and the people here know each other
+			// (docs/adr/0006).
+			<section class="match">
+				<h2>Zugang wiederherstellen</h2>
+				<p class="muted">
+					Für jemanden, der neben dir steht und weder Code noch ein
+					angemeldetes Gerät mehr hat.
+				</p>
+				<form method="post" action="/kiosk/credentials">
+					<label for="kiosk-recover">Spieler</label>
+					<select id="kiosk-recover" name="player_id" required>
+						<option value="">bitte wählen</option>
+						for _, p := range v.Players {
+							<option value={ p.ID }>{ p.DisplayName }</option>
+						}
+					</select>
+					<button class="secondary" type="submit">Neuen Code ausgeben</button>
+				</form>
+			</section>
+		}
 		@Standings(v.Standings)
 	}
 }

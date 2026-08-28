@@ -289,6 +289,180 @@ h2 {
 	border-radius: var(--radius);
 }
 
+/* --- Zweiter Weg herein -------------------------------------------------- */
+
+/* The sign-in door under the join form. Quiet, because joining is what almost
+   everybody arriving at this page needs — this one is for the person whose
+   browser forgot them, and they are looking for it. */
+.session-alt {
+	margin: 0.9rem 0 0;
+	padding-top: 0.9rem;
+	border-top: 1px solid var(--line);
+	color: var(--muted);
+	font-size: 0.9rem;
+}
+
+/* A button, because it does something rather than going somewhere — but it
+   reads as a link, because a second full-width button beside "Mitspielen"
+   would present two equal choices where one is the common case. */
+.linklike {
+	display: inline;
+	width: auto;
+	margin: 0;
+	padding: 0;
+	background: none;
+	border: none;
+	color: var(--accent-text);
+	font: inherit;
+	text-decoration: underline;
+	cursor: pointer;
+}
+
+.linklike:hover { color: var(--fg); }
+
+.linklike:focus-visible {
+	outline: 2px solid var(--accent);
+	outline-offset: 2px;
+	border-radius: 2px;
+}
+
+/* The secret and its reveal button share a row. The field takes the space; the
+   button takes what it needs. */
+.secret-field {
+	display: flex;
+	gap: 0.5rem;
+	align-items: stretch;
+}
+
+.secret-field input { flex: 1; min-width: 0; }
+
+.secret-reveal {
+	flex: none;
+	width: auto;
+	margin: 0;
+	padding: 0 0.85rem;
+	font-size: 0.8rem;
+}
+
+/* --- Wiederherstellungscode -------------------------------------------- */
+
+/* The one card on the page that breaks the house pattern, on purpose.
+   ADR-0006 asks for a display that cannot be read past, and the house style
+   for a card heading — muted, uppercase, mono, the size of a label — is a
+   fair description of what gets read past. So this heading is full size and
+   in the foreground colour, and the card carries the accent along its left
+   edge instead of the usual even outline. */
+.recovery { border-left: 3px solid var(--accent); }
+
+.recovery h2 {
+	font-family: var(--font-ui);
+	font-size: 1.15rem;
+	font-weight: 700;
+	letter-spacing: -0.01em;
+	text-transform: none;
+	color: var(--fg);
+	margin: 0 0 0.75rem;
+}
+
+.recovery-code {
+	margin: 0 0 0.85rem;
+	padding: 0.8rem 0.9rem;
+	background: var(--panel);
+	border: 1px solid var(--line);
+	border-radius: var(--radius-sm);
+	text-align: center;
+	overflow-wrap: anywhere;
+}
+
+/* clamp rather than a fixed size: nineteen monospaced characters with letter
+   spacing do not fit a 390px phone at the size this deserves on a laptop, and
+   a code that wraps mid-group is a code somebody mistypes.
+
+   The spacing is not decoration. The alphabet exists so that no two
+   characters are confused when the code is read aloud (see internal/credential),
+   and setting it tight would hand that back.
+
+   user-select: all so one tap takes the whole thing. Dragging a selection
+   across sixteen characters on a phone is the step at which people give up
+   and decide not to save it after all. */
+.recovery-code code {
+	font-family: var(--font-mono);
+	font-size: clamp(1rem, 4.6vw, 1.4rem);
+	font-weight: 700;
+	letter-spacing: 0.08em;
+	color: var(--fg);
+	user-select: all;
+	-webkit-user-select: all;
+}
+
+.recovery-lead { margin: 0 0 0.75rem; }
+.recovery-lead strong { color: var(--fg); }
+.recovery p:last-child { margin-bottom: 0; }
+
+/* --- Status eines Matches ----------------------------------------------- */
+
+/* The badge that says a result is not settled yet, beside the set score.
+   Issue #76: the state used to sit in the TTR column in place of the number,
+   so a row waiting for your confirmation looked like a row whose rating had
+   simply not moved — and the explanation lived in a title attribute, which a
+   phone never shows because a phone has no hover. */
+.matches td.score { white-space: nowrap; }
+
+.state {
+	display: inline-block;
+	margin-left: 0.4rem;
+	padding: 0.05rem 0.42rem;
+	border-radius: 999px;
+	font-family: var(--font-mono);
+	font-size: 0.62rem;
+	font-weight: 700;
+	letter-spacing: 0.06em;
+	text-transform: uppercase;
+	vertical-align: middle;
+}
+
+/* Waiting is not failure, so it does not get the failure colour: a result
+   nobody has confirmed yet is the ordinary state of a match somebody entered
+   a minute ago. */
+.state-pending {
+	color: var(--fg);
+	background: color-mix(in srgb, var(--accent) 30%, transparent);
+}
+
+/* Contested is louder, because it stays that way until somebody does
+   something about it. */
+.state-disputed {
+	color: var(--bad);
+	background: color-mix(in srgb, var(--bad) 18%, transparent);
+}
+
+/* --- PIN ---------------------------------------------------------------- */
+
+/* The rule between the code and the PIN offer on the join card. They are two
+   different things about the same subject, and without a line the second one
+   reads as a footnote to the first — which issue #88 asks it not to be. */
+.hairline {
+	height: 0;
+	margin: 1.1rem 0;
+	border: 0;
+	border-top: 1px solid var(--line);
+}
+
+.pin-offer label {
+	display: block;
+	margin-bottom: 0.15rem;
+}
+
+/* The explanation sits between the label and the field rather than under the
+   whole form, because it answers the question somebody has while looking at
+   the empty box: how long, and does this replace my code. */
+.pin-offer .muted {
+	margin: 0 0 0.6rem;
+	font-size: 0.85rem;
+}
+
+.pin-card, .recovery-card { margin-top: 1.5rem; }
+
 /* Heading and the refresh button on one line. The button sits at the end of
    the row rather than under the heading, so the card does not grow taller for
    a control most readers never press. */
