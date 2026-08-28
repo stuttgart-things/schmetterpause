@@ -316,10 +316,20 @@ ADR-0005 aufgreift.
   echte Constraints aus Azure Local (verfügbare CSI-Treiber, erreichbare
   Objektspeicher, Secret-Verwaltung) können das noch verschieben.
 
-## Hinweis für später
+## Wenn Weg B gebaut wird, dann über das Plugin
 
-Falls Weg B kommt: CloudNativePG hat die Barman-Cloud-Anbindung aus dem Kern in
-ein eigenes Plugin ausgelagert; das eingebaute `barmanObjectStore` im
-`Cluster`-CR gilt als veraltet. Beim Aufsetzen gleich den Plugin-Weg nehmen und
-gegen die dann aktuelle Dokumentation prüfen, statt der älteren Anleitungen zu
-folgen, die noch das Feld im CR zeigen.
+Stand als Fußnote in der ersten Fassung und gehört nach vorne, weil Weg B jetzt
+ein ernsthafter Kandidat ist statt eines fernen Ziels:
+
+CloudNativePG hat die Barman-Cloud-Anbindung aus dem Kern in ein eigenes Plugin
+ausgelagert. **Das eingebaute Feld `barmanObjectStore` im `Cluster`-CR ist seit
+CNPG 1.26 deprecated, die Entfernung ist für 1.30 vorgesehen.** Der aktuelle Weg
+ist das Plugin mit einem eigenen `ObjectStore`-Objekt, und nur dort steht auch
+`inheritFromAzureAD` zur Verfügung, auf dem Randbedingung 2 aufbaut.
+
+Das ist kein akademischer Hinweis: **#84 beschreibt Weg B ausdrücklich als
+`spec.backup.barmanObjectStore` auf dem `Cluster` plus `ScheduledBackup`** —
+also über das veraltete Feld. Wer den Vergleich aus #84 aufsetzt, ohne das zu
+wissen, baut ihn gegen eine Schnittstelle, die vor der nächsten
+Operator-Aktualisierung verschwindet, und misst nebenbei das falsche Verfahren.
+Gehört als Kommentar dorthin.
