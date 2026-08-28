@@ -188,6 +188,13 @@ var (
 	MaxPIN = strconv.Itoa(credential.MaxPINLength)
 )
 
+// SignOutView is the button that makes this browser a stranger again.
+type SignOutView struct {
+	// HasPIN decides which warning is shown. Somebody without one has a
+	// single way back and should be told so before they press it.
+	HasPIN bool
+}
+
 // RecoveryCardView is the recovery code on somebody's own profile.
 type RecoveryCardView struct {
 	// Code is a freshly issued one, in the clear, set only in the response

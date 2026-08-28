@@ -232,6 +232,15 @@ func (i *memIdentities) Link(_ context.Context, provider domain.Provider, subjec
 	return nil
 }
 
+func (i *memIdentities) Unlink(_ context.Context, provider domain.Provider, subject string) error {
+	i.mu.Lock()
+	defer i.mu.Unlock()
+
+	// A row that is not there is not an error, the same as against Postgres.
+	delete(i.rows, i.key(provider, subject))
+	return nil
+}
+
 func (i *memIdentities) PlayerBy(ctx context.Context, provider domain.Provider, subject string) (domain.Player, error) {
 	i.mu.Lock()
 	id, ok := i.rows[i.key(provider, subject)]

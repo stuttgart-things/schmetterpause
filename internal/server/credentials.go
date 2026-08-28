@@ -82,6 +82,48 @@ func (s *Server) handleNewRecoveryCode(w http.ResponseWriter, r *http.Request) {
 	s.render(w, r, templates.RecoveryCard(templates.RecoveryCardView{Code: code}))
 }
 
+// handleSignOut makes this browser a stranger again.
+//
+// It rebuilds, on purpose, the state issue #70 describes — and it is only
+// defensible because that issue is now closed. Before the recovery code and
+// the PIN, a button that forgot you was a trapdoor with nothing at the
+// bottom.
+//
+// The case it is for is a borrowed device: somebody signs in on a colleague's
+// phone to enter a result, and without this the phone stays them until the
+// owner signs in again.
+//
+// POST rather than a link, for the reason docs/adr/0006 gives for the
+// recovery code being a code and not a link: chat programs follow links to
+// build previews. A GET /signout is a URL somebody pastes into Teams that
+// signs people out.
+//
+// A redirect rather than a rendered fragment, because the whole page is a
+// different page now — and a navigation is what makes the cleared cookie
+// take effect in front of somebody rather than on their next click.
+func (s *Server) handleSignOut(w http.ResponseWriter, r *http.Request) {
+	self, ok := auth.PlayerID(r.Context())
+	if !ok {
+		http.Redirect(w, r, "/", http.StatusSeeOther)
+		return
+	}
+
+	if err := s.auth.EndSession(w, r); err != nil {
+		// The cookie is gone regardless, so this browser is signed out. Only
+		// the row that recognised it may have survived, and nobody holds the
+		// cookie that pointed at it any more.
+		s.log.ErrorContext(r.Context(), "forgetting the session failed",
+			"player_id", self, "error", err)
+	}
+
+	// Any brake left over from this player's own wrong guesses would meet
+	// them on the way back in, which is the one moment it must not.
+	s.signInByPlayer.Succeeded(self.String())
+	s.log.InfoContext(r.Context(), "player signed out", "player_id", self)
+
+	http.Redirect(w, r, "/", http.StatusSeeOther)
+}
+
 // rejectPIN re-renders the form with the reason. What was typed is not handed
 // back: it is a secret, and echoing it into the page would put it in the
 // response, in the browser's back-forward cache and in anything watching.

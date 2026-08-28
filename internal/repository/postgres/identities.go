@@ -58,6 +58,18 @@ func (r identityRepo) PlayerBy(ctx context.Context, provider domain.Provider, su
 	return p, nil
 }
 
+func (r identityRepo) Unlink(ctx context.Context, provider domain.Provider, subject string) error {
+	const q = `delete from identities where provider = $1 and subject = $2`
+
+	// A row that is not there is not an error: signing out twice is an
+	// ordinary thing to do, and so is signing out with a cookie whose row
+	// somebody already removed.
+	if _, err := r.q.Exec(ctx, q, string(provider), subject); err != nil {
+		return fmt.Errorf("unlink identity %s/%s: %w", provider, subject, err)
+	}
+	return nil
+}
+
 func (r identityRepo) ForPlayer(ctx context.Context, playerID uuid.UUID) ([]domain.Identity, error) {
 	const q = `
 		select provider, subject, player_id, created_at

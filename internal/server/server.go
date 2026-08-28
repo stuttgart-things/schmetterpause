@@ -85,6 +85,9 @@ func (s *Server) routes() http.Handler {
 	// (docs/adr/0006).
 	page.Handle("POST /credentials/pin", auth.RequirePlayer(http.HandlerFunc(s.handleSetPIN)))
 	page.Handle("POST /credentials/recovery", auth.RequirePlayer(http.HandlerFunc(s.handleNewRecoveryCode)))
+	// POST, never GET. Chat programs follow links to build previews, so a
+	// GET /signout is a URL somebody pastes into Teams that signs people out.
+	page.Handle("POST /signout", auth.RequirePlayer(http.HandlerFunc(s.handleSignOut)))
 	page.HandleFunc("GET /fragments/match", s.handleMatchForm)
 	// Not behind a player check: the kiosk has no player session and needs
 	// the same rows.

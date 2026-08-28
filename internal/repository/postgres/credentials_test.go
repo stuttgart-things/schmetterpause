@@ -116,3 +116,41 @@ func TestCredentialsFollowThePlayer(t *testing.T) {
 		t.Error("Put() for an unknown player returned no error")
 	}
 }
+
+// Unlink is what signing out uses: the browser stops being recognised, and
+// the row that recognised it stops existing rather than sitting in the table
+// as a credential nobody holds.
+func TestIdentityUnlink(t *testing.T) {
+	store, ctx := newStore(t)
+	ids := store.Identities()
+
+	anna := mustPlayer(ctx, t, store, "Anna", domain.DefaultTTR)
+
+	for _, subject := range []string{"phone", "laptop"} {
+		if err := ids.Link(ctx, domain.ProviderLocal, subject, anna.ID); err != nil {
+			t.Fatalf("Link(%q): %v", subject, err)
+		}
+	}
+
+	if err := ids.Unlink(ctx, domain.ProviderLocal, "phone"); err != nil {
+		t.Fatalf("Unlink(): %v", err)
+	}
+
+	if _, err := ids.PlayerBy(ctx, domain.ProviderLocal, "phone"); !errors.Is(err, domain.ErrNotFound) {
+		t.Errorf("the unlinked proof still resolves: %v", err)
+	}
+	// The other device is untouched. A player holds several identities by
+	// design (ADR-0003), and signing out on one must not end the others.
+	if _, err := ids.PlayerBy(ctx, domain.ProviderLocal, "laptop"); err != nil {
+		t.Errorf("the other device was unlinked too: %v", err)
+	}
+
+	// A proof that is not there is not an error: signing out twice is an
+	// ordinary thing to do.
+	if err := ids.Unlink(ctx, domain.ProviderLocal, "phone"); err != nil {
+		t.Errorf("unlinking twice = %v, want nil", err)
+	}
+	if err := ids.Unlink(ctx, domain.ProviderLocal, "never-existed"); err != nil {
+		t.Errorf("unlinking something that never was = %v, want nil", err)
+	}
+}

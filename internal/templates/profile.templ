@@ -59,6 +59,10 @@ templ Profile(v ProfileView) {
 				<h2>PIN</h2>
 				@PINForm(PINFormView{Set: v.HasPIN})
 			</section>
+			// Last, and after the two things that make it survivable. Reading
+			// down the page you are offered a fresh code, then a PIN, and
+			// only then the button that forgets you.
+			@SignOut(SignOutView{HasPIN: v.HasPIN})
 		}
 		<h2>Letzte Matches</h2>
 		if len(v.Matches) == 0 {

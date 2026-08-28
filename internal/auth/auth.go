@@ -39,6 +39,9 @@ func (Anonymous) SetCookie(http.ResponseWriter, string) {}
 // ClearCookie has nothing to clear.
 func (Anonymous) ClearCookie(http.ResponseWriter) {}
 
+// EndSession has no session to end.
+func (Anonymous) EndSession(http.ResponseWriter, *http.Request) error { return nil }
+
 // SessionAuthenticator is an Authenticator that can also start and end a
 // session. Handlers that sign somebody in need this; everything else is
 // happier with the narrower Authenticator.
@@ -48,6 +51,20 @@ type SessionAuthenticator interface {
 	SetCookie(w http.ResponseWriter, subject string)
 	// ClearCookie removes it.
 	ClearCookie(w http.ResponseWriter)
+	// EndSession forgets this browser: it clears the recognition cookie and
+	// removes whatever the provider stored to recognise it by, so the
+	// session is gone from the database as well as from the browser.
+	//
+	// Only this browser. A player holds several identities by design
+	// (docs/adr/0003), so signing out on a borrowed phone leaves the one at
+	// home signed in.
+	//
+	// The cookie is cleared whether or not the rest succeeds. A caller that
+	// gets an error has still been signed out; the error is worth logging
+	// and not worth refusing the request over, because the alternative is
+	// telling somebody they are still signed in on a device they wanted to
+	// leave.
+	EndSession(w http.ResponseWriter, r *http.Request) error
 }
 
 var (
