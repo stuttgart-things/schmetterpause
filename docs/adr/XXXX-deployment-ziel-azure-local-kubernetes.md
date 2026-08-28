@@ -174,18 +174,37 @@ Arc](https://learn.microsoft.com/en-us/azure/azure-arc/kubernetes/conceptual-git
 ## Hinweis zur Form
 ## Hinweis zur Form
 
-Das Team trackt "Offene Punkte" aus `docs/mvp-plan.md` inzwischen als
-GitHub-Issues statt als ADR-Prosa (#17–#20) — ADRs sind für Entscheidungen mit
-Bestand, Issues für Fragen, die noch offen sind. Die vier Punkte oben in
-diesem ADR sind Kandidaten für denselben Schnitt, sobald das Deployment-Ziel
-näher rückt: eigene Issues statt Unterpunkte hier drin.
+Das Team trackt offene Punkte als GitHub-Issues statt als ADR-Prosa — ADRs für
+Entscheidungen mit Bestand, Issues für Fragen, die noch offen sind. Genau das
+ist mit diesem Thema passiert: Aus dem, was hier als Unterpunkte stand, sind
+#74 und #78 bis #86 geworden, gebündelt unter #89.
+
+Für die Punkte, die oben offen bleiben, gilt derselbe Schnitt. Sie gehören als
+Kommentar an die bestehenden Issues, nicht als neue: Punkt 5 und 6 an #78 und
+#81, wo dieselben Checkboxen schon stehen — nur für eine andere Umgebung
+beantwortet. Punkt 7 ist #74.
 
 ## Entscheidung
 
-Noch offen. Vorschlag zur Diskussion: Argo-CD-Extension über Azure Arc als
-Reconciliation-Schicht, Kargo optional nachziehen sobald eine zweite Stage
-existiert. Manifeste/Helm-Chart erst anlegen, wenn AP1–AP3 stabil sind und ein
-erstes Image über eine Registry verteilt werden muss.
+Die Deployment-Frage selbst ist inzwischen woanders entschieden: Kubernetes
+statt Azure Container Apps, KCL für die Manifeste, Auslieferung als
+kustomize-OCI-Artefakt, Argo CD als Reconciliation-Schicht, CloudNativePG für
+Postgres (#78, #80, #81). Dieses ADR schreibt das nicht neu.
+
+*Was hier zur Entscheidung steht, ist der Teil, den Phase 3 nicht behandelt:*
+
+1. **Azure Local ist die Zielumgebung, der sthings-Cluster der Übergang** —
+   nicht umgekehrt, und der Übergang ist kein Zwischenstand, den man später
+   stehen lässt.
+2. **Was Azure Local nicht mitbringt, wird dort nachgerüstet** — Gateway-API-
+   Controller, Loadbalancer, StorageClass. Die kustomize-Base bleibt für beide
+   Umgebungen dieselbe. Das ist Invariante 1, eine Ebene höher gezogen.
+3. **Der Objektspeicher-Zugang läuft über Managed Identity**, nicht über ein
+   Geheimnis in Git. Damit bleibt als Bootstrap-Problem nur, was die Anwendung
+   selbst braucht, und das sind zwei Werte.
+
+Offen und nicht allein entscheidbar: der Hostname (Punkt 7) und die Art, wie
+Argo CD auf Azure Local installiert wird (Punkt 6).
 
 ## Nicht Teil dieses ADR
 
