@@ -150,35 +150,50 @@ Unverändert gültig, jetzt als Auslöser für „Weg B ernst nehmen" statt für
    Neueingabe weniger Matches, sondern eine inkonsistente Tabelle.
 3. Die Datenbank soll **hochverfügbar** laufen.
 
-## Randbedingungen, die für jeden der drei Wege gelten
+## Randbedingungen, die für beide Wege gelten
 
-Diese Punkte sind unabhängig von der Wahl A/B/C und wiegen schwerer als sie.
+Diese Punkte sind unabhängig von der Wahl A/B und wiegen schwerer als sie.
 
 1. **Das Ziel darf nicht auf dem Cluster liegen, der zerstört wird.** Ein
-   MinIO-Deployment im selben Cluster als "unser S3" ist die naheliegende und
-   falsche Lösung: Es verschwindet mit dem Cluster, den es absichern soll. Das
-   Ziel muss außerhalb liegen — Azure Blob Storage oder ein Objektspeicher
-   außerhalb der Azure-Local-Umgebung.
+   MinIO-Deployment im selben Cluster als „unser S3" ist die naheliegende und
+   falsche Lösung: Es verschwindet mit dem Cluster, den es absichern soll.
 
-2. **Das Bootstrap-Geheimnis ist ein Henne-Ei-Problem.** Der Restore braucht
-   Zugangsdaten für den Objektspeicher, und die können nicht aus dem Cluster
-   kommen, den es noch nicht gibt. Etwas muss sie säen: verschlüsselt in Git
-   (SOPS/age, von Argo CD entschlüsselt), External Secrets gegen Azure Key
-   Vault, oder ein bewusster manueller Schritt null. **Das ist der Punkt, der
-   bei einer echten Wiederherstellung tatsächlich schmerzt — nicht das Backup.**
+   Auf Azure Local erfüllt sich die Bedingung von selbst, allerdings aus einem
+   unbequemen Grund: **Azure Local bringt keinen S3-Dienst mit.** Es bleibt
+   Azure Blob Storage, und das liegt außerhalb — mitsamt der Folge, dass jeder
+   Sicherungslauf und jede Wiederherstellung am WAN-Link hängt. Auf der
+   Übergangsumgebung dagegen ist der naheliegende Kandidat der Bucket, den
+   Velero dort schon benutzt (`infra/velero`, #84 tippt darauf); dort ist die
+   Bedingung *nicht* automatisch erfüllt und muss geprüft werden.
 
-3. **Die Reihenfolge kollidiert mit `SP_AUTO_MIGRATE`.** Der Standardwert ist
-   `true`: Die Anwendung legt das Schema beim Start selbst an. Startet sie, bevor
-   der Dump eingespielt ist, trifft der Dump auf ein bereits migriertes Schema.
-   Zwei Auswege:
-   - Der Restore läuft **vor** dem ersten Anwendungsstart (Init-Container oder
-     Argo-CD-Sync-Wave).
-   - Der Dump ist **`--data-only`**, das Schema kommt weiterhin aus den
-     Migrations.
+2. **Das Bootstrap-Geheimnis war ein Henne-Ei-Problem** — auf der
+   Zielumgebung ist es keins mehr. Der Restore braucht Zugangsdaten für den
+   Objektspeicher, und die können nicht aus dem Cluster kommen, den es noch
+   nicht gibt. Das galt als der Punkt, der bei einer echten Wiederherstellung
+   tatsächlich schmerzt.
 
-   Die zweite Variante ist vorzuziehen: Sie hält Invariante 8 ein — Migrations
-   bleiben der einzige Weg, auf dem sich das Schema ändert — und macht den
-   Restore unabhängig davon, aus welcher Version der Dump stammt.
+   **Auf Azure gibt es dafür keinen Zugangsdaten-Weg, sondern einen
+   Identitäts-Weg.** Das barman-cloud-Plugin kann `inheritFromAzureAD`
+   beziehungsweise die Default-Credential-Kette benutzen; Velero hat dieselbe
+   Möglichkeit über eine Managed Identity. Die Umgebung liefert die Identität,
+   nicht Git — es gibt schlicht kein Geheimnis zu säen.
+
+   Auf der Übergangsumgebung bleibt die Frage offen und die alten Kandidaten
+   stehen: SOPS/age in Git, External Secrets gegen Vault, oder ein bewusster
+   Schritt null.
+
+3. ~~**Die Reihenfolge kollidiert mit `SP_AUTO_MIGRATE`.**~~ — **beantwortet
+   durch #78.** Im Cluster steht `SP_AUTO_MIGRATE=false` in der ConfigMap und
+   `migrate up` läuft als initContainer. Die Anwendung legt das Schema also
+   nicht mehr beim Start selbst an, und der Konflikt „Dump trifft auf bereits
+   migriertes Schema" entsteht gar nicht erst.
+
+   Was von dieser Randbedingung bleibt, ist die Reihenfolge *innerhalb* des
+   Neubaus: Der Restore muss zwischen „Datenbank steht" und „initContainer
+   migriert" liegen, oder der Dump ist `--data-only` und das Schema kommt
+   weiterhin aus den Migrations. Die zweite Variante ist weiterhin
+   vorzuziehen — sie hält Invariante 8 ein und macht den Restore unabhängig
+   davon, aus welcher Version der Dump stammt.
 
 4. **Ein Backup, das nie zurückgespielt wurde, ist keines.** Hier liegt ein
    Vorteil dieser Umgebung: Der Cluster wird ohnehin regelmäßig neu gebaut. Jeder
