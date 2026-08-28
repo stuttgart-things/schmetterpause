@@ -21,7 +21,7 @@ const (
 	// the builder stage in the Dockerfile — otherwise the pipeline verifies an
 	// image built by a different compiler than the one the Dockerfile uses.
 	goImage           = "golang:1.27-alpine"
-	golangciLintImage = "golangci/golangci-lint:v2.13.1-alpine"
+	golangciLintImage = "golangci/golangci-lint:v2.13.2-alpine"
 	postgresImage     = "postgres:18-alpine"
 	runtimeImage      = "gcr.io/distroless/static-debian12:nonroot"
 	toolingImage      = "alpine:3.24"
