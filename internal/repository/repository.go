@@ -68,6 +68,13 @@ type IdentityRepository interface {
 	// error is domain.ErrNotFound.
 	PlayerBy(ctx context.Context, provider domain.Provider, subject string) (domain.Player, error)
 	ForPlayer(ctx context.Context, playerID uuid.UUID) ([]domain.Identity, error)
+	// Unlink forgets one proof. Its consumer is signing out: the browser
+	// stops being recognised, and the row that recognised it stops existing
+	// rather than sitting in the table as a credential nobody holds.
+	//
+	// A proof that is not there is not an error. Signing out twice, or after
+	// a key rotation left the cookie unreadable, is an ordinary thing to do.
+	Unlink(ctx context.Context, provider domain.Provider, subject string) error
 }
 
 // CredentialRepository stores the shared secrets a player proves themselves

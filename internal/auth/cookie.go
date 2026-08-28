@@ -110,6 +110,35 @@ func (a *CookieAuthenticator) ClearCookie(w http.ResponseWriter) {
 	})
 }
 
+// EndSession forgets this browser.
+//
+// The cookie goes first and unconditionally: whatever else happens, the
+// browser has to stop being recognised, because that is what was asked for.
+// Removing the identity is the part that can fail, and a failure there leaves
+// a row nobody can present — the subject only ever existed in the cookie that
+// has just been cleared.
+func (a *CookieAuthenticator) EndSession(w http.ResponseWriter, r *http.Request) error {
+	a.ClearCookie(w)
+
+	cookie, err := r.Cookie(SessionCookieName)
+	if err != nil {
+		// Nothing to forget. Signing out without a cookie is an ordinary
+		// thing to do, not a failure.
+		return nil
+	}
+
+	subject, err := a.verify(cookie.Value)
+	if err != nil {
+		// A cookie this build cannot read points at no row we could name.
+		return nil
+	}
+
+	if err := a.identities.Unlink(r.Context(), domain.ProviderLocal, subject); err != nil {
+		return fmt.Errorf("forget session: %w", err)
+	}
+	return nil
+}
+
 // sign returns "<subject>.<signature>".
 func (a *CookieAuthenticator) sign(subject string) string {
 	return subject + "." + base64.RawURLEncoding.EncodeToString(a.mac(subject))
