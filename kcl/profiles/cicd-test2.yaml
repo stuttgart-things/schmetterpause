@@ -1,37 +1,30 @@
 # The office cluster: HTTPRoute against the shared Cilium gateway, secrets from
 # Vault through External Secrets.
 #
-# The hostname is assembled from name and clusterDomain, so moving to another
-# cluster is one value here rather than an edit in the manifests.
-kcl_options:
-  - key: config.namespace
-    value: schmetterpause
+# Flat "key: value", not KCL's own kcl_options list. This is the format
+# stuttgart-things/dagger/kcl reads: it converts the file with
+#   yq eval -o=json | jq 'to_entries | map(.key + "=" + (.value|tostring))'
+# into one -D flag per entry. A kcl_options file survives that conversion as a
+# single -D kcl_options=[…], which KCL ignores — every value silently falls
+# back to its default. task kcl:render does the same conversion locally so both
+# paths read one file.
+config.namespace: schmetterpause
 
-  # Pin a digest for a real deploy. :latest is here so the profile renders
-  # before the first release exists.
-  - key: config.image
-    value: ghcr.io/stuttgart-things/schmetterpause:latest
+# Pin a digest for a real deploy. :latest is here so the profile renders before
+# the first release exists.
+config.image: ghcr.io/stuttgart-things/schmetterpause:latest
 
-  - key: config.clusterDomain
-    value: cicd-test2.4sthings.tiab.ssc.sva.de
+config.clusterDomain: cicd-test2.4sthings.tiab.ssc.sva.de
 
-  - key: config.httpRouteEnabled
-    value: true
-  - key: config.gatewayName
-    value: cilium-gateway
-  - key: config.gatewayNamespace
-    value: default
+config.httpRouteEnabled: true
+config.gatewayName: cilium-gateway
+config.gatewayNamespace: default
 
-  # The kiosk stays off. On a server "trust comes from the room" no longer
-  # holds — see issue #90 — and the measured days are meant to run without one.
-  - key: config.kioskEnabled
-    value: false
+# The kiosk stays off. On a server "trust comes from the room" no longer holds
+# — see issue #90 — and the measured days are meant to run without one.
+config.kioskEnabled: false
 
-  - key: config.secretsMode
-    value: external
-  - key: config.secretStoreKind
-    value: ClusterSecretStore
-  - key: config.secretStoreName
-    value: vault
-  - key: config.vaultPath
-    value: schmetterpause/data/cicd-test2
+config.secretsMode: external
+config.secretStoreKind: ClusterSecretStore
+config.secretStoreName: vault
+config.vaultPath: schmetterpause/data/cicd-test2

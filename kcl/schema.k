@@ -17,8 +17,12 @@ schema Schmetterpause:
 
     # ── Image ───────────────────────────────────────────────────────────────
     
-    # A placeholder for local renders. CI overrides it with the reference the
-    # release job published, digest and all — see the README.
+    # A placeholder for local renders, and only that: ":latest" moves in this
+    # repository's CI only on a v* tag, and there has been no release, so the
+    # reference below does not resolve in the registry. task kcl:publish always
+    # overrides it with the tag the artefact itself carries, and refuses when
+    # that image is not there — so a placeholder cannot reach a published
+    # artefact.
     image: str = "ghcr.io/stuttgart-things/schmetterpause:latest"
     imagePullPolicy: str = "IfNotPresent"
 

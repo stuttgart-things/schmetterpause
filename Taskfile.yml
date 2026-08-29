@@ -16,6 +16,7 @@ vars:
   # artefact must not have.
   KCL_MODULE: github.com/stuttgart-things/dagger/kcl@v0.82.0
   KUSTOMIZE_OCI_REPO: ghcr.io/stuttgart-things/schmetterpause-kustomize
+  IMAGE_REPO: ghcr.io/stuttgart-things/schmetterpause
 
 tasks:
   default:
@@ -220,18 +221,46 @@ tasks:
     vars:
       PROFILE: '{{.PROFILE | default "cicd-test2"}}'
     cmds:
-      # The sed chain is not decoration: it is the same normalisation that
-      # stuttgart-things/dagger/kcl applies before it builds the kustomize base.
-      # Rendering locally without it would test a different artefact than the
-      # one that ships. Drop the "manifests:" key line, turn each list item into
-      # a document separator, de-indent by two.
       - |
-        kcl run kcl/main.k -Y kcl/profiles/{{.PROFILE}}.yaml \
+        set -e
+        profile="kcl/profiles/{{.PROFILE}}.yaml"
+
+        # The same conversion stuttgart-things/dagger/kcl does inside its
+        # container: a flat key/value file becomes one -D flag per entry. Doing
+        # it identically here is the point — a profile that renders locally is
+        # then a profile that renders in the publish chain.
+        set --
+        while IFS= read -r kv; do
+          [ -n "${kv}" ] && set -- "$@" -D "${kv}"
+        done <<PARAMS
+        $(yq eval -o=json "${profile}" | jq -r 'to_entries[] | .key + "=" + (.value|tostring)')
+        PARAMS
+
+        # And the same normalisation it applies afterwards: drop the
+        # "manifests:" key line, turn each list item into a document separator,
+        # de-indent by two. Without it the local render is a different artefact
+        # from the one that ships.
+        kcl run kcl/main.k "$@" \
           | sed 's/^- /---\n/' \
           | sed '1d' \
           | sed 's/^  //' \
           | sed '/^[[:space:]]*$/d' \
           | awk 'NR==1{print "---"} 1'
+    silent: true
+
+  kcl:check:
+    desc: "Every profile still renders — the check CI runs"
+    cmds:
+      # A profile that stops rendering is a deploy that fails at apply time
+      # instead of here, so this walks all of them rather than one.
+      - |
+        set -e
+        for p in kcl/profiles/*.yaml; do
+          name=$(basename "${p}" .yaml)
+          echo "rendering ${name}"
+          task kcl:render PROFILE="${name}" > /dev/null
+        done
+        echo "all profiles render"
     silent: true
 
   kcl:kustomize:
@@ -254,32 +283,36 @@ tasks:
       PROFILE: '{{.PROFILE | default "cicd-test2"}}'
       TAG: '{{.TAG | default .VERSION}}'
     cmds:
-      # The same tag as the image, deliberately: an artefact pair that can drift
-      # apart is a deploy nobody can reason about afterwards.
       - |
+        set -e
+        image="{{.IMAGE_REPO}}:{{.TAG}}"
+
+        # An artefact whose Deployment names an image the registry does not
+        # have is an ImagePullBackOff with a version number on it — harder to
+        # read than an obvious failure. CI publishes the image on a push to
+        # main, so a branch commit has none. Refuse rather than ship that.
+        if command -v oras > /dev/null 2>&1; then
+          if ! oras manifest fetch "${image}" > /dev/null 2>&1; then
+            echo "no image ${image} in the registry." >&2
+            echo "publish from a commit CI has built, or pass TAG=<an existing tag>." >&2
+            exit 1
+          fi
+        else
+          echo "oras not found — publishing without checking that ${image} exists" >&2
+        fi
+
+        # The image is pinned to the tag the artefact itself carries, so the
+        # pair cannot drift. --parameters takes precedence over the profile,
+        # whose :latest is a placeholder that does not resolve in this registry.
         dagger call -m {{.KCL_MODULE}} push-kustomize-base \
           --source kcl \
           --parameters-file kcl/profiles/{{.PROFILE}}.yaml \
+          --parameters "config.image=${image}" \
           --address {{.KUSTOMIZE_OCI_REPO}} \
           --tag {{.TAG}} \
           --user env:GITHUB_USER \
           --password env:GITHUB_TOKEN
     silent: true
-
-  kcl:check:
-    desc: "Every profile still renders — the check CI runs"
-    cmds:
-      # A profile that stops rendering is a deploy that fails at apply time
-      # instead of here, so this walks all of them rather than one.
-      - |
-        set -e
-        for p in kcl/profiles/*.yaml; do
-          echo "rendering ${p}"
-          kcl run kcl/main.k -Y "${p}" > /dev/null
-        done
-        echo "all profiles render"
-    silent: true
-
   psql:
     desc: "psql session on the development database"
     interactive: true
