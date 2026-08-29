@@ -220,18 +220,46 @@ tasks:
     vars:
       PROFILE: '{{.PROFILE | default "cicd-test2"}}'
     cmds:
-      # The sed chain is not decoration: it is the same normalisation that
-      # stuttgart-things/dagger/kcl applies before it builds the kustomize base.
-      # Rendering locally without it would test a different artefact than the
-      # one that ships. Drop the "manifests:" key line, turn each list item into
-      # a document separator, de-indent by two.
       - |
-        kcl run kcl/main.k -Y kcl/profiles/{{.PROFILE}}.yaml \
+        set -e
+        profile="kcl/profiles/{{.PROFILE}}.yaml"
+
+        # The same conversion stuttgart-things/dagger/kcl does inside its
+        # container: a flat key/value file becomes one -D flag per entry. Doing
+        # it identically here is the point — a profile that renders locally is
+        # then a profile that renders in the publish chain.
+        set --
+        while IFS= read -r kv; do
+          [ -n "${kv}" ] && set -- "$@" -D "${kv}"
+        done <<PARAMS
+        $(yq eval -o=json "${profile}" | jq -r 'to_entries[] | .key + "=" + (.value|tostring)')
+        PARAMS
+
+        # And the same normalisation it applies afterwards: drop the
+        # "manifests:" key line, turn each list item into a document separator,
+        # de-indent by two. Without it the local render is a different artefact
+        # from the one that ships.
+        kcl run kcl/main.k "$@" \
           | sed 's/^- /---\n/' \
           | sed '1d' \
           | sed 's/^  //' \
           | sed '/^[[:space:]]*$/d' \
           | awk 'NR==1{print "---"} 1'
+    silent: true
+
+  kcl:check:
+    desc: "Every profile still renders — the check CI runs"
+    cmds:
+      # A profile that stops rendering is a deploy that fails at apply time
+      # instead of here, so this walks all of them rather than one.
+      - |
+        set -e
+        for p in kcl/profiles/*.yaml; do
+          name=$(basename "${p}" .yaml)
+          echo "rendering ${name}"
+          task kcl:render PROFILE="${name}" > /dev/null
+        done
+        echo "all profiles render"
     silent: true
 
   kcl:kustomize:
@@ -264,20 +292,6 @@ tasks:
           --tag {{.TAG}} \
           --user env:GITHUB_USER \
           --password env:GITHUB_TOKEN
-    silent: true
-
-  kcl:check:
-    desc: "Every profile still renders — the check CI runs"
-    cmds:
-      # A profile that stops rendering is a deploy that fails at apply time
-      # instead of here, so this walks all of them rather than one.
-      - |
-        set -e
-        for p in kcl/profiles/*.yaml; do
-          echo "rendering ${p}"
-          kcl run kcl/main.k -Y "${p}" > /dev/null
-        done
-        echo "all profiles render"
     silent: true
 
   psql:

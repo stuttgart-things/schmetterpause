@@ -144,6 +144,32 @@ Aus demselben Grund ist die Strategie `Recreate` und nicht `RollingUpdate`: ein
 Rolling Update ließe den neuen Pod `migrate up` laufen, während der alte noch
 das alte Schema bedient.
 
+## Das Profilformat
+
+Flach, `key: value` — **nicht** KCLs eigenes `kcl_options`-Format:
+
+```yaml
+config.namespace: schmetterpause
+config.httpRouteEnabled: true
+```
+
+Das ist die Form, die `stuttgart-things/dagger/kcl` liest. Es wandelt die Datei
+im Container um mit
+
+```sh
+yq eval -o=json params.yaml | jq 'to_entries | map(.key + "=" + (.value|tostring))'
+```
+
+und macht daraus ein `-D` pro Eintrag. Eine Datei im `kcl_options`-Format
+überlebt diese Umwandlung als **ein einziges** `-D kcl_options=[…]`, das KCL
+nicht kennt — jeder Wert fällt still auf seinen Default zurück. Bei uns hat
+das der `check:` auf `secretStoreName` abgefangen; ohne den wäre ein Artefakt
+mit lauter Defaults entstanden, das aussieht wie ein Deploy.
+
+`task kcl:render` macht dieselbe Umwandlung lokal. Deshalb `task kcl:render`
+statt `kcl run -Y` — Letzteres will das `kcl_options`-Format und würde eine
+Datei akzeptieren, die im Publish-Weg nicht funktioniert.
+
 ## Die Kette dahinter
 
 `kcl:kustomize` und `kcl:publish` rufen ein geteiltes Dagger-Modul auf, statt
@@ -162,6 +188,26 @@ auseinanderlaufen kann, ist ein Deploy, den hinterher niemand mehr rekonstruiert
 Das Modul ist auf `@v0.82.0` gepinnt. Ohne Pin könnte `task kcl:publish` morgen
 etwas anderes rendern als heute, und das ist die eine Eigenschaft, die ein
 Deploy-Artefakt nicht haben darf.
+
+## Wenn Dagger nicht startet
+
+```
+failed to select internal socket: failed to get SSH auth socket fingerprints:
+failed to list SSH agent identities: agent: client error: EOF
+```
+
+Das ist kein Fehler an den Manifesten — er kommt beim Laden des Moduls. Dagger
+fragt den SSH-Agent nach Identitäten, und in einer VS-Code-Remote-Sitzung zeigt
+`SSH_AUTH_SOCK` gern auf einen weitergeleiteten Socket, dessen Ziel nicht mehr
+existiert. Prüfen mit `ssh-add -l`; umgehen, indem man die Variable für den
+Aufruf leert:
+
+```sh
+SSH_AUTH_SOCK= task kcl:kustomize
+```
+
+Nicht im Taskfile fest verdrahtet: wer SSH für private Go-Abhängigkeiten
+braucht, verliert es sonst.
 
 ## Verwandt
 
