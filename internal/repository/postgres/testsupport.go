@@ -9,7 +9,7 @@ import (
 // tests — which is why callers reach it only behind a separately configured
 // test DSN, never through the normal configuration.
 func TruncateAll(ctx context.Context, s *Store) error {
-	const q = `truncate ttr_history, match_sets, matches, player_credentials, identities, players cascade`
+	const q = `truncate ttr_history, match_sets, matches, player_credentials, kiosk_grants, identities, players cascade`
 
 	if _, err := s.q.Exec(ctx, q); err != nil {
 		return fmt.Errorf("truncate tables: %w", err)

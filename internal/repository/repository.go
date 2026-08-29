@@ -19,6 +19,7 @@ type Store interface {
 	Players() PlayerRepository
 	Identities() IdentityRepository
 	Credentials() CredentialRepository
+	KioskGrants() KioskGrantRepository
 	Matches() MatchRepository
 	TTRHistory() TTRHistoryRepository
 
@@ -90,6 +91,34 @@ type CredentialRepository interface {
 	// none of that kind is domain.ErrNotFound — the ordinary state for a PIN,
 	// since setting one is optional (docs/adr/0007).
 	ForPlayer(ctx context.Context, playerID uuid.UUID, kind domain.CredentialKind) (domain.Credential, error)
+}
+
+// KioskGrantRepository manages the machines unlocked as a kiosk.
+//
+// It never sees the secret in a cookie, only the SHA-256 of it. A plain hash
+// is right here and wrong for a PIN: the secret is 32 bytes the server
+// generated, so there is no guess to slow down, and a memory-hard hash on
+// every kiosk request would make the page at the table unusable.
+type KioskGrantRepository interface {
+	// Create records a freshly unlocked machine.
+	Create(ctx context.Context, secretHash []byte, expiresAt time.Time, userAgent string) (domain.KioskGrant, error)
+	// BySecret finds the grant a cookie stands for. An unknown secret is
+	// domain.ErrNotFound, which is the ordinary answer for a cookie somebody
+	// kept past a revocation.
+	BySecret(ctx context.Context, secretHash []byte) (domain.KioskGrant, error)
+	// Touch records that this machine was just seen. Called sparingly rather
+	// than on every request: it is a write, and the answer it produces only
+	// has to be good to the minute.
+	Touch(ctx context.Context, id uuid.UUID, at time.Time) error
+	// Revoke takes one machine back. Revoking an already revoked grant is not
+	// an error — two people pressing the same button is not a failure.
+	Revoke(ctx context.Context, id uuid.UUID, at time.Time) error
+	// RevokeAll takes every unlocked machine back at once and reports how
+	// many there were. This is the answer to "the token has been read over
+	// somebody's shoulder" that does not involve a restart.
+	RevokeAll(ctx context.Context, at time.Time) (int, error)
+	// Active lists the machines that are kiosks at t, newest first.
+	Active(ctx context.Context, at time.Time) ([]domain.KioskGrant, error)
 }
 
 // MatchRepository manages encounters along with their sets.

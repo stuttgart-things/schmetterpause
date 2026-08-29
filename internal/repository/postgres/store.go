@@ -102,6 +102,9 @@ func (s *Store) Identities() repository.IdentityRepository { return identityRepo
 // Credentials returns the credential repository.
 func (s *Store) Credentials() repository.CredentialRepository { return credentialRepo{s.q} }
 
+// KioskGrants returns the kiosk grant repository.
+func (s *Store) KioskGrants() repository.KioskGrantRepository { return kioskGrantRepo{s.q} }
+
 // Matches returns the match repository.
 func (s *Store) Matches() repository.MatchRepository { return matchRepo{s.q} }
 

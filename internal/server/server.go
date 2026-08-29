@@ -102,7 +102,13 @@ func (s *Server) routes() http.Handler {
 	// Who may act for other people (docs/adr/0008). Behind the flag itself:
 	// the list is the record of who holds power over other people's records,
 	// and that is not a public page.
-	page.Handle("GET /admin", auth.RequireAdmin(s.isAdmin, s.log)(http.HandlerFunc(s.handleAdmin)))
+	admin := auth.RequireAdmin(s.isAdmin, s.log)
+	page.Handle("GET /admin", admin(http.HandlerFunc(s.handleAdmin)))
+	// Taking a kiosk machine back belongs to somebody, which is what
+	// docs/adr/0008 settled and what issue #77 was waiting for. POST, so a
+	// link nobody meant to follow cannot do it.
+	page.Handle("POST /admin/kiosk/{id}/revoke", admin(http.HandlerFunc(s.handleRevokeKiosk)))
+	page.Handle("POST /admin/kiosk/revoke-all", admin(http.HandlerFunc(s.handleRevokeAllKiosks)))
 	// Unset token, no routes: the kiosk does not exist rather than existing
 	// unlocked, and /kiosk is a 404 like any other unknown path.
 	if s.cfg.KioskToken != "" {

@@ -2,11 +2,12 @@ package server
 
 import (
 	"context"
-	"crypto/hmac"
+	"crypto/rand"
 	"crypto/sha256"
 	"crypto/subtle"
 	"encoding/base64"
 	"errors"
+	"fmt"
 	"net/http"
 	"slices"
 	"strconv"
@@ -42,7 +43,11 @@ func (s *Server) handleKiosk(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "Falscher Zugang", http.StatusForbidden)
 			return
 		}
-		s.setKioskCookie(w)
+		if err := s.unlockKiosk(w, r); err != nil {
+			s.log.ErrorContext(r.Context(), "unlocking the kiosk failed", "error", err)
+			http.Error(w, "Kiosk nicht verfügbar", http.StatusInternalServerError)
+			return
+		}
 		// Redirected rather than rendered, so a reload does not carry the
 		// token along and the browser history does not keep it.
 		http.Redirect(w, r, "/kiosk", http.StatusSeeOther)
@@ -293,32 +298,114 @@ func parseKioskPlayers(r *http.Request) (uuid.UUID, uuid.UUID, string) {
 }
 
 // kioskUnlocked reports whether this browser has shown the token.
+
+// kioskSecretBytes is how much randomness a grant's cookie carries. 32 bytes
+// is well past the point where guessing one is worth anyone's time, which is
+// also why the row stores a plain SHA-256 of it and not Argon2id.
+const kioskSecretBytes = 32
+
+// touchAfter is how stale "last seen" may get before a request writes it
+// back. Every kiosk request would otherwise be a write, for an answer that
+// only has to be good to the minute.
+const touchAfter = time.Minute
+
+// kioskUnlocked reports whether this browser holds a grant that is still
+// good, and keeps its last-seen time roughly current.
+//
+// A database problem reads as locked. That is the safe direction rather than
+// a lie: the page this guards cannot render without the database anyway, and
+// no result can be entered into one that is not there.
 func (s *Server) kioskUnlocked(r *http.Request) bool {
 	cookie, err := r.Cookie(kioskCookieName)
 	if err != nil {
 		return false
 	}
-	return hmac.Equal([]byte(cookie.Value), []byte(s.kioskCookieValue()))
+
+	raw, err := base64.RawURLEncoding.DecodeString(cookie.Value)
+	if err != nil {
+		return false
+	}
+	hash := sha256.Sum256(raw)
+
+	grant, err := s.store.KioskGrants().BySecret(r.Context(), hash[:])
+	switch {
+	case errors.Is(err, domain.ErrNotFound):
+		// A cookie nothing stands for: a machine somebody took back, or a
+		// value this database never issued.
+		return false
+	case err != nil:
+		s.log.ErrorContext(r.Context(), "loading the kiosk grant failed", "error", err)
+		return false
+	}
+
+	now := time.Now()
+	if !grant.Active(now) {
+		return false
+	}
+
+	if now.Sub(grant.LastSeenAt) > touchAfter {
+		if err := s.store.KioskGrants().Touch(r.Context(), grant.ID, now); err != nil {
+			// The machine is unlocked either way. A list a minute out of
+			// date is worth less than a page that refuses to load.
+			s.log.WarnContext(r.Context(), "touching the kiosk grant failed",
+				"grant_id", grant.ID, "error", err)
+		}
+	}
+	return true
 }
 
-func (s *Server) setKioskCookie(w http.ResponseWriter) {
+// unlockKiosk records this machine and hands it a cookie that stands for the
+// row.
+//
+// The cookie carries a secret this server generated rather than a value
+// derived from the token. The old one was base64(HMAC(session key,
+// "kiosk:" + token)) — identical in every browser that had ever opened the
+// token URL, so the laptop at the table and a phone that read the token over
+// a shoulder were the same thing to the server (issue #77).
+func (s *Server) unlockKiosk(w http.ResponseWriter, r *http.Request) error {
+	var secret [kioskSecretBytes]byte
+	if _, err := rand.Read(secret[:]); err != nil {
+		return fmt.Errorf("generate kiosk secret: %w", err)
+	}
+	hash := sha256.Sum256(secret[:])
+
+	grant, err := s.store.KioskGrants().Create(r.Context(), hash[:],
+		time.Now().Add(kioskCookieMaxAge), userAgentLabel(r))
+	if err != nil {
+		return err
+	}
+
+	// Unlocking a machine is worth a line, the same as issuing a credential
+	// for somebody else. That is the other half of what issue #77 asks for:
+	// revocable, and traceable.
+	s.log.InfoContext(r.Context(), "kiosk unlocked",
+		"grant_id", grant.ID, "user_agent", grant.UserAgent)
+
 	http.SetCookie(w, &http.Cookie{
 		Name:     kioskCookieName,
-		Value:    s.kioskCookieValue(),
+		Value:    base64.RawURLEncoding.EncodeToString(secret[:]),
 		Path:     "/kiosk",
 		HttpOnly: true,
 		Secure:   s.cfg.CookieSecure,
 		SameSite: http.SameSiteLaxMode,
 		MaxAge:   int(kioskCookieMaxAge.Seconds()),
 	})
+	return nil
 }
 
-// kioskCookieValue signs a marker with the session key rather than storing
-// the token, so the token itself never travels back out of the server.
-func (s *Server) kioskCookieValue() string {
-	mac := hmac.New(sha256.New, s.cfg.SessionKey)
-	mac.Write([]byte("kiosk:" + s.cfg.KioskToken))
-	return base64.RawURLEncoding.EncodeToString(mac.Sum(nil))
+// maxUserAgentLen bounds the label. A user agent is whatever the caller says
+// it is, and the list it lands in is read by a person.
+const maxUserAgentLen = 200
+
+// userAgentLabel is what the machine said it was, trimmed to something a list
+// can hold. Never treated as identity — it is there so the list reads as
+// machines rather than as a column of identifiers.
+func userAgentLabel(r *http.Request) string {
+	ua := strings.TrimSpace(r.UserAgent())
+	if len(ua) > maxUserAgentLen {
+		ua = ua[:maxUserAgentLen]
+	}
+	return ua
 }
 
 func (s *Server) kioskTokenMatches(token string) bool {

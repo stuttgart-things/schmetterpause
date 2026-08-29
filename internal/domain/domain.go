@@ -106,6 +106,34 @@ type Credential struct {
 	UpdatedAt time.Time
 }
 
+// KioskGrant is one machine that has been unlocked as a kiosk.
+//
+// A row per machine rather than a value every unlocked browser shares
+// (issue #77). That is what makes two questions answerable that a derived
+// constant cannot answer: which machines are kiosks right now, and how does
+// somebody take one of them back without restarting the application and
+// logging out the table.
+type KioskGrant struct {
+	ID        uuid.UUID
+	CreatedAt time.Time
+	// LastSeenAt is when this machine last showed its cookie. It is what
+	// makes a list of grants readable: one nobody has used since Tuesday is
+	// a laptop somebody took home.
+	LastSeenAt time.Time
+	ExpiresAt  time.Time
+	// UserAgent is what the browser said it was. A label, not a fact and not
+	// identity — it exists so the list reads as machines rather than as a
+	// column of identifiers.
+	UserAgent string
+	// RevokedAt is set when somebody took this grant back.
+	RevokedAt *time.Time
+}
+
+// Active reports whether this grant still unlocks anything at t.
+func (g KioskGrant) Active(t time.Time) bool {
+	return g.RevokedAt == nil && t.Before(g.ExpiresAt)
+}
+
 // MatchStatus is a match's confirmation state. Only a match in state
 // MatchConfirmed enters the rating.
 type MatchStatus string

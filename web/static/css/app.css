@@ -417,6 +417,14 @@ h2 {
 
 .admin-list a { color: var(--fg); }
 
+/* A user agent is long and is not prose. It wraps rather than pushing the
+   revoke button off the edge of a phone. */
+.kiosk-agent {
+	max-width: 22rem;
+	font-size: 0.8rem;
+	overflow-wrap: anywhere;
+}
+
 /* --- Status eines Matches ----------------------------------------------- */
 
 /* The badge that says a result is not settled yet, beside the set score.

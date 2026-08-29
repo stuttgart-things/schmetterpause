@@ -20,7 +20,11 @@ func postForm(t *testing.T, h http.Handler, path string, form url.Values, cookie
 	r := httptest.NewRequest(http.MethodPost, path, strings.NewReader(form.Encode()))
 	r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	for _, c := range cookies {
-		r.AddCookie(c)
+		// A nil entry means "no cookie", which is how a caller says
+		// "as a stranger" in a table of cases.
+		if c != nil {
+			r.AddCookie(c)
+		}
 	}
 
 	rec := httptest.NewRecorder()

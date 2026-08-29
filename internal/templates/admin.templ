@@ -43,6 +43,54 @@ templ Admin(v AdminView) {
 			}
 		</section>
 		<section class="session">
+			<h2>Freigeschaltete Kiosk-Geräte</h2>
+			if len(v.Kiosks) == 0 {
+				<p class="muted">
+					Gerade keins. Ein Gerät wird eins, indem es einmal
+					<code>/kiosk?token=…</code> öffnet, und bleibt es zwölf
+					Stunden.
+				</p>
+			} else {
+				<div class="table-scroll" tabindex="0" role="region" aria-label="Freigeschaltete Kiosk-Geräte">
+					<table class="matches">
+						<thead>
+							<tr>
+								<th scope="col">Gerät</th>
+								<th scope="col">Zuletzt gesehen</th>
+								<th scope="col">Läuft ab</th>
+								<th scope="col"></th>
+							</tr>
+						</thead>
+						<tbody>
+							for _, k := range v.Kiosks {
+								<tr>
+									<td class="kiosk-agent">{ k.Label() }</td>
+									<td class="when">{ k.LastSeen }</td>
+									<td class="when">{ k.Expires }</td>
+									<td>
+										<form method="post" action={ templ.SafeURL("/admin/kiosk/" + k.ID + "/revoke") }>
+											<button class="secondary" type="submit">Zurücknehmen</button>
+										</form>
+									</td>
+								</tr>
+							}
+						</tbody>
+					</table>
+				</div>
+				// The one that logs out the table as well, which is the point
+				// of it: it is for the moment somebody read the token over a
+				// shoulder, and then everything has to go.
+				<form method="post" action="/admin/kiosk/revoke-all">
+					<button class="secondary" type="submit">Alle zurücknehmen</button>
+				</form>
+				<p class="muted">
+					Ein zurückgenommenes Gerät ist sofort keins mehr. Um wieder
+					eines zu werden, muss es das Token erneut eingeben — das
+					gilt auch für den Laptop am Tisch.
+				</p>
+			}
+		</section>
+		<section class="session">
 			<h2>Die Grenze</h2>
 			<div class="table-scroll" tabindex="0" role="region" aria-label="Wer was darf">
 				<table class="matches">
