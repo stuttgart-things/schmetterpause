@@ -39,3 +39,7 @@ go.work.sum
 
 # Database dumps from an evening at the table
 /schmetterpause-*.sql
+
+# kcl regenerates this on every render and it stays empty while the module has
+# no dependencies. Nothing to pin, nothing to review.
+kcl/kcl.mod.lock
