@@ -1,0 +1,46 @@
+# The profile the published kustomize base is rendered from.
+#
+# Deliberately environment-free: no cluster name, no real hostname, no Vault
+# mount. Every value below that names a place is a placeholder an environment
+# patches in its Argo Application — the base has to be neutral for that to be
+# possible, and #89's own diagram says so:
+#
+#   Argo CD Application ──▶ points at the OCI artifact, patches per environment
+#
+# What the placeholders do NOT do is switch resources off. All eight are
+# rendered, because kustomize can patch a field but cannot patch a resource
+# that was never there. That is why httpRouteEnabled is true here even though
+# no gateway is named yet.
+#
+# The list of fields an environment has to patch is in the README, as a block
+# to copy rather than assemble.
+
+config.namespace: schmetterpause
+
+# Overridden by task kcl:publish with the tag the artefact itself carries, so
+# this never reaches a published base. See the note in schema.k.
+config.image: ghcr.io/stuttgart-things/schmetterpause:latest
+
+# PATCH: the cluster's domain. "schmetterpause.<clusterDomain>" becomes the
+# HTTPRoute hostname and SP_PUBLIC_BASE_URL — patch both, they are one decision
+# in two places.
+config.clusterDomain: cluster.example.com
+
+# PATCH: the gateway this cluster exposes, and its namespace.
+config.httpRouteEnabled: true
+config.gatewayName: gateway
+config.gatewayNamespace: default
+
+# The kiosk stays off. On a server "trust comes from the room" no longer holds
+# — see issue #90. An environment that wants one patches this and adds the
+# kiosk-token property to its Vault entry.
+config.kioskEnabled: false
+
+# PATCH: the store's name is assigned per (cluster, Vault mount) pair, and the
+# path is the entry name UNDER the store's mount — the store already carries
+# the mount and version, so no "/data/" segment belongs here. ESO resolves
+# <mount>/data/<vaultPath> itself.
+config.secretsMode: external
+config.secretStoreKind: ClusterSecretStore
+config.secretStoreName: vault-backend
+config.vaultPath: schmetterpause

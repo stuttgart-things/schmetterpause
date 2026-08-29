@@ -11,7 +11,7 @@ Laptop-Cluster, den Büro-Cluster und einen Preview-Namespace passen.
 ## Rendern
 
 ```sh
-task kcl:render                      # Profil cicd-test2
+task kcl:render                      # Profil base
 task kcl:render PROFILE=existing-secrets
 task kcl:check                       # rendern alle Profile noch?
 task kcl:kustomize                   # kustomize-Base nach build/kustomize
@@ -21,7 +21,7 @@ task kcl:publish TAG=v1.2.3          # Base als OCI-Artefakt nach GHCR
 Direkt mit der CLI, wenn es genauer sein soll:
 
 ```sh
-kcl run kcl/main.k -Y kcl/profiles/cicd-test2.yaml \
+kcl run kcl/main.k -Y kcl/profiles/base.yaml \
   -D 'config.image=ghcr.io/stuttgart-things/schmetterpause:v1.2.3' \
   -D 'config.kioskEnabled=true'
 ```
@@ -103,7 +103,22 @@ macht das kostenlos.
 | `<name>-app` | `SP_SESSION_KEY`, optional `SP_KIOSK_TOKEN` | nur die App |
 
 `<name>-db` ist vom Typ `kubernetes.io/basic-auth`, damit CloudNativePG es über
-`appSecretName` als Zugangsdaten des Owners beim Bootstrap nehmen kann. Die
+`appSecretName` als Zugangsdaten des Owners beim Bootstrap nehmen kann. Das
+`username` im Vault-Eintrag muss dem `owner` der CNPG-Application entsprechen —
+zwei Repositories, ein Wert.
+
+Der Vault-Eintrag hat drei Properties, eine vierte nur mit Kiosk:
+
+| Property | wird zu | Anforderung |
+|---|---|---|
+| `session-key` | `SP_SESSION_KEY` | mindestens 32 Zeichen, `openssl rand -base64 32` |
+| `username` | DB-Owner und DSN | gleich dem `owner` der CNPG-Application |
+| `password` | DB-Passwort und DSN | alphanumerisch, `openssl rand -hex 24` |
+| `kiosk-token` | `SP_KIOSK_TOKEN` | nur bei `kioskEnabled: true` |
+
+`config.vaultPath` ist der Eintragsname **unter** dem Mount des Stores. Der
+Store trägt Mount und `version: v2` bereits, ESO setzt `<mount>/data/<pfad>`
+selbst zusammen — ein `/data/` im Pfad wäre einmal zu viel. Die
 `SP_DATABASE_URL` baut das ESO-Template daraus zusammen: das Passwort kommt aus
 Vault, Host, Port, Datenbank und `sslmode` kommen aus diesem Modul.
 
@@ -169,6 +184,78 @@ mit lauter Defaults entstanden, das aussieht wie ein Deploy.
 `task kcl:render` macht dieselbe Umwandlung lokal. Deshalb `task kcl:render`
 statt `kcl run -Y` — Letzteres will das `kcl_options`-Format und würde eine
 Datei akzeptieren, die im Publish-Weg nicht funktioniert.
+
+## Generisch im Repo, angepasst pro Umgebung
+
+In diesem Repository steht **kein Clustername**. Das Modul ist generisch, und
+das veröffentlichte Artefakt ist es auch: `kcl:publish` rendert `base.yaml`,
+und darin ist jeder Wert, der einen Ort benennt, ein Platzhalter.
+
+Angepasst wird in der Argo-Application der jeweiligen Umgebung, so wie #89 es
+zeichnet:
+
+```
+kcl/  ──▶  neutrale kustomize-Base  ──▶  OCI  ──▶  Argo patcht pro Umgebung
+```
+
+Die Platzhalter schalten dabei **keine Ressource ab**. Alle acht werden
+gerendert, auch die HTTPRoutes ohne echtes Gateway — kustomize kann ein Feld
+patchen, aber keine Ressource, die nie da war.
+
+### Was eine Umgebung patchen muss
+
+| Feld | wo | Beispiel |
+|---|---|---|
+| Hostname | beide `HTTPRoute`, `spec.hostnames[0]` | `schmetterpause.mein-cluster.example.de` |
+| `SP_PUBLIC_BASE_URL` | `ConfigMap`, `data` | `https://schmetterpause.mein-cluster.example.de` |
+| Gateway | beide `HTTPRoute`, `spec.parentRefs[0].name` / `.namespace` | `cilium-gateway` / `default` |
+| Secret-Store | beide `ExternalSecret`, `spec.secretStoreRef.name` | `vault-backend` |
+| Vault-Eintrag | beide `ExternalSecret`, `spec.data[*].remoteRef.key` | `schmetterpause-mein-cluster` |
+| Namespace | kustomize `namespace:` | `schmetterpause` |
+
+**Hostname und `SP_PUBLIC_BASE_URL` sind eine Entscheidung an zwei Stellen.**
+Wer nur die Route patcht, bekommt eine erreichbare Anwendung, deren QR-Aushang
+auf `cluster.example.com` zeigt. Das ist die Naht dieser Bauform; sie ist der
+Preis dafür, dass die Base neutral bleibt.
+
+```yaml
+kustomize:
+  namespace: schmetterpause
+  patches:
+    - target: { kind: HTTPRoute }
+      patch: |-
+        - op: replace
+          path: /spec/hostnames/0
+          value: schmetterpause.mein-cluster.example.de
+        - op: replace
+          path: /spec/parentRefs/0/name
+          value: cilium-gateway
+    - target: { kind: ConfigMap, name: schmetterpause-config }
+      patch: |-
+        - op: replace
+          path: /data/SP_PUBLIC_BASE_URL
+          value: https://schmetterpause.mein-cluster.example.de
+    - target: { kind: ExternalSecret }
+      patch: |-
+        - op: replace
+          path: /spec/secretStoreRef/name
+          value: vault-backend
+```
+
+Wie die Argo-Application das OCI-Artefakt konsumiert, gehört zu #81 — das oben
+ist der Teil, der von hier kommt.
+
+### Lokal für einen echten Cluster rendern
+
+Ohne eine Profildatei mit echten Werten ins Repo zu legen:
+
+```sh
+kcl run kcl/main.k \
+  -D config.clusterDomain=mein-cluster.example.de \
+  -D config.gatewayName=cilium-gateway \
+  -D config.secretStoreName=vault-backend \
+  -D config.vaultPath=schmetterpause-mein-cluster
+```
 
 ## Die Kette dahinter
 

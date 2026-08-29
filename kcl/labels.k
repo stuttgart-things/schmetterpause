@@ -40,7 +40,6 @@ _bootstrapAdmin = option("config.bootstrapAdmin")
 _migrateInitContainer = option("config.migrateInitContainer")
 _dbClusterName = option("config.dbClusterName")
 _dbName = option("config.dbName")
-_dbOwner = option("config.dbOwner")
 _dbPort = option("config.dbPort")
 _dbSSLMode = option("config.dbSSLMode")
 _dbHost = option("config.dbHost")
@@ -118,8 +117,6 @@ config: schema.Schmetterpause = schema.Schmetterpause {
         dbClusterName = _dbClusterName
     if _dbName:
         dbName = _dbName
-    if _dbOwner:
-        dbOwner = _dbOwner
     if _dbPort:
         dbPort = int(_dbPort)
     if _dbSSLMode:

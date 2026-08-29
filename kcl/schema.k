@@ -113,7 +113,6 @@ schema Schmetterpause:
     # These values describe how to reach it, not how to create it.
     dbClusterName: str = "schmetterpause-db"
     dbName: str = "schmetterpause"
-    dbOwner: str = "schmetterpause"
     dbPort: int = 5432
     dbSSLMode: str = "require"
 
