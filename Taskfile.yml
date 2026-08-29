@@ -66,10 +66,14 @@ tasks:
         echo "SP_PUBLIC_BASE_URL=http://<address>:8080 SP_KIOSK_TOKEN=... SP_SESSION_KEY=... task office:up"
 
   office:setup:
-    desc: "Fill .env for an evening: address, kiosk token, session key"
+    desc: "Fill .env for an evening: address, kiosk token, session key, admin"
     # The address is the one value a typo ruins silently: it is printed into
     # the QR code, and nobody finds out until a phone lands nowhere. So it is
     # picked from a list rather than typed.
+    #
+    # The admin may stay empty. Nothing at the table needs one — but taking a
+    # kiosk machine back during the evening does, and that is not a thing to
+    # discover while somebody is standing next to you (docs/adr/0008).
     interactive: true
     silent: true
     cmds:
@@ -92,6 +96,7 @@ tasks:
         if command -v gum >/dev/null 2>&1; then
           picked=$(printf '%s\n' "$addresses" | gum choose --header "Which address do the phones reach?")
           token=$(gum input --header "Kiosk token" --value "turnier")
+          admin=$(gum input --header "Admin (display name, may stay empty)" --placeholder "the name they join under")
         else
           echo "Addresses this machine answers on:"
           printf '%s\n' "$addresses" | nl -w2 -s'  '
@@ -100,6 +105,8 @@ tasks:
           picked=$(printf '%s\n' "$addresses" | sed -n "${n}p")
           printf 'Kiosk token [turnier]: '
           read -r token
+          printf 'Admin, display name (empty for none): '
+          read -r admin
         fi
 
         [ -n "${picked:-}" ] || { echo "Nothing picked." >&2; exit 1; }
@@ -117,6 +124,7 @@ tasks:
         SP_PUBLIC_BASE_URL=http://$address:8080
         SP_KIOSK_TOKEN=$token
         SP_SESSION_KEY=$key
+        SP_BOOTSTRAP_ADMIN=${admin:-}
         ENV
 
         echo
@@ -124,6 +132,14 @@ tasks:
         echo "  everybody:  http://$address:8080/"
         echo "  the sheet:  http://$address:8080/qr"
         echo "  the table:  http://$address:8080/kiosk?token=$token"
+        if [ -n "${admin:-}" ]; then
+          echo
+          # The flag is granted at startup and only to somebody who already
+          # exists, so the order is join first, restart second. Saying it here
+          # is cheaper than finding it out at the table (docs/adr/0008).
+          echo "Admin: $admin — they have to join first, then 'task office:up'"
+          echo "       again before the flag is granted."
+        fi
         echo
         echo "Next: task office:up"
 
