@@ -208,6 +208,30 @@ tasks:
         echo "Kiosk entries do not count towards the verdict; they are listed per day."
         echo "For an evening everybody typed in themselves: task office:dod SINCE=<the day after>"
 
+  # ---------------------------------------------------------------- Manifests
+
+  kcl:render:
+    desc: "Render the Kubernetes manifests (PROFILE=cicd-test2)"
+    vars:
+      PROFILE: '{{.PROFILE | default "cicd-test2"}}'
+    cmds:
+      - kcl run kcl/main.k -Y kcl/profiles/{{.PROFILE}}.yaml
+    silent: true
+
+  kcl:check:
+    desc: "Every profile still renders — the check CI runs"
+    cmds:
+      # A profile that stops rendering is a deploy that fails at apply time
+      # instead of here, so this walks all of them rather than one.
+      - |
+        set -e
+        for p in kcl/profiles/*.yaml; do
+          echo "rendering ${p}"
+          kcl run kcl/main.k -Y "${p}" > /dev/null
+        done
+        echo "all profiles render"
+    silent: true
+
   psql:
     desc: "psql session on the development database"
     interactive: true
