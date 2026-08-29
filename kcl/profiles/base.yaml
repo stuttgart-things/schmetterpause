@@ -36,11 +36,19 @@ config.gatewayNamespace: default
 # kiosk-token property to its Vault entry.
 config.kioskEnabled: false
 
-# PATCH: the store's name is assigned per (cluster, Vault mount) pair, and the
-# path is the entry name UNDER the store's mount — the store already carries
-# the mount and version, so no "/data/" segment belongs here. ESO resolves
-# <mount>/data/<vaultPath> itself.
+# PATCH: the store is named per cluster, pattern vault-<cluster>, created by
+# the Backstage template. `kubectl get clustersecretstore` is the reliable
+# source — it is never plain "vault".
+#
+# vaultPath is the entry name UNDER the store's mount, and nothing else. The
+# store already carries the mount and version, so ESO composes
+# <mount>/data/<vaultPath> itself. Both ways of getting this wrong resolve to
+# something that exists nowhere and reports no error at apply time:
+#
+#   schmetterpause                 correct
+#   schmetterpause/data/cicd-test2 -> cicd-test2/data/schmetterpause/data/…
+#   schmetterpause-cicd-test2      -> the cluster twice; the mount IS the cluster
 config.secretsMode: external
 config.secretStoreKind: ClusterSecretStore
-config.secretStoreName: vault-backend
+config.secretStoreName: vault-cluster
 config.vaultPath: schmetterpause

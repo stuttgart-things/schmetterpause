@@ -116,9 +116,46 @@ Der Vault-Eintrag hat drei Properties, eine vierte nur mit Kiosk:
 | `password` | DB-Passwort und DSN | alphanumerisch, `openssl rand -hex 24` |
 | `kiosk-token` | `SP_KIOSK_TOKEN` | nur bei `kioskEnabled: true` |
 
-`config.vaultPath` ist der Eintragsname **unter** dem Mount des Stores. Der
-Store trägt Mount und `version: v2` bereits, ESO setzt `<mount>/data/<pfad>`
-selbst zusammen — ein `/data/` im Pfad wäre einmal zu viel. Die
+`config.vaultPath` ist der Eintragsname **unter** dem Mount des Stores, und
+sonst nichts. Der Store trägt Mount und `version: v2` bereits, ESO setzt
+`<mount>/data/<pfad>` selbst zusammen. Beide Arten, das falsch zu machen, lösen
+auf etwas auf, das es nirgends gibt — und melden beim Apply keinen Fehler:
+
+```
+schmetterpause                   richtig
+schmetterpause/data/cicd-test2   → cicd-test2/data/schmetterpause/data/cicd-test2
+schmetterpause-cicd-test2        → Cluster doppelt, der Mount ist schon der Cluster
+```
+
+Der Store heißt pro Cluster `vault-<cluster>`, vergeben vom Backstage-Template
+— nie einfach `vault`. Verlässliche Quelle:
+
+```sh
+kubectl get clustersecretstore
+```
+
+### Wenn ein Secret nicht ankommt
+
+Drei Dinge, die man einmal wissen muss:
+
+**Eine fehlende Property meldet der Store nicht.** Das ExternalSecret geht auf
+`SecretSyncedError`, und alles drumherum bleibt grün. `kubectl get
+externalsecret -A` ist die einzige Stelle, an der man es sieht.
+
+**Ein Store mit `Valid`/`Ready=True` kann trotzdem nichts lesen.** Grün heißt,
+der Login geht — nicht, dass die Policy den Pfad öffnet. Beweis ist ein
+synchronisiertes Secret, sonst nichts.
+
+Für diese Anwendung ist das milder, als es klingt: beide Secrets werden per
+`envFrom`/`secretKeyRef` **ohne** `optional` eingebunden. Fehlt eines, startet
+der Pod nicht — `CreateContainerConfigError` statt einer Anwendung, die mit
+halber Konfiguration läuft. Der stille Fehler im ExternalSecret wird also eine
+Zeile weiter laut.
+
+Eine Ausnahme, die man sich merken sollte: `kioskEnabled: true` fügt
+`kiosk-token` demselben ExternalSecret hinzu wie den Session-Key. Fehlt die
+Property im Vault-Eintrag, synchronisiert **das ganze** Secret nicht mehr — und
+dann steht die Anwendung, nicht nur der Kiosk. Die
 `SP_DATABASE_URL` baut das ESO-Template daraus zusammen: das Passwort kommt aus
 Vault, Host, Port, Datenbank und `sslmode` kommen aus diesem Modul.
 
