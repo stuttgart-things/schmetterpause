@@ -215,7 +215,18 @@ tasks:
     vars:
       PROFILE: '{{.PROFILE | default "cicd-test2"}}'
     cmds:
-      - kcl run kcl/main.k -Y kcl/profiles/{{.PROFILE}}.yaml
+      # The sed chain is not decoration: it is the same normalisation that
+      # stuttgart-things/dagger/kcl applies before it builds the kustomize base.
+      # Rendering locally without it would test a different artefact than the
+      # one that ships. Drop the "manifests:" key line, turn each list item into
+      # a document separator, de-indent by two.
+      - |
+        kcl run kcl/main.k -Y kcl/profiles/{{.PROFILE}}.yaml \
+          | sed 's/^- /---\n/' \
+          | sed '1d' \
+          | sed 's/^  //' \
+          | sed '/^[[:space:]]*$/d' \
+          | awk 'NR==1{print "---"} 1'
     silent: true
 
   kcl:check:

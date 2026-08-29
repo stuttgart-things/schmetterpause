@@ -14,21 +14,36 @@ Laptop-Cluster, den Büro-Cluster und einen Preview-Namespace passen.
 task kcl:render                      # Profil cicd-test2
 task kcl:render PROFILE=existing-secrets
 task kcl:check                       # rendern alle Profile noch?
+task kcl:kustomize                   # kustomize-Base nach build/kustomize
+task kcl:publish TAG=v1.2.3          # Base als OCI-Artefakt nach GHCR
 ```
 
 Direkt mit der CLI, wenn es genauer sein soll:
 
 ```sh
-kcl run kcl/main.k -Y kcl/profiles/cicd-test2.yaml
-
-# einzelne Werte überschreiben
 kcl run kcl/main.k -Y kcl/profiles/cicd-test2.yaml \
   -D 'config.image=ghcr.io/stuttgart-things/schmetterpause:v1.2.3' \
   -D 'config.kioskEnabled=true'
 ```
 
-Die Ausgabe ist ein YAML-Strom mit `---` zwischen den Dokumenten, also direkt
-für `kubectl apply -f` oder kustomize brauchbar.
+### Warum die Ausgabe so aussieht, wie sie aussieht
+
+`kcl run` liefert eine Liste unter dem Schlüssel `manifests:`. Das ist kein
+Schönheitsfehler, sondern ein **Vertrag**: `stuttgart-things/dagger/kcl` — das
+Modul, das daraus eine kustomize-Base baut und sie als OCI-Artefakt schiebt —
+normalisiert die Ausgabe mit einer festen `sed`-Kette, die genau diese Form
+erwartet: erste Zeile weg, zwei Stellen ausrücken, `- ` am Zeilenanfang wird
+zum Dokumententrenner.
+
+Ein YAML-Strom (`manifests.yaml_stream`) sieht schöner aus und ist direkt
+`kubectl apply -f`-tauglich — aber durch dieselbe Kette geschickt verliert die
+erste Ressource ihr `apiVersion`, und jedes `metadata`-Feld rutscht auf die
+oberste Ebene. Das Ergebnis parst weiterhin als YAML, es deployt nur etwas
+anderes. Nachgemessen, nicht vermutet.
+
+**Deshalb `task kcl:render` statt `kcl run`.** Der Task wendet dieselbe
+Normalisierung an, damit lokal genau das entsteht, was später im OCI-Artefakt
+liegt. Die Ausgabe ist dann `---`-getrennt und für `kubectl apply -f` brauchbar.
 
 **Ein Render ohne Profil scheitert**, und zwar mit Absicht: `secretsMode` steht
 auf `external`, und dafür braucht es einen Secret-Store und einen Pfad. Die
@@ -128,6 +143,25 @@ vorher ein Advisory-Lock oder einen Migrations-Job bauen.
 Aus demselben Grund ist die Strategie `Recreate` und nicht `RollingUpdate`: ein
 Rolling Update ließe den neuen Pod `migrate up` laufen, während der alte noch
 das alte Schema bedient.
+
+## Die Kette dahinter
+
+`kcl:kustomize` und `kcl:publish` rufen ein geteiltes Dagger-Modul auf, statt
+etwas Eigenes zu bauen — das ist der Weg, den #80 beschreibt:
+
+```
+kcl/  ──render-kustomize-base──▶  kustomize-Base
+      ──push-kustomize-base────▶  ghcr.io/…/schmetterpause-kustomize:<tag>
+                                          │
+                                  Argo CD zeigt darauf (#81)
+```
+
+Der Tag ist **derselbe wie beim Image**, mit Absicht: ein Artefaktpaar, das
+auseinanderlaufen kann, ist ein Deploy, den hinterher niemand mehr rekonstruiert.
+
+Das Modul ist auf `@v0.82.0` gepinnt. Ohne Pin könnte `task kcl:publish` morgen
+etwas anderes rendern als heute, und das ist die eine Eigenschaft, die ein
+Deploy-Artefakt nicht haben darf.
 
 ## Verwandt
 
