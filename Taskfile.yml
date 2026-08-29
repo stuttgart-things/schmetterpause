@@ -217,9 +217,9 @@ tasks:
   # ---------------------------------------------------------------- Manifests
 
   kcl:render:
-    desc: "Render the Kubernetes manifests (PROFILE=cicd-test2)"
+    desc: "Render the Kubernetes manifests (PROFILE=base)"
     vars:
-      PROFILE: '{{.PROFILE | default "cicd-test2"}}'
+      PROFILE: '{{.PROFILE | default "base"}}'
     cmds:
       - |
         set -e
@@ -264,9 +264,9 @@ tasks:
     silent: true
 
   kcl:kustomize:
-    desc: "Render a kustomize base into DEST (PROFILE=cicd-test2)"
+    desc: "Render a kustomize base into DEST (PROFILE=base)"
     vars:
-      PROFILE: '{{.PROFILE | default "cicd-test2"}}'
+      PROFILE: '{{.PROFILE | default "base"}}'
       DEST: '{{.DEST | default "build/kustomize"}}'
     cmds:
       - |
@@ -280,7 +280,7 @@ tasks:
   kcl:publish:
     desc: "Push the kustomize base to GHCR under the same tag as the image"
     vars:
-      PROFILE: '{{.PROFILE | default "cicd-test2"}}'
+      PROFILE: '{{.PROFILE | default "base"}}'
       TAG: '{{.TAG | default .VERSION}}'
     cmds:
       - |
