@@ -11,6 +11,11 @@ vars:
     sh: git describe --tags --always --dirty 2>/dev/null || echo dev
   # Development only. Fixed so a restart keeps recognising the same browser.
   DEV_SESSION_KEY: development-session-key-not-for-production
+  # Pinned. An unpinned module means "task kcl:publish" can render something
+  # different tomorrow than it did today, which is the one property a deploy
+  # artefact must not have.
+  KCL_MODULE: github.com/stuttgart-things/dagger/kcl@v0.82.0
+  KUSTOMIZE_OCI_REPO: ghcr.io/stuttgart-things/schmetterpause-kustomize
 
 tasks:
   default:
@@ -227,6 +232,38 @@ tasks:
           | sed 's/^  //' \
           | sed '/^[[:space:]]*$/d' \
           | awk 'NR==1{print "---"} 1'
+    silent: true
+
+  kcl:kustomize:
+    desc: "Render a kustomize base into DEST (PROFILE=cicd-test2)"
+    vars:
+      PROFILE: '{{.PROFILE | default "cicd-test2"}}'
+      DEST: '{{.DEST | default "build/kustomize"}}'
+    cmds:
+      - |
+        dagger call -m {{.KCL_MODULE}} render-kustomize-base \
+          --source kcl \
+          --parameters-file kcl/profiles/{{.PROFILE}}.yaml \
+          export --path {{.DEST}}
+        ls -1 {{.DEST}}
+    silent: true
+
+  kcl:publish:
+    desc: "Push the kustomize base to GHCR under the same tag as the image"
+    vars:
+      PROFILE: '{{.PROFILE | default "cicd-test2"}}'
+      TAG: '{{.TAG | default .VERSION}}'
+    cmds:
+      # The same tag as the image, deliberately: an artefact pair that can drift
+      # apart is a deploy nobody can reason about afterwards.
+      - |
+        dagger call -m {{.KCL_MODULE}} push-kustomize-base \
+          --source kcl \
+          --parameters-file kcl/profiles/{{.PROFILE}}.yaml \
+          --address {{.KUSTOMIZE_OCI_REPO}} \
+          --tag {{.TAG}} \
+          --user env:GITHUB_USER \
+          --password env:GITHUB_TOKEN
     silent: true
 
   kcl:check:
