@@ -16,6 +16,7 @@ vars:
   # artefact must not have.
   KCL_MODULE: github.com/stuttgart-things/dagger/kcl@v0.82.0
   KUSTOMIZE_OCI_REPO: ghcr.io/stuttgart-things/schmetterpause-kustomize
+  IMAGE_REPO: ghcr.io/stuttgart-things/schmetterpause
 
 tasks:
   default:
@@ -282,18 +283,36 @@ tasks:
       PROFILE: '{{.PROFILE | default "cicd-test2"}}'
       TAG: '{{.TAG | default .VERSION}}'
     cmds:
-      # The same tag as the image, deliberately: an artefact pair that can drift
-      # apart is a deploy nobody can reason about afterwards.
       - |
+        set -e
+        image="{{.IMAGE_REPO}}:{{.TAG}}"
+
+        # An artefact whose Deployment names an image the registry does not
+        # have is an ImagePullBackOff with a version number on it — harder to
+        # read than an obvious failure. CI publishes the image on a push to
+        # main, so a branch commit has none. Refuse rather than ship that.
+        if command -v oras > /dev/null 2>&1; then
+          if ! oras manifest fetch "${image}" > /dev/null 2>&1; then
+            echo "no image ${image} in the registry." >&2
+            echo "publish from a commit CI has built, or pass TAG=<an existing tag>." >&2
+            exit 1
+          fi
+        else
+          echo "oras not found — publishing without checking that ${image} exists" >&2
+        fi
+
+        # The image is pinned to the tag the artefact itself carries, so the
+        # pair cannot drift. --parameters takes precedence over the profile,
+        # whose :latest is a placeholder that does not resolve in this registry.
         dagger call -m {{.KCL_MODULE}} push-kustomize-base \
           --source kcl \
           --parameters-file kcl/profiles/{{.PROFILE}}.yaml \
+          --parameters "config.image=${image}" \
           --address {{.KUSTOMIZE_OCI_REPO}} \
           --tag {{.TAG}} \
           --user env:GITHUB_USER \
           --password env:GITHUB_TOKEN
     silent: true
-
   psql:
     desc: "psql session on the development database"
     interactive: true
