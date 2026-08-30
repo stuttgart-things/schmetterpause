@@ -1,0 +1,50 @@
+# The same patches as examples/argocd-application.yaml, without Argo — useful
+# for seeing what the patched artefact actually becomes before letting a
+# controller apply it.
+#
+#   cd examples/kustomize
+#   mkdir -p base && (cd base && oras pull ghcr.io/stuttgart-things/schmetterpause-kustomize:3382ad1)
+#   kubectl kustomize .
+#
+# base/ is gitignored: it is a pulled artefact, not source.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - base
+
+# The base bakes this into every resource, so moving the application to another
+# namespace means rewriting it here rather than only at apply time.
+namespace: schmetterpause
+
+patches:
+  - target:
+      kind: HTTPRoute
+    patch: |-
+      - op: replace
+        path: /spec/hostnames/0
+        value: schmetterpause.cicd-test2.4sthings.tiab.ssc.sva.de
+      - op: replace
+        path: /spec/parentRefs/0/name
+        value: cilium-gateway
+      - op: replace
+        path: /spec/parentRefs/0/namespace
+        value: default
+
+  - target:
+      kind: ConfigMap
+      name: schmetterpause-config
+    patch: |-
+      - op: replace
+        path: /data/SP_PUBLIC_BASE_URL
+        value: https://schmetterpause.cicd-test2.4sthings.tiab.ssc.sva.de
+
+  # Drop this block when the base was published with secretsMode=existing —
+  # there are no ExternalSecrets to patch then, and kustomize fails on a target
+  # that matches nothing.
+  - target:
+      kind: ExternalSecret
+    patch: |-
+      - op: replace
+        path: /spec/secretStoreRef/name
+        value: vault-cicd-test2

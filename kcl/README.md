@@ -295,8 +295,10 @@ kustomize:
           value: vault-backend
 ```
 
-How the Argo Application consumes the OCI artefact belongs to #81 — the above
-is the part that comes from here.
+A complete Application, with the four values an environment changes marked, is
+in [`examples/argocd-application.yaml`](../examples/argocd-application.yaml);
+[`examples/kustomize/`](../examples/kustomize/) is the same patch set without
+Argo, for looking at the result before a controller applies it.
 
 ### Rendering locally for a real cluster
 
@@ -309,6 +311,19 @@ task kcl:render -- \
   -D config.secretStoreName=vault-backend \
   -D config.vaultPath=schmetterpause
 ```
+
+For more than a handful of values, `PROFILE` also takes a path rather than a
+name from `kcl/profiles`:
+
+```sh
+task kcl:apply PROFILE=~/environments/cicd-test2.yaml
+```
+
+Same flat `key: value` format, kept outside the repository because a profile
+that names a cluster is what the published base must not contain.
+
+`kcl:kustomize` and `kcl:publish` deliberately keep to the profiles in the
+repository: those two produce the artefact, and the artefact is neutral.
 
 ## The chain behind it
 
@@ -352,6 +367,7 @@ dependencies would lose it.
 ## Related
 
 - `docs/deployment.md` — bringing up an environment, with and without ESO
+- `examples/` — the three ways to adapt an environment, side by side
 - `docs/adr/` — decisions on the data model, auth and deployment
 - Issue #78 — what was decided here and why
 - Issue #89 — phase 3 as a whole

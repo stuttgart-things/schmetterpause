@@ -1,0 +1,104 @@
+# Consuming the published kustomize base from an ArgoCD Application.
+#
+# This is the third of the three ways to adapt an environment, and the only one
+# that does not run kcl: the base is rendered once, pushed once, and every
+# cluster deploys that exact artefact plus a visible set of patches. The other
+# two — `-D` overrides and a profile file — happen before the artefact exists,
+# which is right for a test cluster and wrong as the answer to "what is
+# actually running there".
+#
+# Copy this into stuttgart-things/argocd and adjust the four marked values.
+# See docs/deployment.md for the path without Argo.
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: schmetterpause
+  namespace: argocd
+spec:
+  project: default
+
+  source:
+    # The oci:// prefix is not optional. Without it Argo CD treats the repoURL
+    # as git and reports "failed to list refs: repository not found".
+    # Needs Argo CD 2.13 or newer.
+    repoURL: oci://ghcr.io/stuttgart-things/schmetterpause-kustomize
+
+    # CHANGE ME. The kustomize base and the container image are published under
+    # the same tag on purpose — the base's KCL schema and the binary move
+    # together, and a pair that can drift apart is a deploy nobody reconstructs
+    # afterwards. Set this and the image follows; there is no image patch below
+    # because the base already pins it to this same tag.
+    targetRevision: 3382ad1
+
+    path: .
+
+    kustomize:
+      # The base bakes `namespace: schmetterpause` into every resource (the KCL
+      # schema's default). Argo's destination.namespace is ignored for
+      # resources that carry an explicit namespace, so without this they all
+      # land in `schmetterpause` no matter what the destination says.
+      namespace: schmetterpause
+
+      patches:
+        # Both HTTPRoutes: hostname and the gateway they attach to.
+        #
+        # parentRefs[0].namespace is load-bearing. Left out, the parentRef
+        # resolves against the route's own namespace, and a route pointing at a
+        # Gateway that is not there gets no status at all — not Accepted=False,
+        # nothing — while the host answers 404 from the gateway.
+        - target:
+            kind: HTTPRoute
+          patch: |-
+            - op: replace
+              path: /spec/hostnames/0
+              value: schmetterpause.cicd-test2.4sthings.tiab.ssc.sva.de   # CHANGE ME
+            - op: replace
+              path: /spec/parentRefs/0/name
+              value: cilium-gateway                                        # CHANGE ME
+            - op: replace
+              path: /spec/parentRefs/0/namespace
+              value: default
+
+        # The same decision, second place. Patch only the route above and you
+        # get a reachable application whose printed QR code points at
+        # cluster.example.com.
+        - target:
+            kind: ConfigMap
+            name: schmetterpause-config
+          patch: |-
+            - op: replace
+              path: /data/SP_PUBLIC_BASE_URL
+              value: https://schmetterpause.cicd-test2.4sthings.tiab.ssc.sva.de   # CHANGE ME
+
+        # Only relevant with External Secrets. The store is named per cluster
+        # as vault-<cluster>, never plain "vault"; `kubectl get
+        # clustersecretstore` is the reliable source.
+        #
+        # remoteRef.key is not patched here: the base already carries
+        # "schmetterpause", which is the entry name under the store's own
+        # mount. The store contributes the mount and version:v2, so ESO
+        # composes <mount>/data/schmetterpause itself. Adding the cluster name
+        # to this value is the classic way to make it resolve to nothing while
+        # reporting no error.
+        - target:
+            kind: ExternalSecret
+          patch: |-
+            - op: replace
+              path: /spec/secretStoreRef/name
+              value: vault-cicd-test2                                      # CHANGE ME
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: schmetterpause
+
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      # The base ships no Namespace resource on purpose: several Applications
+      # can share one, and when more than one carries it, ArgoCD marks it a
+      # SharedResource — then one Application's prune deletes the namespace out
+      # from under the others.
+      - CreateNamespace=true
