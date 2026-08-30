@@ -1,33 +1,33 @@
-# Kubernetes-Manifeste
+# Kubernetes manifests
 
-KCL-Modul für den Betrieb von Schmetterpause auf Kubernetes. Rendert
-ServiceAccount, ConfigMap, zwei ExternalSecrets, Deployment, Service und zwei
-HTTPRoutes — je nachdem, was das Profil einschaltet.
+KCL module for running Schmetterpause on Kubernetes. Renders a ServiceAccount,
+a ConfigMap, two ExternalSecrets, a Deployment, a Service and two HTTPRoutes —
+depending on what the profile switches on.
 
-Alles ist eine Variable. Kein Hostname, kein Namespace, kein Gateway und kein
-Image-Verweis steht fest im Modul, damit dieselben Manifeste für einen
-Laptop-Cluster, den Büro-Cluster und einen Preview-Namespace passen.
+Everything is a variable. No hostname, no namespace, no gateway and no image
+reference is fixed in the module, so the same manifests fit a laptop cluster,
+the office cluster and a preview namespace.
 
-Dieses Dokument beschreibt das Modul. Wie man damit eine Umgebung von Grund auf
-aufsetzt — Voraussetzungen prüfen, Secrets, Postgres, Reihenfolge — steht in
-[`docs/deployment.md`](../docs/deployment.md), dort auch für Cluster ohne
-External Secrets Operator.
+This document describes the module. How to bring up an environment from nothing
+— checking prerequisites, secrets, Postgres, ordering — is in
+[`docs/deployment.md`](../docs/deployment.md), including for clusters without
+the External Secrets Operator.
 
-## Rendern
+## Rendering
 
 ```sh
-task kcl:render                      # Profil base
+task kcl:render                      # profile base
 task kcl:render PROFILE=existing-secrets
-task kcl:check                       # rendern alle Profile noch?
-task kcl:kustomize                   # kustomize-Base nach build/kustomize
-task kcl:publish TAG=v1.2.3          # Base als OCI-Artefakt nach GHCR
+task kcl:check                       # do all profiles still render?
+task kcl:kustomize                   # kustomize base into build/kustomize
+task kcl:publish TAG=v1.2.3          # base to GHCR as an OCI artefact
 
-task kcl:apply                       # rendern und auf den aktuellen Kontext anwenden
-task kcl:secrets NAMESPACE=…         # die zwei Secrets von Hand, ohne ESO
+task kcl:apply                       # render and apply to the current context
+task kcl:secrets NAMESPACE=…         # the two Secrets by hand, without ESO
 ```
 
-Einzelne Werte übersteuern — alles nach `--` geht an `kcl`, hinter die Werte
-des Profils, und ein späteres `-D` gewinnt:
+Overriding single values — everything after `--` goes to `kcl`, behind the
+profile's own flags, and a later `-D` wins:
 
 ```sh
 task kcl:render -- \
@@ -36,241 +36,237 @@ task kcl:render -- \
 task kcl:apply PROFILE=existing-secrets -- -D config.gatewayName=cilium-gateway
 ```
 
-`kcl run` direkt aufzurufen ist der Weg, der schiefgeht: `-D` lädt kein Profil,
-und `-Y kcl/profiles/base.yaml` auch nicht — die Profile sind flache
-`key: value`-Dateien, keine KCL-Settings-Dateien. In beiden Fällen fällt jedes
-nicht übergebene Feld auf seinen Default in `schema.k` zurück, und die sind
-absichtlich zurückhaltend: `httpRouteEnabled` ist `false`, `secretsMode` ist
-`external`.
+Calling `kcl run` directly is the way this goes wrong: `-D` loads no profile,
+and neither does `-Y kcl/profiles/base.yaml` — the profiles are flat
+`key: value` files, not KCL settings files. Either way every field not passed
+falls back to its default in `schema.k`, and those are deliberately reticent:
+`httpRouteEnabled` is `false`, `secretsMode` is `external`.
 
-### Warum die Ausgabe so aussieht, wie sie aussieht
+### Why the output looks the way it does
 
-`kcl run` liefert eine Liste unter dem Schlüssel `manifests:`. Das ist kein
-Schönheitsfehler, sondern ein **Vertrag**: `stuttgart-things/dagger/kcl` — das
-Modul, das daraus eine kustomize-Base baut und sie als OCI-Artefakt schiebt —
-normalisiert die Ausgabe mit einer festen `sed`-Kette, die genau diese Form
-erwartet: erste Zeile weg, zwei Stellen ausrücken, `- ` am Zeilenanfang wird
-zum Dokumententrenner.
+`kcl run` emits a list under the key `manifests:`. That is not an aesthetic
+slip but a **contract**: `stuttgart-things/dagger/kcl` — the module that turns
+this into a kustomize base and pushes it as an OCI artefact — normalises the
+output with a fixed `sed` chain that assumes exactly this shape: drop the first
+line, de-indent by two, turn `- ` at column zero into a document separator.
 
-Ein YAML-Strom (`manifests.yaml_stream`) sieht schöner aus und ist direkt
-`kubectl apply -f`-tauglich — aber durch dieselbe Kette geschickt verliert die
-erste Ressource ihr `apiVersion`, und jedes `metadata`-Feld rutscht auf die
-oberste Ebene. Das Ergebnis parst weiterhin als YAML, es deployt nur etwas
-anderes. Nachgemessen, nicht vermutet.
+A YAML stream (`manifests.yaml_stream`) looks nicer and is directly usable with
+`kubectl apply -f` — but put through the same chain, the first resource loses
+its `apiVersion` and every `metadata` field is lifted to the top level. The
+result still parses as YAML; it just deploys something else. Measured, not
+assumed.
 
-**Deshalb `task kcl:render` statt `kcl run`.** Der Task wendet dieselbe
-Normalisierung an, damit lokal genau das entsteht, was später im OCI-Artefakt
-liegt. Die Ausgabe ist dann `---`-getrennt und für `kubectl apply -f` brauchbar.
+**Hence `task kcl:render` rather than `kcl run`.** The task applies the same
+normalisation, so what appears locally is what ends up in the OCI artefact. Its
+output is `---`-separated and usable with `kubectl apply -f`.
 
-**Ein Render ohne Profil scheitert**, und zwar mit Absicht: `secretsMode` steht
-auf `external`, und dafür braucht es einen Secret-Store und einen Pfad. Die
-Fehlermeldung nennt beide. Ein Modul, das ohne Angaben irgendetwas rendert,
-rendert etwas, das niemand deployen will.
+**A render with no profile fails**, and deliberately so: `secretsMode` is
+`external`, and that needs a secret store and a path. The error names both. A
+module that renders something when told nothing renders something nobody wants
+to deploy.
 
-## Was nicht gerendert wird
+## What is not rendered
 
-**Kein Namespace.** Mehrere Applications teilen sich einen Workload-Namespace.
-Schickt mehr als eine davon eine Namespace-Ressource mit, markiert ArgoCD sie
-als SharedResource — und der Prune-Lauf der einen löscht den Namespace unter den
-anderen weg. Stattdessen setzt die konsumierende Application
-`CreateNamespace=true`.
+**No Namespace.** Several Applications share a workload namespace. When more
+than one of them ships a Namespace resource, ArgoCD marks it as a
+SharedResource — and one Application's prune cycle deletes the namespace out
+from under the others. The consuming Application sets `CreateNamespace=true`
+instead.
 
-**Kein CloudNativePG-Cluster.** Aus einem verwandten Grund mit schlimmeren
-Folgen: die Datenbank überlebt jede Revision der Anwendung. Eine Base, die den
-`Cluster` trägt, ist eine Base, deren Entfernung die Daten mitnehmen kann. Der
-`Cluster` ist eine eigene Argo-Application aus `infra/cloudnative-pg/cluster`
-im Katalog, in denselben Namespace, mit niedrigerer Sync-Wave — damit er
-existiert, bevor der Migrations-initContainer läuft.
+**No CloudNativePG Cluster.** For a related reason with worse consequences: the
+database outlives every revision of the application. A base that carries the
+`Cluster` is a base whose removal can take the data with it. The `Cluster` is
+its own Argo Application from `infra/cloudnative-pg/cluster` in the catalogue,
+into the same namespace, at a lower sync-wave — so it exists before the
+migration initContainer runs.
 
-## Zwei Dinge, die anders sind, als sie aussehen
+## Two things that are not what they look like
 
-### Die zweite HTTPRoute ist keine Zierde
+### The second HTTPRoute is not decoration
 
-Das geteilte Gateway bedient denselben Wildcard auf zwei Listenern: HTTPS auf
-443 und Klartext-HTTP auf 80. Eine Route ohne `sectionName` hängt sich an
-**beide**. Über Klartext-HTTP schickt ein Browser das `Secure`-Session-Cookie
-nie zurück — der Spieler tritt bei, bekommt seinen Wiederherstellungscode
-einmal gezeigt und ist beim nächsten Request wieder fremd. Das ist Issue #70,
-nachgebaut von einem Listener, und es sähe aus wie ein Anwendungsfehler.
+The shared gateway serves the same wildcard on two listeners: HTTPS on 443 and
+plain HTTP on 80. A route with no `sectionName` attaches to **both**. Over
+plain HTTP a browser never returns the `Secure` session cookie — a player
+joins, is shown their recovery code once, and arrives at the next request as a
+stranger. That is issue #70 rebuilt by a listener, and it would look like an
+application bug.
 
-Also bindet die Anwendung namentlich an den TLS-Listener, und der
-Klartext-Listener bekommt eine eigene Route, die nur weiterleitet.
+So the application binds to the TLS listener by name, and the plain listener
+gets a route of its own that only redirects.
 
-### Kein Feld kann ein Geheimnis enthalten
+### No field can hold a secret
 
-Im Schema gibt es keinen Platz für `SP_SESSION_KEY`, und keinen Default, der
-einen erfinden könnte. Was das Schema annimmt, ist ein **Pfad** in den
-Secret-Store.
+There is no place in the schema for `SP_SESSION_KEY`, and no default that could
+invent one. What the schema accepts is a **path** into the secret store.
 
-Der Grund ist nicht Ordnungsliebe: ein geänderter Session-Key scheitert nicht,
-er vergisst still jeden Spieler — `TestARestartWithADifferentKeyForgetsEverybody`
-hält das fest. Ein Wert in einer Profildatei ist ein Wert in Git, und ein
-gerendertes Secret mit erzeugtem Default würde das Büro bei jedem Render
-ausloggen. Ein falscher Vault-Pfad scheitert dagegen laut, beim Sync. Laut ist
-hier besser als still.
+The reason is not tidiness: a changed session key does not fail, it silently
+forgets every player — `TestARestartWithADifferentKeyForgetsEverybody` exists
+to prove it. A value in a profile file is a value in git, and a rendered Secret
+with a generated default would log the whole office out on every render. A
+wrong Vault path, by contrast, fails loudly at sync time. Loud beats silent
+here.
 
-Zwei Secrets statt einem, und die Aufteilung ist Least Privilege: der
-Migrations-initContainer bekommt nur das Datenbank-Secret und sieht das
-Cookie-Geheimnis nie. Dass `config.Load` und `ValidateForServe` getrennt sind,
-macht das kostenlos.
+Two Secrets rather than one, and the split is least privilege: the migration
+initContainer gets only the database Secret and never sees the cookie secret.
+`config.Load` and `ValidateForServe` being separate makes that free.
 
-| Secret | Schlüssel | gelesen von |
+| Secret | Keys | Read by |
 |---|---|---|
-| `<name>-db` | `username`, `password`, `SP_DATABASE_URL` | initContainer **und** App |
-| `<name>-app` | `SP_SESSION_KEY`, optional `SP_KIOSK_TOKEN` | nur die App |
+| `<name>-db` | `username`, `password`, `SP_DATABASE_URL` | initContainer **and** app |
+| `<name>-app` | `SP_SESSION_KEY`, optionally `SP_KIOSK_TOKEN` | the app only |
 
-`<name>-db` ist vom Typ `kubernetes.io/basic-auth`, damit CloudNativePG es über
-`appSecretName` als Zugangsdaten des Owners beim Bootstrap nehmen kann. Das
-`username` im Vault-Eintrag muss dem `owner` der CNPG-Application entsprechen —
-zwei Repositories, ein Wert.
+`<name>-db` is of type `kubernetes.io/basic-auth` so CloudNativePG can take it
+through `appSecretName` as the owner's credentials at bootstrap. The `username`
+in the Vault entry has to match the `owner` of the CNPG Application — two
+repositories, one value.
 
-Der Vault-Eintrag hat drei Properties, eine vierte nur mit Kiosk:
+The Vault entry has three properties, and a fourth only with the kiosk:
 
-| Property | wird zu | Anforderung |
+| Property | Becomes | Requirement |
 |---|---|---|
-| `session-key` | `SP_SESSION_KEY` | mindestens 32 Zeichen, `openssl rand -base64 32` |
-| `username` | DB-Owner und DSN | gleich dem `owner` der CNPG-Application |
-| `password` | DB-Passwort und DSN | alphanumerisch, `openssl rand -hex 24` |
-| `kiosk-token` | `SP_KIOSK_TOKEN` | nur bei `kioskEnabled: true` |
+| `session-key` | `SP_SESSION_KEY` | at least 32 characters, `openssl rand -base64 32` |
+| `username` | DB owner and DSN | equal to the CNPG Application's `owner` |
+| `password` | DB password and DSN | alphanumeric, `openssl rand -hex 24` |
+| `kiosk-token` | `SP_KIOSK_TOKEN` | only with `kioskEnabled: true` |
 
-`config.vaultPath` ist der Eintragsname **unter** dem Mount des Stores, und
-sonst nichts. Der Store trägt Mount und `version: v2` bereits, ESO setzt
-`<mount>/data/<pfad>` selbst zusammen. Beide Arten, das falsch zu machen, lösen
-auf etwas auf, das es nirgends gibt — und melden beim Apply keinen Fehler:
+The ESO template assembles `SP_DATABASE_URL` from these: the password comes
+from Vault, while host, port, database and `sslmode` come from this module.
+
+> **Keep the Vault password alphanumeric.** It is interpolated into the URL
+> without escaping. A password containing `@`, `/`, `:` or `?` produces a DSN
+> that parses as something else.
+
+`config.vaultPath` is the entry name **under** the store's mount, and nothing
+else. The store already carries the mount and `version: v2`, so ESO composes
+`<mount>/data/<path>` itself. Both ways of getting this wrong resolve to
+something that exists nowhere — and report no error at apply time:
 
 ```
-schmetterpause                   richtig
-schmetterpause/data/cicd-test2   → cicd-test2/data/schmetterpause/data/cicd-test2
-schmetterpause-cicd-test2        → Cluster doppelt, der Mount ist schon der Cluster
+schmetterpause                   correct
+schmetterpause/data/cicd-test2   -> cicd-test2/data/schmetterpause/data/cicd-test2
+schmetterpause-cicd-test2        -> the cluster twice; the mount IS the cluster
 ```
 
-Der Store heißt pro Cluster `vault-<cluster>`, vergeben vom Backstage-Template
-— nie einfach `vault`. Verlässliche Quelle:
+The store is named per cluster as `vault-<cluster>`, assigned by the Backstage
+template — never plain `vault`. The reliable source:
 
 ```sh
 kubectl get clustersecretstore
 ```
 
-### Wenn ein Secret nicht ankommt
+### When a secret does not arrive
 
-Drei Dinge, die man einmal wissen muss:
+Three things worth knowing once:
 
-**Eine fehlende Property meldet der Store nicht.** Das ExternalSecret geht auf
-`SecretSyncedError`, und alles drumherum bleibt grün. `kubectl get
-externalsecret -A` ist die einzige Stelle, an der man es sieht.
+**A missing property is not reported by the store.** The ExternalSecret goes to
+`SecretSyncedError` and everything around it stays green. `kubectl get
+externalsecret -A` is the only place it shows.
 
-**Ein Store mit `Valid`/`Ready=True` kann trotzdem nichts lesen.** Grün heißt,
-der Login geht — nicht, dass die Policy den Pfad öffnet. Beweis ist ein
-synchronisiertes Secret, sonst nichts.
+**A store reporting `Valid`/`Ready=True` may still read nothing.** Green means
+the login works — not that the policy opens the path. The proof is a synced
+Secret and nothing else.
 
-Für diese Anwendung ist das milder, als es klingt: beide Secrets werden per
-`envFrom`/`secretKeyRef` **ohne** `optional` eingebunden. Fehlt eines, startet
-der Pod nicht — `CreateContainerConfigError` statt einer Anwendung, die mit
-halber Konfiguration läuft. Der stille Fehler im ExternalSecret wird also eine
-Zeile weiter laut.
+For this application that is milder than it sounds: both Secrets are mounted
+through `envFrom`/`secretKeyRef` **without** `optional`. If one is missing the
+pod does not start — `CreateContainerConfigError` rather than an application
+running on half a configuration. The silent failure in the ExternalSecret
+becomes loud one line further on.
 
-Eine Ausnahme, die man sich merken sollte: `kioskEnabled: true` fügt
-`kiosk-token` demselben ExternalSecret hinzu wie den Session-Key. Fehlt die
-Property im Vault-Eintrag, synchronisiert **das ganze** Secret nicht mehr — und
-dann steht die Anwendung, nicht nur der Kiosk. Die
-`SP_DATABASE_URL` baut das ESO-Template daraus zusammen: das Passwort kommt aus
-Vault, Host, Port, Datenbank und `sslmode` kommen aus diesem Modul.
+One exception to remember: `kioskEnabled: true` adds `kiosk-token` to the same
+ExternalSecret as the session key. If the property is missing from the Vault
+entry, **the whole** Secret stops syncing — and then the application is down,
+not just the kiosk.
 
-> **Passwort in Vault alphanumerisch halten.** Es wird ohne Maskierung in die
-> URL eingesetzt. Ein Passwort mit `@`, `/`, `:` oder `?` ergibt eine DSN, die
-> als etwas anderes gelesen wird.
+## Values that matter
 
-## Wichtige Werte
+The full list, with reasoning, is in `schema.k`. What one actually sets:
 
-Die vollständige Liste steht mit Begründung in `schema.k`. Was man am ehesten
-setzt:
-
-| Wert | Default | Bedeutung |
+| Value | Default | Meaning |
 |---|---|---|
-| `config.image` | `…:latest` | Für einen echten Deploy einen Digest pinnen |
+| `config.image` | `…:latest` | Pin a digest for a real deploy |
 | `config.namespace` | `schmetterpause` | |
-| `config.clusterDomain` | *(leer)* | Ergibt mit `name` den Hostnamen |
-| `config.host` | *(leer)* | Überschreibt die Zusammensetzung |
+| `config.clusterDomain` | *(empty)* | Combines with `name` into the hostname |
+| `config.host` | *(empty)* | Overrides that composition |
 | `config.httpRouteEnabled` | `false` | |
-| `config.gatewayName` / `…Namespace` | *(leer)* | |
-| `config.httpRedirectEnabled` | `true` | Route auf Port 80, die auf https leitet |
-| `config.kioskEnabled` | `false` | Ohne `SP_KIOSK_TOKEN` gibt es den Kiosk nicht |
-| `config.secretsMode` | `external` | `existing` = keine ExternalSecrets rendern; die Secrets legt jemand anderes an |
-| `config.secretStoreName` | *(leer)* | z. B. `vault` |
-| `config.vaultPath` | *(leer)* | Pfad, nie Wert |
-| `config.replicas` | `1` | Ein `check:` hält es dort, siehe unten |
-| `config.bootstrapAdmin` | *(leer)* | Anzeigename, wirkt beim Start |
+| `config.gatewayName` / `…Namespace` | *(empty)* | Both required once routes are on |
+| `config.httpRedirectEnabled` | `true` | Route on port 80 redirecting to https |
+| `config.kioskEnabled` | `false` | Without `SP_KIOSK_TOKEN` there is no kiosk |
+| `config.secretsMode` | `external` | `existing` = render no ExternalSecrets; something else creates the Secrets |
+| `config.secretStoreName` | *(empty)* | e.g. `vault-cicd-test2` |
+| `config.vaultPath` | *(empty)* | A path, never a value |
+| `config.replicas` | `1` | A `check:` holds it there, see below |
+| `config.bootstrapAdmin` | *(empty)* | Display name, takes effect at startup |
 
-### Warum `replicas` bei 1 festgenagelt ist
+### Why `replicas` is pinned at 1
 
-`internal/repository/postgres/migrate.go` ruft `goose.UpContext` über die
-Package-API, und die nimmt **kein** Session-Lock — das gibt es nur auf goose'
-Provider-API. Zwei Pods, die gleichzeitig migrieren, sind real unsicher, nicht
-theoretisch. Ein `check:` im Schema lehnt alles andere ab. Höher gehen heißt
-vorher ein Advisory-Lock oder einen Migrations-Job bauen.
+`internal/repository/postgres/migrate.go` calls `goose.UpContext` through the
+package API, and that takes **no** session lock — only goose's provider API
+does. Two pods migrating at once is unsafe in practice, not in theory. A
+`check:` in the schema rejects anything else. Going higher means building an
+advisory lock or a migration Job first.
 
-Aus demselben Grund ist die Strategie `Recreate` und nicht `RollingUpdate`: ein
-Rolling Update ließe den neuen Pod `migrate up` laufen, während der alte noch
-das alte Schema bedient.
+For the same reason the strategy is `Recreate` and not `RollingUpdate`: a
+rolling update would run `migrate up` in the new pod while the old one still
+serves the old schema.
 
-## Das Profilformat
+## The profile format
 
-Flach, `key: value` — **nicht** KCLs eigenes `kcl_options`-Format:
+Flat, `key: value` — **not** KCL's own `kcl_options` format:
 
 ```yaml
 config.namespace: schmetterpause
 config.httpRouteEnabled: true
 ```
 
-Das ist die Form, die `stuttgart-things/dagger/kcl` liest. Es wandelt die Datei
-im Container um mit
+This is the shape `stuttgart-things/dagger/kcl` reads. It converts the file
+inside its container with
 
 ```sh
 yq eval -o=json params.yaml | jq 'to_entries | map(.key + "=" + (.value|tostring))'
 ```
 
-und macht daraus ein `-D` pro Eintrag. Eine Datei im `kcl_options`-Format
-überlebt diese Umwandlung als **ein einziges** `-D kcl_options=[…]`, das KCL
-nicht kennt — jeder Wert fällt still auf seinen Default zurück. Bei uns hat
-das der `check:` auf `secretStoreName` abgefangen; ohne den wäre ein Artefakt
-mit lauter Defaults entstanden, das aussieht wie ein Deploy.
+and turns that into one `-D` per entry. A file in `kcl_options` format survives
+that conversion as **a single** `-D kcl_options=[…]` which KCL does not know —
+and every value silently falls back to its default. Here the `check:` on
+`secretStoreName` caught it; without it we would have published an artefact of
+pure defaults that looks like a deploy.
 
-`task kcl:render` macht dieselbe Umwandlung lokal. Deshalb `task kcl:render`
-statt `kcl run -Y` — Letzteres will das `kcl_options`-Format und würde eine
-Datei akzeptieren, die im Publish-Weg nicht funktioniert.
+`task kcl:render` performs the same conversion locally. Hence `task kcl:render`
+rather than `kcl run -Y` — the latter wants the `kcl_options` format and would
+accept a file that does not work in the publish path.
 
-## Generisch im Repo, angepasst pro Umgebung
+## Generic in the repo, adapted per environment
 
-In diesem Repository steht **kein Clustername**. Das Modul ist generisch, und
-das veröffentlichte Artefakt ist es auch: `kcl:publish` rendert `base.yaml`,
-und darin ist jeder Wert, der einen Ort benennt, ein Platzhalter.
+There is **no cluster name** in this repository. The module is generic and so
+is the published artefact: `kcl:publish` renders `base.yaml`, in which every
+value naming a place is a placeholder.
 
-Angepasst wird in der Argo-Application der jeweiligen Umgebung, so wie #89 es
-zeichnet:
+Adaptation happens in each environment's Argo Application, the way #89 draws
+it:
 
 ```
-kcl/  ──▶  neutrale kustomize-Base  ──▶  OCI  ──▶  Argo patcht pro Umgebung
+kcl/  ──▶  neutral kustomize base  ──▶  OCI  ──▶  Argo patches per environment
 ```
 
-Die Platzhalter schalten dabei **keine Ressource ab**. Alle acht werden
-gerendert, auch die HTTPRoutes ohne echtes Gateway — kustomize kann ein Feld
-patchen, aber keine Ressource, die nie da war.
+The placeholders **switch no resource off**. All eight are rendered, the
+HTTPRoutes included even with no real gateway — kustomize can patch a field but
+not a resource that was never there.
 
-### Was eine Umgebung patchen muss
+### What an environment has to patch
 
-| Feld | wo | Beispiel |
+| Field | Where | Example |
 |---|---|---|
-| Hostname | beide `HTTPRoute`, `spec.hostnames[0]` | `schmetterpause.mein-cluster.example.de` |
-| `SP_PUBLIC_BASE_URL` | `ConfigMap`, `data` | `https://schmetterpause.mein-cluster.example.de` |
-| Gateway | beide `HTTPRoute`, `spec.parentRefs[0].name` / `.namespace` | `cilium-gateway` / `default` |
-| Secret-Store | beide `ExternalSecret`, `spec.secretStoreRef.name` | `vault-backend` |
-| Vault-Eintrag | beide `ExternalSecret`, `spec.data[*].remoteRef.key` | `schmetterpause-mein-cluster` |
+| Hostname | both `HTTPRoute`, `spec.hostnames[0]` | `schmetterpause.my-cluster.example.com` |
+| `SP_PUBLIC_BASE_URL` | `ConfigMap`, `data` | `https://schmetterpause.my-cluster.example.com` |
+| Gateway | both `HTTPRoute`, `spec.parentRefs[0].name` / `.namespace` | `cilium-gateway` / `default` |
+| Secret store | both `ExternalSecret`, `spec.secretStoreRef.name` | `vault-backend` |
+| Vault entry | both `ExternalSecret`, `spec.data[*].remoteRef.key` | `schmetterpause` |
 | Namespace | kustomize `namespace:` | `schmetterpause` |
 
-**Hostname und `SP_PUBLIC_BASE_URL` sind eine Entscheidung an zwei Stellen.**
-Wer nur die Route patcht, bekommt eine erreichbare Anwendung, deren QR-Aushang
-auf `cluster.example.com` zeigt. Das ist die Naht dieser Bauform; sie ist der
-Preis dafür, dass die Base neutral bleibt.
+**Hostname and `SP_PUBLIC_BASE_URL` are one decision in two places.** Patch
+only the route and you get a reachable application whose printed QR code points
+at `cluster.example.com`. That is the seam of this design; it is the price of
+keeping the base neutral.
 
 ```yaml
 kustomize:
@@ -280,7 +276,7 @@ kustomize:
       patch: |-
         - op: replace
           path: /spec/hostnames/0
-          value: schmetterpause.mein-cluster.example.de
+          value: schmetterpause.my-cluster.example.com
         - op: replace
           path: /spec/parentRefs/0/name
           value: cilium-gateway
@@ -291,7 +287,7 @@ kustomize:
       patch: |-
         - op: replace
           path: /data/SP_PUBLIC_BASE_URL
-          value: https://schmetterpause.mein-cluster.example.de
+          value: https://schmetterpause.my-cluster.example.com
     - target: { kind: ExternalSecret }
       patch: |-
         - op: replace
@@ -299,63 +295,64 @@ kustomize:
           value: vault-backend
 ```
 
-Wie die Argo-Application das OCI-Artefakt konsumiert, gehört zu #81 — das oben
-ist der Teil, der von hier kommt.
+How the Argo Application consumes the OCI artefact belongs to #81 — the above
+is the part that comes from here.
 
-### Lokal für einen echten Cluster rendern
+### Rendering locally for a real cluster
 
-Ohne eine Profildatei mit echten Werten ins Repo zu legen:
+Without putting a profile of real values into the repo:
 
 ```sh
-kcl run kcl/main.k \
-  -D config.clusterDomain=mein-cluster.example.de \
+task kcl:render -- \
+  -D config.clusterDomain=my-cluster.example.com \
   -D config.gatewayName=cilium-gateway \
   -D config.secretStoreName=vault-backend \
-  -D config.vaultPath=schmetterpause-mein-cluster
+  -D config.vaultPath=schmetterpause
 ```
 
-## Die Kette dahinter
+## The chain behind it
 
-`kcl:kustomize` und `kcl:publish` rufen ein geteiltes Dagger-Modul auf, statt
-etwas Eigenes zu bauen — das ist der Weg, den #80 beschreibt:
+`kcl:kustomize` and `kcl:publish` call a shared Dagger module rather than
+building something of our own — the path #80 describes:
 
 ```
-kcl/  ──render-kustomize-base──▶  kustomize-Base
+kcl/  ──render-kustomize-base──▶  kustomize base
       ──push-kustomize-base────▶  ghcr.io/…/schmetterpause-kustomize:<tag>
                                           │
-                                  Argo CD zeigt darauf (#81)
+                                    Argo CD points at it (#81)
 ```
 
-Der Tag ist **derselbe wie beim Image**, mit Absicht: ein Artefaktpaar, das
-auseinanderlaufen kann, ist ein Deploy, den hinterher niemand mehr rekonstruiert.
+The tag is **the same as the image's**, deliberately: a pair of artefacts that
+can drift apart is a deploy nobody reconstructs afterwards.
 
-Das Modul ist auf `@v0.82.0` gepinnt. Ohne Pin könnte `task kcl:publish` morgen
-etwas anderes rendern als heute, und das ist die eine Eigenschaft, die ein
-Deploy-Artefakt nicht haben darf.
+The module is pinned at `@v0.82.0`. Without the pin, `task kcl:publish` could
+render something different tomorrow than it does today, and that is the one
+property a deploy artefact must not have.
 
-## Wenn Dagger nicht startet
+## When Dagger will not start
 
 ```
 failed to select internal socket: failed to get SSH auth socket fingerprints:
 failed to list SSH agent identities: agent: client error: EOF
 ```
 
-Das ist kein Fehler an den Manifesten — er kommt beim Laden des Moduls. Dagger
-fragt den SSH-Agent nach Identitäten, und in einer VS-Code-Remote-Sitzung zeigt
-`SSH_AUTH_SOCK` gern auf einen weitergeleiteten Socket, dessen Ziel nicht mehr
-existiert. Prüfen mit `ssh-add -l`; umgehen, indem man die Variable für den
-Aufruf leert:
+This is not a problem with the manifests — it happens while loading the module.
+Dagger asks the SSH agent for identities, and in a VS Code remote session
+`SSH_AUTH_SOCK` often points at a forwarded socket whose target no longer
+exists. Check with `ssh-add -l`; work around it by emptying the variable for
+the call:
 
 ```sh
 SSH_AUTH_SOCK= task kcl:kustomize
 ```
 
-Nicht im Taskfile fest verdrahtet: wer SSH für private Go-Abhängigkeiten
-braucht, verliert es sonst.
+Not hard-wired into the Taskfile: anyone who needs SSH for private Go
+dependencies would lose it.
 
-## Verwandt
+## Related
 
-- `docs/adr/` — Entscheidungen zu Datenmodell, Auth und Deployment
-- Issue #78 — was hier entschieden wurde und warum
-- Issue #89 — Phase 3 insgesamt
-- `infra/cloudnative-pg` in `stuttgart-things/argocd` — Operator und Cluster
+- `docs/deployment.md` — bringing up an environment, with and without ESO
+- `docs/adr/` — decisions on the data model, auth and deployment
+- Issue #78 — what was decided here and why
+- Issue #89 — phase 3 as a whole
+- `infra/cloudnative-pg` in `stuttgart-things/argocd` — operator and cluster

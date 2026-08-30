@@ -1,137 +1,137 @@
-# Deployment ohne GitOps
+# Deploying without GitOps
 
-Der vorgesehene Weg auf einen Cluster ist eine ArgoCD-Application, die das
-OCI-Artefakt `ghcr.io/stuttgart-things/schmetterpause-kustomize` konsumiert und
-pro Umgebung patcht — das ist Issue #81. Dieses Dokument beschreibt den anderen
-Weg: dieselben Manifeste direkt mit `task` und `kubectl` auf einen Cluster
-bringen, ohne Argo dazwischen.
+The intended path onto a cluster is an ArgoCD Application that consumes the OCI
+artefact `ghcr.io/stuttgart-things/schmetterpause-kustomize` and patches it per
+environment — that is issue #81. This document describes the other path: the
+same manifests straight onto a cluster with `task` and `kubectl`, no Argo in
+between.
 
-Gedacht für einen Testcluster, für die erste Inbetriebnahme einer neuen Umgebung
-und für die Fehlersuche, wenn unklar ist, ob ein Problem von der Anwendung oder
-von Argo kommt. Für den Dauerbetrieb nicht: es gibt keine Drift-Erkennung und
-kein Prune.
+It is meant for a test cluster, for the first bring-up of a new environment, and
+for fault-finding when it is unclear whether a problem comes from the
+application or from Argo. It is not meant for continuous operation: there is no
+drift detection and no prune.
 
-Das Beispiel verwendet durchgehend `cicd-test2`. Ersetze Clusterdomain,
-Gateway-Name und Store-Name durch die der Zielumgebung.
+The examples use `cicd-test2` throughout. Replace the cluster domain, the
+gateway name and the store name with the target environment's.
 
-## Was der Cluster mitbringen muss
+## What the cluster has to bring
 
-Drei Dinge, plus eines, das von der gewählten Secrets-Variante abhängt.
+Three things, plus one that depends on the secrets variant you pick.
 
 ```sh
-# 1. CloudNativePG-Operator
+# 1. CloudNativePG operator
 kubectl -n postgres get deploy cloudnative-pg
 
-# 2. Gateway, programmiert, mit einem TLS-Listener
+# 2. A programmed gateway with a TLS listener
 kubectl -n default get gateway cilium-gateway
 kubectl -n default get gateway cilium-gateway \
   -o jsonpath='{range .spec.listeners[*]}{.name}  {.hostname}  {.tls.certificateRefs[*].name}{"\n"}{end}'
 
-# 3. Nimmt das Gateway Routes aus fremden Namespaces?
+# 3. Does the gateway accept routes from other namespaces?
 kubectl -n default get gateway cilium-gateway \
   -o jsonpath='{range .spec.listeners[*]}{.name}  {.allowedRoutes.namespaces.from}{"\n"}{end}'
 
-# 4. Eine StorageClass für Postgres
+# 4. A StorageClass for Postgres
 kubectl get storageclass
 ```
 
-Zu 3: Der Default in Gateway API ist `Same`. Steht dort nicht `All` oder ein
-passender Selector, nimmt das Gateway die HTTPRoute aus dem Anwendungs-Namespace
-nicht an — sichtbar nur an der Route, nicht am Gateway.
+On 3: the Gateway API default is `Same`. Unless that says `All` or carries a
+matching selector, the gateway will not accept the HTTPRoute from the
+application's namespace — visible only on the route, not on the gateway.
 
-**Der External Secrets Operator ist keine Voraussetzung.** Er ist der bequemere
-von zwei Wegen, nicht der einzige; der nächste Abschnitt stellt beide
-nebeneinander.
+**The External Secrets Operator is not a prerequisite.** It is the more
+comfortable of two paths, not the only one; the next section puts both side by
+side.
 
-## Secrets: zwei Wege
+## Secrets: two paths
 
-Die Anwendung braucht zwei Secrets, und beide heißen unter jeder Variante
-gleich, weil das Deployment sie über den Namen liest:
+The application needs two Secrets, and they are named the same under either
+variant, because the Deployment reads them by name:
 
-| Secret                | Schlüssel                          | Wer liest das                       |
-| --------------------- | ---------------------------------- | ----------------------------------- |
-| `schmetterpause-app`  | `SP_SESSION_KEY`, ggf. `SP_KIOSK_TOKEN` | die Anwendung                   |
-| `schmetterpause-db`   | `username`, `password`, `SP_DATABASE_URL` | CloudNativePG und die Anwendung |
+| Secret | Keys | Read by |
+| --- | --- | --- |
+| `schmetterpause-app` | `SP_SESSION_KEY`, optionally `SP_KIOSK_TOKEN` | the application |
+| `schmetterpause-db` | `username`, `password`, `SP_DATABASE_URL` | CloudNativePG and the application |
 
-`schmetterpause-db` ist vom Typ `kubernetes.io/basic-auth` und tut doppelten
-Dienst: CloudNativePG liest daraus beim `initdb` die Owner-Credentials, die
-Anwendung liest `SP_DATABASE_URL`. Dass beide aus demselben Secret kommen, ist
-der Grund, warum Rolle und DSN nicht auseinanderlaufen können.
+`schmetterpause-db` is of type `kubernetes.io/basic-auth` and does double duty:
+CloudNativePG reads the owner credentials from it at `initdb`, the application
+reads `SP_DATABASE_URL`. Both coming from the same Secret is why the role and
+the DSN cannot drift apart.
 
-Zwei Secrets statt einem ist Least Privilege: der Migrations-initContainer
-bekommt nur das Datenbank-Secret und sieht den Session-Key nie.
+Two Secrets rather than one is least privilege: the migration initContainer gets
+only the database Secret and never sees the session key.
 
-`SP_SESSION_KEY` zu ändern ist kein Neustart, sondern ein Ausloggen aller
-Spieler. Der Test `TestARestartWithADifferentKeyForgetsEverybody` hält das fest.
+Changing `SP_SESSION_KEY` is not a restart, it is logging every player out. The
+test `TestARestartWithADifferentKeyForgetsEverybody` records that.
 
-### Variante A — External Secrets
+### Variant A — External Secrets
 
-Der Weg für einen Cluster, der ohnehin einen `ClusterSecretStore` hat. Die
-beiden Secrets werden dann aus einem Vault-Eintrag erzeugt und turnusmäßig
-erneuert; im Repo und in der Kommandozeile steht nur ein Pfad, nie ein Wert.
+The path for a cluster that has a `ClusterSecretStore` anyway. Both Secrets are
+then produced from one Vault entry and refreshed on a schedule; the repository
+and the command line hold only a path, never a value.
 
 ```sh
 kubectl get crd | grep externalsecrets.external-secrets.io
 kubectl get clustersecretstore
 ```
 
-Der Store heißt `vault-<cluster>`, nie schlicht `vault`. `kubectl get
-clustersecretstore` ist die verlässliche Quelle. Ein Store mit `Ready=True`
-beweist, dass der Login funktioniert — nicht, dass die Policy den Eintrag lesen
-darf. Das zeigt sich erst am ExternalSecret.
+The store is named `vault-<cluster>`, never plain `vault`. `kubectl get
+clustersecretstore` is the reliable source. A store reporting `Ready=True`
+proves the login works — not that the policy may read the entry. That only
+shows on the ExternalSecret.
 
-Der Eintrag liegt unter dem Mount, den der Store selbst trägt, und heißt
+The entry sits under the mount the store itself carries, and is named
 `schmetterpause`:
 
-| Schlüssel     | Inhalt                           | Form                     |
-| ------------- | -------------------------------- | ------------------------ |
-| `session-key` | Schlüssel für das Session-Cookie | 32 Byte, base64          |
-| `username`    | Owner-Rolle der Datenbank        | `schmetterpause`         |
-| `password`    | Passwort dieser Rolle            | Hex, keine Sonderzeichen |
-| `kiosk-token` | nur wenn der Kiosk an ist        | Hex                      |
+| Key | Contents | Form |
+| --- | --- | --- |
+| `session-key` | key for the session cookie | 32 bytes, base64 |
+| `username` | the database's owner role | `schmetterpause` |
+| `password` | that role's password | hex, no special characters |
+| `kiosk-token` | only when the kiosk is on | hex |
 
-`password` und `kiosk-token` sind bewusst hexadezimal und nicht base64: das
-Passwort wird unmaskiert in eine DSN interpoliert, und ein `@`, `/`, `:` oder
-`?` darin lässt die URL anders parsen. Der Session-Key geht durch keine URL und
-darf base64 sein.
+`password` and `kiosk-token` are deliberately hex rather than base64: the
+password is interpolated into a DSN unescaped, and an `@`, `/`, `:` or `?` in it
+makes the URL parse differently. The session key passes through no URL and may
+be base64.
 
-Im `remoteRef.key` steht nur der Eintragsname. Der Store trägt Mount und
-`version: v2` selbst, ESO setzt daraus `<mount>/data/<key>` zusammen. Beide Arten,
-das falsch zu machen, zeigen auf etwas, das nirgends existiert, und melden beim
-Apply nichts:
+`remoteRef.key` holds the entry name and nothing else. The store already carries
+the mount and `version: v2`, and ESO composes `<mount>/data/<key>` from them.
+Both ways of getting this wrong point at something that exists nowhere, and
+report nothing at apply time:
 
 ```
-schmetterpause                    richtig
+schmetterpause                    correct
 schmetterpause/data/cicd-test2    -> cicd-test2/data/schmetterpause/data/…
-schmetterpause-cicd-test2         -> der Cluster zweimal; der Mount IST der Cluster
+schmetterpause-cicd-test2         -> the cluster twice; the mount IS the cluster
 ```
 
-### Variante B — normale Kubernetes-Secrets
+### Variant B — ordinary Kubernetes Secrets
 
-Der Weg für einen Cluster ohne ESO. Ein Befehl, der beide Secrets erzeugt, die
-Werte würfelt und die DSN so zusammensetzt, wie das ESO-Template es täte:
+The path for a cluster without ESO. One command creates both Secrets, generates
+the values, and assembles the DSN the way the ESO template would:
 
 ```sh
 kubectl create ns schmetterpause
 task kcl:secrets NAMESPACE=schmetterpause
 ```
 
-Der Task legt an und aktualisiert nicht. Ein zweiter Aufruf bricht ab, statt
-einen neuen Session-Key zu setzen — das wäre kein Fehler, den man sieht, sondern
-einer, bei dem am nächsten Morgen alle ausgeloggt sind.
+The task creates and does not update. A second call aborts rather than setting a
+new session key — that would not be a failure anyone sees, it would be one where
+everybody is logged out the next morning.
 
-Mit Kiosk: `task kcl:secrets NAMESPACE=schmetterpause KIOSK=true`.
+With the kiosk: `task kcl:secrets NAMESPACE=schmetterpause KIOSK=true`.
 
-Von Hand geht es genauso, wenn die Werte schon anderswo herkommen — wichtig ist
-nur, dass das Passwort in `SP_DATABASE_URL` dasselbe ist wie unter `password`
-und keine Zeichen enthält, die eine URL zerlegen.
+Doing it by hand works the same way when the values come from somewhere else.
+All that matters is that the password inside `SP_DATABASE_URL` is the same one
+as under `password`, and that it contains no character that takes a URL apart.
 
-Ab hier unterscheidet sich nur noch das Profil: **Variante A rendert mit
-`PROFILE=base`, Variante B mit `PROFILE=existing-secrets`.**
+From here on only the profile differs: **variant A renders with `PROFILE=base`,
+variant B with `PROFILE=existing-secrets`.**
 
-## 1. Postgres-Operator
+## 1. Postgres operator
 
-Einmal pro Cluster, nicht pro Anwendung:
+Once per cluster, not per application:
 
 ```sh
 helmfile apply \
@@ -142,16 +142,15 @@ helmfile apply \
 
 ## 2. Namespace
 
-Die Base rendert bewusst keinen. Mehrere Anwendungen können sich einen Namespace
-teilen, und wenn mehr als eine ihn als Ressource mitbringt, meldet ArgoCD eine
-SharedResource — dann löscht der Prune-Lauf der einen den Namespace der anderen
-weg.
+The base deliberately renders none. Several applications can share a namespace,
+and when more than one ships it as a resource, ArgoCD reports a SharedResource —
+and then one application's prune cycle deletes the other's namespace.
 
 ```sh
 kubectl create ns schmetterpause
 ```
 
-## 3. Manifeste anwenden
+## 3. Applying the manifests
 
 ```sh
 task kcl:apply -- \
@@ -162,7 +161,7 @@ task kcl:apply -- \
   -D config.vaultPath=schmetterpause
 ```
 
-Für Variante B ohne die beiden letzten Zeilen und mit dem anderen Profil:
+For variant B, without the last two lines and with the other profile:
 
 ```sh
 task kcl:apply PROFILE=existing-secrets -- \
@@ -171,33 +170,33 @@ task kcl:apply PROFILE=existing-secrets -- \
   -D config.gatewayName=cilium-gateway
 ```
 
-Alles nach `--` wird an `kcl` durchgereicht, hinter die Werte des Profils, und
-ein späteres `-D` gewinnt. Das Profil liefert also die Grundlage, die
-Kommandozeile die Handvoll Werte, die diese Umgebung ausmachen.
+Everything after `--` is passed to `kcl`, behind the profile's own values, and a
+later `-D` wins. The profile supplies the ground, the command line the handful
+of values that make this environment.
 
-**Ohne Profil rendern ist die Falle.** `kcl run kcl/main.k -D …` lädt kein
-Profil; jedes nicht übergebene Feld fällt dann auf seinen Default in `schema.k`,
-nicht auf den im Profil. `httpRouteEnabled` ist dort `false` und `secretsMode`
-ist `external` — beides absichtlich zurückhaltend, und beides nicht das, was ein
-Cluster will. Deshalb `task kcl:apply` und nicht `kcl run`.
+**Rendering without a profile is the trap.** `kcl run kcl/main.k -D …` loads no
+profile; every field not passed then falls back to its default in `schema.k`
+rather than the profile's. `httpRouteEnabled` is `false` there and `secretsMode`
+is `external` — both deliberately reticent, and neither what a cluster wants.
+Hence `task kcl:apply` rather than `kcl run`.
 
-`task kcl:render` statt `kcl:apply` zeigt dasselbe, ohne es anzuwenden.
+`task kcl:render` shows the same thing without applying it.
 
-Bei Variante A danach zuerst die Secrets prüfen, bevor irgendetwas anderes
-drankommt:
+For variant A, check the secrets before anything else:
 
 ```sh
 kubectl -n schmetterpause get externalsecret
 ```
 
-Beide müssen `SecretSynced` melden. Der Pod läuft an dieser Stelle noch nicht —
-das ist richtig so, die Datenbank fehlt noch.
+Both have to report `SecretSynced`. The pod is not running at this point — that
+is correct, the database is still missing.
 
-## 4. Postgres-Cluster
+## 4. Postgres cluster
 
-Erst jetzt, denn CloudNativePG liest beim `initdb` das Owner-Passwort aus
-`schmetterpause-db`, und das muss vorher stehen — in Variante A, sobald das
-ExternalSecret synchronisiert hat, in Variante B seit `task kcl:secrets`.
+Only now, because CloudNativePG reads the owner password from
+`schmetterpause-db` at `initdb`, and that has to be in place first — in variant
+A as soon as the ExternalSecret has synced, in variant B since `task
+kcl:secrets`.
 
 ```sh
 helmfile apply \
@@ -210,31 +209,29 @@ helmfile apply \
   --state-values-set appSecretName=schmetterpause-db
 ```
 
-Die vier fachlichen Werte hängen aneinander:
+The four domain values hang together:
 
-- `clusterName=schmetterpause-db` erzeugt den Service `schmetterpause-db-rw`,
-  den die DSN sucht. Entspricht `config.dbClusterName` im KCL-Modul.
-- `owner=schmetterpause` muss dem `username` im Secret entsprechen, sonst legt
-  CNPG eine Rolle an, die die DSN nie verwendet.
-- `database=schmetterpause` entspricht `config.dbName`.
-- `appSecretName=schmetterpause-db` ist das oben erzeugte Secret. Ohne diesen
-  Wert würfelt CNPG ein eigenes Passwort, und die DSN passt nicht mehr dazu.
+- `clusterName=schmetterpause-db` produces the Service `schmetterpause-db-rw`
+  that the DSN looks for. It matches `config.dbClusterName` in the KCL module.
+- `owner=schmetterpause` has to match `username` in the Secret, otherwise CNPG
+  creates a role the DSN never uses.
+- `database=schmetterpause` matches `config.dbName`.
+- `appSecretName=schmetterpause-db` is the Secret created above. Without it CNPG
+  invents a password of its own and the DSN no longer fits.
 
-Alles Übrige kommt aus den Defaults des Templates: eine Instanz, PostgreSQL 17,
-8Gi, die Default-StorageClass, keine Backups, kein Superuser-Zugang. Warum eine
-Instanz und keine Backups: Replikate und Backups schützen gegen verschiedene
-Dinge, und die realistische Gefahr auf einem Testcluster ist ein bewusster
-Neubau, gegen den ein Replikat nichts ausrichtet. Der Auslöser zum Umstellen
-sind Backups, nicht Replikate.
+Everything else comes from the template's defaults: one instance, PostgreSQL 17,
+8Gi, the default StorageClass, no backups, no superuser access. Why one instance
+and no backups: replicas and backups protect against different things, and the
+realistic danger on a test cluster is a deliberate rebuild, against which a
+replica does nothing. The trigger for changing this is backups, not replicas.
 
-Das PVC entsteht erst mit dem Pod, wenn die StorageClass
-`WaitForFirstConsumer` ist.
+The PVC appears only with the pod when the StorageClass is
+`WaitForFirstConsumer`.
 
-Sobald der Cluster steht, läuft der Migrations-initContainer beim nächsten
-Backoff von selbst durch. Nachhelfen muss man nicht; wer nicht warten will,
-löscht den Pod.
+Once the cluster is up, the migration initContainer gets through on its next
+backoff by itself. No intervention is needed; anyone impatient deletes the pod.
 
-## 5. Prüfen
+## 5. Checking
 
 ```sh
 kubectl -n schmetterpause get cluster
@@ -245,35 +242,35 @@ curl -sSI https://schmetterpause.cicd-test2.4sthings.tiab.ssc.sva.de/healthz   #
 curl -sSI http://schmetterpause.cicd-test2.4sthings.tiab.ssc.sva.de/           # 301
 ```
 
-## Wenn etwas nicht geht
+## When something does not work
 
-Die Fehler, die auf diesem Weg tatsächlich aufgetreten sind, haben gemeinsam,
-dass sie nicht als Fehler aussehen.
+What the failures on this path have in common is that none of them look like
+failures.
 
-**Ein ExternalSecret meldet `SecretSyncedError`, alles andere bleibt grün.**
-Nur Variante A. Meist ein Property-Name, den der Vault-Eintrag nicht hat. Der
-fehlende Name steht in `.status.conditions[].message`. Sichtbar ist das nur an
-der Ressource selbst — Pods, Store und Gateway sagen nichts dazu.
+**An ExternalSecret reports `SecretSyncedError` and everything else stays
+green.** Variant A only. Usually a property name the Vault entry does not have.
+The missing name is in `.status.conditions[].message`. It is visible only on the
+resource itself — pods, store and gateway say nothing about it.
 
-**Die HTTPRoute hat gar keinen Status, und der Host antwortet 404.**
-Nicht `Accepted=False`, sondern ein leeres `.status.parents`. Dann zeigt der
-`parentRef` auf ein Gateway, das es nicht gibt — typischerweise, weil
-`namespace` fehlt und deshalb der Namespace der Route selbst gemeint ist.
-`schema.k` weist einen leeren `gatewayNamespace` inzwischen ab; wenn die Route
-trotzdem statuslos ist, stimmen Name oder `sectionName` nicht.
+**The HTTPRoute has no status at all and the host answers 404.** Not
+`Accepted=False`, but an empty `.status.parents`. Then the `parentRef` points at
+a Gateway that does not exist — typically because `namespace` is missing, so the
+route's own namespace is meant. `schema.k` now rejects an empty
+`gatewayNamespace`; if the route is still statusless, the name or the
+`sectionName` is wrong.
 
-**Der initContainer scheitert mit `no such host`.** Die Datenbank fehlt noch
-oder heißt anders. Die Meldung ist trotzdem nützlich: steht darin
-`user=schmetterpause database=schmetterpause`, ist die DSN sauber geparst, das
-Passwort enthält also kein Zeichen, das die URL zerlegt, und es fehlt wirklich
-nur der Name.
+**The initContainer fails with `no such host`.** The database is missing or
+named differently. The message is useful anyway: if it says
+`user=schmetterpause database=schmetterpause`, the DSN parsed cleanly, so the
+password contains no character that takes the URL apart and only the name is
+really missing.
 
-**Der Pod startet nicht, `secret "schmetterpause-db" not found`.** Die
-Reihenfolge stimmt nicht: das Secret muss vor dem Deployment da sein. In
-Variante A ist das eine Frage von Sekunden und löst sich selbst, in Variante B
-heißt es, `task kcl:secrets` wurde übersprungen.
+**The pod will not start: `secret "schmetterpause-db" not found`.** The order is
+wrong — the Secret has to exist before the Deployment. In variant A that is a
+matter of seconds and resolves itself; in variant B it means `task kcl:secrets`
+was skipped.
 
-## Abräumen
+## Tearing down
 
 ```sh
 helmfile destroy --file 'git::https://github.com/stuttgart-things/helm.git@database/postgres-cluster.yaml.gotmpl' \
@@ -281,6 +278,7 @@ helmfile destroy --file 'git::https://github.com/stuttgart-things/helm.git@datab
 kubectl delete ns schmetterpause
 ```
 
-Das PVC des Postgres-Clusters hängt am Namespace und geht mit. Bei einer
-StorageClass mit `reclaimPolicy: Delete` — etwa `openebs-hostpath` — sind die
-Daten damit weg. Das ist auf einem Testcluster gewollt und anderswo nicht.
+The Postgres cluster's PVC hangs off the namespace and goes with it. With a
+StorageClass whose `reclaimPolicy` is `Delete` — `openebs-hostpath`, for
+instance — the data is then gone. On a test cluster that is intended; anywhere
+else it is not.

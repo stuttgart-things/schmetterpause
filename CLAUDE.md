@@ -65,7 +65,13 @@ lesen. Eine Entscheidung, die einem ADR widerspricht, braucht ein neues ADR mit
   der ihn angelegt hat. Welche Namen für Release-Branches reserviert sind und
   wie die Merge-Strategie die Versionierung beeinflusst, steht in
   `.claude/skills/branch-naming`.
-- **Code ist englisch, Dokumentation und Oberfläche sind deutsch.** Kommentare,
-  Bezeichner, Log- und Fehlermeldungen im Code, Commit-Nachrichten, Issues und
-  Pull Requests auf Englisch. `CLAUDE.md`, `docs/` und alle Texte, die ein
-  Spieler im Browser sieht, bleiben deutsch.
+- **Code und Betrieb sind englisch, Produkt und Oberfläche sind deutsch.**
+  Kommentare, Bezeichner, Log- und Fehlermeldungen im Code,
+  Commit-Nachrichten, Issues und Pull Requests auf Englisch. Ebenso die
+  Betriebsdokumentation — `docs/deployment.md` und `kcl/README.md` —, weil sie
+  neben Manifesten steht, deren Feldnamen und Fehlermeldungen ohnehin englisch
+  sind, und weil sie liest, wer den Cluster bedient, nicht wer spielt.
+  Deutsch bleiben `CLAUDE.md`, die ADRs in `docs/adr/`, `docs/mvp-plan.md`,
+  `docs/turnier-vor-ort.md` und alle Texte, die ein Spieler im Browser sieht.
+  Die Trennlinie ist das Publikum, nicht das Verzeichnis: wer eine neue Datei
+  anlegt, fragt sich, ob sie ein Betreiber oder ein Mitspieler liest.
