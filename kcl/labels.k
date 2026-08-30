@@ -43,6 +43,12 @@ _dbName = option("config.dbName")
 _dbPort = option("config.dbPort")
 _dbSSLMode = option("config.dbSSLMode")
 _dbHost = option("config.dbHost")
+_dbOwner = option("config.dbOwner")
+_dbInstances = option("config.dbInstances")
+_dbStorageSize = option("config.dbStorageSize")
+_dbStorageClass = option("config.dbStorageClass")
+_dbImage = option("config.dbImage")
+_dbSuperuserAccess = option("config.dbSuperuserAccess")
 _secretsMode = option("config.secretsMode")
 _secretStoreKind = option("config.secretStoreKind")
 _secretStoreName = option("config.secretStoreName")
@@ -123,6 +129,18 @@ config: schema.Schmetterpause = schema.Schmetterpause {
         dbSSLMode = _dbSSLMode
     if _dbHost:
         dbHost = _dbHost
+    if _dbOwner:
+        dbOwner = _dbOwner
+    if _dbInstances:
+        dbInstances = int(_dbInstances)
+    if _dbStorageSize:
+        dbStorageSize = _dbStorageSize
+    if _dbStorageClass:
+        dbStorageClass = _dbStorageClass
+    if _dbImage:
+        dbImage = _dbImage
+    if _dbSuperuserAccess != None:
+        dbSuperuserAccess = _bool(_dbSuperuserAccess)
     if _secretsMode:
         secretsMode = _secretsMode
     if _secretStoreKind:
@@ -166,6 +184,11 @@ publicBaseURL = config.publicBaseURL if config.publicBaseURL else ("https://{}".
 # writes on every request that matters, so it always talks to the primary.
 dbHost = config.dbHost if config.dbHost else "{}-rw.{}.svc".format(config.dbClusterName, config.namespace)
 
+# The owner role, and the one value that has to be equal in three places: here,
+# in the secret store's `username`, and in whatever created the Secret. CNPG
+# reads the credentials from that Secret at initdb.
+dbOwner = config.dbOwner if config.dbOwner else config.name
+
 appSecretName = "{}-app".format(config.name)
 dbSecretName = "{}-db".format(config.name)
 configMapName = "{}-config".format(config.name)
@@ -173,13 +196,22 @@ configMapName = "{}-config".format(config.name)
 renderExternalSecrets = config.secretsMode == "external"
 
 # ── Labels ──────────────────────────────────────────────────────────────────
-commonLabels = {
-    "app.kubernetes.io/name": config.name
-    "app.kubernetes.io/instance": config.name
-    "app.kubernetes.io/component": "web"
-    "app.kubernetes.io/part-of": config.name
-    **config.labels
+#
+# Built through a lambda rather than overridden per resource: KCL's dict union
+# rejects a conflicting value instead of letting the later one win, so
+# "commonLabels with one key changed" is not an expression that exists.
+labelsFor = lambda component: str -> {str:str} {
+    {
+        "app.kubernetes.io/name": config.name
+        "app.kubernetes.io/instance": config.name
+        "app.kubernetes.io/component": component
+        "app.kubernetes.io/part-of": config.name
+        **config.labels
+    }
 }
+
+commonLabels = labelsFor("web")
+databaseLabels = labelsFor("database")
 
 selectorLabels = {
     "app.kubernetes.io/name": config.name

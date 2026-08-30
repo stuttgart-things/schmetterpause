@@ -217,9 +217,10 @@ tasks:
   # ---------------------------------------------------------------- Manifests
 
   kcl:render:
-    desc: "Render the manifests (PROFILE=base; extra -D after --)"
+    desc: "Render the manifests (PROFILE=base, ENTRY=kcl/main.k; extra -D after --)"
     vars:
       PROFILE: '{{.PROFILE | default "base"}}'
+      ENTRY: '{{.ENTRY | default "kcl/main.k"}}'
     cmds:
       - |
         set -e
@@ -262,7 +263,7 @@ tasks:
         # exists to remove — every field left out then falls back to its schema
         # default, which for secretsMode and httpRouteEnabled is deliberately
         # not what any cluster wants.
-        kcl run kcl/main.k "$@" {{.CLI_ARGS}} \
+        kcl run {{.ENTRY}} "$@" {{.CLI_ARGS}} \
           | sed 's/^- /---\n/' \
           | sed '1d' \
           | sed 's/^  //' \
@@ -271,16 +272,73 @@ tasks:
     silent: true
 
   kcl:apply:
-    desc: "Render and apply to the current kube-context (PROFILE=base; extra -D after --)"
+    desc: "Render and apply to the current kube-context (PROFILE=base, ENTRY=kcl/main.k; extra -D after --)"
     vars:
       PROFILE: '{{.PROFILE | default "base"}}'
+      ENTRY: '{{.ENTRY | default "kcl/main.k"}}'
     cmds:
       # The context is printed rather than pinned: this applies wherever
       # kubectl currently points, and that is worth reading before it happens.
       - |
         set -e
         echo "context: $(kubectl config current-context)"
-        task kcl:render PROFILE="{{.PROFILE}}" -- {{.CLI_ARGS}} | kubectl apply -f -
+        task kcl:render PROFILE="{{.PROFILE}}" ENTRY="{{.ENTRY}}" -- {{.CLI_ARGS}} | kubectl apply -f -
+    silent: true
+
+  kcl:database:
+    desc: "Render the CloudNativePG Cluster (PROFILE=base; extra -D after --)"
+    vars:
+      PROFILE: '{{.PROFILE | default "base"}}'
+    cmds:
+      # A separate entry point, not part of main.k: kcl:publish renders main.k,
+      # so the Cluster cannot end up in the published base. See kcl/database.k.
+      - task kcl:render PROFILE="{{.PROFILE}}" ENTRY=kcl/database.k -- {{.CLI_ARGS}}
+    silent: true
+
+  kcl:up:
+    desc: "Namespace, application and database in one apply (PROFILE=base; extra -D after --)"
+    vars:
+      PROFILE: '{{.PROFILE | default "base"}}'
+    cmds:
+      - |
+        set -e
+        echo "context: $(kubectl config current-context)"
+
+        app=$(mktemp) && db=$(mktemp)
+        trap 'rm -f "${app}" "${db}"' EXIT
+        task kcl:render PROFILE="{{.PROFILE}}" -- {{.CLI_ARGS}} > "${app}"
+        task kcl:database PROFILE="{{.PROFILE}}" -- {{.CLI_ARGS}} > "${db}"
+
+        # Read back what was rendered rather than taking them as task
+        # variables: then an override passed after -- cannot move the
+        # application without moving where this looks for it.
+        ns=$(yq eval -N 'select(.kind == "ConfigMap") | .metadata.namespace' "${app}")
+        name=$(yq eval -N 'select(.kind == "Deployment") | .metadata.name' "${app}")
+
+        kubectl create namespace "${ns}" --dry-run=client -o yaml | kubectl apply -f -
+        kubectl apply -f "${app}"
+
+        # The Cluster goes last, and this is the wait that makes one command
+        # honest. CloudNativePG reads the owner credentials from ${name}-db at
+        # initdb; in secretsMode=external that Secret does not exist at apply
+        # time but a few seconds later, once the ExternalSecret has synced.
+        # Applying the Cluster into that gap depends on the operator retrying,
+        # which is a thing to rely on rather than a thing to know.
+        echo "waiting for secret ${name}-db in ${ns}"
+        for _ in $(seq 1 60); do
+          kubectl -n "${ns}" get secret "${name}-db" > /dev/null 2>&1 && break
+          sleep 2
+        done
+        if ! kubectl -n "${ns}" get secret "${name}-db" > /dev/null 2>&1; then
+          echo "secret ${name}-db never appeared." >&2
+          echo "  secretsMode=external: kubectl -n ${ns} get externalsecret" >&2
+          echo "  secretsMode=existing: task kcl:secrets NAMESPACE=${ns}" >&2
+          exit 1
+        fi
+
+        kubectl apply -f "${db}"
+        echo
+        echo "kubectl -n ${ns} get cluster,po"
     silent: true
 
   kcl:secrets:
