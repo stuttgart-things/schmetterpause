@@ -267,6 +267,9 @@ kustomize:
         - op: replace
           path: /spec/parentRefs/0/name
           value: cilium-gateway
+        - op: replace
+          path: /spec/parentRefs/0/namespace
+          value: default
     - target: { kind: ConfigMap, name: schmetterpause-config }
       patch: |-
         - op: replace
