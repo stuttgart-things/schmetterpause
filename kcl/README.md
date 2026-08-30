@@ -8,6 +8,10 @@ Alles ist eine Variable. Kein Hostname, kein Namespace, kein Gateway und kein
 Image-Verweis steht fest im Modul, damit dieselben Manifeste für einen
 Laptop-Cluster, den Büro-Cluster und einen Preview-Namespace passen.
 
+Dieses Dokument beschreibt das Modul. Wie man damit eine Umgebung von Grund auf
+aufsetzt — Voraussetzungen prüfen, Vault-Eintrag, Postgres, Reihenfolge —
+steht in [`docs/deployment.md`](../docs/deployment.md).
+
 ## Rendern
 
 ```sh
