@@ -223,7 +223,19 @@ tasks:
     cmds:
       - |
         set -e
-        profile="kcl/profiles/{{.PROFILE}}.yaml"
+
+        # PROFILE takes either a name from kcl/profiles or a path to a file
+        # anywhere. The path form is what an environment uses: a profile that
+        # names a cluster has no business in this repository, and keeping it
+        # outside is what lets the published base stay neutral.
+        case "{{.PROFILE}}" in
+          */*|*.yaml|*.yml) profile="{{.PROFILE}}" ;;
+          *)                profile="kcl/profiles/{{.PROFILE}}.yaml" ;;
+        esac
+        case "${profile}" in
+          "~/"*) profile="${HOME}/${profile#\~/}" ;;
+        esac
+        [ -f "${profile}" ] || { echo "no profile at ${profile}" >&2; exit 1; }
 
         # The same conversion stuttgart-things/dagger/kcl does inside its
         # container: a flat key/value file becomes one -D flag per entry. Doing

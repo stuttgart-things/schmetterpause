@@ -180,7 +180,10 @@ rather than the profile's. `httpRouteEnabled` is `false` there and `secretsMode`
 is `external` — both deliberately reticent, and neither what a cluster wants.
 Hence `task kcl:apply` rather than `kcl run`.
 
-`task kcl:render` shows the same thing without applying it.
+`task kcl:render` shows the same thing without applying it. For more values
+than fit comfortably on a command line, `PROFILE` also takes a path to a file
+outside the repository — see [`examples/`](../examples/), which puts this
+against the other two ways of adapting an environment.
 
 For variant A, check the secrets before anything else:
 
