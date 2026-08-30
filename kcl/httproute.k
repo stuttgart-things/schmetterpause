@@ -25,7 +25,7 @@ _parentRef = lambda section: str -> {str:str} {
         kind: "Gateway"
         name: config.gatewayName
         sectionName: section
-        **({namespace: config.gatewayNamespace} if config.gatewayNamespace else {})
+        namespace: config.gatewayNamespace
     }
 }
 
@@ -33,6 +33,12 @@ _parentRef = lambda section: str -> {str:str} {
 # backendRefs. Rendering them explicitly stops ArgoCD comparing a manifest
 # without them against a live object with them and reporting OutOfSync on every
 # reconcile — stuttgart-things/argocd#114.
+#
+# namespace is written unconditionally for a harsher reason. Left out, the
+# parentRef resolves against the route's OWN namespace; if no Gateway is there,
+# the route gets no status whatsoever — not Accepted=False, nothing — and the
+# host answers 404 from the gateway with no trace of why. schema.k therefore
+# refuses an empty gatewayNamespace outright, which is what makes this safe.
 httproute = {
     apiVersion: "gateway.networking.k8s.io/v1"
     kind: "HTTPRoute"

@@ -217,7 +217,7 @@ tasks:
   # ---------------------------------------------------------------- Manifests
 
   kcl:render:
-    desc: "Render the Kubernetes manifests (PROFILE=base)"
+    desc: "Render the manifests (PROFILE=base; extra -D after --)"
     vars:
       PROFILE: '{{.PROFILE | default "base"}}'
     cmds:
@@ -240,12 +240,86 @@ tasks:
         # "manifests:" key line, turn each list item into a document separator,
         # de-indent by two. Without it the local render is a different artefact
         # from the one that ships.
-        kcl run kcl/main.k "$@" \
+        # Anything after "--" lands here, AFTER the profile's flags, and a
+        # later -D wins. That is what makes an environment a profile plus a
+        # handful of overrides rather than a hand-assembled command line:
+        #
+        #   task kcl:render -- -D config.gatewayName=cilium-gateway
+        #
+        # Rendering with bare "kcl run -D ..." and no profile is the trap this
+        # exists to remove — every field left out then falls back to its schema
+        # default, which for secretsMode and httpRouteEnabled is deliberately
+        # not what any cluster wants.
+        kcl run kcl/main.k "$@" {{.CLI_ARGS}} \
           | sed 's/^- /---\n/' \
           | sed '1d' \
           | sed 's/^  //' \
           | sed '/^[[:space:]]*$/d' \
           | awk 'NR==1{print "---"} 1'
+    silent: true
+
+  kcl:apply:
+    desc: "Render and apply to the current kube-context (PROFILE=base; extra -D after --)"
+    vars:
+      PROFILE: '{{.PROFILE | default "base"}}'
+    cmds:
+      # The context is printed rather than pinned: this applies wherever
+      # kubectl currently points, and that is worth reading before it happens.
+      - |
+        set -e
+        echo "context: $(kubectl config current-context)"
+        task kcl:render PROFILE="{{.PROFILE}}" -- {{.CLI_ARGS}} | kubectl apply -f -
+    silent: true
+
+  kcl:secrets:
+    desc: "Create the two Secrets by hand, for a cluster without External Secrets"
+    vars:
+      NAME: '{{.NAME | default "schmetterpause"}}'
+      NAMESPACE: '{{.NAMESPACE | default "schmetterpause"}}'
+      DB_NAME: '{{.DB_NAME | default "schmetterpause"}}'
+      DB_CLUSTER: '{{.DB_CLUSTER | default "schmetterpause-db"}}'
+      DB_PORT: '{{.DB_PORT | default "5432"}}'
+      SSLMODE: '{{.SSLMODE | default "require"}}'
+      KIOSK: '{{.KIOSK | default "false"}}'
+    cmds:
+      - |
+        set -e
+        ns="{{.NAMESPACE}}"
+
+        # "create", never "apply". Re-running this must not quietly mint a new
+        # session key: that does not fail, it logs every player out and hands
+        # them a stranger's view of their own account. Existing Secrets make
+        # this abort, which is the outcome we want.
+        session_key=$(openssl rand -base64 32)
+
+        # Hex, not base64. The password is interpolated into a URL unescaped,
+        # and an @ / : or ? in it makes the DSN parse as something else.
+        password=$(openssl rand -hex 24)
+
+        # Identical to the host labels.k computes, and to the one the
+        # ExternalSecret template builds in the other mode.
+        dsn="postgresql://{{.NAME}}:${password}@{{.DB_CLUSTER}}-rw.${ns}.svc:{{.DB_PORT}}/{{.DB_NAME}}?sslmode={{.SSLMODE}}"
+
+        kiosk=""
+        if [ "{{.KIOSK}}" = "true" ]; then
+          kiosk="--from-literal=SP_KIOSK_TOKEN=$(openssl rand -hex 32)"
+        fi
+
+        kubectl -n "${ns}" create secret generic "{{.NAME}}-app" \
+          --from-literal=SP_SESSION_KEY="${session_key}" ${kiosk}
+
+        # basic-auth with username and password because CloudNativePG reads the
+        # owner credentials from this same Secret at initdb; SP_DATABASE_URL is
+        # what the application reads. One Secret serving both is why the owner
+        # role and the DSN cannot drift apart.
+        kubectl -n "${ns}" create secret generic "{{.NAME}}-db" \
+          --type=kubernetes.io/basic-auth \
+          --from-literal=username="{{.NAME}}" \
+          --from-literal=password="${password}" \
+          --from-literal=SP_DATABASE_URL="${dsn}"
+
+        echo "created {{.NAME}}-app and {{.NAME}}-db in ${ns}"
+        echo "render with: task kcl:apply PROFILE=existing-secrets -- ..."
     silent: true
 
   kcl:check:

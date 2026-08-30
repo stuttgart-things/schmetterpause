@@ -164,5 +164,7 @@ schema Schmetterpause:
         secretStoreKind in ["ClusterSecretStore", "SecretStore"], "secretStoreKind must be ClusterSecretStore or SecretStore"
         externalSecretApiVersion in ["external-secrets.io/v1", "external-secrets.io/v1beta1"], "externalSecretApiVersion must be external-secrets.io/v1 or external-secrets.io/v1beta1"
         not httpRouteEnabled or gatewayName != "", "httpRouteEnabled needs gatewayName"
+        not httpRouteEnabled or gatewayNamespace != "", \
+            "httpRouteEnabled needs gatewayNamespace: empty attaches the route to a Gateway in the route's own namespace, and a parentRef naming one that is not there gets no status at all rather than a rejection"
         not httpRouteEnabled or host != "" or clusterDomain != "", "httpRouteEnabled needs either host or clusterDomain"
 
