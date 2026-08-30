@@ -9,8 +9,9 @@ Image-Verweis steht fest im Modul, damit dieselben Manifeste für einen
 Laptop-Cluster, den Büro-Cluster und einen Preview-Namespace passen.
 
 Dieses Dokument beschreibt das Modul. Wie man damit eine Umgebung von Grund auf
-aufsetzt — Voraussetzungen prüfen, Vault-Eintrag, Postgres, Reihenfolge —
-steht in [`docs/deployment.md`](../docs/deployment.md).
+aufsetzt — Voraussetzungen prüfen, Secrets, Postgres, Reihenfolge — steht in
+[`docs/deployment.md`](../docs/deployment.md), dort auch für Cluster ohne
+External Secrets Operator.
 
 ## Rendern
 
@@ -20,15 +21,27 @@ task kcl:render PROFILE=existing-secrets
 task kcl:check                       # rendern alle Profile noch?
 task kcl:kustomize                   # kustomize-Base nach build/kustomize
 task kcl:publish TAG=v1.2.3          # Base als OCI-Artefakt nach GHCR
+
+task kcl:apply                       # rendern und auf den aktuellen Kontext anwenden
+task kcl:secrets NAMESPACE=…         # die zwei Secrets von Hand, ohne ESO
 ```
 
-Direkt mit der CLI, wenn es genauer sein soll:
+Einzelne Werte übersteuern — alles nach `--` geht an `kcl`, hinter die Werte
+des Profils, und ein späteres `-D` gewinnt:
 
 ```sh
-kcl run kcl/main.k -Y kcl/profiles/base.yaml \
-  -D 'config.image=ghcr.io/stuttgart-things/schmetterpause:v1.2.3' \
-  -D 'config.kioskEnabled=true'
+task kcl:render -- \
+  -D config.image=ghcr.io/stuttgart-things/schmetterpause:v1.2.3 \
+  -D config.kioskEnabled=true
+task kcl:apply PROFILE=existing-secrets -- -D config.gatewayName=cilium-gateway
 ```
+
+`kcl run` direkt aufzurufen ist der Weg, der schiefgeht: `-D` lädt kein Profil,
+und `-Y kcl/profiles/base.yaml` auch nicht — die Profile sind flache
+`key: value`-Dateien, keine KCL-Settings-Dateien. In beiden Fällen fällt jedes
+nicht übergebene Feld auf seinen Default in `schema.k` zurück, und die sind
+absichtlich zurückhaltend: `httpRouteEnabled` ist `false`, `secretsMode` ist
+`external`.
 
 ### Warum die Ausgabe so aussieht, wie sie aussieht
 
@@ -182,7 +195,7 @@ setzt:
 | `config.gatewayName` / `…Namespace` | *(leer)* | |
 | `config.httpRedirectEnabled` | `true` | Route auf Port 80, die auf https leitet |
 | `config.kioskEnabled` | `false` | Ohne `SP_KIOSK_TOKEN` gibt es den Kiosk nicht |
-| `config.secretsMode` | `external` | `existing`, wenn die Secrets anderswoher kommen |
+| `config.secretsMode` | `external` | `existing` = keine ExternalSecrets rendern; die Secrets legt jemand anderes an |
 | `config.secretStoreName` | *(leer)* | z. B. `vault` |
 | `config.vaultPath` | *(leer)* | Pfad, nie Wert |
 | `config.replicas` | `1` | Ein `check:` hält es dort, siehe unten |
