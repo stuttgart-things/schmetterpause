@@ -20,7 +20,7 @@ task kcl:render                      # profile base
 task kcl:render PROFILE=existing-secrets
 task kcl:check                       # do all profiles still render?
 task kcl:kustomize                   # kustomize base into build/kustomize
-task kcl:publish TAG=v1.2.3          # base to GHCR as an OCI artefact
+task kcl:publish TAG=v1.2.3          # base to GHCR as an OCI artefact (CI does this)
 
 task kcl:apply                       # render and apply to the current context
 task kcl:database                    # the CloudNativePG Cluster, on its own
@@ -358,6 +358,17 @@ kcl/  ──render-kustomize-base──▶  kustomize base
 
 The tag is **the same as the image's**, deliberately: a pair of artefacts that
 can drift apart is a deploy nobody reconstructs afterwards.
+
+**CI publishes it, not a person.** The `kustomize` job in
+[`.github/workflows/ci.yml`](../.github/workflows/ci.yml) runs after the image
+is pushed and publishes the `base` profile under the version that job returned
+— handed on rather than recomputed, so the pair cannot disagree about which
+version it is. `latest` moves under the image's rule: on a tag, not on a push
+to main.
+
+`task kcl:publish` stays for the case CI cannot cover — a base rendered from a
+profile that is not in this repository, or a republish under an existing tag.
+The order is the same either way: the image first, because the base names it.
 
 The module is pinned at `@v0.82.0`. Without the pin, `task kcl:publish` could
 render something different tomorrow than it does today, and that is the one

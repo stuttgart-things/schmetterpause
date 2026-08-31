@@ -63,6 +63,7 @@ jobs:
       packages: write
     outputs:
       image-ref: ${{ steps.publish.outputs.image-ref }}
+      version: ${{ steps.publish.outputs.version }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -115,6 +116,12 @@ jobs:
           echo "published ${ref}"
           echo "image-ref=${ref}" >> "$GITHUB_OUTPUT"
 
+          # The kustomize job publishes its artefact under this same string.
+          # It is handed on rather than recomputed: "git describe" run twice
+          # on two checkouts is two sources of truth for the one value that
+          # ties the artefact to the image it names.
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
+
   # Trivy against the image that was just published. Report-only for now
   # (continue-on-error): this repository has never been scanned, so the first
   # run is a measurement, not a verdict. Making it blocking today would mean
@@ -140,3 +147,89 @@ jobs:
       severity: HIGH,CRITICAL
       artifact-name: trivy-image-report
       continue-on-error: true
+
+  # The second half of what a release is: the image says how the application
+  # runs, the kustomize base says how it is deployed. Issue #80 — until now
+  # this existed only as "task kcl:publish" on somebody's laptop, which makes
+  # a deploy depend on a person remembering, and on whatever their working
+  # tree happened to contain.
+  #
+  # Same tag as the image, and that is load-bearing rather than tidy: an
+  # environment pins one reference in its Argo Application, and the artefact
+  # under that tag renders a Deployment naming the image under the same one.
+  # The version is taken from the release job instead of recomputed, so the
+  # two cannot disagree.
+  #
+  # Deliberately not "publish the base, then the image": the base names an
+  # image, so publishing it first opens a window in which the artefact points
+  # at something the registry does not have. "needs: release" closes it.
+  kustomize:
+    needs: release
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install the Dagger CLI
+        run: |
+          curl -fsSL https://dl.dagger.io/dagger/install.sh \
+            | DAGGER_VERSION="${DAGGER_VERSION}" BIN_DIR=/usr/local/bin sudo -E sh
+          dagger version
+
+      - name: Publish the kustomize base
+        env:
+          GITHUB_USER: ${{ github.actor }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ needs.release.outputs.version }}
+        run: |
+          set -euo pipefail
+
+          # The pinned module and the target repository are read out of the
+          # Taskfile rather than repeated here. They are the two values a
+          # person publishing by hand uses, and an artefact that CI renders
+          # from a different module version than the one a developer can
+          # reproduce is the drift this whole job exists to remove.
+          module="$(sed -n 's/^  KCL_MODULE: *//p' Taskfile.yml)"
+          repo="$(sed -n 's/^  KUSTOMIZE_OCI_REPO: *//p' Taskfile.yml)"
+          image_repo="$(sed -n 's/^  IMAGE_REPO: *//p' Taskfile.yml)"
+
+          for name in module repo image_repo; do
+            if [ -z "${!name}" ]; then
+              echo "could not read ${name} from Taskfile.yml — has a var been renamed?" >&2
+              exit 1
+            fi
+          done
+
+          if [ -z "${VERSION}" ]; then
+            echo "the release job returned no version" >&2
+            exit 1
+          fi
+
+          # --parameters wins over the profile, whose config.image is a
+          # ":latest" placeholder that resolves to the wrong revision in any
+          # registry that has one.
+          publish() {
+            dagger call -m "${module}" push-kustomize-base \
+              --source kcl \
+              --parameters-file kcl/profiles/base.yaml \
+              --parameters "config.image=${image_repo}:${VERSION}" \
+              --address "${repo}" \
+              --tag "$1" \
+              --user env:GITHUB_USER \
+              --password env:GITHUB_TOKEN
+          }
+
+          publish "${VERSION}"
+          echo "published ${repo}:${VERSION}"
+
+          # "latest" moves under exactly the rule the image follows: a tag is
+          # a release, a push to main is a snapshot. Letting the two repos
+          # disagree about what "latest" means is the one way this pair can
+          # still drift once the version tags line up.
+          if [ "${GITHUB_REF_TYPE:-}" = "tag" ]; then
+            publish latest
+            echo "moved ${repo}:latest"
+          fi
