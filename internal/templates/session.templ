@@ -23,10 +23,10 @@ templ Session(v SessionView) {
 					<p class="fail" role="alert">{ v.Error }</p>
 				}
 			</form>
-			// The second door, and the whole answer to issue #70: a browser
-			// with no cookie used to have this form and nothing else, and
-			// typing a name that already exists was refused. Quiet, because
-			// joining is what almost everybody arriving here needs.
+			// The way on for somebody the picker has nothing to offer. This
+			// card is now the second door rather than the first: it shows
+			// on an empty roster, and behind the link under the sign-in
+			// form the rest of the time.
 			<p class="session-alt">
 				Schon dabei, aber dieses Gerät kennt dich nicht?
 				<button

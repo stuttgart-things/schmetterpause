@@ -8,7 +8,11 @@ package templates
 import "github.com/a-h/templ"
 import templruntime "github.com/a-h/templ/runtime"
 
-// SignIn is the way back for a browser that has no cookie any more.
+// SignIn is the front door once anybody is on the roster, and the way back
+// for a browser that has no cookie any more — which turned out to be the same
+// door. Joining happens once per person; being forgotten by a browser happens
+// again and again, so this is what most arrivals need and it is what the
+// start page opens on (see IndexView.ShowSignIn).
 //
 // Name first, secret second, one form for both kinds (docs/adr/0007). The
 // field takes a PIN or a recovery code without asking which, because
@@ -38,7 +42,7 @@ func SignIn(v SignInView) templ.Component {
 			templ_7745c5c3_Var1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<section id=\"session\" class=\"session\"><h2>Anmelden</h2><form hx-post=\"/signin\" hx-target=\"#session\" hx-swap=\"outerHTML\"><label for=\"signin-player\">Wer bist du?</label> <select id=\"signin-player\" name=\"player_id\" required><option value=\"\" disabled")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<section id=\"session\" class=\"session\"><h2>Anmelden</h2><form hx-post=\"/signin\" hx-target=\"#session\" hx-swap=\"outerHTML\"><div class=\"row\"><label for=\"signin-player\">Wer bist du?</label> <select id=\"signin-player\" name=\"player_id\" required><option value=\"\" disabled")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -60,7 +64,7 @@ func SignIn(v SignInView) templ.Component {
 			var templ_7745c5c3_Var2 string
 			templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.ResolveAttributeValue(p.ID)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `signin.templ`, Line: 20, Col: 25}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `signin.templ`, Line: 30, Col: 26}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var2)
 			if templ_7745c5c3_Err != nil {
@@ -83,7 +87,7 @@ func SignIn(v SignInView) templ.Component {
 			var templ_7745c5c3_Var3 string
 			templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(p.DisplayName)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `signin.templ`, Line: 20, Col: 68}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `signin.templ`, Line: 30, Col: 69}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 			if templ_7745c5c3_Err != nil {
@@ -94,7 +98,7 @@ func SignIn(v SignInView) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "</select> <label for=\"signin-secret\">PIN oder Wiederherstellungscode</label><div class=\"secret-field\"><input id=\"signin-secret\" name=\"secret\" type=\"password\" autocomplete=\"current-password\" autocapitalize=\"characters\" autocorrect=\"off\" spellcheck=\"false\" required><button type=\"button\" class=\"secret-reveal\" data-reveal=\"signin-secret\" aria-controls=\"signin-secret\" aria-pressed=\"false\">Zeigen</button></div><button type=\"submit\">Anmelden</button> ")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "</select></div><label for=\"signin-secret\">PIN oder Wiederherstellungscode</label><div class=\"secret-field\"><input id=\"signin-secret\" name=\"secret\" type=\"password\" autocomplete=\"current-password\" autocapitalize=\"characters\" autocorrect=\"off\" spellcheck=\"false\" required><button type=\"button\" class=\"secret-reveal\" data-reveal=\"signin-secret\" aria-controls=\"signin-secret\" aria-pressed=\"false\">Zeigen</button></div><button type=\"submit\">Anmelden</button> ")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -106,7 +110,7 @@ func SignIn(v SignInView) templ.Component {
 			var templ_7745c5c3_Var4 string
 			templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(v.Error)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `signin.templ`, Line: 54, Col: 42}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `signin.templ`, Line: 65, Col: 42}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 			if templ_7745c5c3_Err != nil {
