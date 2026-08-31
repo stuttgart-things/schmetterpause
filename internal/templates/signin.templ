@@ -31,35 +31,7 @@ templ SignIn(v SignInView) {
 					}
 				</select>
 			</div>
-			<label for="signin-secret">PIN oder Wiederherstellungscode</label>
-			<div class="secret-field">
-				// type=password so a password manager recognises the field and
-				// offers what it saved — which is where docs/adr/0006 asked
-				// people to put the code in the first place.
-				<input
-					id="signin-secret"
-					name="secret"
-					type="password"
-					autocomplete="current-password"
-					autocapitalize="characters"
-					autocorrect="off"
-					spellcheck="false"
-					required
-				/>
-				// Sixteen characters typed blind on a phone is how a way back
-				// turns into a dead end that looks like a wrong code. The
-				// button is inert without JavaScript and the field still
-				// works, so nothing depends on it.
-				<button
-					type="button"
-					class="secret-reveal"
-					data-reveal="signin-secret"
-					aria-controls="signin-secret"
-					aria-pressed="false"
-				>
-					Zeigen
-				</button>
-			</div>
+			@SignInSecret(v)
 			<button type="submit">Anmelden</button>
 			if v.Error != "" {
 				<p class="fail" role="alert">{ v.Error }</p>
@@ -78,6 +50,109 @@ templ SignIn(v SignInView) {
 			</button>
 		</p>
 	</section>
+}
+
+// SignInSecret is the half of the form that changes with what somebody holds.
+//
+// One field, two keyboards. A PIN is digits and wants inputmode="numeric" so a
+// phone opens the number pad; a recovery code is sixteen characters of
+// Crockford base32 that a number pad cannot type at all. docs/adr/0007 asked
+// for a strictly numeric field and the attribute only ever reached the form
+// that *sets* a PIN — this is issue #117.
+//
+// It stays one field, one name and one POST /signin, so the server still tells
+// the two apart by their shape and nobody has to know in advance which of them
+// they are holding. What the link switches is the keyboard and the label, not
+// the endpoint.
+//
+// Rendered into an element of its own so the switch swaps the field without
+// touching the name picker above it: the chosen name survives.
+templ SignInSecret(v SignInView) {
+	<div id="signin-secret-field">
+		// Carried in the form so a refused attempt comes back on the same
+		// keyboard. Without it, mistyping a recovery code would drop the
+		// person back onto the number pad.
+		<input type="hidden" name="secret_mode" value={ v.secretMode() }/>
+		<label for="signin-secret">
+			if v.Recovery {
+				Wiederherstellungscode
+			} else {
+				PIN
+			}
+		</label>
+		<div class="secret-field">
+			// Two elements rather than one with conditional attributes,
+			// because what differs is most of them. type=password in both, so
+			// a password manager recognises the field and offers what it
+			// saved — which is where docs/adr/0006 asked people to put the
+			// code in the first place.
+			if v.Recovery {
+				<input
+					id="signin-secret"
+					name="secret"
+					type="password"
+					autocomplete="current-password"
+					autocapitalize="characters"
+					autocorrect="off"
+					spellcheck="false"
+					required
+				/>
+			} else {
+				// No pattern="[0-9]*" to go with the inputmode. The rule that
+				// a PIN is digits belongs to the field that *chooses* one,
+				// where it keeps a company password out (docs/adr/0007);
+				// here it would only turn a code typed out of habit into a
+				// browser validation message instead of a switch to the
+				// other keyboard, which is one click away.
+				<input
+					id="signin-secret"
+					name="secret"
+					type="password"
+					inputmode="numeric"
+					autocomplete="current-password"
+					autocorrect="off"
+					spellcheck="false"
+					required
+				/>
+			}
+			// Sixteen characters typed blind on a phone is how a way back
+			// turns into a dead end that looks like a wrong code. The
+			// button is inert without JavaScript and the field still
+			// works, so nothing depends on it.
+			<button
+				type="button"
+				class="secret-reveal"
+				data-reveal="signin-secret"
+				aria-controls="signin-secret"
+				aria-pressed="false"
+			>
+				Zeigen
+			</button>
+		</div>
+		<p class="field-alt">
+			if v.Recovery {
+				<button
+					type="button"
+					class="linklike"
+					hx-get="/fragments/signin-secret"
+					hx-target="#signin-secret-field"
+					hx-swap="outerHTML"
+				>
+					Ich habe eine PIN
+				</button>
+			} else {
+				<button
+					type="button"
+					class="linklike"
+					hx-get="/fragments/signin-secret?mode=recovery"
+					hx-target="#signin-secret-field"
+					hx-swap="outerHTML"
+				>
+					Ich habe nur den Wiederherstellungscode
+				</button>
+			}
+		</p>
+	</div>
 }
 
 // SignedIn confirms that a browser is back in touch with its player.
