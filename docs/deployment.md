@@ -129,6 +129,32 @@ as under `password`, and that it contains no character that takes a URL apart.
 From here on only the profile differs: **variant A renders with `PROFILE=base`,
 variant B with `PROFILE=existing-secrets`.**
 
+## Everything at once
+
+With the operator in place and the secrets settled, the rest is one command:
+
+```sh
+task kcl:up PROFILE=~/environments/cicd-test2.yaml
+```
+
+It creates the namespace, applies the application, waits for
+`schmetterpause-db` to appear, and only then applies the CloudNativePG Cluster.
+
+The wait is what makes the single command honest rather than lucky. CNPG reads
+the owner credentials from that Secret at `initdb`; under variant A the Secret
+does not exist at apply time but a few seconds later, once the ExternalSecret
+has synced. Applying the Cluster into that gap would depend on the operator
+retrying — probable, but not something this has measured, and a deploy should
+not rest on it.
+
+Everything else settles on its own, which is a property of Kubernetes rather
+than of this command: the pod reports `secret not found`, gets the Secret
+seconds later and is content; the migration initContainer crashloops against
+the missing database and gets through by itself once it is there.
+
+The rest of this document is the same thing step by step — worth following on a
+first bring-up, and the place to look when `kcl:up` stops somewhere.
+
 ## 1. Postgres operator
 
 Once per cluster, not per application:
@@ -202,6 +228,35 @@ A as soon as the ExternalSecret has synced, in variant B since `task
 kcl:secrets`.
 
 ```sh
+task kcl:apply ENTRY=kcl/database.k PROFILE=~/environments/cicd-test2.yaml
+```
+
+`kcl/database.k` is a separate entry point, not part of `main.k`. `kcl:publish`
+renders `main.k`, so no value anyone sets can put a Cluster into the published
+artefact — the base stays a base whose removal cannot take a database with it.
+
+Rendering it from the same module is what stops four values drifting apart.
+`initdb.owner`, `initdb.database` and the Service the DSN dials all come from
+`config.dbOwner`, `config.dbName` and `config.dbClusterName`; the Secret named
+in `initdb.secret` is the one the DSN is built from. Previously these lived in a
+helmfile invocation, a Vault entry and this module, and keeping them equal was
+something a person did between two windows.
+
+The one value the module cannot check is `username` in the secret store. It has
+to equal `dbOwner`, because that Secret is where CNPG reads the credentials.
+
+Defaults: one instance, `ghcr.io/cloudnative-pg/postgresql:17`, 8Gi, the
+cluster's default StorageClass, no superuser access. Why one instance: replicas
+and backups protect against different things, and the realistic danger on a test
+cluster is a deliberate rebuild, against which a replica does nothing. The
+trigger for changing this is backups, not replicas.
+
+### Through the catalogue instead
+
+Under ArgoCD the Cluster is its own Application from
+`infra/cloudnative-pg/cluster`, and the same thing by helmfile is:
+
+```sh
 helmfile apply \
   --file 'git::https://github.com/stuttgart-things/helm.git@database/postgres-cluster.yaml.gotmpl' \
   --state-values-set namespace=schmetterpause \
@@ -212,21 +267,10 @@ helmfile apply \
   --state-values-set appSecretName=schmetterpause-db
 ```
 
-The four domain values hang together:
-
-- `clusterName=schmetterpause-db` produces the Service `schmetterpause-db-rw`
-  that the DSN looks for. It matches `config.dbClusterName` in the KCL module.
-- `owner=schmetterpause` has to match `username` in the Secret, otherwise CNPG
-  creates a role the DSN never uses.
-- `database=schmetterpause` matches `config.dbName`.
-- `appSecretName=schmetterpause-db` is the Secret created above. Without it CNPG
-  invents a password of its own and the DSN no longer fits.
-
-Everything else comes from the template's defaults: one instance, PostgreSQL 17,
-8Gi, the default StorageClass, no backups, no superuser access. Why one instance
-and no backups: replicas and backups protect against different things, and the
-realistic danger on a test cluster is a deliberate rebuild, against which a
-replica does nothing. The trigger for changing this is backups, not replicas.
+That is the route for a cluster where the database is managed with everything
+else's databases rather than with this application. It also adds backups, which
+`database.k` does not render: an object-store target is environment
+configuration, and this module holds none.
 
 The PVC appears only with the pod when the StorageClass is
 `WaitForFirstConsumer`.

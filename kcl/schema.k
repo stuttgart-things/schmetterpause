@@ -105,12 +105,20 @@ schema Schmetterpause:
 
     # ── Database ────────────────────────────────────────────────────────────
     
-    # A CloudNativePG Cluster is NOT rendered here. It outlives every app
+    # A CloudNativePG Cluster is NOT part of main.k. It outlives every app
     # revision, and a base that carries it is a base whose removal can prune
-    # the database. It is its own Argo Application from the catalog entry
-    # infra/cloudnative-pg/cluster, deployed into this same namespace.
+    # the database. Under ArgoCD it is its own Application from the catalog
+    # entry infra/cloudnative-pg/cluster, into this same namespace.
     #
-    # These values describe how to reach it, not how to create it.
+    # database.k renders one for the path without Argo, where nothing prunes.
+    # It is a separate entry point rather than a flag on purpose: kcl:publish
+    # renders main.k, so the Cluster cannot reach the published base by anyone
+    # setting a value. The invariant holds by construction, not by default.
+    #
+    # Both read the fields below, which is the point. Today the owner role, the
+    # database name and the Service the DSN dials are spread across a helmfile
+    # invocation, a Vault entry and this module, and keeping them equal is
+    # something a human does. Rendered from one place they cannot drift.
     dbClusterName: str = "schmetterpause-db"
     dbName: str = "schmetterpause"
     dbPort: int = 5432
@@ -119,6 +127,33 @@ schema Schmetterpause:
     # Empty means "<dbClusterName>-rw.<namespace>.svc", the primary Service the
     # CNPG Cluster publishes.
     dbHost: str = ""
+
+    # The owner role. Empty means `name`. Whatever this ends up being has to
+    # equal the `username` in the secret store, because that Secret is what
+    # CloudNativePG reads the credentials from at initdb — a mismatch creates a
+    # role the DSN never uses.
+    dbOwner: str = ""
+
+    # Only read by database.k. One instance is lab-shaped: an instance failure
+    # is downtime and possible data loss, there being no replica to fail over
+    # to. Replicas and backups protect against different things, and the
+    # realistic danger on a test cluster is a deliberate rebuild, against which
+    # a replica does nothing — so the trigger for raising this is backups, not
+    # replicas.
+    dbInstances: int = 1
+    dbStorageSize: str = "8Gi"
+
+    # Empty means the cluster's default StorageClass.
+    dbStorageClass: str = ""
+
+    # Named outright rather than derived from a version number: the CNPG Helm
+    # chart maps `version.postgresql` onto an image, and reproducing that
+    # mapping here would be a second place for it to be wrong.
+    dbImage: str = "ghcr.io/cloudnative-pg/postgresql:17"
+
+    # Off by default: with it disabled the operator blanks the postgres
+    # password, so the owner role is the only way in.
+    dbSuperuserAccess: bool = False
 
     # ── Secrets ─────────────────────────────────────────────────────────────
     
@@ -157,6 +192,7 @@ schema Schmetterpause:
         servicePort >= 1 and servicePort <= 65535, "servicePort must be a valid port"
         containerPort >= 1 and containerPort <= 65535, "containerPort must be a valid port"
         dbPort >= 1 and dbPort <= 65535, "dbPort must be a valid port"
+        dbInstances >= 1, "dbInstances must be at least 1"
         logLevel in ["debug", "info", "warn", "error"], "logLevel must be one of debug, info, warn, error"
         secretsMode in ["external", "existing"], "secretsMode must be 'external' or 'existing'"
         secretsMode != "external" or secretStoreName != "", "secretsMode 'external' needs secretStoreName"

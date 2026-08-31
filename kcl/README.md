@@ -23,6 +23,8 @@ task kcl:kustomize                   # kustomize base into build/kustomize
 task kcl:publish TAG=v1.2.3          # base to GHCR as an OCI artefact
 
 task kcl:apply                       # render and apply to the current context
+task kcl:database                    # the CloudNativePG Cluster, on its own
+task kcl:up                          # namespace, application and database, in order
 task kcl:secrets NAMESPACE=…         # the two Secrets by hand, without ESO
 ```
 
@@ -73,12 +75,25 @@ SharedResource — and one Application's prune cycle deletes the namespace out
 from under the others. The consuming Application sets `CreateNamespace=true`
 instead.
 
-**No CloudNativePG Cluster.** For a related reason with worse consequences: the
-database outlives every revision of the application. A base that carries the
-`Cluster` is a base whose removal can take the data with it. The `Cluster` is
-its own Argo Application from `infra/cloudnative-pg/cluster` in the catalogue,
-into the same namespace, at a lower sync-wave — so it exists before the
-migration initContainer runs.
+**No CloudNativePG Cluster** — not from `main.k`. For a related reason with
+worse consequences: the database outlives every revision of the application. A
+base that carries the `Cluster` is a base whose removal can take the data with
+it. Under ArgoCD the `Cluster` is its own Application from
+`infra/cloudnative-pg/cluster` in the catalogue, into the same namespace, at a
+lower sync-wave — so it exists before the migration initContainer runs.
+
+`database.k` renders one for the path where nothing prunes: a test cluster, a
+first bring-up, fault-finding. It is a **separate entry point rather than a
+flag** on purpose. `kcl:publish` renders `main.k`, so no value anyone sets can
+put a Cluster into the published artefact — the invariant holds by construction
+instead of by a default nobody changed.
+
+Rendering it from the same module is what stops values drifting: `initdb.owner`,
+`initdb.database` and the Service the DSN dials come from `config.dbOwner`,
+`config.dbName` and `config.dbClusterName`, and `initdb.secret` names the Secret
+the DSN is built from. The one thing the module cannot check is `username` in
+the secret store — it has to equal `dbOwner`, because that Secret is where CNPG
+reads the credentials.
 
 ## Two things that are not what they look like
 
@@ -196,6 +211,10 @@ The full list, with reasoning, is in `schema.k`. What one actually sets:
 | `config.vaultPath` | *(empty)* | A path, never a value |
 | `config.replicas` | `1` | A `check:` holds it there, see below |
 | `config.bootstrapAdmin` | *(empty)* | Display name, takes effect at startup |
+| `config.dbOwner` | *(empty)* | Empty means `name`; must equal `username` in the store |
+| `config.dbInstances` | `1` | `database.k` only |
+| `config.dbStorageSize` / `…Class` | `8Gi` / *(empty)* | `database.k` only; empty class = the cluster default |
+| `config.dbImage` | `…/postgresql:17` | `database.k` only |
 
 ### Why `replicas` is pinned at 1
 
