@@ -24,18 +24,21 @@ const (
 )
 
 // DefaultBestOf is the mode a form comes up in. Three, because that is what
-// gets played in a break: five sets is a match somebody planned for.
+// gets played in a break: five sets is a match somebody planned for, and a
+// single set is one somebody has to mean (issue #114).
 const DefaultBestOf = 3
 
 // allowedBestOf mirrors the matches_best_of_valid constraint in the schema.
-var allowedBestOf = map[int]bool{3: true, 5: true, 7: true}
+// One is in there since issue #114: a single set played in a break is a match,
+// and calling it a best of three would be a lie about how it was played.
+var allowedBestOf = map[int]bool{1: true, 3: true, 5: true, 7: true}
 
 // allowedPointsToWin mirrors the decision in issue #19.
 var allowedPointsToWin = map[int]bool{PointsToEleven: true, PointsToTwentyOne: true}
 
 // Mode is how a match is played.
 type Mode struct {
-	// BestOf is the number of sets at most: 3, 5 or 7.
+	// BestOf is the number of sets at most: 1, 3, 5 or 7.
 	BestOf int
 	// PointsToWin is the target score of a single set: 11 or 21.
 	PointsToWin int

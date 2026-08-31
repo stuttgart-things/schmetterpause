@@ -13,7 +13,7 @@ func bestOf(n, points int) match.Mode {
 }
 
 func TestSetsToWin(t *testing.T) {
-	for _, tc := range []struct{ bestOf, want int }{{3, 2}, {5, 3}, {7, 4}} {
+	for _, tc := range []struct{ bestOf, want int }{{1, 1}, {3, 2}, {5, 3}, {7, 4}} {
 		if got := (match.Mode{BestOf: tc.bestOf}).SetsToWin(); got != tc.want {
 			t.Errorf("best-of-%d needs %d sets, want %d", tc.bestOf, got, tc.want)
 		}
@@ -50,6 +50,17 @@ func TestValidateAcceptsRealResults(t *testing.T) {
 			name: "to twenty-one", mode: bestOf(3, 21),
 			sets:     []match.Set{{21, 19}, {19, 21}, {23, 21}},
 			wantHome: 2, wantAway: 1, wantHomeWon: true,
+		},
+		{
+			// Issue #114: the mode most breaks actually produce.
+			name: "a single set", mode: bestOf(1, 11),
+			sets:     []match.Set{{11, 8}},
+			wantHome: 1, wantAway: 0, wantHomeWon: true,
+		},
+		{
+			name: "a single set to twenty-one, lost", mode: bestOf(1, 21),
+			sets:     []match.Set{{19, 21}},
+			wantHome: 0, wantAway: 1, wantHomeWon: false,
 		},
 		{
 			name: "away takes it", mode: bestOf(3, 11),
@@ -135,6 +146,12 @@ func TestValidateRejectsImpossibleResults(t *testing.T) {
 		{
 			name: "no sets at all", mode: bestOf(3, 11),
 			sets: nil, want: match.KindNoSets,
+		},
+		{
+			// One set is the whole match, so a second one cannot have been
+			// played — the same rejection a fourth set gets in best-of-three.
+			name: "a second set in the one-set mode", mode: bestOf(1, 11),
+			sets: []match.Set{{11, 0}, {11, 0}}, want: match.KindTooManySets,
 		},
 		{
 			name: "best-of-four is not a thing", mode: bestOf(4, 11),
