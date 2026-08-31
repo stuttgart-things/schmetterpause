@@ -130,6 +130,22 @@ type IndexView struct {
 	// ShowMatch hides result entry from anyone who is not recognised yet —
 	// a match has to be attributable to whoever reported it.
 	ShowMatch bool
+	// SignIn and ShowSignIn decide which door the start page opens on for a
+	// browser nobody is recognised in.
+	//
+	// Signing in is the common case once a roster exists: joining happens
+	// once per person, being forgotten by a browser happens repeatedly. So
+	// the picker comes first and joining is the link underneath — the
+	// reverse of how this started, and the reverse of what the comment on
+	// .session-alt used to claim.
+	//
+	// It is a flag rather than "are there players", because the answer has
+	// to fall back to joining in two different situations: an empty roster,
+	// where a picker would offer nothing, and a player list that failed to
+	// load, where refusing the page over it would be worse than showing the
+	// form that still works.
+	SignIn     SignInView
+	ShowSignIn bool
 }
 
 // SessionView drives the join form and the signed-in notice. Both render into
@@ -220,10 +236,38 @@ type SignInView struct {
 	// Error explains why the last attempt was refused, in one wording for
 	// every reason. Which half was wrong is deliberately not said.
 	Error string
+	// Recovery puts the secret field on the recovery code rather than the
+	// PIN. The two need different keyboards and cannot share one set of
+	// attributes: a PIN wants inputmode="numeric", and a code is sixteen
+	// characters of Crockford base32 that a numeric keypad cannot type
+	// (issue #117, docs/adr/0006).
+	//
+	// The PIN is the default because it is the daily case — set once,
+	// entered on every new device and after every lost cookie.
+	//
+	// Deliberately not derived from the chosen player. The server knows who
+	// has a PIN, but signInRefused keeps one wording for every failure
+	// precisely so nobody learns that about somebody else, and a form that
+	// adapted would leak what the message refuses to.
+	Recovery bool
 }
 
 // SignedIn reports whether a player is recognised.
 func (v SessionView) SignedIn() bool { return v.DisplayName != "" }
+
+// SecretModeRecovery is the value of the hidden secret_mode field that puts
+// the sign-in field on the recovery code. Anything else means the PIN, so a
+// missing or mangled value lands on the default rather than nowhere.
+const SecretModeRecovery = "recovery"
+
+// secretMode is what goes back into the form, so a refused attempt returns on
+// the keyboard it was made from.
+func (v SignInView) secretMode() string {
+	if v.Recovery {
+		return SecretModeRecovery
+	}
+	return "pin"
+}
 
 // anySelected reports whether the picker already stands on somebody, which
 // is the case after a refused attempt. Without it the placeholder would take
@@ -253,6 +297,20 @@ func SetRows(sets []SetInput, bestOf int) []SetInput {
 		return sets
 	}
 	return sets[:bestOf]
+}
+
+// BestOfOptions is the mode picker's choices, shortest first. It mirrors
+// allowedBestOf in the match package, which mirrors the schema constraint.
+var BestOfOptions = []int{1, 3, 5, 7}
+
+// BestOfLabel names a mode the way it gets said at the table. "Best of 1" is
+// how the number reads and not what anybody calls a single set, so the one
+// case gets its own words (issue #114).
+func BestOfLabel(bestOf int) string {
+	if bestOf == 1 {
+		return "Ein Satz"
+	}
+	return "Best of " + strconv.Itoa(bestOf)
 }
 
 // ServeEvery is how many points a player serves in a row before the service

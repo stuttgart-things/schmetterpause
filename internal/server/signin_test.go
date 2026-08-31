@@ -265,6 +265,136 @@ func TestTheStartPageOffersSigningIn(t *testing.T) {
 	}
 }
 
+// TestTheStartPageOpensOnSignInOnceAnybodyIsOnTheRoster is the swap: joining
+// happens once per person, a browser forgetting them happens again and again,
+// so the picker is the card and joining is the link under it.
+func TestTheStartPageOpensOnSignInOnceAnybodyIsOnTheRoster(t *testing.T) {
+	store := newMemStore()
+	h := newHandlerWith(store, auth.NewCookieAuthenticator(store.Identities(), testSessionKey, false))
+
+	if _, err := store.Players().Create(t.Context(), "Anna", domain.DefaultTTR); err != nil {
+		t.Fatalf("Create(): %v", err)
+	}
+
+	body := get(t, h, "/").Body.String()
+
+	if !strings.Contains(body, `name="player_id"`) {
+		t.Errorf("the start page does not open on the name picker: %s", body)
+	}
+	if !strings.Contains(body, ">Anna<") {
+		t.Errorf("the picker does not list anybody: %s", body)
+	}
+	// And the other door is still there, one click away.
+	if !strings.Contains(body, `hx-get="/fragments/join"`) {
+		t.Errorf("a newcomer is not offered a way to join: %s", body)
+	}
+	if strings.Contains(body, `name="display_name"`) {
+		t.Errorf("both forms are on the page at once: %s", body)
+	}
+}
+
+// TestAnEmptyRosterOpensOnJoining is the case a picker cannot serve: with
+// nobody to pick, "Namen wählen …" is a dead end, and the first player has to
+// be able to get in.
+func TestAnEmptyRosterOpensOnJoining(t *testing.T) {
+	store := newMemStore()
+	h := newHandlerWith(store, auth.NewCookieAuthenticator(store.Identities(), testSessionKey, false))
+
+	body := get(t, h, "/").Body.String()
+
+	if !strings.Contains(body, `name="display_name"`) {
+		t.Errorf("the first player is offered no way in: %s", body)
+	}
+	if strings.Contains(body, `name="player_id"`) {
+		t.Errorf("an empty roster still renders a picker with nothing in it: %s", body)
+	}
+}
+
+// TestTheSecretFieldOpensOnTheNumberPad is issue #117: docs/adr/0007 asked for
+// a strictly numeric field and the attribute only ever reached the form that
+// sets a PIN, not the one that asks for it every time.
+func TestTheSecretFieldOpensOnTheNumberPad(t *testing.T) {
+	store := newMemStore()
+	h := newHandlerWith(store, auth.NewCookieAuthenticator(store.Identities(), testSessionKey, false))
+
+	body := get(t, h, "/fragments/signin").Body.String()
+
+	if !strings.Contains(body, `inputmode="numeric"`) {
+		t.Errorf("the sign-in field does not ask for the number pad: %s", body)
+	}
+	// The code needs letters, so the way to it has to be on the page.
+	if !strings.Contains(body, "Wiederherstellungscode") {
+		t.Errorf("no way to switch to the recovery code: %s", body)
+	}
+}
+
+// TestTheRecoveryCodeGetsALetterKeyboard is the other half: sixteen characters
+// of Crockford base32 cannot be typed on a number pad at all.
+func TestTheRecoveryCodeGetsALetterKeyboard(t *testing.T) {
+	store := newMemStore()
+	h := newHandlerWith(store, auth.NewCookieAuthenticator(store.Identities(), testSessionKey, false))
+
+	body := get(t, h, "/fragments/signin-secret?mode=recovery").Body.String()
+
+	if strings.Contains(body, `inputmode="numeric"`) {
+		t.Errorf("the recovery code is stuck on the number pad: %s", body)
+	}
+	if !strings.Contains(body, `autocapitalize="characters"`) {
+		t.Errorf("the code field does not expect upper case: %s", body)
+	}
+	// Both fields post the same name to the same endpoint; only the keyboard
+	// differs (docs/adr/0007: one form for both kinds).
+	if !strings.Contains(body, `name="secret"`) {
+		t.Errorf("the switched field posts under another name: %s", body)
+	}
+}
+
+// TestAnUnknownKeyboardModeFallsBackToThePIN keeps a mangled query string from
+// landing somewhere that is neither.
+func TestAnUnknownKeyboardModeFallsBackToThePIN(t *testing.T) {
+	store := newMemStore()
+	h := newHandlerWith(store, auth.NewCookieAuthenticator(store.Identities(), testSessionKey, false))
+
+	body := get(t, h, "/fragments/signin-secret?mode=nonsense").Body.String()
+
+	if !strings.Contains(body, `inputmode="numeric"`) {
+		t.Errorf("an unknown mode does not land on the PIN: %s", body)
+	}
+}
+
+// TestARefusedCodeComesBackOnTheSameKeyboard is what the hidden field is for.
+// Without it, mistyping one character of a sixteen-character code would drop
+// somebody back onto the number pad — which is the dead end from issue #70
+// rebuilt one step further along.
+func TestARefusedCodeComesBackOnTheSameKeyboard(t *testing.T) {
+	store := newMemStore()
+	h := newHandlerWith(store, auth.NewCookieAuthenticator(store.Identities(), testSessionKey, false))
+
+	join(t, h, "Anna")
+	players, _ := store.Players().List(t.Context())
+
+	form := url.Values{
+		"player_id":   {players[0].ID.String()},
+		"secret":      {"WRONG-CODE-HERE-XXXX"},
+		"secret_mode": {"recovery"},
+	}
+	r := httptest.NewRequest(http.MethodPost, "/signin", strings.NewReader(form.Encode()))
+	r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, r)
+
+	if rec.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("status = %d, want 422", rec.Code)
+	}
+	body := rec.Body.String()
+	if strings.Contains(body, `inputmode="numeric"`) {
+		t.Errorf("a refused code came back on the number pad: %s", body)
+	}
+	if !strings.Contains(body, `value="recovery"`) {
+		t.Errorf("the keyboard was not carried back into the form: %s", body)
+	}
+}
+
 // A PIN is the other kind the same field takes. Nothing sets one yet — that
 // is the next step — so this puts one in through the repository directly and
 // checks the form does not care which kind it got.

@@ -9,7 +9,13 @@ import (
 templ Index(v IndexView) {
 	@Layout("Start", v.Header) {
 		@PageHead(v.Session)
-		@Session(v.Session)
+		// Two ways in, one region. Both render a #session section, so the
+		// links inside them keep swapping one for the other in place.
+		if v.ShowSignIn {
+			@SignIn(v.SignIn)
+		} else {
+			@Session(v.Session)
+		}
 		// Both sections stay in the document for a reader nobody is signed
 		// in as, empty and unstyled. Joining fills them from the same
 		// response that creates the player, and an out-of-band swap can only
@@ -65,7 +71,11 @@ templ pageHeadBody(v SessionView) {
 			<h1>Hallo, { v.DisplayName }</h1>
 		} else {
 			<h1>Büro-Tischtennis</h1>
-			<p class="muted">Trag deinen Namen ein und spiel mit.</p>
+			// Says what this is, not what to do next. Which door the card
+			// below opens on depends on whether anybody is on the roster
+			// yet, and an instruction to type a name is wrong under the
+			// picker — where the point is that you do not have to.
+			<p class="muted">Ergebnisse eintragen und sehen, wo du stehst.</p>
 		}
 	</div>
 	@PageMascot(PaddleClass(v.PlayerID))

@@ -162,7 +162,8 @@ Wer sich trotzdem unter einem zweiten Namen einträgt, steht zweimal in der
 Rangliste; die beiden zusammenzuführen geht weiterhin nicht.
 
 **Ergebnis eintragen.** Zwei Spieler wählen, Modus einstellen, Sätze eintragen.
-Die Zeilen richten sich nach dem Modus: Best of 3 zeigt drei, Best of 7 sieben.
+Die Zeilen richten sich nach dem Modus: Best of 3 zeigt drei, Best of 7 sieben,
+„Ein Satz" eine.
 
 **Diese Ergebnisse zählen sofort.** Keine Bestätigung, keine Warteschlange —
 wer sie eintippt, steht neben der Platte und hat das Match gesehen. Die

@@ -78,6 +78,7 @@ func (s *Server) routes() http.Handler {
 	// fragments serve the same region, so the two ways in replace each other
 	// on the start page rather than sitting side by side.
 	page.HandleFunc("GET /fragments/signin", s.handleSignInForm)
+	page.HandleFunc("GET /fragments/signin-secret", s.handleSignInSecret)
 	page.HandleFunc("GET /fragments/join", s.handleJoinForm)
 	page.HandleFunc("POST /signin", s.handleSignIn)
 	// Only ever for yourself, which is what RequirePlayer says here. Issuing

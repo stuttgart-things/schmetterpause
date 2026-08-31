@@ -71,7 +71,7 @@ matches
   id            uuid pk
   home_id       uuid fk players
   away_id       uuid fk players
-  best_of       int not null            -- 3, 5, 7
+  best_of       int not null            -- 1, 3, 5, 7
   points_to_win int not null default 11
   status        text not null           -- pending | confirmed | disputed
   reported_by   uuid fk players

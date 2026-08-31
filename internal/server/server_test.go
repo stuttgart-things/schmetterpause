@@ -438,8 +438,15 @@ func TestARestartWithADifferentKeyForgetsEverybody(t *testing.T) {
 	rec := httptest.NewRecorder()
 	other.ServeHTTP(rec, r)
 
-	if !strings.Contains(rec.Body.String(), `name="display_name"`) {
+	// What matters is that the browser is a stranger again, not which door
+	// it is offered: with Anna on the roster that is the sign-in picker, and
+	// on an empty one it would be the join form.
+	body := rec.Body.String()
+	if strings.Contains(body, "Hallo, Anna") {
 		t.Error("a cookie signed with another key was accepted")
+	}
+	if !strings.Contains(body, `name="secret"`) && !strings.Contains(body, `name="display_name"`) {
+		t.Errorf("a stranger is offered no way in at all: %s", body)
 	}
 }
 
