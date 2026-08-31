@@ -1,6 +1,10 @@
 package templates
 
-// SignIn is the way back for a browser that has no cookie any more.
+// SignIn is the front door once anybody is on the roster, and the way back
+// for a browser that has no cookie any more — which turned out to be the same
+// door. Joining happens once per person; being forgotten by a browser happens
+// again and again, so this is what most arrivals need and it is what the
+// start page opens on (see IndexView.ShowSignIn).
 //
 // Name first, secret second, one form for both kinds (docs/adr/0007). The
 // field takes a PIN or a recovery code without asking which, because
@@ -13,13 +17,20 @@ templ SignIn(v SignInView) {
 	<section id="session" class="session">
 		<h2>Anmelden</h2>
 		<form hx-post="/signin" hx-target="#session" hx-swap="outerHTML">
-			<label for="signin-player">Wer bist du?</label>
-			<select id="signin-player" name="player_id" required>
-				<option value="" disabled selected?={ !v.anySelected() }>Namen wählen …</option>
-				for _, p := range v.Players {
-					<option value={ p.ID } selected?={ p.Selected }>{ p.DisplayName }</option>
-				}
-			</select>
+			// Each label sits in its own row. Labels are inline-block by
+			// default, which is what the join form wants — one label, one
+			// field, one button on a line — and what this form cannot have:
+			// two of them flow into each other and the second label lands
+			// beside the select it does not belong to.
+			<div class="row">
+				<label for="signin-player">Wer bist du?</label>
+				<select id="signin-player" name="player_id" required>
+					<option value="" disabled selected?={ !v.anySelected() }>Namen wählen …</option>
+					for _, p := range v.Players {
+						<option value={ p.ID } selected?={ p.Selected }>{ p.DisplayName }</option>
+					}
+				</select>
+			</div>
 			<label for="signin-secret">PIN oder Wiederherstellungscode</label>
 			<div class="secret-field">
 				// type=password so a password manager recognises the field and

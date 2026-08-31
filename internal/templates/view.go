@@ -130,6 +130,22 @@ type IndexView struct {
 	// ShowMatch hides result entry from anyone who is not recognised yet —
 	// a match has to be attributable to whoever reported it.
 	ShowMatch bool
+	// SignIn and ShowSignIn decide which door the start page opens on for a
+	// browser nobody is recognised in.
+	//
+	// Signing in is the common case once a roster exists: joining happens
+	// once per person, being forgotten by a browser happens repeatedly. So
+	// the picker comes first and joining is the link underneath — the
+	// reverse of how this started, and the reverse of what the comment on
+	// .session-alt used to claim.
+	//
+	// It is a flag rather than "are there players", because the answer has
+	// to fall back to joining in two different situations: an empty roster,
+	// where a picker would offer nothing, and a player list that failed to
+	// load, where refusing the page over it would be worse than showing the
+	// form that still works.
+	SignIn     SignInView
+	ShowSignIn bool
 }
 
 // SessionView drives the join form and the signed-in notice. Both render into
