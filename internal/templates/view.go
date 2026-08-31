@@ -236,10 +236,38 @@ type SignInView struct {
 	// Error explains why the last attempt was refused, in one wording for
 	// every reason. Which half was wrong is deliberately not said.
 	Error string
+	// Recovery puts the secret field on the recovery code rather than the
+	// PIN. The two need different keyboards and cannot share one set of
+	// attributes: a PIN wants inputmode="numeric", and a code is sixteen
+	// characters of Crockford base32 that a numeric keypad cannot type
+	// (issue #117, docs/adr/0006).
+	//
+	// The PIN is the default because it is the daily case — set once,
+	// entered on every new device and after every lost cookie.
+	//
+	// Deliberately not derived from the chosen player. The server knows who
+	// has a PIN, but signInRefused keeps one wording for every failure
+	// precisely so nobody learns that about somebody else, and a form that
+	// adapted would leak what the message refuses to.
+	Recovery bool
 }
 
 // SignedIn reports whether a player is recognised.
 func (v SessionView) SignedIn() bool { return v.DisplayName != "" }
+
+// SecretModeRecovery is the value of the hidden secret_mode field that puts
+// the sign-in field on the recovery code. Anything else means the PIN, so a
+// missing or mangled value lands on the default rather than nowhere.
+const SecretModeRecovery = "recovery"
+
+// secretMode is what goes back into the form, so a refused attempt returns on
+// the keyboard it was made from.
+func (v SignInView) secretMode() string {
+	if v.Recovery {
+		return SecretModeRecovery
+	}
+	return "pin"
+}
 
 // anySelected reports whether the picker already stands on somebody, which
 // is the case after a refused attempt. Without it the placeholder would take

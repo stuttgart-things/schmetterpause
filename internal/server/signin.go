@@ -74,6 +74,28 @@ func (s *Server) handleSignInForm(w http.ResponseWriter, r *http.Request) {
 	s.render(w, r, templates.SignIn(view))
 }
 
+// handleSignInSecret serves the secret field on its own, so the two keyboards
+// replace each other without touching the name picker above them.
+//
+// It carries no state beyond the mode, so there is nothing to look up and
+// nothing to get wrong: a request without ?mode= is the PIN, which is also
+// what an unknown value lands on.
+func (s *Server) handleSignInSecret(w http.ResponseWriter, r *http.Request) {
+	s.render(w, r, templates.SignInSecret(templates.SignInView{
+		Recovery: r.URL.Query().Get("mode") == templates.SecretModeRecovery,
+	}))
+}
+
+// recoveryRequested reads which keyboard the attempt was made on, so a
+// rejection comes back on the same one.
+//
+// Off the request rather than through every rejecting call site: there are
+// seven of those and none of them cares, which is how a parameter nobody
+// passes correctly gets introduced.
+func recoveryRequested(r *http.Request) bool {
+	return r.FormValue("secret_mode") == templates.SecretModeRecovery
+}
+
 // handleJoinForm serves the join form on its own, which is the way back from
 // the sign-in form for somebody who is not on the list after all.
 func (s *Server) handleJoinForm(w http.ResponseWriter, r *http.Request) {
@@ -189,6 +211,7 @@ func (s *Server) refuseForNow(w http.ResponseWriter, r *http.Request, selected u
 		return
 	}
 	view.Error = "Zu viele Fehlversuche. Probier es in " + waitInWords(wait) + " noch einmal."
+	view.Recovery = recoveryRequested(r)
 
 	// Retry-After is in seconds and has to be at least one, or a client that
 	// reads it learns nothing.
@@ -309,6 +332,7 @@ func (s *Server) rejectSignIn(w http.ResponseWriter, r *http.Request, selected u
 		return
 	}
 	view.Error = msg
+	view.Recovery = recoveryRequested(r)
 
 	// 422 rather than 401: the request was well formed, what was in it was
 	// not, and this is the same shape every other rejected form on this page

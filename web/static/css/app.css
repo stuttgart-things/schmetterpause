@@ -303,6 +303,16 @@ h2 {
 	font-size: 0.9rem;
 }
 
+/* The other keyboard, under the field rather than under the card. No rule
+   above it: .session-alt separates two ways into the app, this separates two
+   spellings of one answer, and a border would make them look equally far
+   apart. */
+.field-alt {
+	margin: 0.45rem 0 0;
+	color: var(--muted);
+	font-size: 0.85rem;
+}
+
 /* A button, because it does something rather than going somewhere — but it
    reads as a link, because a second full-width button beside "Anmelden" would
    present two equal choices where one is the common case. */
