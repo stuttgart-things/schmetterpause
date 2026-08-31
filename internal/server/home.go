@@ -75,6 +75,28 @@ func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 	}
 	view.Standings = table
 
+	// Which door a stranger gets. Signing in is the common case once
+	// anybody is on the roster — joining happens once per person, a browser
+	// forgetting them happens again and again — so the picker is the card
+	// and joining is the link underneath it.
+	//
+	// Two situations fall back to the join form, and neither is an error
+	// worth a 500: an empty roster, where the picker would offer nothing at
+	// all, and a list that failed to load, where the form that still works
+	// beats a page that does not. The failure is logged either way.
+	if !view.Session.SignedIn() {
+		signIn, err := s.signInView(r.Context(), uuid.Nil)
+		switch {
+		case err != nil:
+			s.log.ErrorContext(r.Context(),
+				"loading the player list failed, falling back to the join form",
+				"error", err)
+		case len(signIn.Players) > 0:
+			view.SignIn = signIn
+			view.ShowSignIn = true
+		}
+	}
+
 	// Result entry needs somebody to attribute the report to, so it appears
 	// only once the browser is recognised.
 	if self, ok := auth.PlayerID(r.Context()); ok {

@@ -265,6 +265,51 @@ func TestTheStartPageOffersSigningIn(t *testing.T) {
 	}
 }
 
+// TestTheStartPageOpensOnSignInOnceAnybodyIsOnTheRoster is the swap: joining
+// happens once per person, a browser forgetting them happens again and again,
+// so the picker is the card and joining is the link under it.
+func TestTheStartPageOpensOnSignInOnceAnybodyIsOnTheRoster(t *testing.T) {
+	store := newMemStore()
+	h := newHandlerWith(store, auth.NewCookieAuthenticator(store.Identities(), testSessionKey, false))
+
+	if _, err := store.Players().Create(t.Context(), "Anna", domain.DefaultTTR); err != nil {
+		t.Fatalf("Create(): %v", err)
+	}
+
+	body := get(t, h, "/").Body.String()
+
+	if !strings.Contains(body, `name="player_id"`) {
+		t.Errorf("the start page does not open on the name picker: %s", body)
+	}
+	if !strings.Contains(body, ">Anna<") {
+		t.Errorf("the picker does not list anybody: %s", body)
+	}
+	// And the other door is still there, one click away.
+	if !strings.Contains(body, `hx-get="/fragments/join"`) {
+		t.Errorf("a newcomer is not offered a way to join: %s", body)
+	}
+	if strings.Contains(body, `name="display_name"`) {
+		t.Errorf("both forms are on the page at once: %s", body)
+	}
+}
+
+// TestAnEmptyRosterOpensOnJoining is the case a picker cannot serve: with
+// nobody to pick, "Namen wählen …" is a dead end, and the first player has to
+// be able to get in.
+func TestAnEmptyRosterOpensOnJoining(t *testing.T) {
+	store := newMemStore()
+	h := newHandlerWith(store, auth.NewCookieAuthenticator(store.Identities(), testSessionKey, false))
+
+	body := get(t, h, "/").Body.String()
+
+	if !strings.Contains(body, `name="display_name"`) {
+		t.Errorf("the first player is offered no way in: %s", body)
+	}
+	if strings.Contains(body, `name="player_id"`) {
+		t.Errorf("an empty roster still renders a picker with nothing in it: %s", body)
+	}
+}
+
 // A PIN is the other kind the same field takes. Nothing sets one yet — that
 // is the next step — so this puts one in through the repository directly and
 // checks the form does not care which kind it got.
