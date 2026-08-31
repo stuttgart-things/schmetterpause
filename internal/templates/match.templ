@@ -90,9 +90,9 @@ templ modeRow(prefix string, bestOf, pointsToWin int) {
 			hx-include="closest form"
 			hx-sync="closest form:replace"
 		>
-			for _, n := range []int{3, 5, 7} {
+			for _, n := range BestOfOptions {
 				<option value={ strconv.Itoa(n) } selected?={ bestOf == n }>
-					Best of { strconv.Itoa(n) }
+					{ BestOfLabel(n) }
 				</option>
 			}
 		</select>
@@ -133,8 +133,10 @@ templ setRows(prefix string, sets []SetInput, bestOf, pointsToWin int, homeLabel
 			{ strconv.Itoa(ServeEvery(pointsToWin)) } Punkten. Steht es
 			{ strconv.Itoa(DeuceFrom(pointsToWin)) }:{ strconv.Itoa(DeuceFrom(pointsToWin)) },
 			geht der Satz weiter, bis jemand zwei Punkte vorn liegt &mdash; und
-			der Aufschlag wechselt dann nach jedem Punkt. Nicht gespielte Sätze
-			auf 0:0 stehen lassen.
+			der Aufschlag wechselt dann nach jedem Punkt.
+			if bestOf > 1 {
+				Nicht gespielte Sätze auf 0:0 stehen lassen.
+			}
 		</p>
 		// Which column is whose. The colon between two boxes says nothing
 		// about that, and at the table nobody stops to work it out.

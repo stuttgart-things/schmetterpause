@@ -255,6 +255,20 @@ func SetRows(sets []SetInput, bestOf int) []SetInput {
 	return sets[:bestOf]
 }
 
+// BestOfOptions is the mode picker's choices, shortest first. It mirrors
+// allowedBestOf in the match package, which mirrors the schema constraint.
+var BestOfOptions = []int{1, 3, 5, 7}
+
+// BestOfLabel names a mode the way it gets said at the table. "Best of 1" is
+// how the number reads and not what anybody calls a single set, so the one
+// case gets its own words (issue #114).
+func BestOfLabel(bestOf int) string {
+	if bestOf == 1 {
+		return "Ein Satz"
+	}
+	return "Best of " + strconv.Itoa(bestOf)
+}
+
 // ServeEvery is how many points a player serves in a row before the service
 // changes: two in a set to eleven, five in a set to twenty-one.
 //

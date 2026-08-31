@@ -167,6 +167,26 @@ func TestRecordingAMatchToTwentyOne(t *testing.T) {
 	}
 }
 
+// TestRecordingASingleSet covers issue #114: one set is a whole match, and it
+// has to survive the round trip through the form the same way any other mode
+// does.
+func TestRecordingASingleSet(t *testing.T) {
+	h, store, cookie := twoPlayers(t)
+
+	rec := recordMatch(t, h, cookie, opponentID(t, store, "Bodo"), 1, 11, "11:8")
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200: %s", rec.Code, rec.Body.String())
+	}
+	m := store.matches.all()[0]
+	if m.BestOf != 1 {
+		t.Errorf("BestOf = %d, want 1", m.BestOf)
+	}
+	if len(m.Sets) != 1 {
+		t.Errorf("%d sets were stored, want 1", len(m.Sets))
+	}
+}
+
 // TestARejectedResultSaysWhy is the Definition of Done of AP4. Each case
 // checks for wording specific to the rule that was broken, so a generic
 // "ungültige Eingabe" would fail every one of them.
@@ -204,6 +224,26 @@ func TestARejectedResultSaysWhy(t *testing.T) {
 				t.Errorf("%d matches were stored despite the rejection, want 0", n)
 			}
 		})
+	}
+}
+
+// TestASecondSetInTheOneSetModeSaysWhy holds the wording apart from the
+// best-of table: "Bei Best of 1 sind höchstens 1 Sätze möglich" is what the
+// shared sentence would produce, and it is wrong twice over.
+func TestASecondSetInTheOneSetModeSaysWhy(t *testing.T) {
+	h, store, cookie := twoPlayers(t)
+
+	rec := recordMatch(t, h, cookie, opponentID(t, store, "Bodo"), 1, 11, "11:8", "11:6")
+
+	if rec.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("status = %d, want 422", rec.Code)
+	}
+	body := rec.Body.String()
+	if !strings.Contains(body, "zählt nur ein Satz") {
+		t.Errorf("the message does not name the one-set mode: %s", body)
+	}
+	if strings.Contains(body, "Best of 1") {
+		t.Errorf("the message calls a single set a best of one: %s", body)
 	}
 }
 
@@ -300,6 +340,38 @@ func setsFragment(t *testing.T, h http.Handler, cookie *http.Cookie, q url.Value
 		t.Fatalf("status = %d, want 200", rec.Code)
 	}
 	return rec.Body.String()
+}
+
+// TestTheOneSetModeIsOffered covers the picker half of issue #114: the option
+// has to be there, named the way it gets said at the table, and picking it has
+// to leave exactly one row behind.
+func TestTheOneSetModeIsOffered(t *testing.T) {
+	h, _, cookie := twoPlayers(t)
+
+	form := fragment(t, h, "/fragments/match", cookie).Body.String()
+	if !strings.Contains(form, `<option value="1"`) {
+		t.Errorf("the mode picker does not offer a single set: %s", form)
+	}
+	if !strings.Contains(form, "Ein Satz") {
+		t.Errorf("the one-set option is not named in German: %s", form)
+	}
+
+	sets := setsFragment(t, h, cookie, url.Values{
+		"sets_prefix":   {"entry"},
+		"best_of":       {"1"},
+		"points_to_win": {"11"},
+	})
+	if !strings.Contains(sets, `name="set_home_1"`) {
+		t.Errorf("the one-set mode shows no set at all: %s", sets)
+	}
+	if strings.Contains(sets, `name="set_home_2"`) {
+		t.Errorf("the one-set mode offers a second set: %s", sets)
+	}
+	// The hint about leaving unplayed sets at 0:0 has nothing to say when
+	// there is only one row.
+	if strings.Contains(sets, "Nicht gespielte Sätze") {
+		t.Errorf("the one-set mode explains unplayed sets it cannot have: %s", sets)
+	}
 }
 
 func TestTheFormOffersOnlyTheSetsTheModeCanHave(t *testing.T) {

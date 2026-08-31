@@ -272,6 +272,12 @@ func describeRejection(err error) string {
 	case match.KindNoSets:
 		return "Trag mindestens einen Satz ein."
 	case match.KindTooManySets:
+		// The one-set mode has no "Best of 1" to name and no plural to put
+		// the limit in, so it says the same thing in its own words.
+		if rejection.Want == 1 {
+			return fmt.Sprintf("In diesem Modus zählt nur ein Satz, eingetragen sind %d.",
+				rejection.Got)
+		}
 		return fmt.Sprintf("Bei Best of %d sind höchstens %d Sätze möglich, eingetragen sind %d.",
 			rejection.Want, rejection.Want, rejection.Got)
 	case match.KindNegativePoints:
@@ -290,6 +296,9 @@ func describeRejection(err error) string {
 			"Satz %d kann so nicht ausgegangen sein: ab %d Punkten endet der Satz, sobald jemand zwei Punkte vorn liegt.",
 			rejection.SetNo, rejection.Want)
 	case match.KindNoWinner:
+		if rejection.Want == 1 {
+			return "Das Match ist noch nicht entschieden: es braucht einen gewonnenen Satz."
+		}
 		return fmt.Sprintf("Das Match ist noch nicht entschieden: es braucht %d gewonnene Sätze.",
 			rejection.Want)
 	case match.KindSetsAfterDecision:
