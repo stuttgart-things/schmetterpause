@@ -17,16 +17,28 @@
 ## Der Office-Installation nicht in die Quere kommen
 
 Die erste Fassung sperrte dieses ADR und das Deployment-Ziel-ADR pauschal, bis
-die MVP-Messung aus #7 abgelesen ist (ab 2026-08-26, frühestens 2026-09-01
-ablesbar, #68). Diese Sperre war zu breit gefasst. #89 hält Phase 3
-ausdrücklich unabhängig von der Messung: Eine enttäuschende Zahl entscheidet,
-wozu die Anwendung wird, nicht ob sie auf Kubernetes läuft.
+die MVP-Messung aus #7 abgelesen ist. Diese Sperre war zu breit gefasst. #89
+hält Phase 3 ausdrücklich unabhängig von der Messung: Eine enttäuschende Zahl
+entscheidet, wozu die Anwendung wird, nicht ob sie auf Kubernetes läuft.
 
 **Was bleibt, ist die schmalere und dauerhaftere Fassung**, und sie steht in
 #89 als Punkt 3 der Definition of Done: *`task office:up` auf einem Laptop
 funktioniert weiterhin unverändert.* Der Rechner im Büro trägt die Messung, und
-er trägt sie unabhängig davon, was im Cluster passiert. Nicht anzufassen ist
-also die laufende Installation — nicht das Nachdenken über ihre Nachfolge.
+er trägt sie unabhängig davon, was im Cluster passiert.
+
+**Der Zeitplan dazu hat sich verschoben, und das ist keine Randnotiz.** Der
+Lauf vom 2026-08-26 ist für ungültig erklärt (#7, #68): #70 — wer sein Cookie
+verliert, kommt nicht mehr an den eigenen Spieler — hat während des Laufs so
+oft zugeschlagen, dass Ergebnisse nicht verlässlich von denen eingetragen
+wurden, die sie gespielt haben. Gezählt wurde damit etwas anderes als das, was
+#7 fragt.
+
+Das neue Fenster läuft **2026-08-31 bis 2026-09-04**, ablesbar am 2026-09-04,
+und es läuft erst, seit Phase 2 gelandet ist (#98, #100, #101, #103) — vorher
+gab es keinen Weg zurück in den eigenen Spieler. Zwei Auflagen sind aus dem
+gescheiterten Lauf dazugekommen: am ersten Morgen prüfen, ob die Identität
+einen Browser-Neustart übersteht, und die gezählten Tage **ohne**
+`SP_KIOSK_TOKEN` fahren (#90).
 
 Für dieses ADR ist der Punkt ohnehin entschärft: Als phase-5 kommt es zeitlich
 weit nach allem, was die Messung berühren könnte.
