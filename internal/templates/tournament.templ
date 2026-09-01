@@ -129,6 +129,18 @@ templ TournamentPage(v TournamentView) {
 					<button type="submit">Turnier beenden</button>
 				</form>
 			}
+			if v.Done() || !v.Open {
+				// A second lunch break is a second tournament, not more rounds
+				// in this one — the table stays readable and nothing here has
+				// to learn a new state. The link only carries the field and
+				// the mode; re-ticking eight names is the part nobody does
+				// twice.
+				<p>
+					<a class="button-link" href={ templ.SafeURL("/tournaments?nochmal=" + v.ID) }>
+						Nochmal ne Runde
+					</a>
+				</p>
+			}
 		</section>
 		if v.Error != "" {
 			<section class="card">
