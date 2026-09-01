@@ -271,6 +271,16 @@ h1 {
 	text-decoration: none;
 }
 
+/* Pushed to the far end of the row rather than pinned to a corner of the
+   screen: a fixed element would sit over the entry form, which on a phone is
+   exactly where the thumb goes. Wraps onto its own line when the row runs
+   out, still right-aligned. */
+.mainnav-tools {
+	display: flex;
+	gap: 1.25rem;
+	margin-left: auto;
+}
+
 .mainnav a:hover { color: var(--fg); }
 
 .mainnav a:focus-visible {
