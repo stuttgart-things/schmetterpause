@@ -49,7 +49,7 @@ func TestTheKioskLeavesOutClosedTournaments(t *testing.T) {
 	if strings.Contains(body, done) {
 		t.Error("the kiosk offers a closed tournament")
 	}
-	if strings.Contains(body, "Läuft gerade") {
+	if strings.Contains(body, "Offene Turniere") {
 		t.Error("the kiosk shows the heading with nothing running")
 	}
 }
@@ -63,7 +63,7 @@ func TestTheKioskStaysPlainWithoutATournament(t *testing.T) {
 
 	body := kioskBody(t, h, cookie)
 
-	if strings.Contains(body, "Läuft gerade") {
+	if strings.Contains(body, "Offene Turniere") {
 		t.Error("the kiosk announces tournaments when there are none")
 	}
 	if !strings.Contains(body, "Ergebnis eintragen") {
