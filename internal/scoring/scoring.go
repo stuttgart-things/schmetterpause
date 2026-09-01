@@ -306,6 +306,7 @@ func Record(
 	result match.Result,
 	via domain.EnteredVia,
 	tournamentID *uuid.UUID,
+	tournamentRound *int,
 	at time.Time,
 ) (Settlement, error) {
 	if homeID == awayID {
@@ -334,12 +335,13 @@ func Record(
 			// Recorded rather than reported: the match never waits on
 			// anybody, so reported_by names who it is credited to and not
 			// who has to agree.
-			Status:       domain.MatchPending,
-			ReportedBy:   homeID,
-			PlayedAt:     at,
-			EnteredVia:   via,
-			TournamentID: tournamentID,
-			Sets:         sets,
+			Status:          domain.MatchPending,
+			ReportedBy:      homeID,
+			PlayedAt:        at,
+			EnteredVia:      via,
+			TournamentID:    tournamentID,
+			TournamentRound: tournamentRound,
+			Sets:            sets,
 		})
 		if err != nil {
 			return err
