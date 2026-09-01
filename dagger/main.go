@@ -1308,8 +1308,12 @@ grep -q "Alles, was Verify Anna gespielt hat" "$own" || {
 	cat "$own"
 	exit 1
 }
-if grep -q "Kiosk Dirk" "$own"; then
+# The closing tag matters: every player's name is in the picker above the
+# table, so a bare name is found on any filtered page. Only a table cell links
+# it.
+if grep -q "Kiosk Dirk</a>" "$own"; then
 	echo "the reader's own list carries a match they did not play"
+	cat "$own"
 	exit 1
 fi
 
