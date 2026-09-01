@@ -1,0 +1,128 @@
+package templates
+
+import "strconv"
+
+// Statistics is what the results already know.
+templ Statistics(v StatisticsView) {
+	@Layout("Statistik", v.Header) {
+		<section class="card">
+			<h2>Statistik</h2>
+			if !v.Any() {
+				<p class="muted">
+					Noch keine gewerteten Matches. Sobald das erste bestätigt
+					ist, steht hier etwas.
+				</p>
+			} else {
+				@statisticsTotals(v.Totals)
+				if v.Truncated {
+					<p class="muted">
+						Gezählt werden die letzten { strconv.Itoa(v.Limit) } Matches.
+					</p>
+				}
+			}
+		</section>
+		if v.Any() {
+			<section class="card">
+				<h2>Direktvergleich</h2>
+				<p class="muted">
+					Zeile schlägt Spalte. Wer noch nicht gegeneinander gespielt
+					hat, hat ein leeres Feld — kein 0:0.
+				</p>
+				@headToHead(v)
+			</section>
+		}
+		<section class="card">
+			<h2>Warum hier keine Prozente stehen</h2>
+			<p class="muted">
+				Bei dieser Anzahl Spiele wäre eine Quote geraten. „100 % gegen
+				Bodo" aus zwei Matches sieht aus wie ein Befund und ist eine
+				Anekdote. Zählungen stimmen dagegen ab dem ersten Spiel — drei
+				zu eins ist drei zu eins. Quoten kommen dazu, wenn genug
+				gespielt wurde, dass sie etwas bedeuten.
+			</p>
+		</section>
+	}
+}
+
+// statisticsTotals is the office in numbers. Deliberately a definition list
+// rather than a table: these are labelled single values, not rows.
+templ statisticsTotals(t StatisticsTotals) {
+	<dl class="totals">
+		<div>
+			<dt>Matches</dt>
+			<dd>{ strconv.Itoa(t.Matches) }</dd>
+		</div>
+		<div>
+			<dt>Sätze</dt>
+			<dd>{ strconv.Itoa(t.Sets) }</dd>
+		</div>
+		<div>
+			<dt>Bälle</dt>
+			<dd>{ strconv.Itoa(t.Points) }</dd>
+		</div>
+		<div>
+			<dt>Sätze in die Verlängerung</dt>
+			<dd>{ strconv.Itoa(t.Deuce) }</dd>
+		</div>
+		<div>
+			<dt>Ohne Satzverlust gewonnen</dt>
+			<dd>{ strconv.Itoa(t.Whitewashes) }</dd>
+		</div>
+		if t.LongestSet != "" {
+			<div>
+				<dt>Längster Satz</dt>
+				<dd>{ t.LongestSet }</dd>
+			</div>
+		}
+	</dl>
+}
+
+// headToHead is the matrix. It scrolls inside its own region rather than
+// pushing the page sideways — with a dozen players it is wider than a phone,
+// and the same arrangement the match list uses.
+templ headToHead(v StatisticsView) {
+	if len(v.Matrix) < 2 {
+		<p class="muted">Dafür braucht es mindestens zwei Spieler.</p>
+	} else {
+		<div class="table-scroll" tabindex="0" role="region" aria-label="Direktvergleich">
+			<table class="standings matrix">
+				<thead>
+					<tr>
+						<th scope="col">Spieler</th>
+						for _, name := range v.Names {
+							<th scope="col" class="matrix-head">{ name }</th>
+						}
+						<th scope="col">Gesamt</th>
+					</tr>
+				</thead>
+				<tbody>
+					for _, row := range v.Matrix {
+						<tr>
+							<th scope="row">
+								<a href={ templ.SafeURL("/players/" + row.ID) }>{ row.DisplayName }</a>
+							</th>
+							for _, cell := range row.Cells {
+								if cell.Self {
+									<td class="matrix-self" aria-hidden="true"></td>
+								} else if cell.Record == "" {
+									<td class="muted">
+										<span class="sr-only">
+											gegen { cell.Opponent }: noch nicht gespielt
+										</span>
+										<span aria-hidden="true">·</span>
+									</td>
+								} else {
+									<td>
+										<span class="sr-only">gegen { cell.Opponent }: </span>
+										{ cell.Record }
+									</td>
+								}
+							}
+							<td>{ strconv.Itoa(row.Won) }:{ strconv.Itoa(row.Lost) }</td>
+						</tr>
+					}
+				</tbody>
+			</table>
+		</div>
+	}
+}

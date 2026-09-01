@@ -99,6 +99,7 @@ func (s *Server) routes() http.Handler {
 	page.HandleFunc("POST /matches/{id}/confirm", s.handleConfirmMatch)
 	page.HandleFunc("POST /matches/{id}/dispute", s.handleDisputeMatch)
 	page.HandleFunc("POST /matches/{id}/correct", s.handleCorrectMatch)
+	page.HandleFunc("GET /statistics", s.handleStatistics)
 	page.HandleFunc("GET /tournaments", s.handleTournaments)
 	page.HandleFunc("POST /tournaments", s.handleCreateTournament)
 	page.HandleFunc("GET /tournaments/{id}", s.handleTournament)

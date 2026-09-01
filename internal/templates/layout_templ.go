@@ -58,7 +58,7 @@ func Layout(title string, header HeaderView) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "</main><footer class=\"footer\"><a href=\"/matches\">Alle Matches</a> <a href=\"/tournaments\">Turniere</a> <a href=\"/qr\">QR-Aushang</a> ")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "</main><footer class=\"footer\"><a href=\"/matches\">Alle Matches</a> <a href=\"/statistics\">Statistik</a> <a href=\"/tournaments\">Turniere</a> <a href=\"/qr\">QR-Aushang</a> ")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -108,7 +108,7 @@ func Whoami(v HeaderView) templ.Component {
 			var templ_7745c5c3_Var4 templ.SafeURL
 			templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(v.ProfileURL))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `layout.templ`, Line: 64, Col: 59}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `layout.templ`, Line: 65, Col: 59}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 			if templ_7745c5c3_Err != nil {
@@ -121,7 +121,7 @@ func Whoami(v HeaderView) templ.Component {
 			var templ_7745c5c3_Var5 string
 			templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(v.DisplayName)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `layout.templ`, Line: 64, Col: 77}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `layout.templ`, Line: 65, Col: 77}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 			if templ_7745c5c3_Err != nil {
@@ -139,7 +139,7 @@ func Whoami(v HeaderView) templ.Component {
 				var templ_7745c5c3_Var6 string
 				templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.ResolveAttributeValue(pendingLabel(v.Pending))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `layout.templ`, Line: 70, Col: 40}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `layout.templ`, Line: 71, Col: 40}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var6)
 				if templ_7745c5c3_Err != nil {
@@ -152,7 +152,7 @@ func Whoami(v HeaderView) templ.Component {
 				var templ_7745c5c3_Var7 string
 				templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(pendingCount(v.Pending))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `layout.templ`, Line: 72, Col: 29}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `layout.templ`, Line: 73, Col: 29}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
 				if templ_7745c5c3_Err != nil {

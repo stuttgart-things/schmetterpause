@@ -1157,3 +1157,25 @@ tr.self td { background: color-mix(in srgb, var(--accent) 8%, transparent); }
 .tournament-field .tick { display: inline-flex; gap: 0.35rem; align-items: center; }
 .tournament-list { list-style: none; padding: 0; }
 .tournament-list li { display: flex; flex-wrap: wrap; gap: 0.6rem; align-items: baseline; padding: 0.3rem 0; }
+
+/* The office in numbers: labelled single values, so a definition list rather
+   than a table. Wraps into columns on anything wider than a phone. */
+.totals {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.75rem 2rem;
+	margin: 0;
+}
+.totals > div { min-width: 8rem; }
+.totals dt { font-size: 0.85em; opacity: 0.75; }
+.totals dd {
+	margin: 0;
+	font-size: 1.4em;
+	font-variant-numeric: tabular-nums;
+}
+
+/* The head-to-head matrix. Tabular numerals so the columns line up, and the
+   diagonal drawn as a blank rather than a zero nobody earned. */
+.matrix td { font-variant-numeric: tabular-nums; text-align: center; }
+.matrix-head { font-weight: 500; }
+.matrix-self { background: color-mix(in srgb, currentColor 8%, transparent); }
