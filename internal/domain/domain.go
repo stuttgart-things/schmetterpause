@@ -172,6 +172,12 @@ type Tournament struct {
 	CreatedAt time.Time
 	// ClosedAt is set exactly when Status is TournamentClosed.
 	ClosedAt *time.Time
+	// BestOf and PointsToWin are the mode every match in the draw is played
+	// under. They sit on the tournament rather than on each pairing because
+	// a quick tournament is one agreement about how the evening is played,
+	// and a control per pairing would ask it twenty-eight times.
+	BestOf      int
+	PointsToWin int
 	// Players are the participants in draw order. The order is the draw:
 	// the circle method is deterministic over it, so the pairings are a
 	// function of this slice rather than a stored copy that could drift.
