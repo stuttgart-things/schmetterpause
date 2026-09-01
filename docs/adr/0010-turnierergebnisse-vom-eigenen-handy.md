@@ -1,6 +1,6 @@
 # ADR-0010: Turnierergebnisse dürfen vom eigenen Handy kommen
 
-- **Status:** proposed — Kandidat, nicht entschieden
+- **Status:** accepted
 - **Datum:** 2026-09-01
 - **Betrifft:** Turniere, Wertung, Messung
 - **Bezug:** schreibt `0009-schnelles-turnier-wertet-pro-match` fort und ändert
@@ -106,18 +106,26 @@ eigenes Ergebnis ohne Bestätigung eintragen. Diese Entscheidung macht das
 nicht besser und nicht schlimmer; sie stellt nur daneben einen Weg, der
 bestätigt wird.
 
-**Was offen bleibt.** Drei Punkte, die vor der Umsetzung beantwortet sein
-müssen, aber keine eigene Entscheidung brauchen:
+**Drei Punkte, die die Umsetzung mitentschieden hat.** Keiner davon braucht
+ein eigenes ADR, aber sie sollen nicht ungeschrieben bleiben:
 
-1. Was ein bestrittenes Match (`disputed`) in einer Turniertabelle bedeutet.
-2. Ob ein Turnier geschlossen werden darf, solange Ergebnisse unbestätigt
-   sind — heute geht Schließen jederzeit, weil an der Wertung nichts hängt.
-3. Ob die Turnierseite ohne Kiosk-Freigabe ein Eingabefeld nur für die eigenen
-   Paarungen zeigt oder für alle. Das Erste ist konsequent, das Zweite ist das,
-   was Leute an einer Platte tun.
+1. **Ein bestrittenes Match** (`disputed`) steht im Spielplan als *bestritten*,
+   nicht als *wartet auf Bestätigung*. Es zählt für nichts und wird das ohne
+   eine Korrektur auch nicht — eine Bestätigung anzukündigen, die nicht kommt,
+   wäre ein Versprechen.
+2. **Schließen bleibt jederzeit möglich**, auch mit unbestätigten Ergebnissen.
+   An der Wertung hängt nichts (ADR-0009), und ein Turnier, dessen letztes
+   Match nie bestätigt wird, darf nicht ewig offen bleiben. Die betroffenen
+   Ergebnisse bleiben ausstehend und können danach noch bestätigt werden.
+3. **Nur die eigenen Paarungen.** Wer eingeloggt ist, sieht ein Eingabefeld an
+   den Spielen, in denen er selbst steht, und an keinem anderen. Für andere
+   einzutragen ist das, wofür das Gerät an der Platte da ist: dort steht
+   jemand daneben, und genau das ist bei einem Handy quer durch den Raum nicht
+   prüfbar.
 
-Unabhängig vom Ausgang gehört der irreführende Kommentar an `tournamentIDFrom`
-korrigiert. Er beschreibt einen Zustand, den es nicht gibt.
+Der irreführende Kommentar an `tournamentIDFrom` — "optional auf jedem
+Eingabepfad" für ein Feld, das nur ein Pfad las — ist damit nachträglich wahr
+geworden und entsprechend korrigiert.
 
 ## Verworfene Alternativen
 
