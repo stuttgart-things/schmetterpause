@@ -168,8 +168,20 @@ Was **neu dazukommt** und in #84 noch fehlt: **Auf AKS enabled by Azure Arc
 gibt es keine Volume-Snapshots.** Velero muss dort auf Datei-Backup (restic
 beziehungsweise kopia) ausweichen. Weg A funktioniert also, aber nicht so, wie
 #84 ihn beschreibt — das ändert Laufzeit und Wiederherstellungsdauer und damit
-zwei der Messkriterien, bevor der Vergleich überhaupt läuft. Auf der
-Übergangsumgebung stellt sich die Frage nicht.
+zwei der Messkriterien, bevor der Vergleich überhaupt läuft.
+
+Hier stand zuerst, auf der Übergangsumgebung stelle sich die Frage nicht. **Das
+ist ungeprüft und vermutlich falsch:** Die Default-StorageClass dort ist
+`openebs-hostpath`, also ein LocalPV-Provisioner, und für den ist eine
+`VolumeSnapshotClass` nicht selbstverständlich. Eine Zeile klärt es:
+
+```sh
+kubectl get volumesnapshotclass
+```
+
+Kommt dabei nichts zurück, hat **keine** der beiden Umgebungen Snapshots, Weg A
+ist überall Datei-Backup, und der Vergleich in #84 verliert ein Kriterium,
+bevor er beginnt — was ihn nicht wertlos macht, aber billiger.
 
 ### Die Entscheidungsregel
 
