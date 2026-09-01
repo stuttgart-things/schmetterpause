@@ -186,14 +186,29 @@ Arc](https://learn.microsoft.com/en-us/azure/azure-arc/kubernetes/conceptual-git
 
    Schwer rückabzuwickeln, deshalb hier und nicht nebenbei. Betrifft nur die
    Zielumgebung — der Übergang ist davon unberührt.
-7. **Hostname und DNS.** Nicht technisch schwierig, aber mit der längsten
-   Halbwertszeit im ganzen Vorhaben: **Der Name muss den Cluster-Neubau
-   überleben, und er muss über Übergangs- und Zielumgebung tragen.** ADR-0004
-   legt uns auf WebAuthn fest, und Passkeys hängen an der Relying-Party-ID,
-   also am Hostnamen. Ein Wechsel der URL entwertet sie — auch bei
-   fehlerfreiem Datenbank-Restore. #74 löst sich mit Gateway API sonst in zwei
-   Zeilen Profil auf; diese eine Zeile bleibt und gehört nicht uns. Zu klären,
-   wer die Zone besitzt.
+7. **Hostname und DNS** — für die Übergangsumgebung beantwortet, für die
+   Zielumgebung offen, und dazwischen liegt das eigentliche Risiko.
+
+   Auf `cicd-test2` ist es entschieden (#78): `schmetterpause` als Label,
+   zusammengesetzt mit der Cluster-Domain, gedeckt vom Wildcard-Zertifikat am
+   Listener. #74 ist damit genau das geworden, was vorhergesagt war — ein Name
+   und `SP_PUBLIC_BASE_URL`.
+
+   **Der Wechsel auf Azure Local ändert diesen Namen.** ADR-0004 legt uns auf
+   WebAuthn fest, und Passkeys hängen an der Relying-Party-ID, also am
+   Hostnamen. Ein Umzug entwertet sie — auch bei fehlerfreiem
+   Datenbank-Restore. Zwei Dinge entschärfen das, keines löst es:
+
+   - **WebAuthn ist noch nicht ausgeliefert.** Solange #37 offen ist, gibt es
+     keine Passkeys, die kaputtgehen könnten. Das Zeitfenster ist also: der
+     Umzug muss *vor* WebAuthn passieren, oder der Name muss ihn überleben.
+   - **Wiederherstellungscode und PIN sind seit dem 2026-08-28 im Code**
+     (#98, #100, #101, #103). Sie hängen nicht am Hostnamen, ein Spieler kommt
+     nach einem Umzug also wieder an seine Zeile. Das macht den Umzug
+     unbequem statt teuer — für alles außer Passkeys.
+
+   Zu klären bleibt, wer die Zone besitzt und ob ein Name über beide
+   Umgebungen tragen kann. Das ist keine Frage an uns.
 
 ## Hinweis zur Form
 
