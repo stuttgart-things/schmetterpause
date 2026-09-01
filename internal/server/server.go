@@ -40,8 +40,6 @@ type Server struct {
 	kioskByAddress *ratelimit.Limiter
 }
 
-// New wires up the server. The authenticator is an interface so that later
-// providers (OIDC, WebAuthn) take effect without touching any handler.
 // Build is what this binary can say about itself, set at link time.
 //
 // Two values rather than one string, so the page can show them as two things:
@@ -54,6 +52,8 @@ type Build struct {
 	CommitTime string
 }
 
+// New wires up the server. The authenticator is an interface so that later
+// providers (OIDC, WebAuthn) take effect without touching any handler.
 func New(cfg config.Config, store repository.Store, log *slog.Logger, a auth.SessionAuthenticator, build Build) *Server {
 	s := &Server{
 		cfg: cfg, store: store, log: log, auth: a, build: build,
