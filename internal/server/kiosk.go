@@ -275,6 +275,11 @@ func (s *Server) kioskView(ctx context.Context) (templates.KioskView, error) {
 		})
 	}
 
+	view.Tournaments, err = s.openTournaments(ctx)
+	if err != nil {
+		return templates.KioskView{}, err
+	}
+
 	view.Standings, err = s.standingsView(ctx)
 	if err != nil {
 		return templates.KioskView{}, err

@@ -46,7 +46,11 @@ func (v StatusView) Ready() bool { return v.DatabaseReachable }
 // does it: a scorekeeper is holding a sheet and reading from it, so the fix
 // for a mistyped number is to type it again, not to hunt for what changed.
 type KioskView struct {
-	Players     []OpponentOption
+	Players []OpponentOption
+	// Tournaments are the open ones, and the only way from here to the entry
+	// view for one. A closed tournament takes no results, so listing it here
+	// would offer a door that is already locked.
+	Tournaments []TournamentListRow
 	BestOf      int
 	PointsToWin int
 	Sets        []SetInput

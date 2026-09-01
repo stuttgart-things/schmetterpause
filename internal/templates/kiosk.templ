@@ -1,5 +1,7 @@
 package templates
 
+import "strconv"
+
 // Kiosk is the page one machine at the table works from: everybody's results
 // entered by whoever is holding the pen.
 //
@@ -53,6 +55,29 @@ templ Kiosk(v KioskView) {
 					{ v.IssuedFor } selbst, sobald das eigene Handy wieder
 					angemeldet ist.
 				</p>
+			</section>
+		}
+		if len(v.Tournaments) > 0 {
+			// Above result entry, because during a tournament the form below
+			// is the wrong one: a casual result does not land in the table.
+			//
+			// This list is the only way from the unlocked machine to the
+			// entry view for a tournament. The kiosk grant is scoped to
+			// /kiosk, so the page at /tournaments/<id> cannot offer the link
+			// — it has no way of knowing it is the table.
+			<section class="match">
+				<h2>Läuft gerade</h2>
+				<ul class="tournament-list">
+					for _, t := range v.Tournaments {
+						<li>
+							<a href={ templ.SafeURL("/kiosk/tournaments/" + t.ID) }>{ t.Name }</a>
+							<span class="muted">
+								{ strconv.Itoa(t.Players) } Spieler,
+								{ strconv.Itoa(t.Matches) } Spiele
+							</span>
+						</li>
+					}
+				</ul>
 			</section>
 		}
 		<section class="match">
