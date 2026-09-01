@@ -1254,3 +1254,15 @@ tr.self td { background: color-mix(in srgb, var(--accent) 8%, transparent); }
 	padding-left: 0.8rem;
 }
 
+
+/* The picker above the match list, on one line with its label and its button.
+   Wraps on a narrow screen rather than squeezing the select to nothing. */
+.match-filter {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 0.6rem;
+	margin-bottom: 1rem;
+}
+
+.match-filter button { margin-top: 0; }

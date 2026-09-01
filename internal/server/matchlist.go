@@ -3,12 +3,18 @@ package server
 import (
 	"context"
 	"net/http"
+	"strings"
 
 	"github.com/google/uuid"
 
+	"github.com/stuttgart-things/schmetterpause/internal/auth"
 	"github.com/stuttgart-things/schmetterpause/internal/domain"
 	"github.com/stuttgart-things/schmetterpause/internal/templates"
 )
+
+// matchFilterAll is what the picker sends for "everybody". A word rather than
+// an empty value, because empty already means "did not ask".
+const matchFilterAll = templates.MatchFilterAll
 
 // matchListLimit bounds the list. A year is a few thousand rows and nobody
 // scrolls that far, but the cap is stated on the page when it bites: a list
@@ -24,7 +30,7 @@ const matchListLimit = 200
 // is already stored — matches, their sets, and what each one was worth — so
 // there is nothing here a migration had to make room for.
 func (s *Server) handleMatchList(w http.ResponseWriter, r *http.Request) {
-	view, err := s.matchListView(r.Context())
+	view, err := s.matchListView(r.Context(), matchFilterFrom(r))
 	if err != nil {
 		s.log.ErrorContext(r.Context(), "loading the match list failed", "error", err)
 		http.Error(w, "Matches nicht verfügbar", http.StatusInternalServerError)
@@ -33,8 +39,56 @@ func (s *Server) handleMatchList(w http.ResponseWriter, r *http.Request) {
 	s.render(w, r, templates.MatchList(view))
 }
 
-func (s *Server) matchListView(ctx context.Context) (templates.MatchListView, error) {
-	matches, err := s.store.Matches().Recent(ctx, matchListLimit)
+// matchFilter is whose matches to show: a player, or everybody.
+type matchFilter struct {
+	player uuid.UUID
+	// all is set when the reader asked for everybody, which is a different
+	// thing from not having asked at all — a signed-in reader who has not
+	// asked gets their own matches.
+	all bool
+}
+
+// matchFilterFrom reads the picker. Absent means "not asked", which is what
+// lets a signed-in reader default to themselves; "alle" is an answer.
+func matchFilterFrom(r *http.Request) *matchFilter {
+	raw := strings.TrimSpace(r.URL.Query().Get("spieler"))
+	switch {
+	case raw == "":
+		return nil
+	case raw == matchFilterAll:
+		return &matchFilter{all: true}
+	}
+	id, err := uuid.Parse(raw)
+	if err != nil {
+		// A name nobody has is not worth a refusal on a page that reads
+		// perfectly well without one.
+		return nil
+	}
+	return &matchFilter{player: id}
+}
+
+func (s *Server) matchListView(ctx context.Context, asked *matchFilter) (templates.MatchListView, error) {
+	// Nobody asked: their own where somebody is recognised, everybody's
+	// otherwise. The list belongs to the office, but a reader who has an
+	// account is almost always looking for their own row first.
+	filter := asked
+	if filter == nil {
+		if self, ok := auth.PlayerID(ctx); ok {
+			filter = &matchFilter{player: self}
+		} else {
+			filter = &matchFilter{all: true}
+		}
+	}
+
+	var (
+		matches []domain.Match
+		err     error
+	)
+	if filter.all {
+		matches, err = s.store.Matches().Recent(ctx, matchListLimit)
+	} else {
+		matches, err = s.store.Matches().RecentFor(ctx, filter.player, matchListLimit)
+	}
 	if err != nil {
 		return templates.MatchListView{}, err
 	}
@@ -73,6 +127,16 @@ func (s *Server) matchListView(ctx context.Context) (templates.MatchListView, er
 		Matches:   make([]templates.MatchListRow, 0, len(matches)),
 		Limit:     matchListLimit,
 		Truncated: len(matches) == matchListLimit,
+		Filter:    templates.MatchFilterView{All: filter.all},
+	}
+	for _, p := range players {
+		view.Filter.Players = append(view.Filter.Players, templates.OpponentOption{
+			ID: p.ID.String(), DisplayName: p.DisplayName,
+			Selected: !filter.all && p.ID == filter.player,
+		})
+	}
+	if !filter.all {
+		view.Filter.Name = names[filter.player]
 	}
 	for _, m := range matches {
 		view.Matches = append(view.Matches, matchListRow(m, names, deltas[m.ID]))

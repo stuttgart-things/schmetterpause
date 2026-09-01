@@ -691,7 +691,26 @@ type AdminPerson struct {
 }
 
 // MatchListView is every match the office has played, newest first.
+// MatchFilterView is the picker above the match list: whose matches these
+// are, and who else could be chosen.
+type MatchFilterView struct {
+	// All is set when everybody's matches are showing.
+	All bool
+	// Name is whose matches these are, empty when All. It is what the page
+	// says out loud, so a reader who followed a link knows what they are
+	// looking at without reading the picker.
+	Name    string
+	Players []OpponentOption
+}
+
+// MatchFilterAll is the value the picker sends for everybody. A word rather
+// than an empty option, because empty already means "did not ask" — and a
+// signed-in reader who has not asked gets their own matches.
+const MatchFilterAll = "alle"
+
 type MatchListView struct {
+	// Filter is whose matches are showing and how to change that.
+	Filter  MatchFilterView
 	Header  HeaderView
 	Matches []MatchListRow
 	// Limit is how many rows the list asks for at most. Truncated says the
