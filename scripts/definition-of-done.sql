@@ -13,6 +13,14 @@
 -- They are reported beside it rather than hidden, because "how much did the
 -- kiosk do" is worth knowing too.
 --
+-- Tournament matches drop out too, whoever typed them. That used to happen by
+-- itself, because entry was only possible at the kiosk and every row came out
+-- marked 'kiosk'; since ADR-0010 a player may enter their own tournament
+-- result from their phone, and those rows say 'player'. So the exclusion says
+-- what it means: a match belonging to a tournament is not evidence of
+-- voluntary logging, because a schedule is exactly the reminder this
+-- measurement excludes. They are reported beside it, like kiosk rows.
+--
 -- The column that makes this possible arrived with issue #71. Rows written
 -- before it say 'kiosk' only where the migration guessed from
 -- confirmed_at = played_at, and that guess is written down as one in
@@ -21,9 +29,9 @@
 -- What this still cannot see, and it inflates the number:
 --
 --   * Being reminded leaves no trace in the database at all.
---   * A tournament played entirely from phones — everybody entering their own
---     result because a schedule told them to — is still not voluntary logging,
---     and no column can see that. SINCE stays useful for exactly that case.
+--   * An evening that was not a tournament but was still organised — somebody
+--     going round saying "trag das mal ein" — leaves no trace either. SINCE
+--     stays useful for exactly that case.
 --
 -- Weekend results are visible in the per-day table but do not count towards a
 -- window: the measurement asks about working days.
@@ -38,13 +46,17 @@ select to_char(day, 'YYYY-MM-DD Dy') as "day",
        matches,
        reporters,
        kiosk as "of which kiosk",
+       tournament as "of which tournament",
        case when extract(isodow from day) > 5 then 'weekend' else '' end as "note"
 from (
 	select (m.confirmed_at at time zone :'zone')::date                     as day,
-	       count(*) filter (where m.entered_via = 'player')                as matches,
-	       count(distinct m.reported_by) filter (where m.entered_via = 'player')
+	       count(*) filter (where m.entered_via = 'player'
+	                          and m.tournament_id is null)                 as matches,
+	       count(distinct m.reported_by) filter (where m.entered_via = 'player'
+	                                               and m.tournament_id is null)
 	                                                                       as reporters,
-	       count(*) filter (where m.entered_via = 'kiosk')                 as kiosk
+	       count(*) filter (where m.entered_via = 'kiosk')                 as kiosk,
+	       count(*) filter (where m.tournament_id is not null)             as tournament
 	from matches m
 	where m.status = 'confirmed'
 	  and (m.confirmed_at at time zone :'zone')::date >= :'since'::date
@@ -66,6 +78,7 @@ with bounds as (
 	from matches
 	where status = 'confirmed'
 	  and entered_via = 'player'
+	  and tournament_id is null
 	  and (confirmed_at at time zone :'zone')::date >= :'since'::date
 ),
 working_days as (
@@ -94,6 +107,8 @@ scored as (
 	      -- The whole point of the column: a scorekeeper's evening is not
 	      -- somebody logging their own match (issue #71).
 	      and m.entered_via = 'player'
+	      -- And a schedule is a reminder, whoever held the phone (ADR-0010).
+	      and m.tournament_id is null
 	      and (m.confirmed_at at time zone :'zone')::date between w.from_day and w.to_day
 	      and extract(isodow from (m.confirmed_at at time zone :'zone')) < 6
 	group by 1, 2
