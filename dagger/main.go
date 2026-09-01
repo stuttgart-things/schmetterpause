@@ -1272,8 +1272,12 @@ curl -fsS -b "$kiosk" -X POST http://app:8080/kiosk/matches \
 	exit 1
 }
 
+# Everybody's, explicitly: a recognised reader now gets their own matches
+# unless they ask otherwise, and the row this checks belongs to two other
+# people. "alle" is a value the picker sends rather than the absence of one,
+# which is exactly what makes asking possible.
 list=$(mktemp)
-curl -fsS -b "$cookies" http://app:8080/matches > "$list"
+curl -fsS -b "$cookies" "http://app:8080/matches?spieler=alle" > "$list"
 
 winner=$(tr "<" "\n" < "$list" | grep -n "Kiosk Dirk" | head -1 | cut -d: -f1)
 loser=$(tr "<" "\n" < "$list" | grep -n "Kiosk Cara" | head -1 | cut -d: -f1)
@@ -1292,6 +1296,20 @@ grep -q "11:2" "$list" || {
 }
 if grep -q "2:11" "$list"; then
 	echo "the match list shows the sets from the losing side"
+	exit 1
+fi
+
+# Without asking, a recognised reader gets their own. The picker is the whole
+# point: "alle" above and this here are two different pages from one address.
+own=$(mktemp)
+curl -fsS -b "$cookies" http://app:8080/matches > "$own"
+grep -q "Alles, was Verify Anna gespielt hat" "$own" || {
+	echo "the match list does not start with the reader's own matches"
+	cat "$own"
+	exit 1
+}
+if grep -q "Kiosk Dirk" "$own"; then
+	echo "the reader's own list carries a match they did not play"
 	exit 1
 fi
 
