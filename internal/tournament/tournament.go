@@ -61,9 +61,12 @@ type Round struct {
 // somebody is still adding people to is a normal intermediate state, and a
 // form that refuses to show a preview until it is complete is worse than one
 // that shows nothing yet.
-func Draw(players []uuid.UUID) []Round {
+func Draw(players []uuid.UUID, legs int) []Round {
 	if len(players) < 2 {
 		return nil
+	}
+	if legs < 1 {
+		legs = 1
 	}
 
 	// The circle works on an even field. The placeholder is uuid.Nil, which
@@ -75,10 +78,20 @@ func Draw(players []uuid.UUID) []Round {
 	}
 
 	n := len(circle)
-	rounds := make([]Round, 0, n-1)
+	rounds := make([]Round, 0, (n-1)*legs)
 
-	for r := range n - 1 {
+	// The second leg is the same circle again with the sides swapped, its
+	// rounds numbered on from the first. Numbering them on is what makes a
+	// return match distinguishable from its first leg: the pair is the same,
+	// the slot is not (docs/adr/0011).
+	for r := range (n - 1) * legs {
 		round := Round{No: r + 1, Pairings: make([]Pairing, 0, n/2)}
+		// Which round of the circle this is, ignoring the leg. The cosmetic
+		// alternation below has to key on this rather than on r: keyed on r
+		// it would cancel the return leg's swap in every second round and
+		// hand back the first leg's orientation unchanged.
+		inLeg := r % (n - 1)
+		returnLeg := r >= n-1
 
 		for i := range n / 2 {
 			home, away := circle[i], circle[n-1-i]
@@ -95,7 +108,13 @@ func Draw(players []uuid.UUID) []Round {
 			// Alternate the orientation by round so the same player is not
 			// listed on the left every time. Cosmetic for the result, but the
 			// draw is printed and read by people.
-			if r%2 == 1 {
+			if inLeg%2 == 1 {
+				home, away = away, home
+			}
+			// And swapped once more for the whole return leg, so whoever was
+			// listed on the left in the first meeting is on the right in the
+			// second. That is the only thing a return leg changes.
+			if returnLeg {
 				home, away = away, home
 			}
 			round.Pairings = append(round.Pairings, Pairing{Home: home, Away: away})
@@ -103,9 +122,27 @@ func Draw(players []uuid.UUID) []Round {
 
 		rounds = append(rounds, round)
 		rotate(circle)
+
+		// The circle returns to its starting position after n-1 rotations, so
+		// the second leg repeats the first without any bookkeeping.
 	}
 
 	return rounds
+}
+
+// GroupRounds is how many rounds the group phase of this field has. A final,
+// where there is one, is the round after them.
+func GroupRounds(n, legs int) int {
+	if n < 2 {
+		return 0
+	}
+	if legs < 1 {
+		legs = 1
+	}
+	if n%2 == 1 {
+		n++
+	}
+	return (n - 1) * legs
 }
 
 // rotate turns the circle one step: the first entry stays put, the rest move
@@ -124,11 +161,42 @@ func rotate(circle []uuid.UUID) {
 // here because the number is worth showing before anybody commits to an
 // evening: eight players is twenty-eight matches, which is seven hours of
 // table time at a quarter of an hour each (#41).
-func Matches(n int) int {
+func Matches(n, legs int, withFinal bool) int {
 	if n < 2 {
 		return 0
 	}
-	return n * (n - 1) / 2
+	if legs < 1 {
+		legs = 1
+	}
+	total := n * (n - 1) / 2 * legs
+	if withFinal {
+		total++
+	}
+	return total
+}
+
+// Final is the pairing that decides the tournament: the two best of the
+// group, once the table can name them without ambiguity.
+//
+// rows must be a table as Table returns it, already sorted. The answer is
+// false when the cut is genuinely tied — two players sharing first, or sharing
+// second — because a decider between two arbitrarily chosen of three equals is
+// a draw with an audience rather than a decision (docs/adr/0011). It is also
+// false before anybody has played, where "the best two" names nobody.
+//
+// The pairing is derived, not stored. That is the whole reason a final needs
+// no pairings table: the table is a function of the results and the best two
+// are a function of the table, so this is as computable as any round of the
+// circle method.
+func Final(rows []TableRow) (Pairing, bool) {
+	if len(rows) < 2 {
+		return Pairing{}, false
+	}
+	first, second := rows[0], rows[1]
+	if first.Shared || second.Shared || first.Played == 0 || second.Played == 0 {
+		return Pairing{}, false
+	}
+	return Pairing{Home: first.PlayerID, Away: second.PlayerID}, true
 }
 
 // TableRow is one line of the tournament table.
@@ -166,7 +234,9 @@ func (r TableRow) PointDiff() int { return r.PointsFor - r.PointsAgainst }
 //
 // matches may contain anything; only confirmed ones between two participants
 // are counted. Passing the unfiltered list is the ordinary case, and a filter
-// the caller has to remember is a filter somebody eventually forgets.
+// the caller has to remember is a filter somebody eventually forgets — which
+// is why groupRounds is a parameter rather than the caller dropping the final
+// itself. Pass 0 where there is no final to leave out.
 //
 // # How ties are broken
 //
@@ -176,7 +246,7 @@ func (r TableRow) PointDiff() int { return r.PointsFor - r.PointsAgainst }
 // when the sub-table is level too do the overall set and point differences
 // speak, and players still equal after all four share a rank rather than being
 // separated by their names.
-func Table(participants []uuid.UUID, matches []domain.Match) []TableRow {
+func Table(participants []uuid.UUID, matches []domain.Match, groupRounds int) []TableRow {
 	index := make(map[uuid.UUID]int, len(participants))
 	rows := make([]TableRow, 0, len(participants))
 	for _, id := range participants {
@@ -192,6 +262,13 @@ func Table(participants []uuid.UUID, matches []domain.Match) []TableRow {
 		home, okHome := index[m.HomeID]
 		away, okAway := index[m.AwayID]
 		if m.Status != domain.MatchConfirmed || !okHome || !okAway {
+			continue
+		}
+		// The final is not part of the group table. Counting it there would
+		// let its result move the standings that decided who plays it, which
+		// is a circle (docs/adr/0011). A match with no round is from before
+		// slots existed and is therefore a group match.
+		if groupRounds > 0 && m.TournamentRound != nil && *m.TournamentRound > groupRounds {
 			continue
 		}
 		counted = append(counted, m)

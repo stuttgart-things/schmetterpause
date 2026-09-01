@@ -150,10 +150,24 @@ const (
 // TournamentFormat names how the draw is built.
 type TournamentFormat string
 
-// TournamentRoundRobin is everybody against everybody. The only format today,
-// and named rather than assumed: Swiss is the successor for a field past ten
-// (#41), and a type that cannot say which format it holds cannot hold two.
-const TournamentRoundRobin TournamentFormat = "round_robin"
+const (
+	// TournamentRoundRobin is everybody against everybody, once. Swiss is
+	// the named successor for a field past ten (#41), and a type that cannot
+	// say which format it holds cannot hold two.
+	TournamentRoundRobin TournamentFormat = "round_robin"
+	// TournamentDoubleRoundRobin is the same draw twice, with the sides
+	// swapped in the second half (docs/adr/0011). Twice the matches: eight
+	// players is 56, which is a number worth seeing before agreeing to it.
+	TournamentDoubleRoundRobin TournamentFormat = "double_round_robin"
+)
+
+// Legs is how many times each pair meets in this format.
+func (f TournamentFormat) Legs() int {
+	if f == TournamentDoubleRoundRobin {
+		return 2
+	}
+	return 1
+}
 
 // Tournament is a bracket around matches.
 //
@@ -178,6 +192,11 @@ type Tournament struct {
 	// and a control per pairing would ask it twenty-eight times.
 	BestOf      int
 	PointsToWin int
+	// WithFinal is whether the two best of the group play a decider
+	// afterwards. A separate flag rather than a fourth format name: four
+	// names for four combinations grows quadratically at the next variant
+	// (docs/adr/0011).
+	WithFinal bool
 	// Players are the participants in draw order. The order is the draw:
 	// the circle method is deterministic over it, so the pairings are a
 	// function of this slice rather than a stored copy that could drift.
@@ -240,7 +259,17 @@ type Match struct {
 	// before docs/adr/0009. It changes nothing about how the match is
 	// rated; it is what lets a table be built from the results.
 	TournamentID *uuid.UUID
-	Sets         []MatchSet
+	// TournamentRound is which slot of the draw this match fills, counting
+	// from 1. Nil outside a tournament, and nil for every row written before
+	// docs/adr/0011 — which is unambiguous rather than a gap: those are all
+	// single round robins, where a pair occurs exactly once and (round, pair)
+	// and (pair) are the same key.
+	//
+	// It is not a stored copy of a derived value. The slots are computed from
+	// the draw; this says which of them a result belongs to, which is the
+	// thing that cannot be derived once a pair can meet more than once.
+	TournamentRound *int
+	Sets            []MatchSet
 }
 
 // MatchSet is a single set within a match.
