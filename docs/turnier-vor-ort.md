@@ -238,6 +238,12 @@ zweimal:
 | `/tournaments/<id>` | alle, auf dem Handy | Spielplan und Tabelle, zum Mitlesen |
 | `/kiosk/tournaments/<id>` | das freigeschaltete Gerät | dasselbe, plus ein Eingabefeld pro Paarung |
 
+**Eintragen** klappt sich pro Paarung auf: „Ergebnis eintragen" anklicken, und
+darunter stehen dieselben Kästchen wie im normalen Formular — mit Satznummern,
+den beiden Namen über den Spalten, einem Schieberegler unter jedem Feld und
+dem Regeltext. Eingeklappt, weil ein Spielplan viel öfter gelesen als
+beschrieben wird und acht Leute achtundzwanzig davon sind.
+
 Der Grund ist kein Sicherheitsdetail, sondern eins über Cookies: die
 Kiosk-Freigabe gilt nur unter `/kiosk`, also kann eine Seite außerhalb davon
 gar nicht wissen, dass sie am Tisch steht. Statt die Freigabe zu verbreitern,

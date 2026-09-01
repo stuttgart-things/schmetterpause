@@ -313,6 +313,11 @@ func SetRows(sets []SetInput, bestOf int) []SetInput {
 	return sets[:bestOf]
 }
 
+// EmptySets is a full set of blank rows, which is what an entry form that has
+// never been submitted starts from. SetRows then shows as many as the mode
+// allows.
+func EmptySets() []SetInput { return make([]SetInput, MaxSetRows) }
+
 // BestOfOptions is the mode picker's choices, shortest first. It mirrors
 // allowedBestOf in the match package, which mirrors the schema constraint.
 var BestOfOptions = []int{1, 3, 5, 7}

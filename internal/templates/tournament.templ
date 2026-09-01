@@ -386,56 +386,44 @@ templ tournamentRounds(v TournamentView) {
 
 // pairingEntry is result entry for one pairing at the table.
 //
-// The two players and the mode ride along hidden: the draw decided both, and
-// a control here would be a chance to enter the right score against the wrong
+// The two players and the mode ride along hidden: the draw decided both, and a
+// control here would be a chance to enter the right score against the wrong
 // pair, or under a mode the rest of the tournament was not played in. The
-// server takes the mode from the tournament regardless — these fields are for
-// the form to be complete, not for it to be trusted.
+// server takes both from the tournament regardless — these fields are for the
+// form to be complete, not for it to be trusted.
 //
-// One box per set the mode allows: at best of five there are five, at a
-// single set there is one. Boxes for sets that cannot exist are boxes
-// somebody eventually types into.
+// The boxes are the ordinary ones, from the ordinary form. This used to be a
+// row of six identical fields with two colons in it: no set numbers, no
+// heading saying whose column is whose, and no sliders — all three of which
+// setRows has, and for reasons that apply at a tournament table more than
+// anywhere else.
+//
+// Folded, because a schedule is read far more often than it is typed into,
+// and eight players is twenty-eight of these. A details element rather than a
+// swap: no route, no JavaScript, and the rule text arrives exactly when
+// somebody is about to need it.
 //
 // A plain form post rather than HTMX: the answer is a redirect back to the
 // draw, so a reload cannot re-submit a result that already counted, and a
 // kiosk result counts immediately.
 templ pairingEntry(action, tournamentID string, bestOf, pointsToWin int, p TournamentPairingView) {
-	<form class="pairing-entry" method="post" action={ templ.SafeURL(action) }>
-		<input type="hidden" name="tournament_id" value={ tournamentID }/>
-		<input type="hidden" name="tournament_round" value={ strconv.Itoa(p.Round) }/>
-		<input type="hidden" name="home_id" value={ p.HomeID }/>
-		<input type="hidden" name="away_id" value={ p.AwayID }/>
-		<input type="hidden" name="best_of" value={ strconv.Itoa(bestOf) }/>
-		<input type="hidden" name="points_to_win" value={ strconv.Itoa(pointsToWin) }/>
-		for i := 1; i <= bestOf; i++ {
-			<span class="pairing-set">
-				<label class="sr-only" for={ p.HomeID + "-" + p.AwayID + "-h" + strconv.Itoa(i) }>
-					Satz { strconv.Itoa(i) }, { p.HomeName }
-				</label>
-				<input
-					id={ p.HomeID + "-" + p.AwayID + "-h" + strconv.Itoa(i) }
-					name={ "set_home_" + strconv.Itoa(i) }
-					type="text"
-					inputmode="numeric"
-					maxlength="2"
-					size="2"
-				/>
-				<span aria-hidden="true">:</span>
-				<label class="sr-only" for={ p.HomeID + "-" + p.AwayID + "-a" + strconv.Itoa(i) }>
-					Satz { strconv.Itoa(i) }, { p.AwayName }
-				</label>
-				<input
-					id={ p.HomeID + "-" + p.AwayID + "-a" + strconv.Itoa(i) }
-					name={ "set_away_" + strconv.Itoa(i) }
-					type="text"
-					inputmode="numeric"
-					maxlength="2"
-					size="2"
-				/>
-			</span>
-		}
-		<button type="submit">Eintragen</button>
-	</form>
+	<details class="pairing-entry">
+		<summary>Ergebnis eintragen</summary>
+		<form method="post" action={ templ.SafeURL(action) }>
+			<input type="hidden" name="tournament_id" value={ tournamentID }/>
+			<input type="hidden" name="tournament_round" value={ strconv.Itoa(p.Round) }/>
+			<input type="hidden" name="home_id" value={ p.HomeID }/>
+			<input type="hidden" name="away_id" value={ p.AwayID }/>
+			<input type="hidden" name="best_of" value={ strconv.Itoa(bestOf) }/>
+			<input type="hidden" name="points_to_win" value={ strconv.Itoa(pointsToWin) }/>
+			// The prefix keeps every id on the page unique. Twenty-eight
+			// pairings share this template, and two fields with one id is a
+			// label that points at the wrong box.
+			@setRows("t"+strconv.Itoa(p.Round)+"-"+p.HomeID, EmptySets(),
+				bestOf, pointsToWin, p.HomeName, p.AwayName)
+			<button type="submit">Eintragen</button>
+		</form>
+	</details>
 }
 
 // signed prints a difference the way a table does: with its sign, so +3 and

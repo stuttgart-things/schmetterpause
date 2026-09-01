@@ -1203,3 +1203,35 @@ tr.self td { background: color-mix(in srgb, var(--accent) 8%, transparent); }
 	outline: 2px solid var(--accent);
 	outline-offset: 2px;
 }
+
+/* One pairing's entry, folded away. A schedule is read far more often than it
+   is typed into, and eight players is twenty-eight of these — unfolded they
+   would bury the draw they belong to. */
+.pairing-entry summary {
+	display: inline-block;
+	padding: 0.35rem 0.7rem;
+	border: 1px solid var(--line);
+	border-radius: var(--radius-sm);
+	color: var(--fg);
+	font-family: var(--font-ui);
+	font-size: 0.9rem;
+	cursor: pointer;
+	list-style: none;
+}
+
+.pairing-entry summary::-webkit-details-marker { display: none; }
+
+.pairing-entry summary:hover { background: var(--panel); }
+
+.pairing-entry[open] summary {
+	margin-bottom: 0.6rem;
+	background: var(--panel);
+}
+
+/* Indented under the pairing it belongs to, so an open form cannot be read as
+   belonging to the round heading above it. */
+.pairing-entry .sets {
+	margin-left: 0.2rem;
+	border-left: 2px solid var(--line);
+	padding-left: 0.8rem;
+}
