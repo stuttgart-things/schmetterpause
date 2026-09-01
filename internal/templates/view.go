@@ -744,9 +744,14 @@ type ProfileMatchView struct {
 
 // TournamentListView drives the page that lists tournaments and starts one.
 type TournamentListView struct {
-	Header      HeaderView
-	Tournaments []TournamentListRow
-	Form        TournamentFormView
+	Header HeaderView
+	// Running and Past are separated because they answer different
+	// questions. Running is "what is happening at the table"; past is a
+	// record somebody looks up on purpose. One list mixing them makes the
+	// first question harder to answer with every evening that is over.
+	Running []TournamentListRow
+	Past    []TournamentListRow
+	Form    TournamentFormView
 	// MaxPlayers is the cap on a field, shown next to the picker rather than
 	// only in the message somebody gets after ticking too many names.
 	MaxPlayers int
@@ -766,6 +771,12 @@ type TournamentListRow struct {
 	// that names two tournaments and not the difference between them makes
 	// somebody open both.
 	Mode string
+	// Played is how many of its matches are settled, so a row in the past
+	// list can say whether it was finished or abandoned.
+	Played int
+	// Empty marks a tournament nobody has played in. Only those can be
+	// deleted, so only those offer it.
+	Empty bool
 }
 
 // TournamentFormView drives the form that starts a tournament. What was
@@ -910,7 +921,15 @@ type TournamentView struct {
 	CanEnter bool
 	// Error is what went wrong with the last entry, carried back through the
 	// redirect so a reload cannot re-submit a result that already counted.
-	Error  string
+	Error string
+	// MaxPlayers is the cap, repeated here so the edit form can say the whole
+	// sentence rather than half of it.
+	MaxPlayers int
+	// Edit is the field and the mode as they stand, offered for changing
+	// while nothing has been played. Nil once a result exists: the draw is a
+	// function of the stored order, so moving the field then would put later
+	// pairings in slots their results were not played in.
+	Edit   *TournamentFormView
 	Rounds []TournamentRoundView
 	Table  []TournamentTableRow
 	// Played and Total are how far along the evening is.

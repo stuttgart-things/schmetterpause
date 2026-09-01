@@ -272,9 +272,23 @@ immer noch gleichauf liegt, teilt sich den Platz; ein `·` neben der Zahl sagt
 das. Drei Leute können sich im Kreis schlagen, und dann ist ein geteilter Platz
 die einzige ehrliche Antwort.
 
-**Beenden** geht, sobald alle Spiele drin sind. Das nimmt das Turnier von der
+**Beenden** geht jederzeit, nicht erst wenn alle Spiele drin sind. Das nimmt das Turnier von der
 Liste der laufenden Dinge und sonst nichts — an der Wertung hängt es nicht,
-die ist längst passiert.
+die ist längst passiert. Gerade das Turnier, das niemand zu Ende spielt, muss
+sich wegräumen lassen — es steht danach unter **„vergangene Turniere"**,
+eingeklappt unter der Liste der laufenden.
+
+**Ändern und löschen** gehen, solange **kein einziges Ergebnis** drin steht.
+Dann sind Feld und Modus noch eine Entscheidung und keine Aufzeichnung: unter
+„Turnier ändern" auf der Turnierseite lässt sich beides korrigieren, und
+löschen geht dort und in der Liste. Sobald ein Ergebnis eingetragen ist, ist
+Schluss damit — der Spielplan ergibt sich aus der gespeicherten Reihenfolge,
+ein nachträglich verschobenes Feld würde eingetragene Ergebnisse in Runden
+legen, in denen sie nicht gespielt wurden. Ein gespieltes Turnier wird
+**beendet, nicht gelöscht**: `matches.tournament_id` ist `on delete set null`,
+das Löschen würde die Ergebnisse als Feierabendspiele zurücklassen — weiter
+gewertet, und zurück in der Messung, aus der sie absichtlich herausgenommen
+sind.
 
 **„Nochmal ne Runde"** steht daneben, sobald alle Spiele drin sind. Der Link
 öffnet das Anlege-Formular mit demselben Feld und demselben Modus; der Name
