@@ -65,6 +65,12 @@
 	--card: #15152a;
 	--panel: #1e1e3d;
 	--line: #2e2e55;
+	/* The border of something you type into, which WCAG 1.4.11 wants at 3:1
+	   against what is on either side of it. --line is a hairline between
+	   areas and stays quiet; this one is a boundary of a control and has to
+	   be findable. Measured: 3.62:1 against --card, 3.24:1 against --panel.
+	   A value that cleared one and not the other would be half compliant. */
+	--field-line: #6a6aa8;
 
 	--fg: #ececff;
 	--muted: #8f8fb8;
@@ -554,7 +560,7 @@ input, select {
 	padding: 0.5rem 0.6rem;
 	background: var(--panel);
 	color: var(--fg);
-	border: 1px solid var(--line);
+	border: 1px solid var(--field-line);
 	border-radius: var(--radius-sm);
 }
 
@@ -650,6 +656,14 @@ button.secondary:hover {
 	display: inline-flex;
 	flex-direction: column;
 	gap: 0.25rem;
+}
+
+/* Gone where there is a mouse. The slider is tabindex="-1" — it was never a
+   control for the keyboard, only a way to set a score with a thumb. Beside a
+   box that already takes the number, on a screen with a pointer, it is a
+   second thing to look at for nothing. */
+@media (hover: hover) and (pointer: fine) {
+	.score-slider { display: none; }
 }
 
 .score-slider {

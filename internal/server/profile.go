@@ -30,6 +30,20 @@ const (
 	sparkPad = 6
 )
 
+// handleStandings serves the ranking as a page.
+func (s *Server) handleStandings(w http.ResponseWriter, r *http.Request) {
+	standings, err := s.standingsView(r.Context())
+	if err != nil {
+		s.log.ErrorContext(r.Context(), "loading the ranking failed", "error", err)
+		http.Error(w, "Rangliste nicht verfügbar", http.StatusInternalServerError)
+		return
+	}
+	s.render(w, r, templates.StandingsPage(templates.StandingsPageView{
+		Header:    s.headerView(r.Context()),
+		Standings: standings,
+	}))
+}
+
 // handleStandingsFragment serves the ranking on its own.
 func (s *Server) handleStandingsFragment(w http.ResponseWriter, r *http.Request) {
 	view, err := s.standingsView(r.Context())

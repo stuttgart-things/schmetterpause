@@ -109,3 +109,24 @@ templ standingsBody(v StandingsView) {
 		}
 	}
 }
+
+// StandingsPage is the ranking on a page of its own.
+//
+// It used to sit under the entry form on the start page, which made the start
+// page two things at once: enter what you played, and read where everybody
+// stands. The second is what people look at between matches, and it is worth
+// an address somebody can open directly.
+templ StandingsPage(v StandingsPageView) {
+	@Layout("Rangliste", v.Header) {
+		<div class="page-head">
+			<div class="page-greeting">
+				<h1>Rangliste</h1>
+				<p class="muted">
+					TTR nach dem deutschen Verbandssystem. Nur bestätigte
+					Einzel zählen.
+				</p>
+			</div>
+		</div>
+		@Standings(v.Standings)
+	}
+}

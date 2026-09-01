@@ -2,7 +2,6 @@ package server_test
 
 import (
 	"net/http"
-	"net/http/httptest"
 	"strings"
 	"testing"
 
@@ -205,18 +204,24 @@ func TestProfileOfSomebodyWhoDoesNotExist(t *testing.T) {
 	}
 }
 
-func TestTheStartPageShowsTheRanking(t *testing.T) {
+// The ranking has a page of its own. It used to sit under the entry form,
+// which made the start page two things at once: enter what you played, and
+// read where everybody stands.
+func TestTheRankingHasItsOwnPage(t *testing.T) {
 	h, store, anna, bodo := twoBrowsers(t)
 	settledMatch(t, h, store, anna, bodo)
 
-	r := httptest.NewRequest(http.MethodGet, "/", nil)
-	r.AddCookie(anna)
-	rec := httptest.NewRecorder()
-	h.ServeHTTP(rec, r)
-
-	body := rec.Body.String()
+	body := fragment(t, h, "/standings", anna).Body.String()
 	if !strings.Contains(body, "Rangliste") || !strings.Contains(body, "Bilanz") {
-		t.Errorf("the start page does not show the ranking: %s", body)
+		t.Errorf("the ranking page does not show the ranking: %s", body)
+	}
+	if !strings.Contains(body, `href="/standings"`) {
+		t.Error("the navigation does not name it")
+	}
+
+	start := fragment(t, h, "/", anna).Body.String()
+	if strings.Contains(start, `id="standings"`) {
+		t.Error("the start page still carries the ranking")
 	}
 }
 
@@ -228,7 +233,7 @@ func TestBothTablesSitInAScrollBox(t *testing.T) {
 	h, store, anna, bodo := twoBrowsers(t)
 	settledMatch(t, h, store, anna, bodo)
 
-	for _, page := range []string{"/", "/players/" + opponentID(t, store, "Anna")} {
+	for _, page := range []string{"/standings", "/players/" + opponentID(t, store, "Anna")} {
 		body := fragment(t, h, page, anna).Body.String()
 
 		for _, want := range []string{`class="table-scroll"`, `tabindex="0"`, `role="region"`} {

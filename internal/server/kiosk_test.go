@@ -491,8 +491,8 @@ func TestBothPagesGreetWithTheMascot(t *testing.T) {
 	if !strings.Contains(start, `class="page-head"`) {
 		t.Errorf("the start page has no heading row: %s", start)
 	}
-	if strings.Index(start, "page-mascot") > strings.Index(start, `id="standings"`) {
-		t.Error("the start page mascot sits below the ranking")
+	if strings.Index(start, "page-mascot") > strings.Index(start, `id="match"`) {
+		t.Error("the start page mascot sits below the entry form")
 	}
 }
 

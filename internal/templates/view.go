@@ -48,6 +48,13 @@ type StatusView struct {
 // two places — this reads the same field the probe does.
 func (v StatusView) Ready() bool { return v.DatabaseReachable }
 
+// StandingsPageView is the ranking as a page rather than as a block under
+// something else.
+type StandingsPageView struct {
+	Header    HeaderView
+	Standings StandingsView
+}
+
 // KioskUnlockView is the door in front of the kiosk: one field, and what went
 // wrong with the last attempt.
 type KioskUnlockView struct {
