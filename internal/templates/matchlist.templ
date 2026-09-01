@@ -12,14 +12,45 @@ templ MatchList(v MatchListView) {
 		<div class="page-head">
 			<div class="page-greeting">
 				<h1>Matches</h1>
-				<p class="muted">Alles, was an der Platte passiert ist — neueste zuerst.</p>
+				if v.Filter.All {
+					<p class="muted">Alles, was an der Platte passiert ist — neueste zuerst.</p>
+				} else {
+					// Says whose these are without making anybody read the
+					// picker: somebody who followed a link has to know what
+					// they are looking at.
+					<p class="muted">
+						Alles, was { v.Filter.Name } gespielt hat — neueste zuerst.
+					</p>
+				}
 			</div>
 			// The list belongs to everybody, so it has a colour of its own.
 			@PageMascot(PaddleMatchList)
 		</div>
 		<section id="matches">
+			// A plain GET form. The answer is a whole page at an address
+			// somebody can keep and send — "schau dir mal meine Matches an"
+			// is a link, not an instruction — and a form that navigates needs
+			// no JavaScript at all. An onchange handler would be the only
+			// inline script in the project (invariant 7); HTMX could do it,
+			// but only by swapping the page into itself for a plain link.
+			<form class="match-filter" method="get" action="/matches">
+				<label for="match-filter">Wessen Matches</label>
+				<select id="match-filter" name="spieler">
+					<option value={ MatchFilterAll } selected?={ v.Filter.All }>alle</option>
+					for _, p := range v.Filter.Players {
+						<option value={ p.ID } selected?={ p.Selected }>{ p.DisplayName }</option>
+					}
+				</select>
+				<button class="secondary" type="submit">Anzeigen</button>
+			</form>
 			if len(v.Matches) == 0 {
-				<p class="muted">Noch nichts eingetragen.</p>
+				if v.Filter.All {
+					<p class="muted">Noch nichts eingetragen.</p>
+				} else {
+					<p class="muted">
+						Für { v.Filter.Name } ist noch nichts eingetragen.
+					</p>
+				}
 			} else {
 				// Same reasoning as the ranking: the table scrolls in its own
 				// box rather than taking the page with it. Focusable, because
