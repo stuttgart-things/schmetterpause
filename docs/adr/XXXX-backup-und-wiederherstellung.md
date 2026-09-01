@@ -63,6 +63,35 @@ trotzdem hoch: Die TTR-Historie ist nicht rekonstruierbar, und die
 MVP-Definition-of-Done aus `docs/mvp-plan.md` misst über einen Zeitraum von fünf
 Arbeitstagen. Ein Datenverlust setzt die Messung zurück, nicht nur die Daten.
 
+## Was der Cluster-Speicher darüber sagt, wie eilig das ist
+
+Die erste Fassung nahm an, der Cluster werde gelegentlich neu gebaut, und
+leitete daraus ab, dass ein geplanter Neubau kein Datenverlust ist. Die
+Erhebung in #78 macht daraus etwas Schärferes.
+
+Auf `cicd-test2` ist die Default-StorageClass `openebs-hostpath`
+(`openebs.io/local`), `Delete`-Reclaim, `WaitForFirstConsumer`, keine
+Volume-Expansion. Die CNPG-Instanz läuft mit `instances: 1` und
+`backups: false`. Zusammen heißt das:
+
+- **Die Daten liegen in einem Verzeichnis auf genau einem Node.** Kein zweites
+  Exemplar, keine Replikation. Diesen Node zu verlieren heißt, die Datenbank zu
+  verlieren — nicht „Ausfallzeit", die Daten.
+- **Das Sicherheitsnetz fängt eine Hand, nicht die daneben.** Ein gelöschtes
+  Argo-`Application` lässt das PVC stehen. Aber sobald irgendetwas das *PVC*
+  löscht — eine Namespace-Löschung, ein Prune unter geänderter Konfiguration —
+  nimmt `Delete` das Volume samt Inhalt sofort mit. Es gibt kein `Retain` und
+  nichts zum Nachträglich-Retten.
+
+**Das ist der Grund, warum dieses ADR in phase-5 bleiben darf und nicht
+vorgezogen werden muss:** Solange auf dem Cluster nichts liegt, was jemandem
+fehlen würde, ist „entbehrlich" keine Einschätzung, sondern eine Beschreibung.
+Die Messung läuft auf dem Büro-Compose, nicht auf Kubernetes.
+
+Es ist zugleich der Grund, warum **Backups vor Replicas** kommen, wenn es so
+weit ist: Drei Instanzen decken eine der Verlustursachen ab, eine Sicherung
+deckt fünf. Eine Namespace-Löschung nimmt drei Instanzen genauso mit wie eine.
+
 ## Zwei Arten von Zustand, nur eine gehört in den Objektspeicher
 
 Die naheliegende Formulierung — "wir sichern die Infrastruktur nach S3 und
@@ -158,13 +187,17 @@ richtige Auflösung; niemand stellt diese Datenbank auf 14:32 zurück.
 Unverändert gültig, jetzt als Auslöser für „Weg B ernst nehmen" statt für
 „überhaupt einen Operator einführen":
 
-1. Ein Cluster geht **ungeplant** verloren, oder es zeichnet sich ab, dass das
+1. **Das Büro spielt gegen den Cluster statt gegen Compose.** Aus #78, und der
+   schärfste der vier: Von dem Moment an liegen TTR-Historie und Ergebnisse
+   dort, und sie zu verlieren kostet eine Woche Bürozeit zum Nacherfassen.
+   Ungesichert ist dann eine Entscheidung, kein Zustand.
+2. Ein Cluster geht **ungeplant** verloren, oder es zeichnet sich ab, dass das
    passieren kann. Dann trägt das Argument „vor dem Teardown ein Lauf" nicht
    mehr.
-2. Der **Ligamodus (M2)** ist in Betrieb und Tabellenstände hängen an
+3. Der **Ligamodus (M2)** ist in Betrieb und Tabellenstände hängen an
    Ergebnissen. Ein Verlust der letzten Stunden ist dann nicht mehr die
    Neueingabe weniger Matches, sondern eine inkonsistente Tabelle.
-3. Die Datenbank soll **hochverfügbar** laufen.
+4. Die Datenbank soll **hochverfügbar** laufen.
 
 ## Randbedingungen, die für beide Wege gelten
 
