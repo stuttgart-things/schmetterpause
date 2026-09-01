@@ -29,14 +29,6 @@ templ Index(v IndexView) {
 			@matchPlaceholder()
 		}
 		@Standings(v.Standings)
-		<section
-			id="status"
-			hx-get="/fragments/status"
-			hx-trigger="load, every 10s"
-			hx-swap="innerHTML"
-		>
-			<p class="muted">Status wird geladen …</p>
-		</section>
 	}
 }
 
@@ -101,8 +93,12 @@ templ PageMascot(paddle string) {
 // handler -> repository -> database and back into the template.
 //
 // It states what the two probes would answer rather than linking to them: a
-// link you have to click and read is not a status, and the footer used to
-// carry two of them.
+// link you have to click and read is not a status.
+//
+// It lives on /info rather than under the ranking. What it answers is a
+// question somebody asks on purpose — is this thing up, which version is
+// running — and it was standing between every player and the bottom of the
+// start page to answer it unasked.
 templ Status(v StatusView) {
 	<dl class="status">
 		<dt>healthz</dt>
@@ -126,4 +122,32 @@ templ Status(v StatusView) {
 		<dt>Version</dt>
 		<dd>{ v.Version }</dd>
 	</dl>
+}
+
+// Info is the page the status moved to: what the probes would say, which
+// version is running, and how many players there are.
+//
+// A page rather than a corner of the start page, because it is looked up
+// rather than read in passing — and because the start page is what somebody
+// opens to enter a result.
+templ Info(v StatusView) {
+	@Layout("Info", v.Header) {
+		<div class="page-head">
+			<div class="page-greeting">
+				<h1>Info</h1>
+				<p class="muted">
+					Was die beiden Proben antworten würden, und was gerade läuft.
+				</p>
+			</div>
+		</div>
+		<section
+			id="status"
+			class="card"
+			hx-get="/fragments/status"
+			hx-trigger="load, every 10s"
+			hx-swap="innerHTML"
+		>
+			<p class="muted">Status wird geladen …</p>
+		</section>
+	}
 }

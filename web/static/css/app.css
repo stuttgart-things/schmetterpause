@@ -102,8 +102,8 @@
 
 * { box-sizing: border-box; }
 
-/* Column layout so the footer sits at the bottom of a short page instead of
-   halfway up it. */
+/* Column layout so a short page still fills the height and the content does
+   not float halfway up it. */
 body {
 	margin: 0;
 	min-height: 100vh;
@@ -128,7 +128,7 @@ body {
 	white-space: nowrap;
 }
 
-/* --- Kopf und Fuß ------------------------------------------------------ */
+/* --- Kopf und Navigation ------------------------------------------------ */
 
 .topbar {
 	display: flex;
@@ -242,42 +242,36 @@ h1 {
 	margin: 0.5rem 0 1.5rem;
 }
 
-/* Section headings read as labels, not as prose: uppercase mono, the way a
-   dashboard names a panel. */
-h2 {
-	font-family: var(--font-mono);
-	font-size: 0.75rem;
-	font-weight: 700;
-	letter-spacing: 0.14em;
-	text-transform: uppercase;
-	color: var(--muted);
-	margin: 0 0 0.85rem;
-}
-
-.muted { color: var(--muted); }
-.ok { color: var(--ok); }
-.fail { color: var(--bad); font-weight: 600; }
-
-.footer {
+/* The navigation, above the content. It used to sit under a ranking that
+   grows with every player, so on a phone the way to the other pages moved
+   further away the more the app was used. */
+.mainnav {
 	width: 100%;
 	max-width: 46rem;
-	margin: 0 auto;
-	padding: 1rem 1.25rem 2.5rem;
+	margin: 0.9rem auto 0;
+	padding: 0 1.25rem 0.9rem;
 	display: flex;
+	flex-wrap: wrap;
 	gap: 1.25rem;
 	font-family: var(--font-mono);
 	font-size: 0.72rem;
 	letter-spacing: 0.06em;
 	text-transform: uppercase;
-	border-top: 1px solid var(--line);
+	border-bottom: 1px solid var(--line);
 }
 
-.footer a {
+.mainnav a {
 	color: var(--muted);
 	text-decoration: none;
 }
 
-.footer a:hover { color: var(--fg); }
+.mainnav a:hover { color: var(--fg); }
+
+.mainnav a:focus-visible {
+	outline: 2px solid var(--accent);
+	outline-offset: 2px;
+	border-radius: 2px;
+}
 
 /* --- Karten ------------------------------------------------------------ */
 
@@ -1084,7 +1078,7 @@ tr.self td { background: color-mix(in srgb, var(--accent) 8%, transparent); }
    dropped rather than dumped onto paper, and the code gets a size that scans
    from arm's length. */
 @media print {
-	.topbar, .footer, .no-print, .page-mascot { display: none; }
+	.topbar, .mainnav, .no-print, .page-mascot { display: none; }
 
 	body { background: #fff; color: #000; }
 	main { max-width: none; padding: 0; }
@@ -1235,3 +1229,4 @@ tr.self td { background: color-mix(in srgb, var(--accent) 8%, transparent); }
 	border-left: 2px solid var(--line);
 	padding-left: 0.8rem;
 }
+

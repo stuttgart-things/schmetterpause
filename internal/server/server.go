@@ -73,6 +73,7 @@ func (s *Server) routes() http.Handler {
 
 	page := http.NewServeMux()
 	page.HandleFunc("GET /{$}", s.handleIndex)
+	page.HandleFunc("GET /info", s.handleInfo)
 	page.HandleFunc("GET /fragments/status", s.handleStatusFragment)
 	page.HandleFunc("GET /fragments/whoami", s.handleWhoami)
 	page.HandleFunc("GET /fragments/standings", s.handleStandingsFragment)

@@ -29,6 +29,9 @@ import (
 // the scaffolding it serves as proof that template, HTMX and repository work
 // together.
 type StatusView struct {
+	// Header is only filled for the whole /info page; the fragment on its
+	// own renders inside one that is already there.
+	Header HeaderView
 	// Players is the number of players on record.
 	Players int
 	// DatabaseReachable reports whether the database answers a ping.
