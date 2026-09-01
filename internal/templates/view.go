@@ -842,3 +842,58 @@ type TournamentTableRow struct {
 // played gets none, the same way the overall ranking treats an untested
 // rating.
 func (r TournamentTableRow) Ranked() bool { return r.Rank > 0 }
+
+// StatisticsView drives the statistics page.
+//
+// Everything on it is a count, and that is the page's rule rather than a
+// starting point: with fewer than twenty matches on record a percentage is
+// noise wearing a percent sign. The rate-based figures are catalogued in
+// issue #121 and wait for the volume that makes them true.
+type StatisticsView struct {
+	Header HeaderView
+	Totals StatisticsTotals
+	// Matrix is everybody against everybody. Empty until two players have
+	// been created.
+	Matrix []StatisticsRow
+	// Names label the columns, in the same order as the rows.
+	Names []string
+	// Limit is how many matches were read, and Truncated says the cap bit —
+	// a page that silently stopped counting would read as the whole history.
+	Limit     int
+	Truncated bool
+}
+
+// Any reports whether there is anything to show yet.
+func (v StatisticsView) Any() bool { return v.Totals.Matches > 0 }
+
+// StatisticsTotals is what the office has played, formatted for reading.
+type StatisticsTotals struct {
+	Matches, Sets, Points int
+	Deuce                 int
+	Whitewashes           int
+	// LongestSet is the score as it was played, "19:17", or empty before the
+	// first confirmed match.
+	LongestSet string
+}
+
+// StatisticsRow is one line of the head-to-head matrix.
+type StatisticsRow struct {
+	DisplayName string
+	// ID is whose row this is, so the name can link to their profile.
+	ID        string
+	Cells     []StatisticsCell
+	Won, Lost int
+}
+
+// StatisticsCell is one player's record against one other.
+type StatisticsCell struct {
+	// Record is "3:1" — wins to losses — or empty when these two have not
+	// met. Empty rather than "0:0", because a pairing that never happened
+	// and one that ended goalless are different things.
+	Record string
+	// Self marks the diagonal, which is drawn as a blank rather than a zero.
+	Self bool
+	// Opponent labels the cell for a screen reader, which cannot see which
+	// column it is in.
+	Opponent string
+}
