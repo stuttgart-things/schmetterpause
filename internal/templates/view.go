@@ -307,6 +307,11 @@ func SetRows(sets []SetInput, bestOf int) []SetInput {
 // allowedBestOf in the match package, which mirrors the schema constraint.
 var BestOfOptions = []int{1, 3, 5, 7}
 
+// PointsToWinOptions are the target scores a set can be played to, in the
+// order the picker offers them. Eleven first: it is the default and the one
+// a break is played in.
+var PointsToWinOptions = []int{match.PointsToEleven, match.PointsToTwentyOne}
+
 // BestOfLabel names a mode the way it gets said at the table. "Best of 1" is
 // how the number reads and not what anybody calls a single set, so the one
 // case gets its own words (issue #114).
@@ -747,6 +752,10 @@ type TournamentListRow struct {
 	// whether an afternoon is enough.
 	Players int
 	Matches int
+	// Mode is how it is played, ready to read: "Best of 3, bis 11". A list
+	// that names two tournaments and not the difference between them makes
+	// somebody open both.
+	Mode string
 }
 
 // TournamentFormView drives the form that starts a tournament. What was
@@ -754,6 +763,10 @@ type TournamentListRow struct {
 type TournamentFormView struct {
 	Name       string
 	Candidates []TournamentCandidate
+	// BestOf and PointsToWin are the mode the whole draw is played under,
+	// asked once here rather than at every pairing.
+	BestOf      int
+	PointsToWin int
 	// Error explains why the last attempt was refused, in words somebody can
 	// act on. Empty on a fresh form.
 	Error string
@@ -778,9 +791,19 @@ type TournamentCandidate struct {
 	Chosen      bool
 }
 
-// NewTournamentFormView returns an empty form over the given players.
+// NewTournamentFormView returns an empty form over the given players, in the
+// mode a break is played in.
 func NewTournamentFormView(candidates []TournamentCandidate) TournamentFormView {
-	return TournamentFormView{Candidates: candidates}
+	return TournamentFormView{
+		Candidates:  candidates,
+		BestOf:      match.DefaultBestOf,
+		PointsToWin: match.PointsToEleven,
+	}
+}
+
+// TournamentModeLabel names a mode in one readable phrase.
+func TournamentModeLabel(bestOf, pointsToWin int) string {
+	return BestOfLabel(bestOf) + ", bis " + strconv.Itoa(pointsToWin)
 }
 
 // TournamentView is one tournament: the draw, and the table so far.
@@ -789,6 +812,11 @@ type TournamentView struct {
 	ID     string
 	Name   string
 	Open   bool
+	// BestOf and PointsToWin are the mode of the whole draw. The entry form
+	// renders exactly BestOf set boxes from it, and the page says the mode
+	// out loud — a schedule that does not is one nobody can read back.
+	BestOf      int
+	PointsToWin int
 	// CanEnter is whether this browser may enter results here. Only the
 	// unlocked machine at the table may: a quick tournament is run by one
 	// person on one laptop, and those entries settle at once instead of
