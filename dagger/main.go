@@ -1029,17 +1029,51 @@ grep -q "1:1" /tmp/standings2 || {
 }
 
 echo "== kiosk: one machine enters for everybody =="
-# Locked until the token is shown, and the token is swapped for a cookie.
-code=$(curl -sS -o /dev/null -w "%{http_code}" http://app:8080/kiosk)
-[ "$code" = "403" ] || {
-	echo "the kiosk answered $code without a token, expected 403"
+# Locked until the code is shown. Without a grant the door is the code form,
+# not a refusal — but it must not carry anything from behind it, and it must
+# not hand out a grant.
+door=$(mktemp)
+code=$(curl -sS -o "$door" -w "%{http_code}" -c "$door.jar" http://app:8080/kiosk)
+[ "$code" = "200" ] || {
+	echo "the kiosk answered $code without a grant, expected the code form"
+	exit 1
+}
+grep -q 'name="code"' "$door" || {
+	echo "the kiosk door offers no way in"
+	exit 1
+}
+# if rather than "grep && { }": under set -e a grep that finds nothing is the
+# good case here and would take the script down with it.
+if grep -q "Ergebnis eintragen" "$door"; then
+	echo "the locked kiosk shows what is behind it"
+	exit 1
+fi
+if grep -q schmetterpause_kiosk "$door.jar"; then
+	echo "the locked kiosk handed out a grant"
+	exit 1
+fi
+
+# A wrong code is refused, and the form is the way in.
+code=$(curl -sS -o /dev/null -w "%{http_code}" -X POST http://app:8080/kiosk/unlock -d code=nope)
+[ "$code" = "401" ] || {
+	echo "a wrong code answered $code, expected 401"
 	exit 1
 }
 
 kiosk=$(mktemp)
-curl -fsS -c "$kiosk" -o /dev/null "http://app:8080/kiosk?token=pipeline-only-kiosk-token"
+curl -fsS -c "$kiosk" -o /dev/null -X POST http://app:8080/kiosk/unlock \
+	-d code=pipeline-only-kiosk-token
 grep -q schmetterpause_kiosk "$kiosk" || {
-	echo "the token did not unlock the kiosk"
+	echo "the code did not unlock the kiosk"
+	exit 1
+}
+
+# The query string is the same lock, kept for the operator who was handed a
+# link rather than a code.
+legacy=$(mktemp)
+curl -fsS -c "$legacy" -o /dev/null "http://app:8080/kiosk?token=pipeline-only-kiosk-token"
+grep -q schmetterpause_kiosk "$legacy" || {
+	echo "the token in the query no longer unlocks the kiosk"
 	exit 1
 }
 
