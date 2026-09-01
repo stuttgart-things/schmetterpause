@@ -173,3 +173,68 @@ templ playerPicker(id, name string, players []OpponentOption, extra templ.Attrib
 templ PlayerPickerOOB(p KioskPicker) {
 	@playerPicker(p.ID, p.Name, p.Players, templ.Attributes{"hx-swap-oob": "true"})
 }
+
+// KioskUnlock is the door to the machine at the table.
+//
+// A form rather than a token in the address, because a URL carrying the code
+// stays in the history and the autocomplete of a laptop that gets borrowed —
+// and it travels wherever somebody pastes the link. The secret is the same
+// either way; what changes is where it ends up.
+//
+// The page says nothing about the tournament behind it. Somebody who has not
+// been told the code has no business learning what is being played from a
+// screen they cannot open.
+templ KioskUnlock(v KioskUnlockView) {
+	@Layout("Kiosk", HeaderView{}) {
+		<div class="page-head">
+			<div class="page-greeting">
+				<h1>Kiosk</h1>
+				<p class="muted">
+					Das Gerät an der Platte, an dem alle Ergebnisse eingetragen
+					werden. Der Zugangscode steht bei dem, der den Abend
+					aufgesetzt hat.
+				</p>
+			</div>
+			@PageMascot(PaddleKiosk)
+		</div>
+		<section class="session">
+			<h2>Zugangscode</h2>
+			if v.Error != "" {
+				<p class="error" role="alert">{ v.Error }</p>
+			}
+			<form method="post" action="/kiosk/unlock">
+				<div class="secret-row">
+					<label class="sr-only" for="kiosk-code">Zugangscode</label>
+					<input
+						id="kiosk-code"
+						name="code"
+						type="password"
+						autocapitalize="none"
+						autocorrect="off"
+						autocomplete="off"
+						spellcheck="false"
+						required
+					/>
+					// Verdeckt, weil die Kiste danach herumsteht — und mit
+					// Knopf, weil ein blind getippter Code sonst wie ein
+					// falscher aussieht. Ohne JavaScript bleibt das Feld
+					// benutzbar, der Knopf tut dann nichts.
+					<button
+						type="button"
+						class="secret-reveal"
+						data-reveal="kiosk-code"
+						aria-controls="kiosk-code"
+						aria-pressed="false"
+					>
+						Zeigen
+					</button>
+				</div>
+				<button type="submit">Freischalten</button>
+			</form>
+			<p class="field-alt">
+				Einmal pro Gerät. Danach bleibt es rund zwölf Stunden
+				freigeschaltet, und ein Admin kann es jederzeit zurücknehmen.
+			</p>
+		</section>
+	}
+}

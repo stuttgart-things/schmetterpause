@@ -20,9 +20,70 @@ import (
 	"github.com/stuttgart-things/schmetterpause/internal/credential"
 	"github.com/stuttgart-things/schmetterpause/internal/domain"
 	"github.com/stuttgart-things/schmetterpause/internal/match"
+	"github.com/stuttgart-things/schmetterpause/internal/ratelimit"
 	"github.com/stuttgart-things/schmetterpause/internal/scoring"
 	"github.com/stuttgart-things/schmetterpause/internal/templates"
 )
+
+// kioskPolicy is the brake on guessing at the code.
+//
+// One dimension, per address, because there is only one secret: sign-in can
+// lean on a per-player half, and this has nothing to lean on. Firmer than the
+// per-address half of sign-in for the same reason.
+//
+// Behind a proxy every request in the building is one address, so an attack
+// could make the whole office wait to unlock a kiosk. That is acceptable here
+// in a way it would not be for sign-in: unlocking happens once a day per
+// machine, the wait tops out at five minutes, and it elapses on its own. An
+// unlocked oracle for a shared secret is the worse of the two.
+var kioskPolicy = ratelimit.Policy{
+	Free:   3,
+	Step:   2 * time.Second,
+	Max:    5 * time.Minute,
+	Forget: time.Hour,
+}
+
+// handleKioskUnlock takes the code from the form.
+func (s *Server) handleKioskUnlock(w http.ResponseWriter, r *http.Request) {
+	s.tryKioskCode(w, r, strings.TrimSpace(r.FormValue("code")))
+}
+
+// tryKioskCode is the one place a code is checked, whether it arrived in the
+// query or in the form. Two doors with one lock, so a brake fitted to one of
+// them cannot be walked around through the other.
+func (s *Server) tryKioskCode(w http.ResponseWriter, r *http.Request, code string) {
+	address := requestAddress(r)
+
+	if wait := s.kioskByAddress.Retry(address); wait > 0 {
+		w.Header().Set("Retry-After", strconv.Itoa(max(int(wait.Round(time.Second)/time.Second), 1)))
+		w.WriteHeader(http.StatusTooManyRequests)
+		s.render(w, r, templates.KioskUnlock(templates.KioskUnlockView{
+			Error: "Zu viele Fehlversuche. Probier es in " + waitInWords(wait) + " noch einmal.",
+		}))
+		return
+	}
+
+	if code == "" || !s.kioskTokenMatches(code) {
+		s.kioskByAddress.Failed(address)
+		s.log.InfoContext(r.Context(), "kiosk code refused", "address", address)
+		w.WriteHeader(http.StatusUnauthorized)
+		s.render(w, r, templates.KioskUnlock(templates.KioskUnlockView{
+			Error: "Das ist nicht der Zugangscode.",
+		}))
+		return
+	}
+
+	if err := s.unlockKiosk(w, r); err != nil {
+		s.log.ErrorContext(r.Context(), "unlocking the kiosk failed", "error", err)
+		http.Error(w, "Kiosk nicht verfügbar", http.StatusInternalServerError)
+		return
+	}
+	s.kioskByAddress.Succeeded(address)
+
+	// Redirected rather than rendered, so a reload does not repeat the
+	// attempt and the address bar keeps nothing.
+	http.Redirect(w, r, "/kiosk", http.StatusSeeOther)
+}
 
 // kioskCookieName marks a browser that has shown the token once.
 const kioskCookieName = "schmetterpause_kiosk"
@@ -39,23 +100,16 @@ const kioskCookieMaxAge = 12 * time.Hour
 // next person to borrow the laptop reads it.
 func (s *Server) handleKiosk(w http.ResponseWriter, r *http.Request) {
 	if token := r.URL.Query().Get("token"); token != "" {
-		if !s.kioskTokenMatches(token) {
-			http.Error(w, "Falscher Zugang", http.StatusForbidden)
-			return
-		}
-		if err := s.unlockKiosk(w, r); err != nil {
-			s.log.ErrorContext(r.Context(), "unlocking the kiosk failed", "error", err)
-			http.Error(w, "Kiosk nicht verfügbar", http.StatusInternalServerError)
-			return
-		}
-		// Redirected rather than rendered, so a reload does not carry the
-		// token along and the browser history does not keep it.
-		http.Redirect(w, r, "/kiosk", http.StatusSeeOther)
+		s.tryKioskCode(w, r, token)
 		return
 	}
 
 	if !s.kioskUnlocked(r) {
-		http.Error(w, "Zugang nötig", http.StatusForbidden)
+		// A form rather than a 403. The address alone tells nobody anything —
+		// the code is the door either way — and the machine at the table is
+		// set up by somebody who was told the code, not somebody who happened
+		// to guess the path.
+		s.render(w, r, templates.KioskUnlock(templates.KioskUnlockView{}))
 		return
 	}
 

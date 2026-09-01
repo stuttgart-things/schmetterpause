@@ -75,11 +75,19 @@ func TestTheKioskDoesNotExistWithoutAToken(t *testing.T) {
 func TestTheKioskWantsTheToken(t *testing.T) {
 	h, _ := kioskHandler(t)
 
-	if rec := get(t, h, "/kiosk"); rec.Code != http.StatusForbidden {
-		t.Errorf("without a cookie = %d, want 403", rec.Code)
+	// Without a grant the door is a form, not a refusal: the address alone
+	// tells nobody anything, and whoever sets up the table was told the code
+	// rather than guessing the path. What it must not do is say what is being
+	// played behind it.
+	rec := get(t, h, "/kiosk")
+	if rec.Code != http.StatusOK {
+		t.Errorf("without a cookie = %d, want 200 and the code form", rec.Code)
 	}
-	if rec := get(t, h, "/kiosk?token=wednesday"); rec.Code != http.StatusForbidden {
-		t.Errorf("with the wrong token = %d, want 403", rec.Code)
+	if body := rec.Body.String(); !strings.Contains(body, `name="code"`) {
+		t.Error("the door offers no way in")
+	}
+	if rec := get(t, h, "/kiosk?token=wednesday"); rec.Code != http.StatusUnauthorized {
+		t.Errorf("with the wrong token = %d, want 401", rec.Code)
 	}
 	if rec := kioskPost(t, h, "/kiosk/players", nil, url.Values{"display_name": {"Anna"}}); rec.Code != http.StatusForbidden {
 		t.Errorf("posting without a cookie = %d, want 403", rec.Code)
@@ -89,7 +97,7 @@ func TestTheKioskWantsTheToken(t *testing.T) {
 
 	r := httptest.NewRequest(http.MethodGet, "/kiosk", nil)
 	r.AddCookie(kiosk)
-	rec := httptest.NewRecorder()
+	rec = httptest.NewRecorder()
 	h.ServeHTTP(rec, r)
 	if rec.Code != http.StatusOK {
 		t.Fatalf("with the cookie = %d, want 200", rec.Code)
