@@ -73,7 +73,7 @@ Microsoft-Dokumentation am 2026-08-28:
 | Ingress | Cilium Gateway API, Zertifikat am Listener des Gateways | Dokumentierter Weg ist der **NGINX Ingress Controller**. Ein Gateway-API-Controller ist nicht vorinstalliert | **Größter Posten.** `httproute.k` aus #78 setzt eine Gateway-API-Implementierung voraus. Nach der Regel oben wird sie auf Azure Local nachgerüstet. |
 | Externe IPs | vorhanden | **MetalLB** als Arc-Extension oder ein eigener Loadbalancer. Der IP-Bereich darf nicht mit Arc-VM-Logical-Networks oder Control-Plane-IPs kollidieren | Ein IP-Bereich muss reserviert und dokumentiert sein, bevor überhaupt etwas erreichbar ist. |
 | GitOps-Installation | Argo CD läuft, gepflegt in `stuttgart-things/argocd` | Zwei Wege: Arc-Extension `microsoft.argocd` (**Public Preview**) oder Argo selbst per Helm. Die Flux-Extension ist GA — aber #81 hat Argo entschieden | Eigene Entscheidung, siehe offene Frage 6. |
-| StorageClass | vorhanden | `disk.csi.akshci.com`, VHDX-gestützt. **Linux-Workloads brauchen eine eigene StorageClass mit `fsType: ext4`** — die Default genügt nicht | Die CloudNativePG-`Cluster`-Ressource braucht eine explizit gesetzte `storageClass`. Fällt sonst erst beim ersten Pod auf. |
+| StorageClass | vorhanden | `disk.csi.akshci.com`, VHDX-gestützt. **Linux-Workloads brauchen eine eigene StorageClass mit `fsType: ext4`** — die Default genügt nicht | Die `Cluster`-Ressource kommt aus dem Katalog `infra/cloudnative-pg`, gehört also der Argo-Application und nicht unserer Base — die `storageClass` ist dort zu setzen. Auf `cicd-test2` ist die Default `openebs-hostpath`; auf Azure Local gibt es kein Gegenstück, das ohne `fsType` funktioniert. |
 | Volume-Snapshots | vorhanden | **werden nicht unterstützt** | Betrifft das Backup-ADR und #84: Velero muss dort auf Datei-Backup (restic/kopia) ausweichen. |
 | Objektspeicher | Velero-Bucket vorhanden (`infra/velero`) | Azure Local bringt **keinen S3-Dienst** mit. Ziel wäre Azure Blob Storage in Azure | Die Randbedingung „außerhalb des Clusters" aus dem Backup-ADR erfüllt sich von selbst. Dafür hängt das Backup am WAN-Link. |
 
@@ -131,9 +131,18 @@ Arc](https://learn.microsoft.com/en-us/azure/azure-arc/kubernetes/conceptual-git
    allgemein: Wie kommen Zugangsdaten in einen frisch gebauten Cluster, bevor
    Argo CD läuft? Drei Fälle fallen inzwischen auseinander:
 
-   - **`SP_DATABASE_URL` löst sich von selbst.** CloudNativePG erzeugt ein
-     `<cluster>-app`-Secret mit fertiger Connection-URI (#78). Der DSN steht
-     damit nirgends in unseren Manifesten.
+   - **`SP_DATABASE_URL` löst sich *nicht* von selbst** — hier stand, CNPG
+     erzeuge ein `<cluster>-app`-Secret mit fertiger Connection-URI, und das
+     war aus dem ursprünglichen #78-Text übernommen. **Es trägt nicht:** Das
+     Katalog-README dokumentiert `username`, `password` und `dbname`, aber
+     keinen fertigen `uri`-Key, und unsere Konfiguration kann aus Teilen keine
+     DSN zusammensetzen — `SP_DATABASE_URL` ist genau ein String.
+
+     Gebaut wurde deshalb der umgekehrte Weg: **ESO besitzt das Secret**, CNPG
+     übernimmt es beim Bootstrap als Eigentümer-Zugang statt selbst eines zu
+     erzeugen, und das ESO-`template` setzt die URL zusammen —
+     `postgresql://<owner>@<clusterName>-rw.<ns>.svc:5432/<database>`. Vault
+     hält nur das Passwort, die Topologie bleibt in den Manifesten.
    - **Der Objektspeicher-Zugang löst sich auf Azure Local von selbst.** Das
      barman-cloud-Plugin kann sich über `inheritFromAzureAD` beziehungsweise
      die Default-Credential-Kette gegen Azure Blob Storage authentifizieren —
