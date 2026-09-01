@@ -33,6 +33,14 @@ Platte können keins spielen, obwohl der Spielplan auf jedem dieser Handys
 lesbar ist. Die einzige Sache, die man auf der Seite nicht tun kann, die einem
 sagt, gegen wen man als Nächstes spielt, ist zu sagen, wie es ausging.
 
+**Und die Voraussetzung ist strenger, als sie aussieht.** Ohne
+`SP_KIOSK_TOKEN` werden die `/kiosk`-Routen gar nicht erst gemountet — der
+Kiosk existiert dann nicht, statt unfreigeschaltet zu existieren. Auf jedem
+Deployment ohne diese Variable ließ sich ein Turnier also anlegen und lesen,
+aber **nie spielen**. Nicht „unbequem ohne Laptop", sondern funktionslos.
+Dieser Punkt kam aus PR #123, der dieselbe Änderung parallel vorgeschlagen
+hat.
+
 **Die halb gebaute Variante existiert schon und führt in die Irre.**
 `tournamentIDFrom` liest ein `tournament_id` aus dem Formular, und der
 Kommentar behauptet, das Feld sei "optional auf jedem Eingabepfad". Es wird
