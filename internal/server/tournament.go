@@ -88,6 +88,36 @@ func (s *Server) handleTournaments(w http.ResponseWriter, r *http.Request) {
 	s.render(w, r, templates.TournamentList(view))
 }
 
+// handleTournamentSize redraws the sentence under the picker while somebody
+// is still deciding. The size of an evening depends on the names, the format
+// and the final at once, and the number is worth seeing before agreeing to it
+// rather than after.
+func (s *Server) handleTournamentSize(w http.ResponseWriter, r *http.Request) {
+	if err := r.ParseForm(); err != nil {
+		s.log.WarnContext(r.Context(), "unreadable tournament form", "error", err)
+	}
+
+	chosen := 0
+	seen := make(map[string]bool, len(r.Form["player_id"]))
+	for _, raw := range r.Form["player_id"] {
+		id := strings.TrimSpace(raw)
+		if id == "" || seen[id] {
+			continue
+		}
+		seen[id] = true
+		chosen++
+	}
+
+	legs := domain.TournamentFormat(r.FormValue("format")).Legs()
+	withFinal := r.FormValue("with_final") != ""
+
+	s.render(w, r, templates.TournamentSize(templates.TournamentSizeView{
+		Players:    chosen,
+		Matches:    tournament.Matches(chosen, legs, withFinal),
+		MaxPlayers: maxTournamentPlayers,
+	}))
+}
+
 // handleCreateTournament starts one.
 //
 // The field is shuffled here rather than in tournament.Draw: the draw is pure
@@ -116,6 +146,12 @@ func (s *Server) handleCreateTournament(w http.ResponseWriter, r *http.Request) 
 	// under it. A control per pairing would ask the same question twenty-eight
 	// times; a draw with no mode at all was the state before, and it left the
 	// schedule unable to say over how many sets the evening was decided.
+	format := domain.TournamentRoundRobin
+	if r.FormValue("format") == string(domain.TournamentDoubleRoundRobin) {
+		format = domain.TournamentDoubleRoundRobin
+	}
+	withFinal := r.FormValue("with_final") != ""
+
 	mode := modeFrom(r)
 	if !mode.Known() {
 		s.rejectTournament(w, r, name, field, mode,
@@ -139,7 +175,8 @@ func (s *Server) handleCreateTournament(w http.ResponseWriter, r *http.Request) 
 
 	created, err := s.store.Tournaments().Create(ctx, domain.Tournament{
 		Name:        name,
-		Format:      domain.TournamentRoundRobin,
+		Format:      format,
+		WithFinal:   withFinal,
 		CreatedBy:   author,
 		BestOf:      mode.BestOf,
 		PointsToWin: mode.PointsToWin,
@@ -153,7 +190,8 @@ func (s *Server) handleCreateTournament(w http.ResponseWriter, r *http.Request) 
 
 	s.log.InfoContext(ctx, "tournament created",
 		"tournament_id", created.ID, "players", len(created.Players),
-		"best_of", created.BestOf, "points_to_win", created.PointsToWin)
+		"best_of", created.BestOf, "points_to_win", created.PointsToWin,
+		"format", created.Format, "with_final", created.WithFinal)
 
 	http.Redirect(w, r, "/tournaments/"+created.ID.String(), http.StatusSeeOther)
 }
@@ -295,8 +333,15 @@ func (s *Server) handleTournamentRecord(w http.ResponseWriter, r *http.Request) 
 	// and the form is the one part of this a caller can edit.
 	form.result.Mode = match.Mode{BestOf: tour.BestOf, PointsToWin: tour.PointsToWin}
 
+	// Which slot it fills, checked against the draw for the same reason.
+	round := roundFrom(r)
+	if msg := s.checkSlot(ctx, tour, homeID, awayID, round); msg != "" {
+		s.tournamentBack(w, r, id, true, msg)
+		return
+	}
+
 	_, err = scoring.Record(ctx, s.store, homeID, awayID, form.result,
-		domain.EnteredViaKiosk, &tour.ID, time.Now())
+		domain.EnteredViaKiosk, &tour.ID, &round, time.Now())
 
 	var rejection *match.Rejection
 	switch {
@@ -375,8 +420,10 @@ func (s *Server) tournamentListView(ctx context.Context, again *uuid.UUID) (temp
 	}
 
 	var (
-		chosen []uuid.UUID
-		mode   = match.Mode{BestOf: match.DefaultBestOf, PointsToWin: match.PointsToEleven}
+		chosen    []uuid.UUID
+		mode      = match.Mode{BestOf: match.DefaultBestOf, PointsToWin: match.PointsToEleven}
+		format    = domain.TournamentRoundRobin
+		withFinal bool
 	)
 	if again != nil {
 		// A tournament that has gone missing since somebody clicked the link
@@ -385,6 +432,7 @@ func (s *Server) tournamentListView(ctx context.Context, again *uuid.UUID) (temp
 		if previous, err := s.store.Tournaments().ByID(ctx, *again); err == nil {
 			chosen = previous.Players
 			mode = match.Mode{BestOf: previous.BestOf, PointsToWin: previous.PointsToWin}
+			format, withFinal = previous.Format, previous.WithFinal
 		} else if !errors.Is(err, domain.ErrNotFound) {
 			s.log.WarnContext(ctx, "loading the tournament to repeat failed",
 				"tournament_id", *again, "error", err)
@@ -394,6 +442,8 @@ func (s *Server) tournamentListView(ctx context.Context, again *uuid.UUID) (temp
 	form := templates.NewTournamentFormView(candidates(players, chosen))
 	form.BestOf = mode.BestOf
 	form.PointsToWin = mode.PointsToWin
+	form.Format = string(format)
+	form.WithFinal = withFinal
 
 	view := templates.TournamentListView{
 		Header:     s.headerView(ctx),
@@ -428,6 +478,26 @@ func (s *Server) openTournaments(ctx context.Context) ([]templates.TournamentLis
 	return rows, nil
 }
 
+// slot identifies one place in the draw: which round, and which pair. Two
+// legs put the same pair in two rounds, and a final puts a pair that already
+// met into a round of its own — the pair alone stopped being a key with
+// docs/adr/0011.
+type slot struct {
+	round int
+	pair  [2]uuid.UUID
+}
+
+// slotOf is the slot a stored match fills. A match from before rounds existed
+// resolves by pair, which is exact: those tournaments are single round robins,
+// where each pair occurs once.
+func slotOf(m domain.Match) slot {
+	s := slot{pair: pairKey(m.HomeID, m.AwayID)}
+	if m.TournamentRound != nil {
+		s.round = *m.TournamentRound
+	}
+	return s
+}
+
 // tournamentRow is one tournament as a list entry. Both lists that show one
 // say the same three things about it, so they say them the same way.
 func tournamentRow(t domain.Tournament) templates.TournamentListRow {
@@ -436,7 +506,7 @@ func tournamentRow(t domain.Tournament) templates.TournamentListRow {
 		Name:    t.Name,
 		Open:    t.Open(),
 		Players: len(t.Players),
-		Matches: tournament.Matches(len(t.Players)),
+		Matches: tournament.Matches(len(t.Players), t.Format.Legs(), t.WithFinal),
 		Mode:    templates.TournamentModeLabel(t.BestOf, t.PointsToWin),
 	}
 }
@@ -477,6 +547,70 @@ func (s *Server) tournamentPairing(r *http.Request, self uuid.UUID) (
 
 	tour, msg = s.tournamentEntry(r.Context(), r, home, away)
 	return tour, home, away, msg
+}
+
+// roundFrom reads which slot of the draw a result claims to fill.
+func roundFrom(r *http.Request) int {
+	n, err := strconv.Atoi(strings.TrimSpace(r.FormValue("tournament_round")))
+	if err != nil {
+		return 0
+	}
+	return n
+}
+
+// checkSlot verifies that this pair really occupies this round of this
+// tournament's draw.
+//
+// Without it the round would be whatever the form said, and a return leg's
+// result could be filed as the first leg — two matches in one slot and an
+// empty slot beside it. The draw is recomputed rather than looked up, which is
+// the same property ADR-0009 relies on everywhere else: it is a function of
+// the stored order.
+func (s *Server) checkSlot(ctx context.Context, tour domain.Tournament,
+	home, away uuid.UUID, round int,
+) string {
+	legs := tour.Format.Legs()
+	groupRounds := tournament.GroupRounds(len(tour.Players), legs)
+
+	booked, err := s.store.Tournaments().Matches(ctx, tour.ID)
+	if err != nil {
+		s.log.ErrorContext(ctx, "loading the tournament's matches failed", "error", err)
+		return "Das hat gerade nicht geklappt."
+	}
+
+	// One result per slot. The form disappears once a slot is filled, but the
+	// form is not the guard — two results in one round would both count in
+	// the table, and the second would be invisible in the schedule because
+	// only one can be shown there.
+	for _, m := range booked {
+		if slotOf(m) == (slot{round: round, pair: pairKey(home, away)}) {
+			return "Für diese Paarung steht in dieser Runde schon ein Ergebnis."
+		}
+	}
+
+	if round == groupRounds+1 && tour.WithFinal {
+		// The final's participants are derived too, so they are checked the
+		// same way: recompute the table and ask who it named.
+		pairing, ok := tournament.Final(tournament.Table(tour.Players, booked, groupRounds))
+		if !ok {
+			return "Das Finale steht noch nicht fest."
+		}
+		if pairKey(pairing.Home, pairing.Away) != pairKey(home, away) {
+			return "Diese beiden spielen das Finale nicht."
+		}
+		return ""
+	}
+	for _, r := range tournament.Draw(tour.Players, legs) {
+		if r.No != round {
+			continue
+		}
+		for _, p := range r.Pairings {
+			if pairKey(p.Home, p.Away) == pairKey(home, away) {
+				return ""
+			}
+		}
+	}
+	return "Diese Paarung steht in dieser Runde nicht im Spielplan."
 }
 
 // tournamentEntry is a tournament a result is being booked into, or nil when
@@ -525,6 +659,8 @@ func (s *Server) rejectTournament(w http.ResponseWriter, r *http.Request,
 	form := templates.NewTournamentFormView(candidates(players, chosen))
 	form.Name = name
 	form.Error = msg
+	form.Format = r.FormValue("format")
+	form.WithFinal = r.FormValue("with_final") != ""
 	// The mode comes back as it was picked, even when it is the reason for
 	// the refusal: a select that snaps back to the default hides what was
 	// wrong with the answer.
@@ -579,6 +715,9 @@ func (s *Server) tournamentView(ctx context.Context, id uuid.UUID, kiosk bool) (
 	// their own device; anybody else reads the draw.
 	self, signedIn := auth.PlayerID(ctx)
 
+	legs := tour.Format.Legs()
+	groupRounds := tournament.GroupRounds(len(tour.Players), legs)
+
 	view := templates.TournamentView{
 		Header:      s.headerView(ctx),
 		ID:          tour.ID.String(),
@@ -586,46 +725,89 @@ func (s *Server) tournamentView(ctx context.Context, id uuid.UUID, kiosk bool) (
 		Open:        tour.Open(),
 		BestOf:      tour.BestOf,
 		PointsToWin: tour.PointsToWin,
+		Format:      string(tour.Format),
+		WithFinal:   tour.WithFinal,
 		CanEnter:    tour.Open() && kiosk,
-		Total:       tournament.Matches(len(tour.Players)),
+		Total:       tournament.Matches(len(tour.Players), legs, tour.WithFinal),
 	}
 
-	// What has already been played, so a pairing can say so instead of
-	// offering a form for a match that happened an hour ago.
-	played := make(map[[2]uuid.UUID]domain.Match, len(booked))
+	// What has already been played, keyed on the slot rather than the pair:
+	// with a return leg the same two meet twice, and a pair alone can no
+	// longer say which meeting a result was (docs/adr/0011).
+	played := make(map[slot]domain.Match, len(booked))
+	groupPlayed := 0
 	for _, m := range booked {
-		played[pairKey(m.HomeID, m.AwayID)] = m
-		if m.Status == domain.MatchConfirmed {
-			view.Played++
+		played[slotOf(m)] = m
+		if m.Status != domain.MatchConfirmed {
+			continue
+		}
+		view.Played++
+		if m.TournamentRound == nil || *m.TournamentRound <= groupRounds {
+			groupPlayed++
 		}
 	}
+	// The group is played out when every one of its slots holds a confirmed
+	// result. Only then can the table name a top two that will not move.
+	groupDone := groupPlayed >= tournament.Matches(len(tour.Players), legs, false)
 
-	for _, round := range tournament.Draw(tour.Players) {
+	fill := func(round int, p tournament.Pairing) templates.TournamentPairingView {
+		pv := templates.TournamentPairingView{
+			HomeID:   p.Home.String(),
+			AwayID:   p.Away.String(),
+			HomeName: names[p.Home],
+			AwayName: names[p.Away],
+			Round:    round,
+		}
+		key := slot{round: round, pair: pairKey(p.Home, p.Away)}
+		m, ok := played[key]
+		if !ok {
+			// A result from before slots existed. Resolving it by pair alone
+			// is exact there: those tournaments are single round robins.
+			m, ok = played[slot{pair: key.pair}]
+		}
+		if ok {
+			pv.Result = describeResult(m, p.Home)
+			pv.Pending = m.Status == domain.MatchPending
+			pv.Disputed = m.Status == domain.MatchDisputed
+		} else if signedIn && tour.Open() && (p.Home == self || p.Away == self) {
+			pv.CanReport = true
+			view.CanReport = true
+		}
+		return pv
+	}
+
+	for _, round := range tournament.Draw(tour.Players, legs) {
 		rv := templates.TournamentRoundView{No: round.No}
 		if round.Bye != uuid.Nil {
 			rv.Bye = names[round.Bye]
 		}
 		for _, p := range round.Pairings {
-			pv := templates.TournamentPairingView{
-				HomeID:   p.Home.String(),
-				AwayID:   p.Away.String(),
-				HomeName: names[p.Home],
-				AwayName: names[p.Away],
-			}
-			if m, ok := played[pairKey(p.Home, p.Away)]; ok {
-				pv.Result = describeResult(m, p.Home)
-				pv.Pending = m.Status == domain.MatchPending
-				pv.Disputed = m.Status == domain.MatchDisputed
-			} else if signedIn && tour.Open() && (p.Home == self || p.Away == self) {
-				pv.CanReport = true
-				view.CanReport = true
-			}
-			rv.Pairings = append(rv.Pairings, pv)
+			rv.Pairings = append(rv.Pairings, fill(round.No, p))
 		}
 		view.Rounds = append(view.Rounds, rv)
 	}
 
-	for _, row := range tournament.Table(tour.Players, booked) {
+	table := tournament.Table(tour.Players, booked, groupRounds)
+
+	if tour.WithFinal {
+		// The slot exists from the start; the names arrive when the group is
+		// played out and the table can separate the top two. A final between
+		// two arbitrarily chosen of three equals would be a draw with an
+		// audience, so an unresolved cut says so instead (docs/adr/0011).
+		final := templates.TournamentRoundView{No: groupRounds + 1, Final: true}
+		switch pairing, ok := tournament.Final(table); {
+		case !groupDone:
+			final.Note = "Steht fest, sobald alle Gruppenspiele gewertet sind."
+		case ok:
+			final.Pairings = []templates.TournamentPairingView{fill(groupRounds+1, pairing)}
+		default:
+			final.Note = "Die besten zwei stehen gleichauf — damit gibt es kein Finale, " +
+				"und die geteilten Plätze der Tabelle bleiben stehen."
+		}
+		view.Rounds = append(view.Rounds, final)
+	}
+
+	for _, row := range table {
 		view.Table = append(view.Table, templates.TournamentTableRow{
 			Rank:        row.Rank,
 			Shared:      row.Shared,

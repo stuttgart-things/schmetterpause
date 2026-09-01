@@ -116,16 +116,17 @@ func TestAResultTakesTheModeFromTheTournament(t *testing.T) {
 
 	// A form claiming best of three, with three sets typed into it.
 	rec := kioskPost(t, h, "/kiosk/tournaments/"+id+"/matches", cookie, url.Values{
-		"home_id":       {field[0].String()},
-		"away_id":       {field[1].String()},
-		"best_of":       {"3"},
-		"set_home_1":    {"11"},
-		"set_away_1":    {"5"},
-		"set_home_2":    {"5"},
-		"set_away_2":    {"11"},
-		"set_home_3":    {"11"},
-		"set_away_3":    {"7"},
-		"points_to_win": {"11"},
+		"home_id":          {field[0].String()},
+		"away_id":          {field[1].String()},
+		"tournament_round": {"1"},
+		"best_of":          {"3"},
+		"set_home_1":       {"11"},
+		"set_away_1":       {"5"},
+		"set_home_2":       {"5"},
+		"set_away_2":       {"11"},
+		"set_home_3":       {"11"},
+		"set_away_3":       {"7"},
+		"points_to_win":    {"11"},
 	})
 	if rec.Code != http.StatusSeeOther {
 		t.Fatalf("got %d, want 303: %s", rec.Code, rec.Body.String())
@@ -138,11 +139,12 @@ func TestAResultTakesTheModeFromTheTournament(t *testing.T) {
 
 	// The honest version of the same match does land, under best of one.
 	rec = kioskPost(t, h, "/kiosk/tournaments/"+id+"/matches", cookie, url.Values{
-		"home_id":    {field[0].String()},
-		"away_id":    {field[1].String()},
-		"best_of":    {"3"},
-		"set_home_1": {"11"},
-		"set_away_1": {"5"},
+		"home_id":          {field[0].String()},
+		"away_id":          {field[1].String()},
+		"tournament_round": {"1"},
+		"best_of":          {"3"},
+		"set_home_1":       {"11"},
+		"set_away_1":       {"5"},
 	})
 	if loc := rec.Header().Get("Location"); strings.Contains(loc, "fehler=") {
 		t.Fatalf("a single set was refused: %s", loc)

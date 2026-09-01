@@ -10,7 +10,9 @@ import (
 	"strconv"
 
 	"github.com/stuttgart-things/schmetterpause/internal/credential"
+	"github.com/stuttgart-things/schmetterpause/internal/domain"
 	"github.com/stuttgart-things/schmetterpause/internal/match"
+	"github.com/stuttgart-things/schmetterpause/internal/tournament"
 )
 
 // generate regenerates the *_templ.go files. templ is pinned as a Go tool in
@@ -767,6 +769,10 @@ type TournamentFormView struct {
 	// asked once here rather than at every pairing.
 	BestOf      int
 	PointsToWin int
+	// Format and WithFinal are the shape of the draw. Both come back on a
+	// rejection for the same reason the ticks do.
+	Format    string
+	WithFinal bool
 	// Error explains why the last attempt was refused, in words somebody can
 	// act on. Empty on a fresh form.
 	Error string
@@ -798,7 +804,65 @@ func NewTournamentFormView(candidates []TournamentCandidate) TournamentFormView 
 		Candidates:  candidates,
 		BestOf:      match.DefaultBestOf,
 		PointsToWin: match.PointsToEleven,
+		Format:      string(domain.TournamentRoundRobin),
 	}
+}
+
+// TournamentSizeView is the sentence under the picker: how big the evening
+// somebody is about to agree to actually is.
+//
+// A fragment rather than fixed prose, because the number depends on three
+// answers at once — how many names, one leg or two, final or not — and a
+// sentence that names one combination is wrong for the other three.
+type TournamentSizeView struct {
+	Players int
+	Matches int
+	// MaxPlayers is repeated here so the fragment can keep the whole
+	// sentence, rather than half of it living in the page and going stale.
+	MaxPlayers int
+}
+
+// Size is how big the evening this form describes would be.
+func (v TournamentFormView) Size(maxPlayers int) TournamentSizeView {
+	legs := domain.TournamentFormat(v.Format).Legs()
+	return TournamentSizeView{
+		Players:    v.Chosen(),
+		Matches:    tournament.Matches(v.Chosen(), legs, v.WithFinal),
+		MaxPlayers: maxPlayers,
+	}
+}
+
+// TournamentHours turns a match count into the time it takes, at the quarter
+// of an hour per match that #41 reckons with. Rounded to halves: "sieben
+// Stunden" is the point, not seven hours and nine minutes.
+func TournamentHours(matches int) string {
+	halves := (matches*15 + 15) / 30
+	switch {
+	case halves == 0:
+		return "keine halbe Stunde"
+	case halves == 1:
+		return "eine halbe Stunde"
+	case halves%2 == 0:
+		if halves == 2 {
+			return "eine Stunde"
+		}
+		return strconv.Itoa(halves/2) + " Stunden"
+	default:
+		return strconv.Itoa(halves/2) + "½ Stunden"
+	}
+}
+
+// TournamentFormatLabel names the shape of a draw the way somebody would say
+// it out loud.
+func TournamentFormatLabel(format string, withFinal bool) string {
+	shape := "Jeder gegen jeden"
+	if domain.TournamentFormat(format) == domain.TournamentDoubleRoundRobin {
+		shape = "Hin- und Rückspiel"
+	}
+	if withFinal {
+		shape += " mit Finale"
+	}
+	return shape
 }
 
 // TournamentModeLabel names a mode in one readable phrase.
@@ -817,6 +881,10 @@ type TournamentView struct {
 	// out loud — a schedule that does not is one nobody can read back.
 	BestOf      int
 	PointsToWin int
+	// Format and WithFinal are the shape of the draw, so the page can say
+	// what it is rather than leaving somebody to count rounds.
+	Format    string
+	WithFinal bool
 	// OnKioskPath is whether this render is the copy served from under
 	// /kiosk. Without it the page cannot tell "you are on the wrong address"
 	// from "this device is not unlocked", and would offer the reader a link
@@ -848,6 +916,11 @@ func (v TournamentView) Done() bool { return v.Total > 0 && v.Played >= v.Total 
 type TournamentRoundView struct {
 	No       int
 	Pairings []TournamentPairingView
+	// Final marks the decider rather than a round of the group.
+	Final bool
+	// Note stands in for the pairings when there are none to show: the final
+	// whose names are not settled yet, or the one that will not happen.
+	Note string
 	// Bye is the name sitting this round out, empty when nobody does.
 	Bye string
 }
@@ -870,6 +943,10 @@ type TournamentPairingView struct {
 	// CanReport is whether the reader is one of these two and may enter this
 	// result from their own device.
 	CanReport bool
+	// Round is the slot this pairing fills. It rides along on entry because
+	// with a return leg the same two appear twice, and the pair alone can no
+	// longer say which meeting is being reported (docs/adr/0011).
+	Round int
 }
 
 // Played reports whether this pairing has a result at all.
