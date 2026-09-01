@@ -47,6 +47,16 @@ type Mode struct {
 // SetsToWin is how many sets a player needs to take the match.
 func (m Mode) SetsToWin() int { return m.BestOf/2 + 1 }
 
+// Known reports whether this is a mode a match may be played under.
+//
+// Validate refuses an unknown mode too, but only once somebody has typed a
+// result. A tournament settles its mode at the draw, and a draw carrying a
+// mode no match can hold is a schedule that refuses every entry — a caller
+// that fixes a mode ahead of time needs to ask before, not after.
+func (m Mode) Known() bool {
+	return allowedBestOf[m.BestOf] && allowedPointsToWin[m.PointsToWin]
+}
+
 // Set is one set's score.
 type Set struct {
 	Home, Away int
