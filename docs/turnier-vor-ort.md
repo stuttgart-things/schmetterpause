@@ -190,6 +190,15 @@ Kreisverfahren — jeder trifft jeden genau einmal, bei ungerader Teilnehmerzahl
 setzt in jeder Runde genau einer aus, und über das Turnier gesetzt jeder
 einmal.
 
+**Der Modus wird einmal gefragt, beim Anlegen** — Ein Satz, Best of 3, 5 oder
+7, und ob bis 11 oder bis 21. Er gilt für alle Spiele des Turniers, und die
+Eingabe zeigt danach genau so viele Satzfelder, wie der Modus zulässt. Einmal
+statt achtundzwanzigmal: ein Turnier ist eine Verabredung darüber, wie der
+Abend gespielt wird, keine Frage pro Paarung. Wer sich vertut, legt das
+Turnier neu an — der Modus lässt sich nachträglich nicht ändern, weil sonst
+die schon eingetragenen Ergebnisse unter einem anderen stünden als dem, unter
+dem sie gespielt wurden.
+
 Die Zahl, an der der Nachmittag hängt, steht unter dem Formular: vier Leute
 sind sechs Spiele, acht Leute schon 28. Bei einer Viertelstunde pro Spiel sind
 das sieben Stunden. Höchstens zwölf Spieler sind erlaubt, und diese Grenze
@@ -208,8 +217,8 @@ Kiosk-Freigabe gilt nur unter `/kiosk`, also kann eine Seite außerhalb davon
 gar nicht wissen, dass sie am Tisch steht. Statt die Freigabe zu verbreitern,
 liegt die Eingabe dort, wo das Cookie ohnehin hinkommt.
 
-Die Adresse musst du dir nicht merken: **`/kiosk` listet oben unter „Läuft
-gerade" jedes offene Turnier**, und von dort geht es mit einem Klick auf die
+Die Adresse musst du dir nicht merken: **`/kiosk` listet oben unter „Offene
+Turniere" jedes offene Turnier**, und von dort geht es mit einem Klick auf die
 Eingabe. Beendete Turniere stehen nicht dabei — sie nehmen nichts mehr an. Der
 Weg dahin ist einmal `/kiosk?token=…` und danach nur noch Klicken.
 
