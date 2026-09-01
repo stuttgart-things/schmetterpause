@@ -195,6 +195,11 @@ func (s *Server) handleTournament(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Which of the two copies this is. A reader who cannot enter here needs a
+	// different sentence depending on it: the way to the entry view, or the
+	// news that this device is not the one at the table.
+	view.OnKioskPath = strings.HasPrefix(r.URL.Path, "/kiosk/")
+
 	// The complaint from a refused entry, carried here through the redirect
 	// rather than rendered in place, so a reload cannot re-submit a result.
 	view.Error = r.URL.Query().Get("fehler")

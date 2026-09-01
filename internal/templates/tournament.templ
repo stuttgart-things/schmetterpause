@@ -142,12 +142,30 @@ templ TournamentPage(v TournamentView) {
 		<section class="card">
 			<h2>Spielplan</h2>
 			if !v.CanEnter && v.Open {
-				<p class="muted">
-					Ergebnisse trägt das freigeschaltete Gerät an der Platte ein,
-					unter derselben Adresse mit <code>/kiosk</code> davor. Sie
-					zählen dort sofort — bei 28 Spielen wäre eine Bestätigung pro
-					Match der halbe Abend.
-				</p>
+				// A link rather than a description of an address. Two people
+				// in a row read the old sentence and asked how to get from
+				// here to entering a result, which makes it a dead end with a
+				// caption rather than a hint.
+				//
+				// Safe to offer on every device: the kiosk copy renders for
+				// anybody, just without the boxes. What it is not is a
+				// promise, so the sentence says who it works for.
+				if v.OnKioskPath {
+					<p class="muted">
+						Dieses Gerät ist nicht freigeschaltet — deshalb stehen hier
+						keine Eingabefelder. Einmal <code>/kiosk</code> mit dem Token
+						öffnen, dann steht das Turnier unter „Offene Turniere".
+					</p>
+				} else {
+					<p class="muted">
+						<a href={ templ.SafeURL("/kiosk/tournaments/" + v.ID) }>
+							Ergebnisse eintragen
+						</a>
+						— nur am freigeschalteten Gerät an der Platte. Dort zählen
+						sie sofort: bei 28 Spielen wäre eine Bestätigung pro Match
+						der halbe Abend.
+					</p>
+				}
 			}
 			@tournamentRounds(v)
 		</section>

@@ -817,6 +817,11 @@ type TournamentView struct {
 	// out loud — a schedule that does not is one nobody can read back.
 	BestOf      int
 	PointsToWin int
+	// OnKioskPath is whether this render is the copy served from under
+	// /kiosk. Without it the page cannot tell "you are on the wrong address"
+	// from "this device is not unlocked", and would offer the reader a link
+	// to the page they are already looking at.
+	OnKioskPath bool
 	// CanEnter is whether this browser may enter results here. Only the
 	// unlocked machine at the table may: a quick tournament is run by one
 	// person on one laptop, and those entries settle at once instead of

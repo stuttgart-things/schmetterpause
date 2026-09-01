@@ -217,10 +217,15 @@ Kiosk-Freigabe gilt nur unter `/kiosk`, also kann eine Seite außerhalb davon
 gar nicht wissen, dass sie am Tisch steht. Statt die Freigabe zu verbreitern,
 liegt die Eingabe dort, wo das Cookie ohnehin hinkommt.
 
-Die Adresse musst du dir nicht merken: **`/kiosk` listet oben unter „Offene
-Turniere" jedes offene Turnier**, und von dort geht es mit einem Klick auf die
-Eingabe. Beendete Turniere stehen nicht dabei — sie nehmen nichts mehr an. Der
-Weg dahin ist einmal `/kiosk?token=…` und danach nur noch Klicken.
+Die Adresse musst du dir nicht merken. Zwei Wege führen hin: **`/kiosk` listet
+oben unter „Offene Turniere" jedes offene Turnier**, und auf der Turnierseite
+selbst steht **„Ergebnisse eintragen"** als Link. Beendete Turniere stehen
+nicht in der Liste — sie nehmen nichts mehr an. Der Weg dahin ist einmal
+`/kiosk?token=…` und danach nur noch Klicken.
+
+Der Link funktioniert auf jedem Gerät, aber Eingabefelder zeigt er nur dem
+freigeschalteten: die Kiosk-Kopie rendert für alle, nur eben ohne Boxen. Wer
+sie nicht sieht, liest dort, woran es liegt.
 
 **Turnierergebnisse zählen sofort**, wie alle Kiosk-Eingaben — bei 28 Spielen
 wäre eine Bestätigung pro Match der halbe Abend. Sie bewegen die normale TTR,
