@@ -52,10 +52,10 @@ type matchFilter struct {
 // lets a signed-in reader default to themselves; "alle" is an answer.
 func matchFilterFrom(r *http.Request) *matchFilter {
 	raw := strings.TrimSpace(r.URL.Query().Get("spieler"))
-	switch {
-	case raw == "":
+	switch raw {
+	case "":
 		return nil
-	case raw == matchFilterAll:
+	case matchFilterAll:
 		return &matchFilter{all: true}
 	}
 	id, err := uuid.Parse(raw)
