@@ -190,6 +190,20 @@ Kreisverfahren — jeder trifft jeden genau einmal, bei ungerader Teilnehmerzahl
 setzt in jeder Runde genau einer aus, und über das Turnier gesetzt jeder
 einmal.
 
+**Die Form wird einmal gefragt, beim Anlegen.** „Jeder gegen jeden" oder
+„Mit Rückspiel", und ob ein **Finale zwischen den besten zwei** folgt. Unter
+den Namen steht mit, wie viele Spiele daraus werden und wie lange das dauert —
+die Zahl rechnet sich mit, während du ankreuzt, weil sie von drei Antworten
+gleichzeitig abhängt. Acht Leute mit Rückspiel sind 56 Spiele; die Grenze von
+zwölf Spielern war für den einfachen Fall gedacht.
+
+Das Finale bekommt seinen Platz sofort und seine Namen erst, wenn alle
+Gruppenspiele gewertet sind. Stehen die besten zwei dann gleichauf, gibt es
+keins — die Seite sagt das, und die geteilten Plätze bleiben stehen. Ein
+Endspiel zwischen zwei zufällig gewählten von drei Gleichplatzierten wäre eine
+Auslosung mit Publikum. Warum das so entschieden ist, steht in
+`docs/adr/0011`.
+
 **Der Modus wird einmal gefragt, beim Anlegen** — Ein Satz, Best of 3, 5 oder
 7, und ob bis 11 oder bis 21. Er gilt für alle Spiele des Turniers, und die
 Eingabe zeigt danach genau so viele Satzfelder, wie der Modus zulässt. Einmal
