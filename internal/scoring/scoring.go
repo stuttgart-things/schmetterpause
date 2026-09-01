@@ -294,12 +294,18 @@ func settle(ctx context.Context, tx repository.Store, m domain.Match, at time.Ti
 // tournament evening from a normal Tuesday (issue #71), and a second caller
 // that silently inherited "kiosk" would put back exactly the confusion it was
 // added to remove.
+//
+// tournamentID books the result to a tournament, or is nil for a match played
+// outside one. It changes nothing about how the match is rated — a tournament
+// match settles here like any other (docs/adr/0009) — and exists so a table
+// can be built from the results afterwards.
 func Record(
 	ctx context.Context,
 	store repository.Store,
 	homeID, awayID uuid.UUID,
 	result match.Result,
 	via domain.EnteredVia,
+	tournamentID *uuid.UUID,
 	at time.Time,
 ) (Settlement, error) {
 	if homeID == awayID {
@@ -328,11 +334,12 @@ func Record(
 			// Recorded rather than reported: the match never waits on
 			// anybody, so reported_by names who it is credited to and not
 			// who has to agree.
-			Status:     domain.MatchPending,
-			ReportedBy: homeID,
-			PlayedAt:   at,
-			EnteredVia: via,
-			Sets:       sets,
+			Status:       domain.MatchPending,
+			ReportedBy:   homeID,
+			PlayedAt:     at,
+			EnteredVia:   via,
+			TournamentID: tournamentID,
+			Sets:         sets,
 		})
 		if err != nil {
 			return err

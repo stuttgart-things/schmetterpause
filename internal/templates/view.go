@@ -722,3 +722,123 @@ type ProfileMatchView struct {
 	Delta    int
 	HasDelta bool
 }
+
+// TournamentListView drives the page that lists tournaments and starts one.
+type TournamentListView struct {
+	Header      HeaderView
+	Tournaments []TournamentListRow
+	Form        TournamentFormView
+	// MaxPlayers is the cap on a field, shown next to the picker rather than
+	// only in the message somebody gets after ticking too many names.
+	MaxPlayers int
+}
+
+// TournamentListRow is one tournament in the list.
+type TournamentListRow struct {
+	ID   string
+	Name string
+	Open bool
+	// Players and Matches are the size of the thing: eight names is
+	// twenty-eight matches, and the second number is the one that decides
+	// whether an afternoon is enough.
+	Players int
+	Matches int
+}
+
+// TournamentFormView drives the form that starts a tournament. What was
+// entered comes back on a rejection, so nobody re-ticks eight names.
+type TournamentFormView struct {
+	Name       string
+	Candidates []TournamentCandidate
+	// Error explains why the last attempt was refused, in words somebody can
+	// act on. Empty on a fresh form.
+	Error string
+}
+
+// Chosen is how many names are ticked, so the form can show the size of the
+// field it would produce before anybody commits to it.
+func (v TournamentFormView) Chosen() int {
+	n := 0
+	for _, c := range v.Candidates {
+		if c.Chosen {
+			n++
+		}
+	}
+	return n
+}
+
+// TournamentCandidate is one name in the picker.
+type TournamentCandidate struct {
+	ID          string
+	DisplayName string
+	Chosen      bool
+}
+
+// NewTournamentFormView returns an empty form over the given players.
+func NewTournamentFormView(candidates []TournamentCandidate) TournamentFormView {
+	return TournamentFormView{Candidates: candidates}
+}
+
+// TournamentView is one tournament: the draw, and the table so far.
+type TournamentView struct {
+	Header HeaderView
+	ID     string
+	Name   string
+	Open   bool
+	// CanEnter is whether this browser may enter results here. Only the
+	// unlocked machine at the table may: a quick tournament is run by one
+	// person on one laptop, and those entries settle at once instead of
+	// asking for twenty-eight confirmations (docs/turnier-vor-ort.md).
+	CanEnter bool
+	// Error is what went wrong with the last entry, carried back through the
+	// redirect so a reload cannot re-submit a result that already counted.
+	Error  string
+	Rounds []TournamentRoundView
+	Table  []TournamentTableRow
+	// Played and Total are how far along the evening is.
+	Played, Total int
+}
+
+// Done reports whether every pairing has a confirmed result.
+func (v TournamentView) Done() bool { return v.Total > 0 && v.Played >= v.Total }
+
+// TournamentRoundView is one round of the draw.
+type TournamentRoundView struct {
+	No       int
+	Pairings []TournamentPairingView
+	// Bye is the name sitting this round out, empty when nobody does.
+	Bye string
+}
+
+// TournamentPairingView is one encounter, with its result once there is one.
+type TournamentPairingView struct {
+	HomeID, AwayID     string
+	HomeName, AwayName string
+	// Result is the set score from the home side, empty while unplayed.
+	Result string
+	// Pending marks a result that is waiting on a confirmation and therefore
+	// counts for nothing yet — the table would otherwise look wrong to the
+	// person who just entered it.
+	Pending bool
+}
+
+// Played reports whether this pairing has a result at all.
+func (v TournamentPairingView) Played() bool { return v.Result != "" }
+
+// TournamentTableRow is one line of the tournament table.
+type TournamentTableRow struct {
+	Rank        int
+	Shared      bool
+	DisplayName string
+	Played      int
+	Won, Lost   int
+	// Sets is the set tally as "12:4", and SetDiff the number that breaks a
+	// tie when the sub-table cannot.
+	Sets    string
+	SetDiff int
+}
+
+// Ranked reports whether this player has a position yet. Somebody who has not
+// played gets none, the same way the overall ranking treats an untested
+// rating.
+func (r TournamentTableRow) Ranked() bool { return r.Rank > 0 }

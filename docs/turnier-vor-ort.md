@@ -180,6 +180,50 @@ Spieler kein neueres Match gewertet wurde — die Wertung wird zurückgeschriebe
 und das stimmt nur, wenn seitdem nichts passiert ist. Also lieber einmal mehr
 hinsehen, bevor du auf *Eintragen und werten* drückst.
 
+### Ein schnelles Turnier
+
+Bis hierher beschreibt dieses Dokument einen Abend, an dem einfach gespielt
+wird. Wenn es stattdessen „jeder gegen jeden" sein soll, legt **Turniere →
+Schnelles Turnier** einen Spielplan an: Namen ankreuzen, Turnier anlegen. Das
+Feld wird gemischt, und daraus entsteht ein Round Robin nach dem
+Kreisverfahren — jeder trifft jeden genau einmal, bei ungerader Teilnehmerzahl
+setzt in jeder Runde genau einer aus, und über das Turnier gesetzt jeder
+einmal.
+
+Die Zahl, an der der Nachmittag hängt, steht unter dem Formular: vier Leute
+sind sechs Spiele, acht Leute schon 28. Bei einer Viertelstunde pro Spiel sind
+das sieben Stunden. Höchstens zwölf Spieler sind erlaubt, und diese Grenze
+existiert genau deshalb.
+
+**Ergebnisse trägt das Gerät an der Platte ein.** Die Turnierseite gibt es
+zweimal:
+
+| Adresse | Wer | Was |
+| --- | --- | --- |
+| `/tournaments/<id>` | alle, auf dem Handy | Spielplan und Tabelle, zum Mitlesen |
+| `/kiosk/tournaments/<id>` | das freigeschaltete Gerät | dasselbe, plus ein Eingabefeld pro Paarung |
+
+Der Grund ist kein Sicherheitsdetail, sondern eins über Cookies: die
+Kiosk-Freigabe gilt nur unter `/kiosk`, also kann eine Seite außerhalb davon
+gar nicht wissen, dass sie am Tisch steht. Statt die Freigabe zu verbreitern,
+liegt die Eingabe dort, wo das Cookie ohnehin hinkommt.
+
+**Turnierergebnisse zählen sofort**, wie alle Kiosk-Eingaben — bei 28 Spielen
+wäre eine Bestätigung pro Match der halbe Abend. Sie bewegen die normale TTR,
+und zwar Match für Match; warum nicht veranstaltungsweise verrechnet wird und
+wann das fällig würde, steht in `docs/adr/0009`.
+
+**Die Tabelle** sortiert nach Siegen, dann nach dem Ergebnis *unter den
+Punktgleichen* — dem Direktvergleich, wenn es zwei sind, der kleinen Tabelle
+der Gruppe, wenn es mehr sind —, dann nach Satz- und Punktdifferenz. Wer danach
+immer noch gleichauf liegt, teilt sich den Platz; ein `·` neben der Zahl sagt
+das. Drei Leute können sich im Kreis schlagen, und dann ist ein geteilter Platz
+die einzige ehrliche Antwort.
+
+**Beenden** geht, sobald alle Spiele drin sind. Das nimmt das Turnier von der
+Liste der laufenden Dinge und sonst nichts — an der Wertung hängt es nicht,
+die ist längst passiert.
+
 ### „Warum steht bei Spiele 0?"
 
 Weil das Match noch auf die Bestätigung des Gegners wartet. Die Rangliste zählt
@@ -218,6 +262,11 @@ Fenster: gefragt sind Arbeitstage.
 **Ein Turnierabend ist nicht diese Messung.** Acht Spieler im Modus "jeder
 gegen jeden" sind 28 Matches, fast das Dreifache der Hürde. Mitgezählt wäre die
 Messung bestanden und hätte nichts gezeigt.
+
+Dass die Turniereingabe am Kiosk liegt, erledigt das nebenbei: jede Zeile aus
+einem Turnier trägt `entered_via = 'kiosk'` und zählt damit ohnehin nicht in
+die Wertung von `task office:dod`. Das ist kein Zufall, sondern der Grund, aus
+dem die Spalte existiert.
 
 Seit Issue #71 sieht die Datenbank den Unterschied selbst: jedes Ergebnis trägt
 in `entered_via`, ob es ein Spieler selbst eingetragen hat oder der Kiosk.

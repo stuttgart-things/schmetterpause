@@ -78,7 +78,7 @@ func MatchList(v MatchListView) templ.Component {
 					var templ_7745c5c3_Var3 string
 					templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(m.PlayedAt)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `matchlist.templ`, Line: 48, Col: 38}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/matchlist.templ`, Line: 48, Col: 38}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 					if templ_7745c5c3_Err != nil {
@@ -91,7 +91,7 @@ func MatchList(v MatchListView) templ.Component {
 					var templ_7745c5c3_Var4 templ.SafeURL
 					templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL("/players/" + m.WinnerID))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `matchlist.templ`, Line: 50, Col: 59}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/matchlist.templ`, Line: 50, Col: 59}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 					if templ_7745c5c3_Err != nil {
@@ -104,7 +104,7 @@ func MatchList(v MatchListView) templ.Component {
 					var templ_7745c5c3_Var5 string
 					templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(m.WinnerName)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `matchlist.templ`, Line: 50, Col: 76}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/matchlist.templ`, Line: 50, Col: 76}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 					if templ_7745c5c3_Err != nil {
@@ -117,7 +117,7 @@ func MatchList(v MatchListView) templ.Component {
 					var templ_7745c5c3_Var6 templ.SafeURL
 					templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL("/players/" + m.LoserID))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `matchlist.templ`, Line: 53, Col: 58}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/matchlist.templ`, Line: 53, Col: 58}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 					if templ_7745c5c3_Err != nil {
@@ -130,7 +130,7 @@ func MatchList(v MatchListView) templ.Component {
 					var templ_7745c5c3_Var7 string
 					templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(m.LoserName)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `matchlist.templ`, Line: 53, Col: 74}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/matchlist.templ`, Line: 53, Col: 74}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
 					if templ_7745c5c3_Err != nil {
@@ -143,7 +143,7 @@ func MatchList(v MatchListView) templ.Component {
 					var templ_7745c5c3_Var8 string
 					templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinStringErrs(strconv.Itoa(m.WinnerSets))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `matchlist.templ`, Line: 56, Col: 38}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/matchlist.templ`, Line: 56, Col: 38}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var8))
 					if templ_7745c5c3_Err != nil {
@@ -156,7 +156,7 @@ func MatchList(v MatchListView) templ.Component {
 					var templ_7745c5c3_Var9 string
 					templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinStringErrs(strconv.Itoa(m.LoserSets))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `matchlist.templ`, Line: 56, Col: 68}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/matchlist.templ`, Line: 56, Col: 68}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var9))
 					if templ_7745c5c3_Err != nil {
@@ -183,7 +183,7 @@ func MatchList(v MatchListView) templ.Component {
 							var templ_7745c5c3_Var10 string
 							templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinStringErrs(", ")
 							if templ_7745c5c3_Err != nil {
-								return templ.Error{Err: templ_7745c5c3_Err, FileName: `matchlist.templ`, Line: 65, Col: 18}
+								return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/matchlist.templ`, Line: 65, Col: 18}
 							}
 							_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var10))
 							if templ_7745c5c3_Err != nil {
@@ -197,7 +197,7 @@ func MatchList(v MatchListView) templ.Component {
 						var templ_7745c5c3_Var11 string
 						templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.JoinStringErrs(strconv.Itoa(s.Own))
 						if templ_7745c5c3_Err != nil {
-							return templ.Error{Err: templ_7745c5c3_Err, FileName: `matchlist.templ`, Line: 67, Col: 32}
+							return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/matchlist.templ`, Line: 67, Col: 32}
 						}
 						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var11))
 						if templ_7745c5c3_Err != nil {
@@ -210,7 +210,7 @@ func MatchList(v MatchListView) templ.Component {
 						var templ_7745c5c3_Var12 string
 						templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.JoinStringErrs(strconv.Itoa(s.Opponent))
 						if templ_7745c5c3_Err != nil {
-							return templ.Error{Err: templ_7745c5c3_Err, FileName: `matchlist.templ`, Line: 67, Col: 61}
+							return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/matchlist.templ`, Line: 67, Col: 61}
 						}
 						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var12))
 						if templ_7745c5c3_Err != nil {
@@ -234,7 +234,7 @@ func MatchList(v MatchListView) templ.Component {
 					var templ_7745c5c3_Var13 string
 					templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.JoinStringErrs(strconv.Itoa(v.Limit))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `matchlist.templ`, Line: 77, Col: 51}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/matchlist.templ`, Line: 77, Col: 51}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var13))
 					if templ_7745c5c3_Err != nil {
@@ -353,7 +353,7 @@ func matchDelta(pending, disputed, hasDelta bool, delta int) templ.Component {
 			var templ_7745c5c3_Var16 string
 			templ_7745c5c3_Var16, templ_7745c5c3_Err = templ.JoinStringErrs(strconv.Itoa(delta))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `matchlist.templ`, Line: 122, Col: 43}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/matchlist.templ`, Line: 122, Col: 43}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var16))
 			if templ_7745c5c3_Err != nil {
@@ -371,7 +371,7 @@ func matchDelta(pending, disputed, hasDelta bool, delta int) templ.Component {
 			var templ_7745c5c3_Var17 string
 			templ_7745c5c3_Var17, templ_7745c5c3_Err = templ.JoinStringErrs(strconv.Itoa(delta))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `matchlist.templ`, Line: 124, Col: 42}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/matchlist.templ`, Line: 124, Col: 42}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var17))
 			if templ_7745c5c3_Err != nil {

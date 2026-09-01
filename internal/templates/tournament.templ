@@ -1,0 +1,257 @@
+package templates
+
+import "strconv"
+
+// TournamentList is the page that lists tournaments and starts one.
+templ TournamentList(v TournamentListView) {
+	@Layout("Turniere", v.Header) {
+		<section class="card">
+			<h2>Turniere</h2>
+			if len(v.Tournaments) == 0 {
+				<p class="muted">
+					Noch keins. Unten eins anlegen — Namen ankreuzen, fertig.
+				</p>
+			} else {
+				<ul class="tournament-list">
+					for _, t := range v.Tournaments {
+						<li>
+							<a href={ templ.SafeURL("/tournaments/" + t.ID) }>{ t.Name }</a>
+							<span class="muted">
+								{ strconv.Itoa(t.Players) } Spieler,
+								{ strconv.Itoa(t.Matches) } Spiele
+							</span>
+							if !t.Open {
+								<span class="tag">beendet</span>
+							}
+						</li>
+					}
+				</ul>
+			}
+		</section>
+		<section class="card">
+			@tournamentForm(v.Form, v.MaxPlayers)
+		</section>
+	}
+}
+
+// tournamentForm starts a tournament: a name and a set of ticks.
+//
+// Checkboxes rather than a multi-select, because this is read and operated on
+// a phone standing next to a table, and a multi-select needs a modifier key
+// nobody has there.
+templ tournamentForm(v TournamentFormView, maxPlayers int) {
+	<h2>Schnelles Turnier</h2>
+	if len(v.Candidates) < 2 {
+		<p class="muted">
+			Dafür braucht es mindestens zwei Spieler in der Rangliste.
+		</p>
+	} else {
+		if v.Error != "" {
+			<p class="error" role="alert">{ v.Error }</p>
+		}
+		<form method="post" action="/tournaments">
+			<div class="row">
+				<label for="tournament-name">Name</label>
+				<input
+					id="tournament-name"
+					name="name"
+					type="text"
+					maxlength="60"
+					placeholder="Schnelles Turnier"
+					value={ v.Name }
+				/>
+			</div>
+			<fieldset class="tournament-field">
+				<legend>Wer spielt mit?</legend>
+				for _, c := range v.Candidates {
+					<label class="tick">
+						<input
+							type="checkbox"
+							name="player_id"
+							value={ c.ID }
+							checked?={ c.Chosen }
+						/>
+						{ c.DisplayName }
+					</label>
+				}
+			</fieldset>
+			<p class="muted">
+				Jeder gegen jeden, höchstens { strconv.Itoa(maxPlayers) } Spieler.
+				Vier Leute sind sechs Spiele, acht Leute schon 28 — das ist die
+				Zahl, an der ein Nachmittag hängt.
+			</p>
+			<button type="submit">Turnier anlegen</button>
+		</form>
+	}
+}
+
+// TournamentPage is one tournament: the draw, and the table so far.
+templ TournamentPage(v TournamentView) {
+	@Layout(v.Name, v.Header) {
+		<section class="card">
+			<h2>{ v.Name }</h2>
+			<p class="muted">
+				{ strconv.Itoa(v.Played) } von { strconv.Itoa(v.Total) } Spielen gewertet.
+				if !v.Open {
+					Das Turnier ist beendet.
+				} else if v.Done() {
+					Alle Spiele sind drin.
+				}
+			</p>
+			if v.Open && v.Done() {
+				<form method="post" action={ templ.SafeURL("/tournaments/" + v.ID + "/close") }>
+					<button type="submit">Turnier beenden</button>
+				</form>
+			}
+		</section>
+		if v.Error != "" {
+			<section class="card">
+				<p class="error" role="alert">{ v.Error }</p>
+			</section>
+		}
+		<section class="card">
+			<h2>Tabelle</h2>
+			@tournamentTable(v.Table)
+		</section>
+		<section class="card">
+			<h2>Spielplan</h2>
+			if !v.CanEnter && v.Open {
+				<p class="muted">
+					Ergebnisse trägt das freigeschaltete Gerät an der Platte ein,
+					unter derselben Adresse mit <code>/kiosk</code> davor. Sie
+					zählen dort sofort — bei 28 Spielen wäre eine Bestätigung pro
+					Match der halbe Abend.
+				</p>
+			}
+			@tournamentRounds(v)
+		</section>
+	}
+}
+
+templ tournamentTable(rows []TournamentTableRow) {
+	if len(rows) == 0 {
+		<p class="muted">Noch keine Teilnehmer.</p>
+	} else {
+		<table class="standings">
+			<thead>
+				<tr>
+					<th scope="col">#</th>
+					<th scope="col">Spieler</th>
+					<th scope="col">S</th>
+					<th scope="col">N</th>
+					<th scope="col">Sätze</th>
+					<th scope="col">Diff</th>
+				</tr>
+			</thead>
+			<tbody>
+				for _, r := range rows {
+					<tr>
+						<td>
+							if r.Ranked() {
+								{ strconv.Itoa(r.Rank) }
+								if r.Shared {
+									<span class="muted" title="geteilter Platz">·</span>
+								}
+							} else {
+								<span class="muted">–</span>
+							}
+						</td>
+						<td>{ r.DisplayName }</td>
+						<td>{ strconv.Itoa(r.Won) }</td>
+						<td>{ strconv.Itoa(r.Lost) }</td>
+						<td>{ r.Sets }</td>
+						<td>{ signed(r.SetDiff) }</td>
+					</tr>
+				}
+			</tbody>
+		</table>
+	}
+}
+
+templ tournamentRounds(v TournamentView) {
+	if len(v.Rounds) == 0 {
+		<p class="muted">Zu wenige Teilnehmer für einen Spielplan.</p>
+	} else {
+		for _, round := range v.Rounds {
+			<h3>Runde { strconv.Itoa(round.No) }</h3>
+			<ul class="pairings">
+				for _, p := range round.Pairings {
+					<li>
+						<span class="pairing-names">{ p.HomeName } – { p.AwayName }</span>
+						if p.Played() {
+							<span class="pairing-result">{ p.Result }</span>
+							if p.Pending {
+								<span class="tag">wartet auf Bestätigung</span>
+							}
+						} else if v.CanEnter {
+							@pairingEntry(v.ID, p)
+						} else {
+							<span class="muted">offen</span>
+						}
+					</li>
+				}
+				if round.Bye != "" {
+					<li class="muted">{ round.Bye } setzt aus</li>
+				}
+			</ul>
+		}
+	}
+}
+
+// pairingEntry is result entry for one pairing at the table.
+//
+// The two players ride along hidden: the draw already decided them, and a
+// picker here would be a chance to enter the right score against the wrong
+// pair. Three set rows because the mode is fixed at best of three — a quick
+// tournament that offered a mode control per pairing would ask the same
+// question twenty-eight times.
+//
+// A plain form post rather than HTMX: the answer is a redirect back to the
+// draw, so a reload cannot re-submit a result that already counted, and a
+// kiosk result counts immediately.
+templ pairingEntry(tournamentID string, p TournamentPairingView) {
+	<form class="pairing-entry" method="post" action={ templ.SafeURL("/kiosk/tournaments/" + tournamentID + "/matches") }>
+		<input type="hidden" name="tournament_id" value={ tournamentID }/>
+		<input type="hidden" name="home_id" value={ p.HomeID }/>
+		<input type="hidden" name="away_id" value={ p.AwayID }/>
+		<input type="hidden" name="best_of" value="3"/>
+		<input type="hidden" name="points_to_win" value="11"/>
+		for i := 1; i <= 3; i++ {
+			<span class="pairing-set">
+				<label class="sr-only" for={ p.HomeID + "-" + p.AwayID + "-h" + strconv.Itoa(i) }>
+					Satz { strconv.Itoa(i) }, { p.HomeName }
+				</label>
+				<input
+					id={ p.HomeID + "-" + p.AwayID + "-h" + strconv.Itoa(i) }
+					name={ "set_home_" + strconv.Itoa(i) }
+					type="text"
+					inputmode="numeric"
+					maxlength="2"
+					size="2"
+				/>
+				<span aria-hidden="true">:</span>
+				<label class="sr-only" for={ p.HomeID + "-" + p.AwayID + "-a" + strconv.Itoa(i) }>
+					Satz { strconv.Itoa(i) }, { p.AwayName }
+				</label>
+				<input
+					id={ p.HomeID + "-" + p.AwayID + "-a" + strconv.Itoa(i) }
+					name={ "set_away_" + strconv.Itoa(i) }
+					type="text"
+					inputmode="numeric"
+					maxlength="2"
+					size="2"
+				/>
+			</span>
+		}
+		<button type="submit">Eintragen</button>
+	</form>
+}
+
+// signed prints a difference the way a table does: with its sign, so +3 and
+// -3 are told apart at a glance rather than by looking for a minus.
+func signed(n int) string {
+	if n > 0 {
+		return "+" + strconv.Itoa(n)
+	}
+	return strconv.Itoa(n)
+}

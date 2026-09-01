@@ -168,7 +168,7 @@ func matchFormBody(v MatchFormView) templ.Component {
 				var templ_7745c5c3_Var5 string
 				templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.ResolveAttributeValue(o.ID)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `match.templ`, Line: 56, Col: 26}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/match.templ`, Line: 56, Col: 26}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var5)
 				if templ_7745c5c3_Err != nil {
@@ -191,7 +191,7 @@ func matchFormBody(v MatchFormView) templ.Component {
 				var templ_7745c5c3_Var6 string
 				templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(o.DisplayName)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `match.templ`, Line: 56, Col: 69}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/match.templ`, Line: 56, Col: 69}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 				if templ_7745c5c3_Err != nil {
@@ -226,7 +226,7 @@ func matchFormBody(v MatchFormView) templ.Component {
 				var templ_7745c5c3_Var7 string
 				templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(v.Error)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `match.templ`, Line: 64, Col: 42}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/match.templ`, Line: 64, Col: 42}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
 				if templ_7745c5c3_Err != nil {
@@ -281,7 +281,7 @@ func modeRow(prefix string, bestOf, pointsToWin int) templ.Component {
 		var templ_7745c5c3_Var9 string
 		templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.ResolveAttributeValue(prefix + "-best-of")
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `match.templ`, Line: 79, Col: 34}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/match.templ`, Line: 79, Col: 34}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var9)
 		if templ_7745c5c3_Err != nil {
@@ -294,7 +294,7 @@ func modeRow(prefix string, bestOf, pointsToWin int) templ.Component {
 		var templ_7745c5c3_Var10 string
 		templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.ResolveAttributeValue(prefix + "-best-of")
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `match.templ`, Line: 85, Col: 27}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/match.templ`, Line: 85, Col: 27}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var10)
 		if templ_7745c5c3_Err != nil {
@@ -307,7 +307,7 @@ func modeRow(prefix string, bestOf, pointsToWin int) templ.Component {
 		var templ_7745c5c3_Var11 string
 		templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.ResolveAttributeValue("#sets-" + prefix)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `match.templ`, Line: 88, Col: 32}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/match.templ`, Line: 88, Col: 32}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var11)
 		if templ_7745c5c3_Err != nil {
@@ -325,7 +325,7 @@ func modeRow(prefix string, bestOf, pointsToWin int) templ.Component {
 			var templ_7745c5c3_Var12 string
 			templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.ResolveAttributeValue(strconv.Itoa(n))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `match.templ`, Line: 94, Col: 35}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/match.templ`, Line: 94, Col: 35}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var12)
 			if templ_7745c5c3_Err != nil {
@@ -348,7 +348,7 @@ func modeRow(prefix string, bestOf, pointsToWin int) templ.Component {
 			var templ_7745c5c3_Var13 string
 			templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.JoinStringErrs(BestOfLabel(n))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `match.templ`, Line: 95, Col: 21}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/match.templ`, Line: 95, Col: 21}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var13))
 			if templ_7745c5c3_Err != nil {
@@ -366,7 +366,7 @@ func modeRow(prefix string, bestOf, pointsToWin int) templ.Component {
 		var templ_7745c5c3_Var14 string
 		templ_7745c5c3_Var14, templ_7745c5c3_Err = templ.ResolveAttributeValue(prefix + "-points-to-win")
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `match.templ`, Line: 100, Col: 33}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/match.templ`, Line: 100, Col: 33}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var14)
 		if templ_7745c5c3_Err != nil {
@@ -379,7 +379,7 @@ func modeRow(prefix string, bestOf, pointsToWin int) templ.Component {
 		var templ_7745c5c3_Var15 string
 		templ_7745c5c3_Var15, templ_7745c5c3_Err = templ.ResolveAttributeValue("#sets-" + prefix)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `match.templ`, Line: 104, Col: 32}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/match.templ`, Line: 104, Col: 32}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var15)
 		if templ_7745c5c3_Err != nil {
@@ -397,7 +397,7 @@ func modeRow(prefix string, bestOf, pointsToWin int) templ.Component {
 			var templ_7745c5c3_Var16 string
 			templ_7745c5c3_Var16, templ_7745c5c3_Err = templ.ResolveAttributeValue(strconv.Itoa(p))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `match.templ`, Line: 110, Col: 35}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/match.templ`, Line: 110, Col: 35}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var16)
 			if templ_7745c5c3_Err != nil {
@@ -420,7 +420,7 @@ func modeRow(prefix string, bestOf, pointsToWin int) templ.Component {
 			var templ_7745c5c3_Var17 string
 			templ_7745c5c3_Var17, templ_7745c5c3_Err = templ.JoinStringErrs(strconv.Itoa(p))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `match.templ`, Line: 111, Col: 26}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/match.templ`, Line: 111, Col: 26}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var17))
 			if templ_7745c5c3_Err != nil {
@@ -476,7 +476,7 @@ func setRows(prefix string, sets []SetInput, bestOf, pointsToWin int, homeLabel,
 		var templ_7745c5c3_Var19 string
 		templ_7745c5c3_Var19, templ_7745c5c3_Err = templ.ResolveAttributeValue("sets-" + prefix)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `match.templ`, Line: 128, Col: 32}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/match.templ`, Line: 128, Col: 32}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var19)
 		if templ_7745c5c3_Err != nil {
@@ -489,7 +489,7 @@ func setRows(prefix string, sets []SetInput, bestOf, pointsToWin int, homeLabel,
 		var templ_7745c5c3_Var20 string
 		templ_7745c5c3_Var20, templ_7745c5c3_Err = templ.ResolveAttributeValue(prefix)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `match.templ`, Line: 130, Col: 56}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/match.templ`, Line: 130, Col: 56}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var20)
 		if templ_7745c5c3_Err != nil {
@@ -502,7 +502,7 @@ func setRows(prefix string, sets []SetInput, bestOf, pointsToWin int, homeLabel,
 		var templ_7745c5c3_Var21 string
 		templ_7745c5c3_Var21, templ_7745c5c3_Err = templ.ResolveAttributeValue("sets-rule-" + prefix)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `match.templ`, Line: 131, Col: 31}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/match.templ`, Line: 131, Col: 31}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var21)
 		if templ_7745c5c3_Err != nil {
@@ -515,7 +515,7 @@ func setRows(prefix string, sets []SetInput, bestOf, pointsToWin int, homeLabel,
 		var templ_7745c5c3_Var22 string
 		templ_7745c5c3_Var22, templ_7745c5c3_Err = templ.JoinStringErrs(strconv.Itoa(pointsToWin))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `match.templ`, Line: 132, Col: 34}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/match.templ`, Line: 132, Col: 34}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var22))
 		if templ_7745c5c3_Err != nil {
@@ -528,7 +528,7 @@ func setRows(prefix string, sets []SetInput, bestOf, pointsToWin int, homeLabel,
 		var templ_7745c5c3_Var23 string
 		templ_7745c5c3_Var23, templ_7745c5c3_Err = templ.JoinStringErrs(strconv.Itoa(ServeEvery(pointsToWin)))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `match.templ`, Line: 133, Col: 42}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/match.templ`, Line: 133, Col: 42}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var23))
 		if templ_7745c5c3_Err != nil {
@@ -541,7 +541,7 @@ func setRows(prefix string, sets []SetInput, bestOf, pointsToWin int, homeLabel,
 		var templ_7745c5c3_Var24 string
 		templ_7745c5c3_Var24, templ_7745c5c3_Err = templ.JoinStringErrs(strconv.Itoa(DeuceFrom(pointsToWin)))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `match.templ`, Line: 134, Col: 41}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/match.templ`, Line: 134, Col: 41}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var24))
 		if templ_7745c5c3_Err != nil {
@@ -554,7 +554,7 @@ func setRows(prefix string, sets []SetInput, bestOf, pointsToWin int, homeLabel,
 		var templ_7745c5c3_Var25 string
 		templ_7745c5c3_Var25, templ_7745c5c3_Err = templ.JoinStringErrs(strconv.Itoa(DeuceFrom(pointsToWin)))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `match.templ`, Line: 134, Col: 82}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/match.templ`, Line: 134, Col: 82}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var25))
 		if templ_7745c5c3_Err != nil {
@@ -577,7 +577,7 @@ func setRows(prefix string, sets []SetInput, bestOf, pointsToWin int, homeLabel,
 		var templ_7745c5c3_Var26 string
 		templ_7745c5c3_Var26, templ_7745c5c3_Err = templ.JoinStringErrs(homeLabel)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `match.templ`, Line: 145, Col: 37}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/match.templ`, Line: 145, Col: 37}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var26))
 		if templ_7745c5c3_Err != nil {
@@ -590,7 +590,7 @@ func setRows(prefix string, sets []SetInput, bestOf, pointsToWin int, homeLabel,
 		var templ_7745c5c3_Var27 string
 		templ_7745c5c3_Var27, templ_7745c5c3_Err = templ.JoinStringErrs(awayLabel)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `match.templ`, Line: 150, Col: 37}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/match.templ`, Line: 150, Col: 37}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var27))
 		if templ_7745c5c3_Err != nil {
@@ -608,7 +608,7 @@ func setRows(prefix string, sets []SetInput, bestOf, pointsToWin int, homeLabel,
 			var templ_7745c5c3_Var28 string
 			templ_7745c5c3_Var28, templ_7745c5c3_Err = templ.JoinStringErrs(strconv.Itoa(i + 1))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `match.templ`, Line: 154, Col: 46}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/match.templ`, Line: 154, Col: 46}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var28))
 			if templ_7745c5c3_Err != nil {
@@ -683,7 +683,7 @@ func scoreField(prefix, name, value string, pointsToWin int, label string) templ
 		var templ_7745c5c3_Var30 string
 		templ_7745c5c3_Var30, templ_7745c5c3_Err = templ.ResolveAttributeValue(prefix + "-" + name)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `match.templ`, Line: 179, Col: 27}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/match.templ`, Line: 179, Col: 27}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var30)
 		if templ_7745c5c3_Err != nil {
@@ -696,7 +696,7 @@ func scoreField(prefix, name, value string, pointsToWin int, label string) templ
 		var templ_7745c5c3_Var31 string
 		templ_7745c5c3_Var31, templ_7745c5c3_Err = templ.ResolveAttributeValue(name)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `match.templ`, Line: 180, Col: 14}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/match.templ`, Line: 180, Col: 14}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var31)
 		if templ_7745c5c3_Err != nil {
@@ -709,7 +709,7 @@ func scoreField(prefix, name, value string, pointsToWin int, label string) templ
 		var templ_7745c5c3_Var32 string
 		templ_7745c5c3_Var32, templ_7745c5c3_Err = templ.ResolveAttributeValue(scoreValue(value))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `match.templ`, Line: 181, Col: 28}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/match.templ`, Line: 181, Col: 28}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var32)
 		if templ_7745c5c3_Err != nil {
@@ -722,7 +722,7 @@ func scoreField(prefix, name, value string, pointsToWin int, label string) templ
 		var templ_7745c5c3_Var33 string
 		templ_7745c5c3_Var33, templ_7745c5c3_Err = templ.ResolveAttributeValue(label)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `match.templ`, Line: 184, Col: 21}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/match.templ`, Line: 184, Col: 21}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var33)
 		if templ_7745c5c3_Err != nil {
@@ -735,7 +735,7 @@ func scoreField(prefix, name, value string, pointsToWin int, label string) templ
 		var templ_7745c5c3_Var34 string
 		templ_7745c5c3_Var34, templ_7745c5c3_Err = templ.ResolveAttributeValue("sets-rule-" + prefix)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `match.templ`, Line: 185, Col: 43}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/match.templ`, Line: 185, Col: 43}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var34)
 		if templ_7745c5c3_Err != nil {
@@ -748,7 +748,7 @@ func scoreField(prefix, name, value string, pointsToWin int, label string) templ
 		var templ_7745c5c3_Var35 string
 		templ_7745c5c3_Var35, templ_7745c5c3_Err = templ.ResolveAttributeValue(strconv.Itoa(pointsToWin + 10))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `match.templ`, Line: 193, Col: 39}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/match.templ`, Line: 193, Col: 39}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var35)
 		if templ_7745c5c3_Err != nil {
@@ -761,7 +761,7 @@ func scoreField(prefix, name, value string, pointsToWin int, label string) templ
 		var templ_7745c5c3_Var36 string
 		templ_7745c5c3_Var36, templ_7745c5c3_Err = templ.ResolveAttributeValue(scoreValue(value))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `match.templ`, Line: 194, Col: 28}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/match.templ`, Line: 194, Col: 28}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var36)
 		if templ_7745c5c3_Err != nil {
@@ -774,7 +774,7 @@ func scoreField(prefix, name, value string, pointsToWin int, label string) templ
 		var templ_7745c5c3_Var37 string
 		templ_7745c5c3_Var37, templ_7745c5c3_Err = templ.ResolveAttributeValue(prefix + "-" + name)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `match.templ`, Line: 195, Col: 35}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/match.templ`, Line: 195, Col: 35}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var37)
 		if templ_7745c5c3_Err != nil {
@@ -787,7 +787,7 @@ func scoreField(prefix, name, value string, pointsToWin int, label string) templ
 		var templ_7745c5c3_Var38 string
 		templ_7745c5c3_Var38, templ_7745c5c3_Err = templ.ResolveAttributeValue(label + ", Schieberegler")
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `match.templ`, Line: 196, Col: 41}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/match.templ`, Line: 196, Col: 41}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var38)
 		if templ_7745c5c3_Err != nil {
@@ -885,7 +885,7 @@ func MatchRecorded(v MatchRecordedView) templ.Component {
 		var templ_7745c5c3_Var41 string
 		templ_7745c5c3_Var41, templ_7745c5c3_Err = templ.JoinStringErrs(v.OpponentName)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `match.templ`, Line: 224, Col: 25}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/match.templ`, Line: 224, Col: 25}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var41))
 		if templ_7745c5c3_Err != nil {
@@ -898,7 +898,7 @@ func MatchRecorded(v MatchRecordedView) templ.Component {
 		var templ_7745c5c3_Var42 string
 		templ_7745c5c3_Var42, templ_7745c5c3_Err = templ.JoinStringErrs(strconv.Itoa(v.OwnSets))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `match.templ`, Line: 225, Col: 28}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/match.templ`, Line: 225, Col: 28}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var42))
 		if templ_7745c5c3_Err != nil {
@@ -911,7 +911,7 @@ func MatchRecorded(v MatchRecordedView) templ.Component {
 		var templ_7745c5c3_Var43 string
 		templ_7745c5c3_Var43, templ_7745c5c3_Err = templ.JoinStringErrs(strconv.Itoa(v.OpponentSets))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `match.templ`, Line: 225, Col: 61}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/match.templ`, Line: 225, Col: 61}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var43))
 		if templ_7745c5c3_Err != nil {
@@ -924,7 +924,7 @@ func MatchRecorded(v MatchRecordedView) templ.Component {
 		var templ_7745c5c3_Var44 string
 		templ_7745c5c3_Var44, templ_7745c5c3_Err = templ.JoinStringErrs(v.OpponentName)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `match.templ`, Line: 228, Col: 19}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/match.templ`, Line: 228, Col: 19}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var44))
 		if templ_7745c5c3_Err != nil {
