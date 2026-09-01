@@ -632,3 +632,26 @@ func TestTheGreetingEscapesTheName(t *testing.T) {
 		t.Errorf("the greeting does not carry the escaped name: %s", body)
 	}
 }
+
+// The tools sit apart at the right end: a sheet to print and a page to look
+// something up, neither of them somewhere anybody goes between two matches.
+func TestTheNavigationPutsTheToolsLast(t *testing.T) {
+	h := newHandler(newMemStore())
+
+	body := get(t, h, "/").Body.String()
+	nav := body[strings.Index(body, `class="mainnav"`):]
+	nav = nav[:strings.Index(nav, "</nav>")]
+
+	order := []string{`href="/matches"`, `href="/standings"`, `class="mainnav-tools"`, `href="/qr"`}
+	at := -1
+	for _, want := range order {
+		i := strings.Index(nav, want)
+		if i < 0 {
+			t.Fatalf("the navigation has no %s", want)
+		}
+		if i < at {
+			t.Errorf("%s comes too early: %s", want, nav)
+		}
+		at = i
+	}
+}
