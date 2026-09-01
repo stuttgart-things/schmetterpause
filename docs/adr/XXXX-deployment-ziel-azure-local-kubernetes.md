@@ -235,14 +235,54 @@ Postgres (#78, #80, #81). Dieses ADR schreibt das nicht neu.
    nicht umgekehrt, und der Übergang ist kein Zwischenstand, den man später
    stehen lässt.
 2. **Was Azure Local nicht mitbringt, wird dort nachgerüstet** — Gateway-API-
-   Controller, Loadbalancer, StorageClass. Die kustomize-Base bleibt für beide
-   Umgebungen dieselbe. Das ist Invariante 1, eine Ebene höher gezogen.
+   Controller, Loadbalancer, StorageClass, Secret-Store. Die kustomize-Base
+   bleibt für beide Umgebungen dieselbe. Das ist Invariante 1, eine Ebene höher
+   gezogen.
+
+   **Dieser Punkt ist inzwischen keine Forderung mehr, sondern eine
+   Eigenschaft.** `kcl/schema.k` beginnt mit „Everything is a variable" —
+   Hostname, Namespace, Gateway, Cluster-Domain, Image und Secret-Store sind
+   getypte Felder ohne eingebackene Werte, und `existing-secrets` deckt den
+   Fall ohne ESO ab. Azure Local braucht damit **kein zweites Manifest-Set,
+   sondern ein Profil**. Das ist die wichtigste Änderung an diesem ADR seit
+   seiner ersten Fassung, und sie kam nicht von uns.
 3. **Der Objektspeicher-Zugang läuft über Managed Identity**, nicht über ein
    Geheimnis in Git. Damit bleibt als Bootstrap-Problem nur, was die Anwendung
-   selbst braucht, und das sind zwei Werte.
+   selbst braucht, und das sind zwei Werte. Auf der Übergangsumgebung ist
+   derselbe Fall anders gelöst — ESO gegen OpenBao, Einträge per Terraform —
+   und beides nebeneinander ist in Ordnung: Der Store ist ein Profilwert.
 
-Offen und nicht allein entscheidbar: der Hostname (Punkt 7) und die Art, wie
-Argo CD auf Azure Local installiert wird (Punkt 6).
+Offen und nicht allein entscheidbar: der Hostname (Punkt 7), die Art, wie Argo
+CD auf Azure Local installiert wird (Punkt 6), und woher dort der Secret-Store
+kommt (Punkt 5).
+
+## Was Azure Local konkret braucht
+
+Weil die Base neutral ist, zerfällt der verbleibende Teil in zwei Listen. Die
+erste ist eine Datei, die zweite ist Cluster-Arbeit — und nur die zweite ist
+aufwendig.
+
+**Das Profil** (`kcl/profiles/`, nach dem Muster von `base.yaml`):
+
+- `config.clusterDomain` — die Azure-Local-Cluster-Domain
+- `config.gatewayName` / `config.gatewayNamespace` — was dort installiert wird
+- `config.gatewaySectionNameHTTPS` / `…HTTP` — nur falls die Listener anders
+  heißen als `https`/`http`
+- `config.secretStoreName` + `config.vaultPath`, oder `config.secretsMode:
+  existing` für den Anfang
+- `config.image` — unverändert, dasselbe Image (Invariante 1)
+
+**Der Cluster** — das ist die Arbeit:
+
+- [ ] Gateway-API-Controller installieren, mit Listenern `https` und `http`
+- [ ] Zertifikat für die Cluster-Domain, am Listener
+- [ ] MetalLB oder ein anderer Loadbalancer, mit reserviertem IP-Bereich
+- [ ] StorageClass mit `fsType: ext4` für die CNPG-Instanz
+- [ ] Argo CD — Arc-Extension oder selbst betrieben (Punkt 6)
+- [ ] Secret-Store, oder bewusst `existing-secrets` und ein Schritt null
+- [ ] CloudNativePG-Operator aus dem Katalog `infra/cloudnative-pg`
+
+Nichts davon berührt das Anwendungs-Repository.
 
 ## Nicht Teil dieses ADR
 
