@@ -63,19 +63,22 @@ Zwei Dinge folgen daraus:
 ## Was Azure Local nicht mitbringt
 
 AKS enabled by Azure Arc auf Azure Local ist Kubernetes, aber nicht dasselbe
-Kubernetes, gegen das Phase 3 geschrieben ist. Sieben Unterschiede, die vor
-dem ersten Deploy dorthin geklärt sein müssen — Stand der
-Microsoft-Dokumentation am 2026-08-28:
+Kubernetes, gegen das Phase 3 gebaut wurde. Die linke Spalte war bis zum
+2026-08-28 geraten; seit den Erhebungen in #78 sind es **gelesene Werte vom
+Cluster `cicd-test2`**. Das macht die Tabelle erst brauchbar: Sie vergleicht
+jetzt zwei konkrete Umgebungen statt einer konkreten mit einer vermuteten.
 
-| Baustein | Im sthings-Cluster | AKS enabled by Azure Arc | Folge |
+| Baustein | `cicd-test2` (gelesen, #78) | AKS enabled by Azure Arc | Folge |
 | --- | --- | --- | --- |
 | Arc-Registrierung | nicht relevant | AKS auf Azure Local ist **ab Werk Arc-registriert** | Entlastung. Der Kontext oben formuliert das noch als eigenen Vorgang; das ist er nicht. |
-| Ingress | Cilium Gateway API, Zertifikat am Listener des Gateways | Dokumentierter Weg ist der **NGINX Ingress Controller**. Ein Gateway-API-Controller ist nicht vorinstalliert | **Größter Posten.** `httproute.k` aus #78 setzt eine Gateway-API-Implementierung voraus. Nach der Regel oben wird sie auf Azure Local nachgerüstet. |
-| Externe IPs | vorhanden | **MetalLB** als Arc-Extension oder ein eigener Loadbalancer. Der IP-Bereich darf nicht mit Arc-VM-Logical-Networks oder Control-Plane-IPs kollidieren | Ein IP-Bereich muss reserviert und dokumentiert sein, bevor überhaupt etwas erreichbar ist. |
+| Gateway | `cilium-gateway` in `default`, Klasse `cilium`, Adresse `10.100.136.227`. Zwei Listener auf demselben Wildcard: `https` mit `wildcard-cicd-test2-tls`, `http` ohne Redirect | Gateway API ist **nicht vorinstalliert**; dokumentiert ist der NGINX Ingress Controller. Ein Controller muss mitgebracht werden | **Größter Posten.** Und er ist größer als gedacht: Die Base bindet über `sectionName` an Listener namens `https` und `http` (#78). Ein Azure-Local-Gateway muss diese Namen tragen, sonst greift der Redirect-Trick nicht — oder das Profil überschreibt `gatewaySectionNameHTTPS`/`…HTTP`. |
+| Zertifikat | Wildcard `*.cicd-test2.4sthings.tiab.ssc.sva.de` am Listener — keine Arbeit auf unserer Seite | Kein Gateway, also kein Listener, also kein Zertifikat | cert-manager oder ein vorhandenes Wildcard. Das ist der Teil von #74, der auf Azure Local **nicht** verschwindet. |
+| Externe IPs | am Gateway vorhanden | **MetalLB** als Arc-Extension oder eigener Loadbalancer. Der IP-Bereich darf nicht mit Arc-VM-Logical-Networks oder Control-Plane-IPs kollidieren | Ein IP-Bereich muss reserviert und dokumentiert sein, bevor überhaupt etwas erreichbar ist. |
 | GitOps-Installation | Argo CD läuft, gepflegt in `stuttgart-things/argocd` | Zwei Wege: Arc-Extension `microsoft.argocd` (**Public Preview**) oder Argo selbst per Helm. Die Flux-Extension ist GA — aber #81 hat Argo entschieden | Eigene Entscheidung, siehe offene Frage 6. |
-| StorageClass | vorhanden | `disk.csi.akshci.com`, VHDX-gestützt. **Linux-Workloads brauchen eine eigene StorageClass mit `fsType: ext4`** — die Default genügt nicht | Die `Cluster`-Ressource kommt aus dem Katalog `infra/cloudnative-pg`, gehört also der Argo-Application und nicht unserer Base — die `storageClass` ist dort zu setzen. Auf `cicd-test2` ist die Default `openebs-hostpath`; auf Azure Local gibt es kein Gegenstück, das ohne `fsType` funktioniert. |
-| Volume-Snapshots | vorhanden | **werden nicht unterstützt** | Betrifft das Backup-ADR und #84: Velero muss dort auf Datei-Backup (restic/kopia) ausweichen. |
-| Objektspeicher | Velero-Bucket vorhanden (`infra/velero`) | Azure Local bringt **keinen S3-Dienst** mit. Ziel wäre Azure Blob Storage in Azure | Die Randbedingung „außerhalb des Clusters" aus dem Backup-ADR erfüllt sich von selbst. Dafür hängt das Backup am WAN-Link. |
+| Secret-Store | `ClusterSecretStore` `vault-cicd-test2` gegen OpenBao, Muster `vault-<cluster>` aus dem Backstage-Template. Einträge SOPS-verschlüsselt per Terraform in `stuttgart-things/argocd` | Existiert dort nicht. Alternativen: dasselbe Muster nachbauen, oder **Azure Key Vault mit Workload Identity** | Beides ist ein `secretStoreName` im Profil — die Base ist neutral (#78, `secretsMode`). Die Arbeit liegt cluster-seitig, nicht in den Manifesten. |
+| StorageClass | `openebs-hostpath` (Default), `openebs.io/local`, node-lokal, `Delete`-Reclaim, keine Volume-Expansion | `disk.csi.akshci.com`, VHDX-gestützt. **Linux-Workloads brauchen eine eigene StorageClass mit `fsType: ext4`** — die Default genügt nicht | Die `Cluster`-Ressource kommt aus dem Katalog `infra/cloudnative-pg`, gehört also der Argo-Application und nicht unserer Base — die `storageClass` ist dort zu setzen. |
+| Volume-Snapshots | **Ungeprüft.** `openebs-hostpath` ist ein LocalPV-Provisioner; ob eine `VolumeSnapshotClass` existiert, beantwortet `kubectl get volumesnapshotclass` | **Werden nicht unterstützt** | Betrifft #84: Wenn *beide* Umgebungen keine Snapshots haben, ist Weg A dort überall Datei-Backup, und der Vergleich hat ein Kriterium weniger. Gehört geprüft, bevor er aufgesetzt wird. |
+| Objektspeicher | `infra/velero` gegen S3-kompatiblen Speicher, Zugang als `cloud-credentials`-ExternalSecret aus Vault | Azure Local bringt **keinen S3-Dienst** mit. Ziel wäre Azure Blob Storage in Azure | Die Randbedingung „außerhalb des Clusters" aus dem Backup-ADR erfüllt sich von selbst. Dafür hängt das Backup am WAN-Link. |
 
 Belege: [CSI-Disk-Treiber in AKS
 Arc](https://learn.microsoft.com/en-us/azure/aks/aksarc/container-storage-interface-disks),
