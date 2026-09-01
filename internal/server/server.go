@@ -88,6 +88,7 @@ func (s *Server) routes() http.Handler {
 	page.HandleFunc("GET /info", s.handleInfo)
 	page.HandleFunc("GET /fragments/status", s.handleStatusFragment)
 	page.HandleFunc("GET /fragments/whoami", s.handleWhoami)
+	page.HandleFunc("GET /standings", s.handleStandings)
 	page.HandleFunc("GET /fragments/standings", s.handleStandingsFragment)
 	page.HandleFunc("GET /fragments/refresh", s.handleRefresh)
 	page.HandleFunc("GET /players/{id}", s.handleProfile)
