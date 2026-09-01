@@ -690,7 +690,6 @@ type AdminPerson struct {
 	IsSelf bool
 }
 
-// MatchListView is every match the office has played, newest first.
 // MatchFilterView is the picker above the match list: whose matches these
 // are, and who else could be chosen.
 type MatchFilterView struct {
@@ -708,6 +707,7 @@ type MatchFilterView struct {
 // signed-in reader who has not asked gets their own matches.
 const MatchFilterAll = "alle"
 
+// MatchListView is every match the office has played, newest first.
 type MatchListView struct {
 	// Filter is whose matches are showing and how to change that.
 	Filter  MatchFilterView
