@@ -21,6 +21,10 @@ RUN --mount=type=cache,target=/go/pkg/mod \
 COPY . .
 
 ARG VERSION=dev
+# When the commit was made, not when this ran. A build clock would give two
+# images from one commit different contents, and "is the same thing running
+# here and there" is exactly what this is for.
+ARG COMMIT_TIME=
 ARG TARGETOS=linux
 ARG TARGETARCH=amd64
 
@@ -29,7 +33,7 @@ RUN --mount=type=cache,target=/go/pkg/mod \
     CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} \
     go build \
         -trimpath \
-        -ldflags="-s -w -X main.version=${VERSION}" \
+        -ldflags="-s -w -X main.version=${VERSION} -X main.commitTime=${COMMIT_TIME}" \
         -o /out/schmetterpause \
         ./cmd/schmetterpause
 

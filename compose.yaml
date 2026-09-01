@@ -27,6 +27,7 @@ services:
       context: .
       args:
         VERSION: ${VERSION:-dev}
+        COMMIT_TIME: ${COMMIT_TIME:-}
     environment:
       SP_DATABASE_URL: postgres://schmetterpause:schmetterpause@db:5432/schmetterpause?sslmode=disable
       SP_LOG_LEVEL: ${SP_LOG_LEVEL:-debug}

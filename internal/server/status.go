@@ -13,8 +13,9 @@ import (
 // that can disagree about it.
 func (s *Server) handleInfo(w http.ResponseWriter, r *http.Request) {
 	s.render(w, r, templates.Info(templates.StatusView{
-		Header:  s.headerView(r.Context()),
-		Version: s.version,
+		Header:     s.headerView(r.Context()),
+		Version:    s.build.Version,
+		CommitTime: s.build.CommitTime,
 	}))
 }
 
@@ -24,7 +25,10 @@ func (s *Server) handleInfo(w http.ResponseWriter, r *http.Request) {
 // together — exactly the path the pipeline's verify step checks against the
 // built image, which is why the markup it asserts on should stay stable.
 func (s *Server) handleStatusFragment(w http.ResponseWriter, r *http.Request) {
-	view := templates.StatusView{Version: s.version}
+	view := templates.StatusView{
+		Version:    s.build.Version,
+		CommitTime: s.build.CommitTime,
+	}
 
 	if err := s.store.Ping(r.Context()); err != nil {
 		s.log.WarnContext(r.Context(), "status: database unreachable", "error", err)

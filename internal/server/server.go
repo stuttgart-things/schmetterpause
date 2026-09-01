@@ -26,7 +26,7 @@ type Server struct {
 	store   repository.Store
 	log     *slog.Logger
 	auth    auth.SessionAuthenticator
-	version string
+	build   Build
 	handler http.Handler
 
 	// The two halves of the brake on guessing at a credential. One alone is
@@ -42,9 +42,21 @@ type Server struct {
 
 // New wires up the server. The authenticator is an interface so that later
 // providers (OIDC, WebAuthn) take effect without touching any handler.
-func New(cfg config.Config, store repository.Store, log *slog.Logger, a auth.SessionAuthenticator, version string) *Server {
+// Build is what this binary can say about itself, set at link time.
+//
+// Two values rather than one string, so the page can show them as two things:
+// which commit, and how old it is. CommitTime is when that commit was made,
+// not when the binary was built — a build clock would make two images from
+// one commit differ, and "is the same thing running here and there" is the
+// question this exists to answer.
+type Build struct {
+	Version    string
+	CommitTime string
+}
+
+func New(cfg config.Config, store repository.Store, log *slog.Logger, a auth.SessionAuthenticator, build Build) *Server {
 	s := &Server{
-		cfg: cfg, store: store, log: log, auth: a, version: version,
+		cfg: cfg, store: store, log: log, auth: a, build: build,
 		signInByPlayer:  ratelimit.New(signInPlayerPolicy),
 		signInByAddress: ratelimit.New(signInAddressPolicy),
 		kioskByAddress:  ratelimit.New(kioskPolicy),
@@ -170,7 +182,8 @@ func (s *Server) Run(ctx context.Context) error {
 
 	errCh := make(chan error, 1)
 	go func() {
-		s.log.Info("server started", "addr", s.cfg.HTTPAddr, "version", s.version)
+		s.log.Info("server started", "addr", s.cfg.HTTPAddr,
+			"version", s.build.Version, "commit_time", s.build.CommitTime)
 		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			errCh <- fmt.Errorf("http server: %w", err)
 			return

@@ -48,7 +48,8 @@ jobs:
         run: |
           dagger call ci \
             --source=. \
-            --version="$(git describe --tags --always --dirty)"
+            --version="$(git describe --tags --always --dirty)" \
+            --commit-time="$(git show -s --format=%cI HEAD)"
 
   # Artefacts that are meant to last go to GHCR. Only on a push — a pull
   # request from a fork must not be able to write to the package, and there is
@@ -81,6 +82,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           version="$(git describe --tags --always --dirty)"
+          commit_time="$(git show -s --format=%cI HEAD)"
 
           # Only a tag moves "latest". A push to main is a snapshot, and
           # pointing latest at one would make it mean "most recent build"
@@ -98,6 +100,7 @@ jobs:
           ref="$(dagger call release \
             --source=. \
             --version="${version}" \
+            --commit-time="${commit_time}" \
             --registry-token=env:GITHUB_TOKEN \
             --username="${GITHUB_ACTOR}" \
             --latest="${latest}")"

@@ -151,6 +151,11 @@ func (m *Schmetterpause) Binary(
 	// +optional
 	// +default="dev"
 	version string,
+	// When the commit was made, RFC 3339. Optional and empty by default: a
+	// binary built by hand simply does not know, and a build clock would make
+	// two images from one commit differ.
+	// +optional
+	commitTime string,
 	// +optional
 	// +default="amd64"
 	goarch string,
@@ -162,7 +167,7 @@ func (m *Schmetterpause) Binary(
 		WithExec([]string{
 			"go", "build",
 			"-trimpath",
-			"-ldflags", "-s -w -X main.version=" + version,
+			"-ldflags", "-s -w -X main.version=" + version + " -X main.commitTime=" + commitTime,
 			"-o", "/out/schmetterpause",
 			"./cmd/schmetterpause",
 		}).
@@ -178,13 +183,18 @@ func (m *Schmetterpause) Image(
 	// +optional
 	// +default="dev"
 	version string,
+	// When the commit was made, RFC 3339. Optional and empty by default: a
+	// binary built by hand simply does not know, and a build clock would make
+	// two images from one commit differ.
+	// +optional
+	commitTime string,
 	// +optional
 	// +default="amd64"
 	goarch string,
 ) *dagger.Container {
 	return dag.Container(dagger.ContainerOpts{Platform: dagger.Platform("linux/" + goarch)}).
 		From(runtimeImage).
-		WithFile("/usr/local/bin/schmetterpause", m.Binary(source, version, goarch)).
+		WithFile("/usr/local/bin/schmetterpause", m.Binary(source, version, commitTime, goarch)).
 		WithUser(nonrootUID).
 		WithExposedPort(8080).
 		WithEntrypoint([]string{"/usr/local/bin/schmetterpause"}).
@@ -199,11 +209,16 @@ func (m *Schmetterpause) Build(
 	// +optional
 	// +default="dev"
 	version string,
+	// When the commit was made, RFC 3339. Optional and empty by default: a
+	// binary built by hand simply does not know, and a build clock would make
+	// two images from one commit differ.
+	// +optional
+	commitTime string,
 	// +optional
 	// +default="amd64"
 	goarch string,
 ) *dagger.File {
-	return m.Image(source, version, goarch).AsTarball()
+	return m.Image(source, version, commitTime, goarch).AsTarball()
 }
 
 // Postgres starts a fresh database as a Dagger service.
@@ -237,12 +252,17 @@ func (m *Schmetterpause) Verify(
 	// +optional
 	// +default="dev"
 	version string,
+	// When the commit was made, RFC 3339. Optional and empty by default: a
+	// binary built by hand simply does not know, and a build clock would make
+	// two images from one commit differ.
+	// +optional
+	commitTime string,
 ) (string, error) {
 	// One service value, bound to the application and to the checks below.
 	// Building it twice would give the last check its own empty Postgres.
 	db := m.Postgres()
 
-	app := m.Image(source, version, defaultArch).
+	app := m.Image(source, version, commitTime, defaultArch).
 		WithEnvVariable("SP_DATABASE_URL", verifyDSN).
 		WithEnvVariable("SP_LOG_LEVEL", "debug").
 		WithEnvVariable("SP_SESSION_KEY", verifySessionKey).
@@ -294,6 +314,11 @@ func (m *Schmetterpause) Ci(
 	// +optional
 	// +default="dev"
 	version string,
+	// When the commit was made, RFC 3339. Optional and empty by default: a
+	// binary built by hand simply does not know, and a build clock would make
+	// two images from one commit differ.
+	// +optional
+	commitTime string,
 ) (string, error) {
 	lintOut, err := m.Lint(ctx, source)
 	if err != nil {
@@ -305,11 +330,11 @@ func (m *Schmetterpause) Ci(
 		return "", err
 	}
 
-	if _, err := m.Image(source, version, defaultArch).Sync(ctx); err != nil {
+	if _, err := m.Image(source, version, commitTime, defaultArch).Sync(ctx); err != nil {
 		return "", fmt.Errorf("build: %w", err)
 	}
 
-	verifyOut, err := m.Verify(ctx, source, version)
+	verifyOut, err := m.Verify(ctx, source, version, commitTime)
 	if err != nil {
 		return "", err
 	}
@@ -335,6 +360,11 @@ func (m *Schmetterpause) Publish(
 	// +optional
 	// +default="dev"
 	version string,
+	// When the commit was made, RFC 3339. Optional and empty by default: a
+	// binary built by hand simply does not know, and a build clock would make
+	// two images from one commit differ.
+	// +optional
+	commitTime string,
 	// +optional
 	// +default="1h"
 	ttl string,
@@ -344,7 +374,7 @@ func (m *Schmetterpause) Publish(
 ) (string, error) {
 	ref := fmt.Sprintf("%s/schmetterpause-%s:%s", ephemeralRegistry, imageNameSafe(version), ttl)
 
-	published, err := m.Image(source, version, goarch).Publish(ctx, ref)
+	published, err := m.Image(source, version, commitTime, goarch).Publish(ctx, ref)
 	if err != nil {
 		return "", fmt.Errorf("publish to %s: %w", ephemeralRegistry, err)
 	}
@@ -366,6 +396,8 @@ func (m *Schmetterpause) Release(
 	// The version to tag. No default on purpose: an artefact tagged "dev"
 	// in a registry that keeps things is worse than no artefact.
 	version string,
+	// +optional
+	commitTime string,
 	// Token with write access to the package.
 	registryToken *dagger.Secret,
 	// The repository to push to. A "+default" pragma takes a literal, so
@@ -384,8 +416,8 @@ func (m *Schmetterpause) Release(
 	}
 
 	variants := []*dagger.Container{
-		m.Image(source, version, releasePlatformAmd64),
-		m.Image(source, version, releasePlatformArm64),
+		m.Image(source, version, commitTime, releasePlatformAmd64),
+		m.Image(source, version, commitTime, releasePlatformArm64),
 	}
 
 	authed := dag.Container().
