@@ -99,6 +99,10 @@ func (s *Server) routes() http.Handler {
 	page.HandleFunc("POST /matches/{id}/confirm", s.handleConfirmMatch)
 	page.HandleFunc("POST /matches/{id}/dispute", s.handleDisputeMatch)
 	page.HandleFunc("POST /matches/{id}/correct", s.handleCorrectMatch)
+	page.HandleFunc("GET /tournaments", s.handleTournaments)
+	page.HandleFunc("POST /tournaments", s.handleCreateTournament)
+	page.HandleFunc("GET /tournaments/{id}", s.handleTournament)
+	page.HandleFunc("POST /tournaments/{id}/close", s.handleCloseTournament)
 	page.HandleFunc("GET /qr", s.handleQRSheet)
 	// Who may act for other people (docs/adr/0008). Behind the flag itself:
 	// the list is the record of who holds power over other people's records,
@@ -118,6 +122,17 @@ func (s *Server) routes() http.Handler {
 		page.HandleFunc("POST /kiosk/credentials", s.handleKioskIssueCode)
 		page.HandleFunc("POST /kiosk/matches", s.handleKioskRecord)
 		page.HandleFunc("POST /kiosk/matches/{id}/undo", s.handleKioskUndo)
+		// The same tournament page, served from under /kiosk so the machine
+		// at the table reaches it with its cookie.
+		//
+		// The cookie is scoped Path=/kiosk deliberately, so it is simply not
+		// sent to /tournaments/{id} — a page there can never know it is the
+		// table, however it asks. Rather than widening that scope, the entry
+		// view lives where the cookie already goes. The draw and the table
+		// stay readable for everybody at /tournaments/{id}; what is behind
+		// /kiosk is the boxes to type into.
+		page.HandleFunc("GET /kiosk/tournaments/{id}", s.handleTournament)
+		page.HandleFunc("POST /kiosk/tournaments/{id}/matches", s.handleTournamentRecord)
 	}
 
 	mux.Handle("/", auth.Middleware(s.auth, s.log)(page))

@@ -134,6 +134,53 @@ func (g KioskGrant) Active(t time.Time) bool {
 	return g.RevokedAt == nil && t.Before(g.ExpiresAt)
 }
 
+// TournamentStatus is where a tournament is in its short life.
+type TournamentStatus string
+
+const (
+	// TournamentOpen is being played. Results can still arrive.
+	TournamentOpen TournamentStatus = "open"
+	// TournamentClosed is over. Nothing about the rating depends on this —
+	// tournament matches settle one at a time (docs/adr/0009) — so closing
+	// is bookkeeping: it takes the tournament off the list of things still
+	// happening.
+	TournamentClosed TournamentStatus = "closed"
+)
+
+// TournamentFormat names how the draw is built.
+type TournamentFormat string
+
+// TournamentRoundRobin is everybody against everybody. The only format today,
+// and named rather than assumed: Swiss is the successor for a field past ten
+// (#41), and a type that cannot say which format it holds cannot hold two.
+const TournamentRoundRobin TournamentFormat = "round_robin"
+
+// Tournament is a bracket around matches.
+//
+// It is deliberately not a scoring event: a tournament match settles through
+// the ordinary confirmation path, one at a time (docs/adr/0009). What a
+// tournament owns is who is in it and which matches belong to it.
+type Tournament struct {
+	ID     uuid.UUID
+	Name   string
+	Format TournamentFormat
+	Status TournamentStatus
+	// CreatedBy is whoever set it up. Not a permission — anybody may start
+	// one — but a tournament with no author is one nobody will admit to
+	// having made when the pairings are wrong.
+	CreatedBy uuid.UUID
+	CreatedAt time.Time
+	// ClosedAt is set exactly when Status is TournamentClosed.
+	ClosedAt *time.Time
+	// Players are the participants in draw order. The order is the draw:
+	// the circle method is deterministic over it, so the pairings are a
+	// function of this slice rather than a stored copy that could drift.
+	Players []uuid.UUID
+}
+
+// Open reports whether results can still arrive.
+func (t Tournament) Open() bool { return t.Status == TournamentOpen }
+
 // MatchStatus is a match's confirmation state. Only a match in state
 // MatchConfirmed enters the rating.
 type MatchStatus string
@@ -182,7 +229,12 @@ type Match struct {
 	// EnteredVia is how the result reached the database. Empty means
 	// EnteredViaPlayer, which is what the column defaults to.
 	EnteredVia EnteredVia
-	Sets       []MatchSet
+	// TournamentID is the bracket this match belongs to, or nil for one
+	// played outside a tournament — which is every match that existed
+	// before docs/adr/0009. It changes nothing about how the match is
+	// rated; it is what lets a table be built from the results.
+	TournamentID *uuid.UUID
+	Sets         []MatchSet
 }
 
 // MatchSet is a single set within a match.

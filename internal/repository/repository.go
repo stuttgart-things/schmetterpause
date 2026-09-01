@@ -21,6 +21,7 @@ type Store interface {
 	Credentials() CredentialRepository
 	KioskGrants() KioskGrantRepository
 	Matches() MatchRepository
+	Tournaments() TournamentRepository
 	TTRHistory() TTRHistoryRepository
 
 	// InTx runs fn inside a transaction. The Store handed to fn writes on
@@ -161,6 +162,34 @@ type MatchRepository interface {
 	// and that guard belongs where the write happens rather than only in the
 	// caller that remembered to check.
 	ReplaceResult(ctx context.Context, id uuid.UUID, corrected domain.Match) error
+}
+
+// TournamentRepository manages tournaments and who is in them.
+type TournamentRepository interface {
+	// Create stores a tournament along with its field, in draw order, and
+	// returns the persisted state.
+	//
+	// The order of players is the draw: the circle method is deterministic
+	// over it, so the pairings are recomputed from this rather than stored.
+	// A caller who wants a randomised draw shuffles before calling — which
+	// is the same contract tournament.Draw keeps, and for the same reason.
+	Create(ctx context.Context, t domain.Tournament) (domain.Tournament, error)
+	// ByID returns one tournament with its field. An unknown id is
+	// domain.ErrNotFound.
+	ByID(ctx context.Context, id uuid.UUID) (domain.Tournament, error)
+	// List returns tournaments newest first, at most limit of them, open
+	// ones before closed ones — the order a list at the table is read in.
+	List(ctx context.Context, limit int) ([]domain.Tournament, error)
+	// Close marks a tournament over. Closing an already closed tournament is
+	// not an error: two people pressing the same button is not a failure,
+	// and nothing about the rating hangs on the transition (docs/adr/0009).
+	Close(ctx context.Context, id uuid.UUID, at time.Time) error
+	// Matches returns every match booked to this tournament, whatever its
+	// status, with sets loaded. Every status, because the table has to
+	// distinguish "not played yet" from "played, waiting on a confirmation"
+	// — and a list that quietly left out the second answers "where is my
+	// match" with silence.
+	Matches(ctx context.Context, id uuid.UUID) ([]domain.Match, error)
 }
 
 // TTRHistoryRepository writes and reads the rating history.

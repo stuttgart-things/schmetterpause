@@ -108,6 +108,9 @@ func (s *Store) KioskGrants() repository.KioskGrantRepository { return kioskGran
 // Matches returns the match repository.
 func (s *Store) Matches() repository.MatchRepository { return matchRepo{s.q} }
 
+// Tournaments returns the tournament repository.
+func (s *Store) Tournaments() repository.TournamentRepository { return tournamentRepo{s.q} }
+
 // TTRHistory returns the rating history repository.
 func (s *Store) TTRHistory() repository.TTRHistoryRepository { return ttrHistoryRepo{s.q} }
 
