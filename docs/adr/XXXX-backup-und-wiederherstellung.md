@@ -230,11 +230,21 @@ Diese Punkte sind unabhängig von der Wahl A/B und wiegen schwerer als sie.
   den Schlüssel deshalb als so wichtig wie die Datenbank ein — zu Recht, für
   den heutigen Stand.
 
-  **Für den Zeitpunkt, an dem dieses ADR umgesetzt wird, gilt das nicht mehr.**
-  Backup ist phase-5, die Anmeldung aus #88 ist phase-2 und damit vorher da.
-  Mit Wiederherstellungscode (ADR-0006) und PIN (ADR-0007) hängt sich ein
-  Spieler nach einem Schlüsselwechsel wieder an seine alte Zeile — aus
-  Datenverlust wird eine Unbequemlichkeit.
+  **Seit dem 2026-08-28 gilt das nicht mehr, und zwar nicht mehr in der
+  Zukunftsform.** Phase 2 ist gelandet (#98, #100, #101, #103):
+  Wiederherstellungscode (ADR-0006) und PIN (ADR-0007) sind Code, nicht Plan.
+  Ein Spieler hängt sich nach einem Schlüsselwechsel wieder an seine alte
+  Zeile — aus Datenverlust wird eine Unbequemlichkeit. Das Argument, das hier
+  als „gilt später" stand, gilt jetzt.
+
+  Dazu kommt, was #78 nebenbei gelöst hat: **Der Schlüssel liegt im Tresor,
+  und der Tresor ist wiederherstellbar.** `cicd-test2/data/schmetterpause`
+  hält `session-key`, `kiosk-token`, `username` und `password`; die Einträge
+  werden SOPS-verschlüsselt per Terraform in `stuttgart-things/argocd`
+  verwaltet und sind nach einem Cluster-Neubau ein `apply` entfernt. Damit ist
+  die Forderung „was den Schlüssel hält, muss selbst wiederherstellbar sein"
+  auf der Übergangsumgebung erfüllt — **auf Azure Local ist sie offen**, weil
+  es diesen Store dort nicht gibt.
 
   Zwei Dinge, die dabei nicht untergehen dürfen:
 
