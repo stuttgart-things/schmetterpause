@@ -208,6 +208,11 @@ Kiosk-Freigabe gilt nur unter `/kiosk`, also kann eine Seite außerhalb davon
 gar nicht wissen, dass sie am Tisch steht. Statt die Freigabe zu verbreitern,
 liegt die Eingabe dort, wo das Cookie ohnehin hinkommt.
 
+Die Adresse musst du dir nicht merken: **`/kiosk` listet oben unter „Läuft
+gerade" jedes offene Turnier**, und von dort geht es mit einem Klick auf die
+Eingabe. Beendete Turniere stehen nicht dabei — sie nehmen nichts mehr an. Der
+Weg dahin ist einmal `/kiosk?token=…` und danach nur noch Klicken.
+
 **Turnierergebnisse zählen sofort**, wie alle Kiosk-Eingaben — bei 28 Spielen
 wäre eine Bestätigung pro Match der halbe Abend. Sie bewegen die normale TTR,
 und zwar Match für Match; warum nicht veranstaltungsweise verrechnet wird und
