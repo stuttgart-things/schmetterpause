@@ -6,32 +6,61 @@ import "strconv"
 templ TournamentList(v TournamentListView) {
 	@Layout("Turniere", v.Header) {
 		<section class="card">
-			<h2>Turniere</h2>
-			if len(v.Tournaments) == 0 {
+			<h2>Läuft gerade</h2>
+			if len(v.Running) == 0 {
 				<p class="muted">
-					Noch keins. Unten eins anlegen — Namen ankreuzen, fertig.
+					Keins offen. Unten eins anlegen — Namen ankreuzen, fertig.
 				</p>
 			} else {
-				<ul class="tournament-list">
-					for _, t := range v.Tournaments {
-						<li>
-							<a href={ templ.SafeURL("/tournaments/" + t.ID) }>{ t.Name }</a>
-							<span class="muted">
-								{ strconv.Itoa(t.Players) } Spieler,
-								{ strconv.Itoa(t.Matches) } Spiele &middot; { t.Mode }
-							</span>
-							if !t.Open {
-								<span class="tag">beendet</span>
-							}
-						</li>
-					}
-				</ul>
+				@tournamentRows(v.Running)
 			}
 		</section>
+		if len(v.Past) > 0 {
+			// Folded away, because a finished evening is something somebody
+			// looks up on purpose while a running one is what they came for.
+			// A details element rather than a second page: no route, no
+			// JavaScript, and it works in a browser that has neither.
+			<section class="card">
+				<details>
+					<summary>{ strconv.Itoa(len(v.Past)) } vergangene Turniere</summary>
+					@tournamentRows(v.Past)
+				</details>
+			</section>
+		}
 		<section class="card">
 			@tournamentForm(v.Form, v.MaxPlayers)
 		</section>
 	}
+}
+
+// tournamentRows is one list of tournaments. Running and past look the same
+// because they are the same thing at different times; what separates them is
+// the heading they stand under.
+templ tournamentRows(rows []TournamentListRow) {
+	<ul class="tournament-list">
+		for _, t := range rows {
+			<li>
+				<a href={ templ.SafeURL("/tournaments/" + t.ID) }>{ t.Name }</a>
+				<span class="muted">
+					{ strconv.Itoa(t.Players) } Spieler,
+					{ strconv.Itoa(t.Played) } von { strconv.Itoa(t.Matches) } Spielen
+					&middot; { t.Mode }
+				</span>
+				if t.Empty {
+					// Only an untouched one. Deleting a tournament with
+					// results would leave them behind as casual matches —
+					// still rated, and back inside a measurement they were
+					// deliberately taken out of.
+					<form
+						method="post"
+						action={ templ.SafeURL("/tournaments/" + t.ID + "/delete") }
+					>
+						<button class="linklike" type="submit">löschen</button>
+					</form>
+				}
+			</li>
+		}
+	</ul>
 }
 
 // tournamentForm starts a tournament: a name and a set of ticks.
@@ -46,103 +75,112 @@ templ tournamentForm(v TournamentFormView, maxPlayers int) {
 			Dafür braucht es mindestens zwei Spieler in der Rangliste.
 		</p>
 	} else {
-		if v.Error != "" {
-			<p class="error" role="alert">{ v.Error }</p>
-		}
-		<form method="post" action="/tournaments">
-			<div class="row">
-				<label for="tournament-name">Name</label>
-				<input
-					id="tournament-name"
-					name="name"
-					type="text"
-					maxlength="60"
-					placeholder="Schnelles Turnier"
-					value={ v.Name }
-				/>
-			</div>
-			// Asked once, for the whole draw. No HTMX here, unlike result
-			// entry: nothing on this form redraws when the mode changes, and
-			// the number of set boxes it decides is rendered later, on the
-			// schedule.
-			<div class="row">
-				<label for="tournament-best-of">Modus</label>
-				<select id="tournament-best-of" name="best_of">
-					for _, n := range BestOfOptions {
-						<option value={ strconv.Itoa(n) } selected?={ v.BestOf == n }>
-							{ BestOfLabel(n) }
-						</option>
-					}
-				</select>
-				<select
-					id="tournament-points-to-win"
-					name="points_to_win"
-					aria-label="Punkte pro Satz"
-				>
-					for _, p := range PointsToWinOptions {
-						<option value={ strconv.Itoa(p) } selected?={ v.PointsToWin == p }>
-							bis { strconv.Itoa(p) }
-						</option>
-					}
-				</select>
-			</div>
-			// Everything that changes the size of the evening redraws the
-			// sentence below: the number depends on the names, the format and
-			// the final at once, and prose that names one combination is
-			// wrong for the other three.
-			<div class="row">
-				<label for="tournament-format">Runden</label>
-				<select
-					id="tournament-format"
-					name="format"
-					hx-get="/fragments/tournament-size"
-					hx-target="#tournament-size"
-					hx-swap="outerHTML"
-					hx-include="closest form"
-				>
-					<option value="round_robin" selected?={ v.Format != "double_round_robin" }>
-						Jeder gegen jeden
-					</option>
-					<option value="double_round_robin" selected?={ v.Format == "double_round_robin" }>
-						Mit Rückspiel
-					</option>
-				</select>
-			</div>
-			<label class="tick">
-				<input
-					type="checkbox"
-					name="with_final"
-					value="1"
-					checked?={ v.WithFinal }
-					hx-get="/fragments/tournament-size"
-					hx-target="#tournament-size"
-					hx-swap="outerHTML"
-					hx-include="closest form"
-				/>
-				Finale zwischen den besten zwei
-			</label>
-			<fieldset class="tournament-field">
-				<legend>Wer spielt mit?</legend>
-				for _, c := range v.Candidates {
-					<label class="tick">
-						<input
-							type="checkbox"
-							name="player_id"
-							value={ c.ID }
-							checked?={ c.Chosen }
-							hx-get="/fragments/tournament-size"
-							hx-target="#tournament-size"
-							hx-swap="outerHTML"
-							hx-include="closest form"
-						/>
-						{ c.DisplayName }
-					</label>
-				}
-			</fieldset>
-			@TournamentSize(v.Size(maxPlayers))
-			<button type="submit">Turnier anlegen</button>
-		</form>
+		@tournamentFields(v, maxPlayers, "/tournaments", "Turnier anlegen")
 	}
+}
+
+// tournamentFields is the form itself, without the heading around it.
+//
+// Starting a tournament and changing one that has not been played are the
+// same set of questions, so they are the same form. Only where it posts to
+// and what the button says differ.
+templ tournamentFields(v TournamentFormView, maxPlayers int, action, submit string) {
+	if v.Error != "" {
+		<p class="error" role="alert">{ v.Error }</p>
+	}
+	<form method="post" action={ templ.SafeURL(action) }>
+		<div class="row">
+			<label for="tournament-name">Name</label>
+			<input
+				id="tournament-name"
+				name="name"
+				type="text"
+				maxlength="60"
+				placeholder="Schnelles Turnier"
+				value={ v.Name }
+			/>
+		</div>
+		// Asked once, for the whole draw. No HTMX here, unlike result
+		// entry: nothing on this form redraws when the mode changes, and
+		// the number of set boxes it decides is rendered later, on the
+		// schedule.
+		<div class="row">
+			<label for="tournament-best-of">Modus</label>
+			<select id="tournament-best-of" name="best_of">
+				for _, n := range BestOfOptions {
+					<option value={ strconv.Itoa(n) } selected?={ v.BestOf == n }>
+						{ BestOfLabel(n) }
+					</option>
+				}
+			</select>
+			<select
+				id="tournament-points-to-win"
+				name="points_to_win"
+				aria-label="Punkte pro Satz"
+			>
+				for _, p := range PointsToWinOptions {
+					<option value={ strconv.Itoa(p) } selected?={ v.PointsToWin == p }>
+						bis { strconv.Itoa(p) }
+					</option>
+				}
+			</select>
+		</div>
+		// Everything that changes the size of the evening redraws the
+		// sentence below: the number depends on the names, the format and
+		// the final at once, and prose that names one combination is
+		// wrong for the other three.
+		<div class="row">
+			<label for="tournament-format">Runden</label>
+			<select
+				id="tournament-format"
+				name="format"
+				hx-get="/fragments/tournament-size"
+				hx-target="#tournament-size"
+				hx-swap="outerHTML"
+				hx-include="closest form"
+			>
+				<option value="round_robin" selected?={ v.Format != "double_round_robin" }>
+					Jeder gegen jeden
+				</option>
+				<option value="double_round_robin" selected?={ v.Format == "double_round_robin" }>
+					Mit Rückspiel
+				</option>
+			</select>
+		</div>
+		<label class="tick">
+			<input
+				type="checkbox"
+				name="with_final"
+				value="1"
+				checked?={ v.WithFinal }
+				hx-get="/fragments/tournament-size"
+				hx-target="#tournament-size"
+				hx-swap="outerHTML"
+				hx-include="closest form"
+			/>
+			Finale zwischen den besten zwei
+		</label>
+		<fieldset class="tournament-field">
+			<legend>Wer spielt mit?</legend>
+			for _, c := range v.Candidates {
+				<label class="tick">
+					<input
+						type="checkbox"
+						name="player_id"
+						value={ c.ID }
+						checked?={ c.Chosen }
+						hx-get="/fragments/tournament-size"
+						hx-target="#tournament-size"
+						hx-swap="outerHTML"
+						hx-include="closest form"
+					/>
+					{ c.DisplayName }
+				</label>
+			}
+		</fieldset>
+		@TournamentSize(v.Size(maxPlayers))
+		<button type="submit">{ submit }</button>
+	</form>
 }
 
 // TournamentPage is one tournament: the draw, and the table so far.
@@ -160,9 +198,20 @@ templ TournamentPage(v TournamentView) {
 					Alle Spiele sind drin.
 				}
 			</p>
-			if v.Open && v.Done() {
+			if v.Open {
+				// Not only when every match is in. A tournament nobody ever
+				// finishes is the one that most needs taking off the list,
+				// and hiding the button until it is complete left exactly
+				// those standing open forever. Nothing about the rating hangs
+				// on this (docs/adr/0009).
 				<form method="post" action={ templ.SafeURL("/tournaments/" + v.ID + "/close") }>
-					<button type="submit">Turnier beenden</button>
+					<button class="secondary" type="submit">Turnier beenden</button>
+					if !v.Done() {
+						<span class="muted">
+							Es fehlen noch Spiele — beendet steht es trotzdem
+							unter „vergangene Turniere".
+						</span>
+					}
 				</form>
 			}
 			if v.Done() || !v.Open {
@@ -181,6 +230,26 @@ templ TournamentPage(v TournamentView) {
 		if v.Error != "" {
 			<section class="card">
 				<p class="error" role="alert">{ v.Error }</p>
+			</section>
+		}
+		if v.Edit != nil {
+			// Only while nothing has been played, and folded away, because
+			// the ordinary reason to open a draw is to read it rather than to
+			// change it.
+			<section class="card">
+				<details>
+					<summary>Turnier ändern</summary>
+					<p class="muted">
+						Geht, solange kein Ergebnis drin steht. Danach liegt der
+						Spielplan fest — ein Feld, das sich nachträglich
+						verschiebt, würde eingetragene Ergebnisse in Runden
+						legen, in denen sie nicht gespielt wurden.
+					</p>
+					@tournamentFields(*v.Edit, v.MaxPlayers, "/tournaments/"+v.ID+"/edit", "Änderung speichern")
+					<form method="post" action={ templ.SafeURL("/tournaments/" + v.ID + "/delete") }>
+						<button class="linklike" type="submit">Turnier löschen</button>
+					</form>
+				</details>
 			</section>
 		}
 		<section class="card">

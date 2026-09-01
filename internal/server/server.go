@@ -110,6 +110,13 @@ func (s *Server) routes() http.Handler {
 	page.HandleFunc("GET /fragments/tournament-size", s.handleTournamentSize)
 	page.HandleFunc("GET /tournaments/{id}", s.handleTournament)
 	page.HandleFunc("POST /tournaments/{id}/close", s.handleCloseTournament)
+	// Both only for a tournament nobody has played in: the draw is a function
+	// of the stored order, and matches outlive the bracket they were played
+	// in (docs/adr/0010, docs/adr/0011).
+	page.Handle("POST /tournaments/{id}/delete",
+		auth.RequirePlayer(http.HandlerFunc(s.handleDeleteTournament)))
+	page.Handle("POST /tournaments/{id}/edit",
+		auth.RequirePlayer(http.HandlerFunc(s.handleEditTournament)))
 	page.HandleFunc("GET /qr", s.handleQRSheet)
 	// Who may act for other people (docs/adr/0008). Behind the flag itself:
 	// the list is the record of who holds power over other people's records,

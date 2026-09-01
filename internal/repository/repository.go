@@ -190,6 +190,22 @@ type TournamentRepository interface {
 	// — and a list that quietly left out the second answers "where is my
 	// match" with silence.
 	Matches(ctx context.Context, id uuid.UUID) ([]domain.Match, error)
+	// DeleteIfEmpty removes a tournament that holds no results at all, and
+	// reports whether it did. A tournament with results is not deleted:
+	// matches.tournament_id is "on delete set null", so removing the bracket
+	// would silently turn an evening's results into casual matches — still
+	// rated, still in the ranking, and back inside the measurement they were
+	// deliberately taken out of. Ending such a tournament is what closing is
+	// for.
+	//
+	// Empty rather than open: a tournament nobody ever played is a typo, and
+	// a typo should be removable whatever its status.
+	DeleteIfEmpty(ctx context.Context, id uuid.UUID) (bool, error)
+	// Replace changes the field and the mode of a tournament that holds no
+	// results. The draw is a function of the stored order, so changing the
+	// field after a result exists would move every later pairing into a slot
+	// its result was not played in.
+	Replace(ctx context.Context, t domain.Tournament) (domain.Tournament, error)
 }
 
 // TTRHistoryRepository writes and reads the rating history.

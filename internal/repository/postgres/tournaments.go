@@ -209,3 +209,64 @@ func scanTournament(row pgx.Row) (domain.Tournament, error) {
 	t.Status = domain.TournamentStatus(status)
 	return t, nil
 }
+
+// DeleteIfEmpty removes a tournament nobody has played in.
+//
+// The emptiness check is part of the statement rather than a read before it:
+// two people pressing delete while somebody enters a result at the table is
+// exactly the race this has to lose safely.
+func (r tournamentRepo) DeleteIfEmpty(ctx context.Context, id uuid.UUID) (bool, error) {
+	const del = `
+		delete from tournaments
+		where id = $1
+		  and not exists (select 1 from matches m where m.tournament_id = tournaments.id)`
+
+	tag, err := r.q.Exec(ctx, del, id)
+	if err != nil {
+		return false, fmt.Errorf("delete tournament %s: %w", id, err)
+	}
+	return tag.RowsAffected() > 0, nil
+}
+
+// Replace changes the field and the mode of a tournament that holds no
+// results, and returns the tournament as it now stands.
+//
+// The field is rewritten wholesale rather than diffed: position is the draw,
+// so "who is in it, in which order" is one value, and patching it a name at a
+// time would produce orders nobody chose.
+func (r tournamentRepo) Replace(ctx context.Context, t domain.Tournament) (domain.Tournament, error) {
+	const update = `
+		update tournaments
+		set name = $2, format = $3, best_of = $4, points_to_win = $5, with_final = $6
+		where id = $1
+		  and not exists (select 1 from matches m where m.tournament_id = tournaments.id)
+		returning ` + tournamentColumns
+
+	updated, err := scanTournament(r.q.QueryRow(ctx, update,
+		t.ID, t.Name, string(t.Format), t.BestOf, t.PointsToWin, t.WithFinal))
+	switch {
+	case errors.Is(err, pgx.ErrNoRows):
+		// Either it is gone or somebody entered a result while this form was
+		// open. Both mean the same thing to the caller: this edit no longer
+		// applies.
+		return domain.Tournament{}, domain.ErrNotFound
+	case err != nil:
+		return domain.Tournament{}, fmt.Errorf("replace tournament %s: %w", t.ID, err)
+	}
+
+	if _, err := r.q.Exec(ctx,
+		`delete from tournament_players where tournament_id = $1`, t.ID); err != nil {
+		return domain.Tournament{}, fmt.Errorf("clear field of %s: %w", t.ID, err)
+	}
+	const addPlayer = `
+		insert into tournament_players (tournament_id, player_id, position)
+		values ($1, $2, $3)`
+	for i, playerID := range t.Players {
+		if _, err := r.q.Exec(ctx, addPlayer, t.ID, playerID, i); err != nil {
+			return domain.Tournament{}, fmt.Errorf(
+				"add player %s to tournament %s: %w", playerID, t.ID, err)
+		}
+	}
+	updated.Players = t.Players
+	return updated, nil
+}

@@ -88,6 +88,117 @@ func (s *Server) handleTournaments(w http.ResponseWriter, r *http.Request) {
 	s.render(w, r, templates.TournamentList(view))
 }
 
+// handleDeleteTournament removes a tournament nobody has played in.
+//
+// Only an empty one. matches.tournament_id is "on delete set null", so
+// removing a bracket with results in it would quietly turn an evening into
+// casual matches: still rated, still in the ranking, and back inside the
+// measurement they were deliberately taken out of (docs/adr/0010). A
+// tournament that was played is ended, not deleted.
+func (s *Server) handleDeleteTournament(w http.ResponseWriter, r *http.Request) {
+	id, err := uuid.Parse(r.PathValue("id"))
+	if err != nil {
+		http.Error(w, "Turnier nicht gefunden", http.StatusNotFound)
+		return
+	}
+
+	deleted, err := s.store.Tournaments().DeleteIfEmpty(r.Context(), id)
+	if err != nil {
+		s.log.ErrorContext(r.Context(), "deleting the tournament failed",
+			"tournament_id", id, "error", err)
+		http.Error(w, "Das hat gerade nicht geklappt.", http.StatusInternalServerError)
+		return
+	}
+	if !deleted {
+		// Somebody entered a result while the list was open, or it is
+		// already gone. Both are answered by showing the list again.
+		s.log.InfoContext(r.Context(), "tournament not deleted, it holds results",
+			"tournament_id", id)
+	}
+
+	http.Redirect(w, r, "/tournaments", http.StatusSeeOther)
+}
+
+// handleEditTournament changes the field and the mode of a tournament that
+// nobody has played in yet.
+//
+// The draw is a function of the stored order, so a field that changes after a
+// result exists would move later pairings into slots their results were not
+// played in. Replace refuses that in the same statement rather than after a
+// read, because somebody entering a result at the table while this form is
+// open is exactly the race it has to lose safely.
+func (s *Server) handleEditTournament(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	id, err := uuid.Parse(r.PathValue("id"))
+	if err != nil {
+		http.Error(w, "Turnier nicht gefunden", http.StatusNotFound)
+		return
+	}
+
+	name := strings.TrimSpace(r.FormValue("name"))
+	if name == "" {
+		name = "Schnelles Turnier"
+	}
+	field := fieldFrom(r)
+	mode := modeFrom(r)
+
+	switch {
+	case !mode.Known():
+		s.tournamentBack(w, r, id, false, "Diesen Modus gibt es nicht.")
+		return
+	case checkField(field) != "":
+		s.tournamentBack(w, r, id, false, checkField(field))
+		return
+	}
+
+	_, err = s.store.Tournaments().Replace(ctx, domain.Tournament{
+		ID: id, Name: name, Format: formatFrom(r), WithFinal: withFinalFrom(r),
+		BestOf: mode.BestOf, PointsToWin: mode.PointsToWin, Players: field,
+	})
+	switch {
+	case errors.Is(err, domain.ErrNotFound):
+		s.tournamentBack(w, r, id, false,
+			"Das geht nicht mehr — es steht schon ein Ergebnis drin.")
+		return
+	case err != nil:
+		s.log.ErrorContext(ctx, "editing the tournament failed",
+			"tournament_id", id, "error", err)
+		s.tournamentBack(w, r, id, false, "Das hat gerade nicht geklappt.")
+		return
+	}
+
+	s.log.InfoContext(ctx, "tournament edited", "tournament_id", id, "players", len(field))
+	s.tournamentBack(w, r, id, false, "")
+}
+
+// fieldFrom reads the ticked names, in the order the form sent them and
+// without repeats.
+func fieldFrom(r *http.Request) []uuid.UUID {
+	var field []uuid.UUID
+	for _, raw := range r.Form["player_id"] {
+		id, err := uuid.Parse(strings.TrimSpace(raw))
+		if err != nil {
+			continue
+		}
+		if !slices.Contains(field, id) {
+			field = append(field, id)
+		}
+	}
+	return field
+}
+
+// formatFrom reads the shape of the group. Anything unrecognised is the
+// ordinary one, which is what a form that did not send the field means.
+func formatFrom(r *http.Request) domain.TournamentFormat {
+	if r.FormValue("format") == string(domain.TournamentDoubleRoundRobin) {
+		return domain.TournamentDoubleRoundRobin
+	}
+	return domain.TournamentRoundRobin
+}
+
+func withFinalFrom(r *http.Request) bool { return r.FormValue("with_final") != "" }
+
 // handleTournamentSize redraws the sentence under the picker while somebody
 // is still deciding. The size of an evening depends on the names, the format
 // and the final at once, and the number is worth seeing before agreeing to it
@@ -131,26 +242,13 @@ func (s *Server) handleCreateTournament(w http.ResponseWriter, r *http.Request) 
 		name = "Schnelles Turnier"
 	}
 
-	var field []uuid.UUID
-	for _, raw := range r.Form["player_id"] {
-		id, err := uuid.Parse(strings.TrimSpace(raw))
-		if err != nil {
-			continue
-		}
-		if !slices.Contains(field, id) {
-			field = append(field, id)
-		}
-	}
+	field := fieldFrom(r)
 
 	// The mode is settled here, once, and every pairing in the draw is played
 	// under it. A control per pairing would ask the same question twenty-eight
 	// times; a draw with no mode at all was the state before, and it left the
 	// schedule unable to say over how many sets the evening was decided.
-	format := domain.TournamentRoundRobin
-	if r.FormValue("format") == string(domain.TournamentDoubleRoundRobin) {
-		format = domain.TournamentDoubleRoundRobin
-	}
-	withFinal := r.FormValue("with_final") != ""
+	format, withFinal := formatFrom(r), withFinalFrom(r)
 
 	mode := modeFrom(r)
 	if !mode.Known() {
@@ -451,7 +549,15 @@ func (s *Server) tournamentListView(ctx context.Context, again *uuid.UUID) (temp
 		Form:       form,
 	}
 	for _, t := range tours {
-		view.Tournaments = append(view.Tournaments, tournamentRow(t))
+		row, err := s.tournamentRowWithProgress(ctx, t)
+		if err != nil {
+			return templates.TournamentListView{}, err
+		}
+		if t.Open() {
+			view.Running = append(view.Running, row)
+		} else {
+			view.Past = append(view.Past, row)
+		}
 	}
 	return view, nil
 }
@@ -496,6 +602,27 @@ func slotOf(m domain.Match) slot {
 		s.round = *m.TournamentRound
 	}
 	return s
+}
+
+// tournamentRowWithProgress is a list entry that also knows how far the
+// tournament got — which is what tells a finished evening from an abandoned
+// one, and an untouched one from either.
+func (s *Server) tournamentRowWithProgress(ctx context.Context, t domain.Tournament) (
+	templates.TournamentListRow, error,
+) {
+	row := tournamentRow(t)
+
+	booked, err := s.store.Tournaments().Matches(ctx, t.ID)
+	if err != nil {
+		return templates.TournamentListRow{}, fmt.Errorf("matches of %s: %w", t.ID, err)
+	}
+	row.Empty = len(booked) == 0
+	for _, m := range booked {
+		if m.Status == domain.MatchConfirmed {
+			row.Played++
+		}
+	}
+	return row, nil
 }
 
 // tournamentRow is one tournament as a list entry. Both lists that show one
@@ -728,6 +855,7 @@ func (s *Server) tournamentView(ctx context.Context, id uuid.UUID, kiosk bool) (
 		Format:      string(tour.Format),
 		WithFinal:   tour.WithFinal,
 		CanEnter:    tour.Open() && kiosk,
+		MaxPlayers:  maxTournamentPlayers,
 		Total:       tournament.Matches(len(tour.Players), legs, tour.WithFinal),
 	}
 
@@ -785,6 +913,21 @@ func (s *Server) tournamentView(ctx context.Context, id uuid.UUID, kiosk bool) (
 			rv.Pairings = append(rv.Pairings, fill(round.No, p))
 		}
 		view.Rounds = append(view.Rounds, rv)
+	}
+
+	// Nothing played yet, so the field and the mode are still a decision
+	// rather than a record. Only for somebody signed in, because the two
+	// things it leads to — edit and delete — are.
+	if signedIn && tour.Open() && len(booked) == 0 {
+		players, err := s.store.Players().List(ctx)
+		if err != nil {
+			return templates.TournamentView{}, fmt.Errorf("players: %w", err)
+		}
+		form := templates.NewTournamentFormView(candidates(players, tour.Players))
+		form.Name = tour.Name
+		form.BestOf, form.PointsToWin = tour.BestOf, tour.PointsToWin
+		form.Format, form.WithFinal = string(tour.Format), tour.WithFinal
+		view.Edit = &form
 	}
 
 	table := tournament.Table(tour.Players, booked, groupRounds)

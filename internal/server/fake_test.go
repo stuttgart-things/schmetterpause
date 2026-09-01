@@ -748,3 +748,43 @@ func (m *memTournaments) Matches(_ context.Context, id uuid.UUID) ([]domain.Matc
 	}
 	return out, nil
 }
+
+func (m *memTournaments) DeleteIfEmpty(ctx context.Context, id uuid.UUID) (bool, error) {
+	played, _ := m.Matches(ctx, id)
+	if len(played) > 0 {
+		return false, nil
+	}
+
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	for i, t := range m.rows {
+		if t.ID == id {
+			m.rows = append(m.rows[:i], m.rows[i+1:]...)
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+func (m *memTournaments) Replace(ctx context.Context, in domain.Tournament) (domain.Tournament, error) {
+	played, _ := m.Matches(ctx, in.ID)
+	if len(played) > 0 {
+		return domain.Tournament{}, domain.ErrNotFound
+	}
+
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	for i, t := range m.rows {
+		if t.ID != in.ID {
+			continue
+		}
+		t.Name, t.Format = in.Name, in.Format
+		t.BestOf, t.PointsToWin, t.WithFinal = in.BestOf, in.PointsToWin, in.WithFinal
+		t.Players = slices.Clone(in.Players)
+		m.rows[i] = t
+		return t, nil
+	}
+	return domain.Tournament{}, domain.ErrNotFound
+}
