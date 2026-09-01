@@ -29,7 +29,23 @@ templ PendingListOOB(v PendingListView) {
 // after a ruling need something to aim at.
 templ pendingItems(v PendingListView) {
 	if len(v.Matches) > 0 {
-		<h2>Zu bestätigen</h2>
+		// The refresh used to sit only in the ranking, which now has a page
+		// of its own — and this list is the one that must not go stale. The
+		// badge in the top bar polls; before the two were refreshed together
+		// the bar could say a result was waiting while the page below showed
+		// nothing. Same endpoint, same three swaps; the ones that find no
+		// target on this page simply land nowhere.
+		<div class="standings-head">
+			<h2>Zu bestätigen</h2>
+			<button
+				class="secondary refresh"
+				hx-get="/fragments/refresh"
+				hx-swap="none"
+				hx-disabled-elt="this"
+			>
+				Aktualisieren
+			</button>
+		</div>
 		<ul class="pending-list">
 			for _, m := range v.Matches {
 				@PendingItem(m)

@@ -243,3 +243,20 @@ func TestBothTablesSitInAScrollBox(t *testing.T) {
 		}
 	}
 }
+
+// The refresh used to live only in the ranking, which now has a page of its
+// own. The list that must not go stale is this one: the badge in the top bar
+// polls, and before the two were refreshed together the bar could say a result
+// was waiting while the page below showed nothing.
+func TestThePendingListCanRefreshItself(t *testing.T) {
+	h, store, anna, bodo := twoBrowsers(t)
+	reportedByAnna(t, h, store, anna)
+
+	body := fragment(t, h, "/", bodo).Body.String()
+	if !strings.Contains(body, "Zu bestätigen") {
+		t.Fatalf("the start page shows nothing waiting: %s", body)
+	}
+	if !strings.Contains(body, `hx-get="/fragments/refresh"`) {
+		t.Error("the waiting list has no way to catch up")
+	}
+}

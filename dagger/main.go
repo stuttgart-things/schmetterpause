@@ -769,11 +769,15 @@ mine=$(paddle_of "$top")
 	exit 1
 }
 
-# The one place somebody sees a colour that is not their own.
-pid=$(tr "<" "\n" < "$top" | grep "a href=\"/players/" | head -1 \
+# The one place somebody sees a colour that is not their own. The links come
+# from the ranking, which has a page of its own — on the start page the only
+# /players/ link is the reader's own name in the top bar.
+ranking=$(mktemp)
+curl -fsS -b "$cookies" http://app:8080/standings > "$ranking"
+pid=$(tr "<" "\n" < "$ranking" | grep "a href=\"/players/" | head -1 \
 	| sed "s|.*players/\([0-9a-f-]*\)\".*|\1|")
 [ -n "$pid" ] || {
-	echo "the start page links to no profile"
+	echo "the ranking links to no profile"
 	exit 1
 }
 own=$(mktemp)
@@ -864,7 +868,7 @@ if grep -q "rank rank-1" "$fresh"; then
 fi
 
 echo "== ranking: the table scrolls, the page does not =="
-curl -fsS http://app:8080/ | grep -q "class=\"table-scroll\" tabindex=\"0\"" || {
+curl -fsS http://app:8080/standings | grep -q "class=\"table-scroll\" tabindex=\"0\"" || {
 	echo "the ranking is not in a focusable scroll box"
 	exit 1
 }
