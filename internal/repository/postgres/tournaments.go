@@ -143,7 +143,7 @@ func (r tournamentRepo) Matches(ctx context.Context, id uuid.UUID) ([]domain.Mat
 		where tournament_id = $1
 		order by played_at asc`
 
-	return matchRepo{r.q}.list(ctx, q, id)
+	return matchRepo(r).list(ctx, q, id)
 }
 
 // playersFor loads the fields of several tournaments in one query, in draw

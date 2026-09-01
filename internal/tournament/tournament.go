@@ -149,9 +149,12 @@ type TableRow struct {
 	Shared bool
 }
 
-// SetDiff and PointDiff are the tie-breakers, exposed because the table shows
-// them.
-func (r TableRow) SetDiff() int   { return r.SetsWon - r.SetsLost }
+// SetDiff is sets won less sets lost, the first tie-break the overall table
+// applies. Exposed because the table shows it.
+func (r TableRow) SetDiff() int { return r.SetsWon - r.SetsLost }
+
+// PointDiff is points for less points against, the last tie-break before two
+// players share a rank.
 func (r TableRow) PointDiff() int { return r.PointsFor - r.PointsAgainst }
 
 // Table builds the tournament table from the confirmed matches played so far.
@@ -325,33 +328,6 @@ func hasPlayed(r TableRow) int {
 		return 1
 	}
 	return 0
-}
-
-// side is one player's account of the matches between two people.
-type side struct{ wins, setDiff int }
-
-// headToHead sums what x and y did to each other, ignoring everybody else.
-func headToHead(x, y uuid.UUID, matches []domain.Match) (forX, forY side) {
-	for _, m := range matches {
-		if !((m.HomeID == x && m.AwayID == y) || (m.HomeID == y && m.AwayID == x)) {
-			continue
-		}
-		homeSets, awaySets, _, _ := tally(m)
-
-		xSets, ySets := homeSets, awaySets
-		if m.HomeID == y {
-			xSets, ySets = awaySets, homeSets
-		}
-
-		forX.setDiff += xSets - ySets
-		forY.setDiff += ySets - xSets
-		if xSets > ySets {
-			forX.wins++
-		} else {
-			forY.wins++
-		}
-	}
-	return forX, forY
 }
 
 // assignRanks numbers the sorted rows, sharing a position where nothing
