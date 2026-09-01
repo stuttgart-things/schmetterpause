@@ -27,6 +27,7 @@ type memStore struct {
 	kiosks      *memKioskGrants
 	matches     *memMatches
 	history     *memHistory
+	tournaments *memTournaments
 	pingErr     error
 }
 
@@ -41,6 +42,7 @@ func newMemStore() *memStore {
 		kiosks:      &memKioskGrants{},
 		matches:     matches,
 		history:     history,
+		tournaments: &memTournaments{},
 	}
 }
 
@@ -53,6 +55,7 @@ func (m *memStore) Credentials() repository.CredentialRepository {
 func (m *memStore) KioskGrants() repository.KioskGrantRepository { return m.kiosks }
 func (m *memStore) Matches() repository.MatchRepository          { return m.matches }
 func (m *memStore) TTRHistory() repository.TTRHistoryRepository  { return m.history }
+func (m *memStore) Tournaments() repository.TournamentRepository { return m.tournaments }
 
 // InTx runs fn against the same store. There is no rollback here, which is
 // fine for handler tests — that transactions actually hold is covered against
@@ -652,6 +655,51 @@ func (h *memHistory) ForPlayer(_ context.Context, playerID uuid.UUID, limit int)
 		if len(out) == limit {
 			break
 		}
+	}
+	return out, nil
+}
+
+// memTournaments is enough of a tournament store for the handler tests: the
+// kiosk asks it which ones are still open, and nothing here needs the draw.
+type memTournaments struct {
+	repository.TournamentRepository
+	mu   sync.Mutex
+	rows []domain.Tournament
+}
+
+func (m *memTournaments) Create(_ context.Context, t domain.Tournament) (domain.Tournament, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	if t.ID == uuid.Nil {
+		t.ID = uuid.New()
+	}
+	if t.Status == "" {
+		t.Status = domain.TournamentOpen
+	}
+	m.rows = append(m.rows, t)
+	return t, nil
+}
+
+// List answers in the order Postgres does: open ones first, newest first
+// within each group. The kiosk only shows the open ones, but a fake that
+// ordered them differently would hide an ordering bug rather than catch it.
+func (m *memTournaments) List(_ context.Context, limit int) ([]domain.Tournament, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	out := slices.Clone(m.rows)
+	slices.SortStableFunc(out, func(a, b domain.Tournament) int {
+		if a.Open() != b.Open() {
+			if a.Open() {
+				return -1
+			}
+			return 1
+		}
+		return b.CreatedAt.Compare(a.CreatedAt)
+	})
+	if len(out) > limit {
+		out = out[:limit]
 	}
 	return out, nil
 }
