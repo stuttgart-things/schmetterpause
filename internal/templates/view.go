@@ -42,6 +42,14 @@ type StatusView struct {
 // two places — this reads the same field the probe does.
 func (v StatusView) Ready() bool { return v.DatabaseReachable }
 
+// KioskUnlockView is the door in front of the kiosk: one field, and what went
+// wrong with the last attempt.
+type KioskUnlockView struct {
+	// Error is why the last code was refused, or why the next one has to
+	// wait. Empty on a fresh page.
+	Error string
+}
+
 // KioskView is the page one machine at the table works from.
 //
 // Sets and mode are not handed back after a rejection the way result entry

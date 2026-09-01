@@ -34,6 +34,10 @@ type Server struct {
 	// a second phone starts over. See signin.go for the policies.
 	signInByPlayer  *ratelimit.Limiter
 	signInByAddress *ratelimit.Limiter
+	// The brake on guessing at the kiosk code. One dimension only, because
+	// there is only one secret: no player half carries the weight here, so
+	// this half has to.
+	kioskByAddress *ratelimit.Limiter
 }
 
 // New wires up the server. The authenticator is an interface so that later
@@ -43,6 +47,7 @@ func New(cfg config.Config, store repository.Store, log *slog.Logger, a auth.Ses
 		cfg: cfg, store: store, log: log, auth: a, version: version,
 		signInByPlayer:  ratelimit.New(signInPlayerPolicy),
 		signInByAddress: ratelimit.New(signInAddressPolicy),
+		kioskByAddress:  ratelimit.New(kioskPolicy),
 	}
 	s.handler = s.routes()
 	return s
@@ -120,6 +125,9 @@ func (s *Server) routes() http.Handler {
 	// unlocked, and /kiosk is a 404 like any other unknown path.
 	if s.cfg.KioskToken != "" {
 		page.HandleFunc("GET /kiosk", s.handleKiosk)
+		// The code goes in a form rather than a query string, so it does not
+		// end up in the browser history of a laptop somebody borrows next.
+		page.HandleFunc("POST /kiosk/unlock", s.handleKioskUnlock)
 		page.HandleFunc("POST /kiosk/players", s.handleKioskAddPlayer)
 		page.HandleFunc("POST /kiosk/credentials", s.handleKioskIssueCode)
 		page.HandleFunc("POST /kiosk/matches", s.handleKioskRecord)

@@ -127,6 +127,18 @@ http://192.168.1.23:8080/kiosk?token=turnier2026
 ```
 
 Die Seite springt auf `/kiosk` um, das Token verschwindet aus der Adresszeile.
+
+**Oder ohne Token in der Adresse:** `/kiosk` einfach aufrufen. Ohne Freigabe
+zeigt die Seite ein Feld für den Zugangscode; eingetippt, freigeschaltet,
+fertig. Das ist der Weg, der nichts hinterlässt — ein Token in der Adresse
+steht danach in der History und in der Autovervollständigung des Laptops, und
+in jedem Chat, in den jemand den Link kopiert. Das Geheimnis ist dasselbe, nur
+der Weg ist sauberer.
+
+**Raten kostet Zeit.** Drei Fehlversuche pro Adresse sind frei, danach wächst
+die Wartezeit bis auf fünf Minuten und wird nach einer Stunde ohne Fehler
+vergessen. Beide Wege — Formular und `?token=` — teilen dieselbe Bremse, sonst
+wäre sie keine.
 Ab da trägt ein Cookie die Freischaltung, **zwölf Stunden lang** — das Token
 selbst steht in keiner Antwort mehr. Neu laden, Tab schließen, Seite wechseln:
 alles unproblematisch. Ein anderes Gerät bekommt auf `/kiosk` eine **403**,
