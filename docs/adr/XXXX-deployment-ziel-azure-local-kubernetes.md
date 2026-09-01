@@ -153,13 +153,25 @@ Arc](https://learn.microsoft.com/en-us/azure/azure-arc/kubernetes/conceptual-git
      als „der Punkt, der bei einer echten Wiederherstellung tatsächlich
      schmerzt" benennt, und auf der Zielumgebung schmerzt er weniger als auf
      der Übergangsumgebung. Ein Argument für Azure Local, das dort noch fehlt.
-   - **Bleiben `SP_SESSION_KEY` und `SP_KIOSK_TOKEN`.** Zwei Werte, die sich
-     nie ändern dürfen. *Vorschlag: für die erste Runde von Hand angelegt, als
-     dokumentierter Schritt null.* Zwei unveränderliche Werte rechtfertigen
-     keinen Tresor, und External Secrets gegen Key Vault ist später
-     nachrüstbar, ohne dass sich an den Manifesten etwas ändert — die Base
-     referenziert sie ohnehin nur per Namen (#78: „referenced, never
-     rendered").
+   - **`SP_SESSION_KEY` und `SP_KIOSK_TOKEN` sind entschieden** (#78,
+     2026-08-29): **External Secrets**, und die KCL rendert den
+     `ExternalSecret` selbst. Der hier vorgeschlagene „Schritt null von Hand"
+     ist nicht verworfen, sondern eingebaut — als Profil `existing-secrets`
+     und als `task kcl:secrets`, für Cluster ohne ESO. Genau der Fall, der auf
+     Azure Local zuerst eintreten dürfte.
+
+     Bemerkenswert ist, wie die Regel dabei *strenger* geworden ist statt
+     lockerer: Das Schema nimmt weiterhin keinen Geheimniswert an — es nimmt
+     einen **Vault-Pfad**. Ein falscher Pfad scheitert laut beim Sync; ein
+     falscher Wert hätte still das ganze Büro ausgeloggt. Und die zwei
+     Secrets sind getrennt (`schmetterpause-db`, `schmetterpause-app`), damit
+     der Migrations-initContainer den Cookie-Schlüssel nie sieht.
+
+     **Für Azure Local bleibt genau eine Frage übrig:** woher der Store kommt.
+     Das Muster `vault-<cluster>` stammt aus einem Backstage-Template, das es
+     dort nicht gibt. Entweder nachbauen, oder Azure Key Vault mit Workload
+     Identity — was zum Managed-Identity-Weg beim Objektspeicher passen würde,
+     also ein Mechanismus statt zwei.
 
    `imagePullSecret` aus Punkt 3 hängt weiterhin daran, ob das GHCR-Package
    öffentlich ist. Ungeprüft.
