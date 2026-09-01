@@ -215,11 +215,61 @@ func Table(participants []uuid.UUID, matches []domain.Match) []TableRow {
 		}
 	}
 
+	keys := subTableKeys(rows, counted)
 	slices.SortStableFunc(rows, func(a, b TableRow) int {
-		return compareRows(a, b, counted)
+		return compareRows(a, b, keys)
 	})
-	assignRanks(rows, counted)
+	assignRanks(rows, keys)
 	return rows
+}
+
+// subKey is a player's standing inside the group of players they are level
+// with on match wins.
+type subKey struct{ wins, setDiff int }
+
+// subTableKeys computes the sub-table for every group of players tied on
+// wins: the results among exactly those players, and nobody else.
+//
+// This is the whole reason the tie-break is not a pairwise head-to-head
+// comparison. Three players can beat each other in a cycle — a beats b beats
+// c beats a — and a pairwise comparison is then intransitive, which makes the
+// sort order depend on the order the rows arrived in and hands out three
+// different ranks where the correct answer is one shared rank. Reducing each
+// group to a scalar first is what removes that: comparing numbers is
+// transitive whatever the results did.
+func subTableKeys(rows []TableRow, matches []domain.Match) map[uuid.UUID]subKey {
+	group := make(map[int][]uuid.UUID, len(rows))
+	member := make(map[uuid.UUID]int, len(rows))
+	for _, r := range rows {
+		if r.Played == 0 {
+			continue
+		}
+		group[r.Won] = append(group[r.Won], r.PlayerID)
+		member[r.PlayerID] = r.Won
+	}
+
+	keys := make(map[uuid.UUID]subKey, len(rows))
+	for _, m := range matches {
+		home, okHome := member[m.HomeID]
+		away, okAway := member[m.AwayID]
+		// Only matches inside one group, and only where that group has
+		// somebody to be separated from.
+		if !okHome || !okAway || home != away || len(group[home]) < 2 {
+			continue
+		}
+
+		homeSets, awaySets, _, _ := tally(m)
+		kHome, kAway := keys[m.HomeID], keys[m.AwayID]
+		kHome.setDiff += homeSets - awaySets
+		kAway.setDiff += awaySets - homeSets
+		if homeSets > awaySets {
+			kHome.wins++
+		} else {
+			kAway.wins++
+		}
+		keys[m.HomeID], keys[m.AwayID] = kHome, kAway
+	}
+	return keys
 }
 
 // tally reduces a match to the four numbers the table is built from.
@@ -239,7 +289,7 @@ func tally(m domain.Match) (homeSets, awaySets, homePoints, awayPoints int) {
 
 // compareRows orders two rows, most successful first. It returns 0 for
 // players nothing separates, which is what produces a shared rank.
-func compareRows(a, b TableRow, matches []domain.Match) int {
+func compareRows(a, b TableRow, keys map[uuid.UUID]subKey) int {
 	// Everybody who has played comes first, whatever the numbers say. A
 	// player with no results has a set difference of zero, which would put
 	// them above somebody who has lost three times — and a table that ranks
@@ -252,10 +302,10 @@ func compareRows(a, b TableRow, matches []domain.Match) int {
 	if c := cmp.Compare(b.Won, a.Won); c != 0 {
 		return c
 	}
-	// The sub-table: only what these two did to each other. For exactly two
-	// players that is the direct encounter; the same expression generalises
-	// to a larger group, where head-to-head alone would not.
-	subA, subB := headToHead(a.PlayerID, b.PlayerID, matches)
+	// The sub-table: what the players on this many wins did to each other.
+	// For exactly two that is the direct encounter — "ja, aber ich hab gegen
+	// dich gewonnen" — and for more it is the group's own little table.
+	subA, subB := keys[a.PlayerID], keys[b.PlayerID]
 	if c := cmp.Compare(subB.wins, subA.wins); c != 0 {
 		return c
 	}
@@ -310,7 +360,7 @@ func headToHead(x, y uuid.UUID, matches []domain.Match) (forX, forY side) {
 // A player who has not played yet gets rank 0 rather than last place, the same
 // way the overall ranking treats an untested rating: a placement nobody has
 // earned reads as a bug to the person holding it.
-func assignRanks(rows []TableRow, matches []domain.Match) {
+func assignRanks(rows []TableRow, keys map[uuid.UUID]subKey) {
 	rank := 0
 	for i := range rows {
 		if rows[i].Played == 0 {
@@ -318,7 +368,7 @@ func assignRanks(rows []TableRow, matches []domain.Match) {
 			continue
 		}
 		switch {
-		case i > 0 && rows[i-1].Played > 0 && compareRows(rows[i-1], rows[i], matches) == 0:
+		case i > 0 && rows[i-1].Played > 0 && compareRows(rows[i-1], rows[i], keys) == 0:
 			rows[i].Rank = rows[i-1].Rank
 			rows[i].Shared = true
 			rows[i-1].Shared = true

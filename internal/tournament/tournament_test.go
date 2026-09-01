@@ -2,6 +2,7 @@ package tournament_test
 
 import (
 	"fmt"
+	"slices"
 	"testing"
 
 	"github.com/google/uuid"
@@ -355,5 +356,54 @@ func TestAPlayerWhoTurnedUpOutranksOneWhoDidNot(t *testing.T) {
 	}
 	if rows[positions[loser]].Rank != 2 {
 		t.Errorf("loser rank = %d, want 2", rows[positions[loser]].Rank)
+	}
+}
+
+// The case that a pairwise head-to-head comparison gets wrong, found by
+// playing a four-player tournament through the real application: a, b and c
+// beat each other in a cycle and all beat d. Nothing separates the three —
+// same wins, same set difference, and the sub-table among them is level too
+// because each won one and lost one.
+//
+// A pairwise comparison is intransitive here (a > b > c > a), so the sort
+// order depends on the order the rows arrived in and three different ranks
+// come out where the correct answer is one shared rank.
+func TestAThreeWayCycleSharesOneRank(t *testing.T) {
+	p := ids(4)
+	a, b, c, d := p[0], p[1], p[2], p[3]
+
+	matches := []domain.Match{
+		confirmed(a, b, [2]int{11, 5}, [2]int{11, 7}),
+		confirmed(b, c, [2]int{11, 5}, [2]int{11, 7}),
+		confirmed(c, a, [2]int{11, 5}, [2]int{11, 7}),
+		confirmed(a, d, [2]int{11, 5}, [2]int{11, 7}),
+		confirmed(b, d, [2]int{11, 5}, [2]int{11, 7}),
+		confirmed(c, d, [2]int{11, 5}, [2]int{11, 7}),
+	}
+
+	rows := tournament.Table(p, matches)
+	for _, r := range rows[:3] {
+		if r.Rank != 1 || !r.Shared {
+			t.Errorf("%v has rank %d (shared=%v), want a shared rank 1",
+				r.PlayerID, r.Rank, r.Shared)
+		}
+	}
+	if rows[3].PlayerID != d {
+		t.Errorf("last is %v, want %v", rows[3].PlayerID, d)
+	}
+	if rows[3].Rank != 4 {
+		t.Errorf("last rank = %d, want 4 — three shared ranks use up three positions",
+			rows[3].Rank)
+	}
+
+	// And the order must not depend on the order the results arrived in,
+	// which is what an intransitive comparison cannot promise.
+	slices.Reverse(matches)
+	reversed := tournament.Table(p, matches)
+	for i := range rows {
+		if rows[i].Rank != reversed[i].Rank {
+			t.Errorf("row %d ranks %d and %d differ between input orders",
+				i, rows[i].Rank, reversed[i].Rank)
+		}
 	}
 }
