@@ -193,7 +193,7 @@ func (s *Server) handleKioskRecord(w http.ResponseWriter, r *http.Request) {
 	}
 
 	settlement, err := scoring.Record(r.Context(), s.store, homeID, awayID, form.result,
-		domain.EnteredViaKiosk, tournamentIDFrom(r), time.Now())
+		domain.EnteredViaKiosk, tournamentIDFrom(r), nil, time.Now())
 
 	var rejection *match.Rejection
 	switch {

@@ -36,13 +36,13 @@ func TestEverybodyMeetsEverybodyExactlyOnce(t *testing.T) {
 			players := ids(n)
 			seen := map[[2]uuid.UUID]int{}
 
-			for _, round := range tournament.Draw(players) {
+			for _, round := range tournament.Draw(players, 1) {
 				for _, p := range round.Pairings {
 					seen[pairKey(p.Home, p.Away)]++
 				}
 			}
 
-			if want := tournament.Matches(n); len(seen) != want {
+			if want := tournament.Matches(n, 1, false); len(seen) != want {
 				t.Errorf("got %d distinct pairings, want %d", len(seen), want)
 			}
 			for pair, count := range seen {
@@ -57,7 +57,7 @@ func TestEverybodyMeetsEverybodyExactlyOnce(t *testing.T) {
 func TestNobodyPlaysTwiceInARound(t *testing.T) {
 	for n := 2; n <= 11; n++ {
 		t.Run(fmt.Sprintf("%d players", n), func(t *testing.T) {
-			for _, round := range tournament.Draw(ids(n)) {
+			for _, round := range tournament.Draw(ids(n), 1) {
 				busy := map[uuid.UUID]bool{}
 				for _, p := range round.Pairings {
 					for _, id := range []uuid.UUID{p.Home, p.Away} {
@@ -79,7 +79,7 @@ func TestNobodyPlaysTwiceInARound(t *testing.T) {
 // pairing as a player somebody is expected to find.
 func TestAnEvenFieldHasNoByes(t *testing.T) {
 	for _, n := range []int{2, 4, 6, 8, 10} {
-		rounds := tournament.Draw(ids(n))
+		rounds := tournament.Draw(ids(n), 1)
 		if len(rounds) != n-1 {
 			t.Errorf("%d players: got %d rounds, want %d", n, len(rounds), n-1)
 		}
@@ -100,7 +100,7 @@ func TestAnEvenFieldHasNoByes(t *testing.T) {
 func TestAnOddFieldGivesEverybodyExactlyOneBye(t *testing.T) {
 	for _, n := range []int{3, 5, 7, 9, 11} {
 		players := ids(n)
-		rounds := tournament.Draw(players)
+		rounds := tournament.Draw(players, 1)
 		if len(rounds) != n {
 			t.Errorf("%d players: got %d rounds, want %d", n, len(rounds), n)
 		}
@@ -124,7 +124,7 @@ func TestAnOddFieldGivesEverybodyExactlyOneBye(t *testing.T) {
 // The orientation alternates so the same person is not printed on the left in
 // every round. Cosmetic, but the draw is read by people.
 func TestOrientationAlternatesBetweenRounds(t *testing.T) {
-	rounds := tournament.Draw(ids(4))
+	rounds := tournament.Draw(ids(4), 1)
 	if len(rounds) < 2 {
 		t.Fatalf("got %d rounds, want at least 2", len(rounds))
 	}
@@ -147,7 +147,7 @@ func TestOrientationAlternatesBetweenRounds(t *testing.T) {
 // an error.
 func TestTooFewPlayersDrawNothing(t *testing.T) {
 	for _, players := range [][]uuid.UUID{nil, ids(1)} {
-		if got := tournament.Draw(players); got != nil {
+		if got := tournament.Draw(players, 1); got != nil {
 			t.Errorf("Draw(%d players) = %v, want nil", len(players), got)
 		}
 	}
@@ -155,7 +155,7 @@ func TestTooFewPlayersDrawNothing(t *testing.T) {
 
 func TestMatchesCountsThePairs(t *testing.T) {
 	for n, want := range map[int]int{0: 0, 1: 0, 2: 1, 4: 6, 6: 15, 8: 28, 12: 66} {
-		if got := tournament.Matches(n); got != want {
+		if got := tournament.Matches(n, 1, false); got != want {
 			t.Errorf("Matches(%d) = %d, want %d", n, got, want)
 		}
 	}
@@ -177,7 +177,7 @@ func TestTableCountsWinsSetsAndPoints(t *testing.T) {
 	p := ids(2)
 	rows := tournament.Table(p, []domain.Match{
 		confirmed(p[0], p[1], [2]int{11, 5}, [2]int{11, 7}),
-	})
+	}, 0)
 
 	if len(rows) != 2 {
 		t.Fatalf("got %d rows, want 2", len(rows))
@@ -209,7 +209,7 @@ func TestTableCountsWinsSetsAndPoints(t *testing.T) {
 // every tournament is in for its first twenty minutes.
 func TestParticipantsWithoutResultsStillAppear(t *testing.T) {
 	p := ids(4)
-	rows := tournament.Table(p, nil)
+	rows := tournament.Table(p, nil, 0)
 
 	if len(rows) != 4 {
 		t.Fatalf("got %d rows, want 4", len(rows))
@@ -238,7 +238,7 @@ func TestTheDirectEncounterBreaksATie(t *testing.T) {
 		confirmed(b, c, [2]int{11, 0}, [2]int{11, 0}),
 		confirmed(b, d, [2]int{11, 0}, [2]int{11, 0}),
 		confirmed(c, d, [2]int{11, 0}, [2]int{11, 0}),
-	})
+	}, 0)
 
 	if rows[0].PlayerID != a {
 		t.Errorf("first is %v, want %v — the direct encounter should outrank set difference",
@@ -268,7 +268,7 @@ func TestPlayersNothingSeparatesShareARank(t *testing.T) {
 	rows := tournament.Table(p, []domain.Match{
 		confirmed(a, c, [2]int{11, 5}, [2]int{11, 5}),
 		confirmed(b, c, [2]int{11, 5}, [2]int{11, 5}),
-	})
+	}, 0)
 
 	if rows[0].Rank != 1 || rows[1].Rank != 1 {
 		t.Errorf("ranks = %d and %d, want 1 and 1", rows[0].Rank, rows[1].Rank)
@@ -293,7 +293,7 @@ func TestTableIgnoresUnconfirmedAndOutsideMatches(t *testing.T) {
 		{HomeID: p[0], AwayID: p[1], Status: domain.MatchDisputed,
 			Sets: []domain.MatchSet{{SetNo: 1, HomePoints: 11, AwayPoints: 0}}},
 		confirmed(p[0], outsider, [2]int{11, 0}),
-	})
+	}, 0)
 
 	for _, r := range rows {
 		if r.Played != 0 {
@@ -308,13 +308,13 @@ func TestEveryPairInTheDrawCanReachTheTable(t *testing.T) {
 	p := ids(5)
 
 	var matches []domain.Match
-	for _, round := range tournament.Draw(p) {
+	for _, round := range tournament.Draw(p, 1) {
 		for _, pair := range round.Pairings {
 			matches = append(matches, confirmed(pair.Home, pair.Away, [2]int{11, 0}))
 		}
 	}
 
-	rows := tournament.Table(p, matches)
+	rows := tournament.Table(p, matches, 0)
 	if len(rows) != len(p) {
 		t.Fatalf("got %d rows, want %d", len(rows), len(p))
 	}
@@ -327,7 +327,7 @@ func TestEveryPairInTheDrawCanReachTheTable(t *testing.T) {
 		}
 	}
 	// Every match is counted for both players, so the sum is twice the draw.
-	if want := 2 * tournament.Matches(len(p)); total != want {
+	if want := 2 * tournament.Matches(len(p), 1, false); total != want {
 		t.Errorf("total appearances = %d, want %d", total, want)
 	}
 }
@@ -342,7 +342,7 @@ func TestAPlayerWhoTurnedUpOutranksOneWhoDidNot(t *testing.T) {
 
 	rows := tournament.Table(p, []domain.Match{
 		confirmed(winner, loser, [2]int{11, 0}, [2]int{11, 0}),
-	})
+	}, 0)
 
 	var positions = map[uuid.UUID]int{}
 	for i, r := range rows {
@@ -381,7 +381,7 @@ func TestAThreeWayCycleSharesOneRank(t *testing.T) {
 		confirmed(c, d, [2]int{11, 5}, [2]int{11, 7}),
 	}
 
-	rows := tournament.Table(p, matches)
+	rows := tournament.Table(p, matches, 0)
 	for _, r := range rows[:3] {
 		if r.Rank != 1 || !r.Shared {
 			t.Errorf("%v has rank %d (shared=%v), want a shared rank 1",
@@ -399,7 +399,7 @@ func TestAThreeWayCycleSharesOneRank(t *testing.T) {
 	// And the order must not depend on the order the results arrived in,
 	// which is what an intransitive comparison cannot promise.
 	slices.Reverse(matches)
-	reversed := tournament.Table(p, matches)
+	reversed := tournament.Table(p, matches, 0)
 	for i := range rows {
 		if rows[i].Rank != reversed[i].Rank {
 			t.Errorf("row %d ranks %d and %d differ between input orders",

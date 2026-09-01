@@ -60,9 +60,17 @@ func (s *Server) handleRecordMatch(w http.ResponseWriter, r *http.Request) {
 		s.tournamentBack(w, r, *tourID, false, tourMsg)
 		return
 	}
+	round := 0
 	if tour != nil {
 		// The mode belongs to the tournament, not to whatever the form says.
 		form.result.Mode = match.Mode{BestOf: tour.BestOf, PointsToWin: tour.PointsToWin}
+		// And so does the slot: with a return leg the same two meet twice, so
+		// a result has to say which meeting it was, and the draw has to agree.
+		round = roundFrom(r)
+		if slotMsg := s.checkSlot(r.Context(), *tour, home, away, round); slotMsg != "" {
+			s.tournamentBack(w, r, tour.ID, false, slotMsg)
+			return
+		}
 		// The draw names both players, so "Wähle einen Gegner" is not a
 		// complaint this form can earn: the pairing already answered it.
 		// Anything parseResultForm found about the sets still stands.
@@ -108,10 +116,14 @@ func (s *Server) handleRecordMatch(w http.ResponseWriter, r *http.Request) {
 	// and keeping it means the boxes on screen line up with the names above
 	// them whichever of the two is typing.
 	homeID, awayID := self, opponent.ID
-	var tournamentID *uuid.UUID
+	var (
+		tournamentID    *uuid.UUID
+		tournamentRound *int
+	)
 	if tour != nil {
 		homeID, awayID = home, away
 		tournamentID = &tour.ID
+		tournamentRound = &round
 	}
 
 	created, err := s.store.Matches().Create(r.Context(), domain.Match{
@@ -126,9 +138,10 @@ func (s *Server) handleRecordMatch(w http.ResponseWriter, r *http.Request) {
 		// kind the Definition of Done counts (issue #71) — except inside a
 		// tournament, which the query excludes by tournament_id because a
 		// schedule is a reminder whoever held the phone (docs/adr/0010).
-		EnteredVia:   domain.EnteredViaPlayer,
-		TournamentID: tournamentID,
-		Sets:         sets,
+		EnteredVia:      domain.EnteredViaPlayer,
+		TournamentID:    tournamentID,
+		TournamentRound: tournamentRound,
+		Sets:            sets,
 	})
 	if err != nil {
 		s.log.ErrorContext(r.Context(), "recording the match failed", "error", err)

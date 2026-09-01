@@ -15,13 +15,15 @@ import (
 type matchRepo struct{ q queryer }
 
 const matchColumns = `id, home_id, away_id, best_of, points_to_win, status,
-	reported_by, played_at, confirmed_at, entered_via, tournament_id`
+	reported_by, played_at, confirmed_at, entered_via, tournament_id,
+	tournament_round`
 
 func (r matchRepo) Create(ctx context.Context, m domain.Match) (domain.Match, error) {
 	const insertMatch = `
 		insert into matches (home_id, away_id, best_of, points_to_win, status,
-		                     reported_by, played_at, entered_via, tournament_id)
-		values ($1, $2, $3, $4, $5, $6, coalesce($7, now()), $8, $9)
+		                     reported_by, played_at, entered_via, tournament_id,
+		                     tournament_round)
+		values ($1, $2, $3, $4, $5, $6, coalesce($7, now()), $8, $9, $10)
 		returning ` + matchColumns
 
 	var playedAt *time.Time
@@ -42,7 +44,7 @@ func (r matchRepo) Create(ctx context.Context, m domain.Match) (domain.Match, er
 
 	created, err := scanMatch(r.q.QueryRow(ctx, insertMatch,
 		m.HomeID, m.AwayID, m.BestOf, m.PointsToWin, string(status), m.ReportedBy,
-		playedAt, string(via), m.TournamentID))
+		playedAt, string(via), m.TournamentID, m.TournamentRound))
 	if err != nil {
 		return domain.Match{}, fmt.Errorf("create match: %w", err)
 	}
@@ -292,7 +294,8 @@ func scanMatch(row pgx.Row) (domain.Match, error) {
 		via    string
 	)
 	err := row.Scan(&m.ID, &m.HomeID, &m.AwayID, &m.BestOf, &m.PointsToWin,
-		&status, &m.ReportedBy, &m.PlayedAt, &m.ConfirmedAt, &via, &m.TournamentID)
+		&status, &m.ReportedBy, &m.PlayedAt, &m.ConfirmedAt, &via, &m.TournamentID,
+		&m.TournamentRound)
 	if err != nil {
 		return domain.Match{}, err
 	}

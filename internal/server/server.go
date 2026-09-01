@@ -102,6 +102,7 @@ func (s *Server) routes() http.Handler {
 	page.HandleFunc("GET /statistics", s.handleStatistics)
 	page.HandleFunc("GET /tournaments", s.handleTournaments)
 	page.HandleFunc("POST /tournaments", s.handleCreateTournament)
+	page.HandleFunc("GET /fragments/tournament-size", s.handleTournamentSize)
 	page.HandleFunc("GET /tournaments/{id}", s.handleTournament)
 	page.HandleFunc("POST /tournaments/{id}/close", s.handleCloseTournament)
 	page.HandleFunc("GET /qr", s.handleQRSheet)

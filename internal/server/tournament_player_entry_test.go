@@ -30,11 +30,12 @@ func TestAPlayerEntersTheirOwnTournamentResult(t *testing.T) {
 	}
 
 	rec := postAs(t, h, "/matches", cookie, url.Values{
-		"tournament_id": {id},
-		"home_id":       {anna.String()},
-		"away_id":       {bodo.String()},
-		"best_of":       {"3"},
-		"set_home_1":    {"11"}, "set_away_1": {"7"},
+		"tournament_id":    {id},
+		"tournament_round": {"1"},
+		"home_id":          {anna.String()},
+		"away_id":          {bodo.String()},
+		"best_of":          {"3"},
+		"set_home_1":       {"11"}, "set_away_1": {"7"},
 		"set_home_2": {"11"}, "set_away_2": {"9"},
 	})
 	if rec.Code != http.StatusSeeOther {
@@ -72,11 +73,12 @@ func TestAPlayerCannotEnterSomebodyElsesPairing(t *testing.T) {
 	id := seedTournamentMode(t, store, 3, 11, []uuid.UUID{anna, bodo, cesar.ID})
 
 	rec := postAs(t, h, "/matches", cookie, url.Values{
-		"tournament_id": {id},
-		"home_id":       {bodo.String()},
-		"away_id":       {cesar.ID.String()},
-		"best_of":       {"3"},
-		"set_home_1":    {"11"}, "set_away_1": {"7"},
+		"tournament_id":    {id},
+		"tournament_round": {"1"},
+		"home_id":          {bodo.String()},
+		"away_id":          {cesar.ID.String()},
+		"best_of":          {"3"},
+		"set_home_1":       {"11"}, "set_away_1": {"7"},
 		"set_home_2": {"11"}, "set_away_2": {"9"},
 	})
 	if !strings.Contains(rec.Header().Get("Location"), "fehler=") {
@@ -108,6 +110,7 @@ func TestThePlayerPathRefusesWhatTheKioskRefuses(t *testing.T) {
 	t.Run("an outsider in the pairing", func(t *testing.T) {
 		form := cloneValues(result)
 		form.Set("tournament_id", open)
+		form.Set("tournament_round", "1")
 		form.Set("home_id", anna.String())
 		form.Set("away_id", outsider.ID.String())
 		rec := postAs(t, h, "/matches", cookie, form)
@@ -120,6 +123,7 @@ func TestThePlayerPathRefusesWhatTheKioskRefuses(t *testing.T) {
 		closed := seedTournamentClosed(t, store, []uuid.UUID{anna, bodo})
 		form := cloneValues(result)
 		form.Set("tournament_id", closed)
+		form.Set("tournament_round", "1")
 		form.Set("home_id", anna.String())
 		form.Set("away_id", bodo.String())
 		rec := postAs(t, h, "/matches", cookie, form)
@@ -141,12 +145,13 @@ func TestThePlayerPathTakesTheModeFromTheTournament(t *testing.T) {
 	id := seedTournamentMode(t, store, 1, 21, []uuid.UUID{anna, bodo})
 
 	rec := postAs(t, h, "/matches", cookie, url.Values{
-		"tournament_id": {id},
-		"home_id":       {anna.String()},
-		"away_id":       {bodo.String()},
-		"best_of":       {"3"},
-		"points_to_win": {"11"},
-		"set_home_1":    {"21"}, "set_away_1": {"18"},
+		"tournament_id":    {id},
+		"tournament_round": {"1"},
+		"home_id":          {anna.String()},
+		"away_id":          {bodo.String()},
+		"best_of":          {"3"},
+		"points_to_win":    {"11"},
+		"set_home_1":       {"21"}, "set_away_1": {"18"},
 	})
 	if loc := rec.Header().Get("Location"); strings.Contains(loc, "fehler=") {
 		t.Fatalf("a single set to 21 was refused: %s", loc)

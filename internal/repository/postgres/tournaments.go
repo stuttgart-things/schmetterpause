@@ -16,12 +16,13 @@ import (
 type tournamentRepo struct{ q queryer }
 
 const tournamentColumns = `id, name, format, status, best_of, points_to_win, ` +
-	`created_by, created_at, closed_at`
+	`with_final, created_by, created_at, closed_at`
 
 func (r tournamentRepo) Create(ctx context.Context, t domain.Tournament) (domain.Tournament, error) {
 	const insert = `
-		insert into tournaments (name, format, status, best_of, points_to_win, created_by)
-		values ($1, $2, $3, $4, $5, $6)
+		insert into tournaments (name, format, status, best_of, points_to_win,
+		                         with_final, created_by)
+		values ($1, $2, $3, $4, $5, $6, $7)
 		returning ` + tournamentColumns
 
 	format := t.Format
@@ -44,7 +45,8 @@ func (r tournamentRepo) Create(ctx context.Context, t domain.Tournament) (domain
 	}
 
 	created, err := scanTournament(r.q.QueryRow(ctx, insert,
-		t.Name, string(format), string(status), mode.BestOf, mode.PointsToWin, t.CreatedBy))
+		t.Name, string(format), string(status), mode.BestOf, mode.PointsToWin,
+		t.WithFinal, t.CreatedBy))
 	if err != nil {
 		return domain.Tournament{}, fmt.Errorf("create tournament: %w", err)
 	}
@@ -199,7 +201,7 @@ func scanTournament(row pgx.Row) (domain.Tournament, error) {
 		status string
 	)
 	err := row.Scan(&t.ID, &t.Name, &format, &status, &t.BestOf, &t.PointsToWin,
-		&t.CreatedBy, &t.CreatedAt, &t.ClosedAt)
+		&t.WithFinal, &t.CreatedBy, &t.CreatedAt, &t.ClosedAt)
 	if err != nil {
 		return domain.Tournament{}, err
 	}

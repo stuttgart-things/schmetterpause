@@ -86,6 +86,41 @@ templ tournamentForm(v TournamentFormView, maxPlayers int) {
 					}
 				</select>
 			</div>
+			// Everything that changes the size of the evening redraws the
+			// sentence below: the number depends on the names, the format and
+			// the final at once, and prose that names one combination is
+			// wrong for the other three.
+			<div class="row">
+				<label for="tournament-format">Runden</label>
+				<select
+					id="tournament-format"
+					name="format"
+					hx-get="/fragments/tournament-size"
+					hx-target="#tournament-size"
+					hx-swap="outerHTML"
+					hx-include="closest form"
+				>
+					<option value="round_robin" selected?={ v.Format != "double_round_robin" }>
+						Jeder gegen jeden
+					</option>
+					<option value="double_round_robin" selected?={ v.Format == "double_round_robin" }>
+						Mit Rückspiel
+					</option>
+				</select>
+			</div>
+			<label class="tick">
+				<input
+					type="checkbox"
+					name="with_final"
+					value="1"
+					checked?={ v.WithFinal }
+					hx-get="/fragments/tournament-size"
+					hx-target="#tournament-size"
+					hx-swap="outerHTML"
+					hx-include="closest form"
+				/>
+				Finale zwischen den besten zwei
+			</label>
 			<fieldset class="tournament-field">
 				<legend>Wer spielt mit?</legend>
 				for _, c := range v.Candidates {
@@ -95,16 +130,16 @@ templ tournamentForm(v TournamentFormView, maxPlayers int) {
 							name="player_id"
 							value={ c.ID }
 							checked?={ c.Chosen }
+							hx-get="/fragments/tournament-size"
+							hx-target="#tournament-size"
+							hx-swap="outerHTML"
+							hx-include="closest form"
 						/>
 						{ c.DisplayName }
 					</label>
 				}
 			</fieldset>
-			<p class="muted">
-				Jeder gegen jeden, höchstens { strconv.Itoa(maxPlayers) } Spieler.
-				Vier Leute sind sechs Spiele, acht Leute schon 28 — das ist die
-				Zahl, an der ein Nachmittag hängt.
-			</p>
+			@TournamentSize(v.Size(maxPlayers))
 			<button type="submit">Turnier anlegen</button>
 		</form>
 	}
@@ -116,6 +151,7 @@ templ TournamentPage(v TournamentView) {
 		<section class="card">
 			<h2>{ v.Name }</h2>
 			<p class="muted">
+				{ TournamentFormatLabel(v.Format, v.WithFinal) } &middot;
 				{ TournamentModeLabel(v.BestOf, v.PointsToWin) } &middot;
 				{ strconv.Itoa(v.Played) } von { strconv.Itoa(v.Total) } Spielen gewertet.
 				if !v.Open {
@@ -236,7 +272,17 @@ templ tournamentRounds(v TournamentView) {
 		<p class="muted">Zu wenige Teilnehmer für einen Spielplan.</p>
 	} else {
 		for _, round := range v.Rounds {
-			<h3>Runde { strconv.Itoa(round.No) }</h3>
+			if round.Final {
+				<h3>Finale</h3>
+			} else {
+				<h3>Runde { strconv.Itoa(round.No) }</h3>
+			}
+			if round.Note != "" {
+				// A slot whose names are not settled yet, or one that will not
+				// be played. Saying so beats an empty heading, and beats
+				// "offen", which would promise a pairing that may never exist.
+				<p class="muted">{ round.Note }</p>
+			}
 			<ul class="pairings">
 				for _, p := range round.Pairings {
 					<li>
@@ -287,6 +333,7 @@ templ tournamentRounds(v TournamentView) {
 templ pairingEntry(action, tournamentID string, bestOf, pointsToWin int, p TournamentPairingView) {
 	<form class="pairing-entry" method="post" action={ templ.SafeURL(action) }>
 		<input type="hidden" name="tournament_id" value={ tournamentID }/>
+		<input type="hidden" name="tournament_round" value={ strconv.Itoa(p.Round) }/>
 		<input type="hidden" name="home_id" value={ p.HomeID }/>
 		<input type="hidden" name="away_id" value={ p.AwayID }/>
 		<input type="hidden" name="best_of" value={ strconv.Itoa(bestOf) }/>
@@ -329,4 +376,26 @@ func signed(n int) string {
 		return "+" + strconv.Itoa(n)
 	}
 	return strconv.Itoa(n)
+}
+
+// TournamentSize says how big the evening is before anybody agrees to it.
+//
+// Eight players against each other once is 28 matches, which is seven hours at
+// a quarter of an hour each — the number the cap on the field exists for. With
+// return legs it doubles, and that is exactly why this is computed rather than
+// written down.
+templ TournamentSize(v TournamentSizeView) {
+	<p id="tournament-size" class="muted">
+		if v.Players < 2 {
+			Mindestens zwei Namen ankreuzen, höchstens { strconv.Itoa(v.MaxPlayers) }.
+		} else {
+			{ strconv.Itoa(v.Players) } Spieler,
+			<strong>{ strconv.Itoa(v.Matches) } Spiele</strong>.
+			// Kept on one line with the text before it: an expression that
+			// starts its own line here is silently dropped by templ, which
+			// compiles and then renders the wrong sentence.
+			<span>Bei einer Viertelstunde pro Spiel sind das { TournamentHours(v.Matches) }.</span>
+			Höchstens { strconv.Itoa(v.MaxPlayers) } Spieler.
+		}
+	</p>
 }
