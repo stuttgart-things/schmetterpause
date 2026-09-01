@@ -115,13 +115,26 @@ templ TournamentPage(v TournamentView) {
 		</section>
 		<section class="card">
 			<h2>Spielplan</h2>
-			if !v.CanEnter && v.Open {
-				<p class="muted">
-					Ergebnisse trägt das freigeschaltete Gerät an der Platte ein,
-					unter derselben Adresse mit <code>/kiosk</code> davor. Sie
-					zählen dort sofort — bei 28 Spielen wäre eine Bestätigung pro
-					Match der halbe Abend.
-				</p>
+			if v.Open {
+				if v.Kiosk {
+					<p class="muted">
+						Dieses Gerät steht an der Platte: Ergebnisse zählen hier
+						sofort, ohne Bestätigung.
+					</p>
+				} else if v.SignedIn {
+					<p class="muted">
+						Deine eigenen Spiele trägst du hier ein — dein Gegner
+						bestätigt sie danach, wie bei jedem anderen Match. Wer am
+						Gerät an der Platte sitzt (dieselbe Adresse mit
+						<code>/kiosk</code> davor), trägt für alle ein, und dort
+						zählt es sofort.
+					</p>
+				} else {
+					<p class="muted">
+						Melde dich an, dann kannst du deine eigenen Spiele hier
+						eintragen.
+					</p>
+				}
 			}
 			@tournamentRounds(v)
 		</section>
@@ -183,8 +196,8 @@ templ tournamentRounds(v TournamentView) {
 							if p.Pending {
 								<span class="tag">wartet auf Bestätigung</span>
 							}
-						} else if v.CanEnter {
-							@pairingEntry(v.ID, p)
+						} else if p.EntryAction != "" {
+							@pairingEntry(p)
 						} else {
 							<span class="muted">offen</span>
 						}
@@ -198,7 +211,13 @@ templ tournamentRounds(v TournamentView) {
 	}
 }
 
-// pairingEntry is result entry for one pairing at the table.
+// pairingEntry is result entry for one pairing.
+//
+// Where it posts is the caller's decision, carried in EntryAction: the machine
+// at the table posts to the kiosk endpoint and the result counts at once; a
+// player posts to the ordinary one and their opponent confirms. The button
+// says which, because "eingetragen" and "gewertet" are different things to the
+// person pressing it.
 //
 // The two players ride along hidden: the draw already decided them, and a
 // picker here would be a chance to enter the right score against the wrong
@@ -207,11 +226,9 @@ templ tournamentRounds(v TournamentView) {
 // question twenty-eight times.
 //
 // A plain form post rather than HTMX: the answer is a redirect back to the
-// draw, so a reload cannot re-submit a result that already counted, and a
-// kiosk result counts immediately.
-templ pairingEntry(tournamentID string, p TournamentPairingView) {
-	<form class="pairing-entry" method="post" action={ templ.SafeURL("/kiosk/tournaments/" + tournamentID + "/matches") }>
-		<input type="hidden" name="tournament_id" value={ tournamentID }/>
+// draw, so a reload cannot re-submit a result that already counted.
+templ pairingEntry(p TournamentPairingView) {
+	<form class="pairing-entry" method="post" action={ templ.SafeURL(p.EntryAction) }>
 		<input type="hidden" name="home_id" value={ p.HomeID }/>
 		<input type="hidden" name="away_id" value={ p.AwayID }/>
 		<input type="hidden" name="best_of" value="3"/>
@@ -243,7 +260,11 @@ templ pairingEntry(tournamentID string, p TournamentPairingView) {
 				/>
 			</span>
 		}
-		<button type="submit">Eintragen</button>
+		if p.Immediate {
+			<button type="submit">Eintragen und werten</button>
+		} else {
+			<button type="submit">Eintragen</button>
+		}
 	</form>
 }
 

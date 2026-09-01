@@ -785,11 +785,14 @@ type TournamentView struct {
 	ID     string
 	Name   string
 	Open   bool
-	// CanEnter is whether this browser may enter results here. Only the
-	// unlocked machine at the table may: a quick tournament is run by one
-	// person on one laptop, and those entries settle at once instead of
-	// asking for twenty-eight confirmations (docs/turnier-vor-ort.md).
-	CanEnter bool
+	// Kiosk marks the copy served from under /kiosk, where the machine at
+	// the table enters for everybody and results settle at once. It changes
+	// the wording, not the permission: which pairings offer a form is
+	// decided per pairing, in EntryAction.
+	Kiosk bool
+	// SignedIn is whether somebody is recognised. A player who is not gets
+	// the draw to read and no boxes, and is told why.
+	SignedIn bool
 	// Error is what went wrong with the last entry, carried back through the
 	// redirect so a reload cannot re-submit a result that already counted.
 	Error  string
@@ -814,6 +817,16 @@ type TournamentRoundView struct {
 type TournamentPairingView struct {
 	HomeID, AwayID     string
 	HomeName, AwayName string
+	// EntryAction is where a result for this pairing is posted, or empty
+	// when this viewer may not enter one. Per pairing rather than per page:
+	// the machine at the table may enter every match, a player may enter
+	// only their own.
+	EntryAction string
+	// Immediate says the entry counts straight away rather than waiting on
+	// the opponent. True at the kiosk, false for a player entering their own
+	// match — and the form says which, because "eingetragen" and "gewertet"
+	// are different things to the person pressing the button.
+	Immediate bool
 	// Result is the set score from the home side, empty while unplayed.
 	Result string
 	// Pending marks a result that is waiting on a confirmation and therefore

@@ -195,23 +195,35 @@ sind sechs Spiele, acht Leute schon 28. Bei einer Viertelstunde pro Spiel sind
 das sieben Stunden. Höchstens zwölf Spieler sind erlaubt, und diese Grenze
 existiert genau deshalb.
 
-**Ergebnisse trägt das Gerät an der Platte ein.** Die Turnierseite gibt es
-zweimal:
+**Ergebnisse gehen auf zwei Wegen ein**, und der Unterschied ist derselbe wie
+sonst auch: wer bestätigt.
 
-| Adresse | Wer | Was |
-| --- | --- | --- |
-| `/tournaments/<id>` | alle, auf dem Handy | Spielplan und Tabelle, zum Mitlesen |
-| `/kiosk/tournaments/<id>` | das freigeschaltete Gerät | dasselbe, plus ein Eingabefeld pro Paarung |
+| Adresse | Wer | Was er eintragen darf | Wann es zählt |
+| --- | --- | --- | --- |
+| `/tournaments/<id>` | jeder Angemeldete, auf dem Handy | **die eigenen Spiele** | wenn der Gegner bestätigt |
+| `/kiosk/tournaments/<id>` | das freigeschaltete Gerät | **alle Paarungen** | sofort |
 
-Der Grund ist kein Sicherheitsdetail, sondern eins über Cookies: die
-Kiosk-Freigabe gilt nur unter `/kiosk`, also kann eine Seite außerhalb davon
-gar nicht wissen, dass sie am Tisch steht. Statt die Freigabe zu verbreitern,
-liegt die Eingabe dort, wo das Cookie ohnehin hinkommt.
+Vom Handy ist es der gewöhnliche Weg mit einer Klammer drumherum: das Ergebnis
+steht unter „Eingetragen", der Gegner bestätigt, dann zählt es. Genau deshalb
+darf das jeder — es passiert nichts, dem der Gegner nicht zugestimmt hat. Wer
+ein fremdes Spiel einträgt, wird abgewiesen.
 
-**Turnierergebnisse zählen sofort**, wie alle Kiosk-Eingaben — bei 28 Spielen
-wäre eine Bestätigung pro Match der halbe Abend. Sie bewegen die normale TTR,
-und zwar Match für Match; warum nicht veranstaltungsweise verrechnet wird und
-wann das fällig würde, steht in `docs/adr/0009`.
+Am Gerät an der Platte tippt eine Person für alle, und dort zählt es sofort.
+Bei 28 Spielen wäre eine Bestätigung pro Match der halbe Abend — das ist der
+Grund für die Ausnahme, und sie gilt nur dort.
+
+Die Turnierseite gibt es deshalb zweimal. Der Grund ist kein Sicherheitsdetail,
+sondern eins über Cookies: die Kiosk-Freigabe gilt nur unter `/kiosk`, also
+kann eine Seite außerhalb davon gar nicht wissen, dass sie am Tisch steht.
+Statt die Freigabe zu verbreitern, liegt die Sofort-Wertung dort, wo das Cookie
+ohnehin hinkommt.
+
+**Ohne `SP_KIOSK_TOKEN` gibt es die Kiosk-Seite nicht** — dann läuft das
+Turnier vollständig über die Handys, nur eben mit Bestätigung pro Match.
+
+Turnierergebnisse bewegen die normale TTR, und zwar Match für Match; warum
+nicht veranstaltungsweise verrechnet wird und wann das fällig würde, steht in
+`docs/adr/0009`.
 
 **Die Tabelle** sortiert nach Siegen, dann nach dem Ergebnis *unter den
 Punktgleichen* — dem Direktvergleich, wenn es zwei sind, der kleinen Tabelle
@@ -263,10 +275,11 @@ Fenster: gefragt sind Arbeitstage.
 gegen jeden" sind 28 Matches, fast das Dreifache der Hürde. Mitgezählt wäre die
 Messung bestanden und hätte nichts gezeigt.
 
-Dass die Turniereingabe am Kiosk liegt, erledigt das nebenbei: jede Zeile aus
-einem Turnier trägt `entered_via = 'kiosk'` und zählt damit ohnehin nicht in
-die Wertung von `task office:dod`. Das ist kein Zufall, sondern der Grund, aus
-dem die Spalte existiert.
+Was am Kiosk eingetragen wird, trägt `entered_via = 'kiosk'` und zählt damit
+ohnehin nicht in die Wertung von `task office:dod`. Was ein Spieler selbst vom
+Handy einträgt, zählt als `player` — auch im Turnier. Das ist richtig so, denn
+die Spalte sagt, **wer getippt hat**, nicht ob es freiwillig war. Für einen
+Turnierabend, der über die Handys lief, bleibt `SINCE` die Antwort.
 
 Seit Issue #71 sieht die Datenbank den Unterschied selbst: jedes Ergebnis trägt
 in `entered_via`, ob es ein Spieler selbst eingetragen hat oder der Kiosk.

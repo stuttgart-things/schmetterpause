@@ -104,6 +104,12 @@ func (s *Server) routes() http.Handler {
 	page.HandleFunc("POST /tournaments", s.handleCreateTournament)
 	page.HandleFunc("GET /tournaments/{id}", s.handleTournament)
 	page.HandleFunc("POST /tournaments/{id}/close", s.handleCloseTournament)
+	// A player entering a match they played, from their own phone. The
+	// bracket is the only difference to the ordinary entry form: the result
+	// waits on the opponent exactly as any other does, which is what makes
+	// it safe without the kiosk.
+	page.Handle("POST /tournaments/{id}/matches",
+		auth.RequirePlayer(http.HandlerFunc(s.handleTournamentReport)))
 	page.HandleFunc("GET /qr", s.handleQRSheet)
 	// Who may act for other people (docs/adr/0008). Behind the flag itself:
 	// the list is the record of who holds power over other people's records,
