@@ -250,6 +250,13 @@ die einzige ehrliche Antwort.
 Liste der laufenden Dinge und sonst nichts — an der Wertung hängt es nicht,
 die ist längst passiert.
 
+**„Nochmal ne Runde"** steht daneben, sobald alle Spiele drin sind. Der Link
+öffnet das Anlege-Formular mit demselben Feld und demselben Modus; der Name
+bleibt leer, damit die beiden Turniere in der Liste auseinanderzuhalten sind.
+Es entsteht ein zweites Turnier, keine zusätzliche Runde im ersten — die
+Tabelle des ersten bleibt damit lesbar, so wie sie am Ende war. Wer jemanden
+abwählen will, der schon weg ist, nimmt vor dem Anlegen das Häkchen raus.
+
 ### „Warum steht bei Spiele 0?"
 
 Weil das Match noch auf die Bestätigung des Gegners wartet. Die Rangliste zählt
