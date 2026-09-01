@@ -39,9 +39,9 @@ const maxTournamentPlayers = 12
 // tournamentIDFrom reads the bracket a result belongs to out of the form.
 //
 // Absent, empty or unparseable all mean "no tournament" rather than an error.
-// The field is optional on every entry path, and a malformed one is a request
-// nobody made on purpose — refusing the whole result over it would lose a
-// match somebody just played.
+// The field is optional on both entry paths — the kiosk and, since ADR-0010, a
+// player's own phone — and a malformed one is a request nobody made on purpose:
+// refusing the whole result over it would lose a match somebody just played.
 func tournamentIDFrom(r *http.Request) *uuid.UUID {
 	raw := strings.TrimSpace(r.FormValue("tournament_id"))
 	if raw == "" {
@@ -266,7 +266,7 @@ func (s *Server) handleTournamentRecord(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	if !tour.Open() {
-		s.tournamentBack(w, r, id, "Das Turnier ist beendet.")
+		s.tournamentBack(w, r, id, true, "Das Turnier ist beendet.")
 		return
 	}
 
@@ -276,15 +276,16 @@ func (s *Server) handleTournamentRecord(w http.ResponseWriter, r *http.Request) 
 		msg = setsMsg
 	}
 	if msg != "" {
-		s.tournamentBack(w, r, id, msg)
+		s.tournamentBack(w, r, id, true, msg)
 		return
 	}
 
 	// Both have to be in the field. Without this the endpoint would book any
 	// two players into somebody else's tournament, and the table would grow
-	// a row the draw never had.
+	// a row the draw never had. Same sentence as the player path, from the
+	// same check, so the two cannot drift apart.
 	if !slices.Contains(tour.Players, homeID) || !slices.Contains(tour.Players, awayID) {
-		s.tournamentBack(w, r, id, "Diese beiden spielen nicht in diesem Turnier.")
+		s.tournamentBack(w, r, id, true, "Diese beiden spielen nicht in diesem Turnier.")
 		return
 	}
 
@@ -301,24 +302,24 @@ func (s *Server) handleTournamentRecord(w http.ResponseWriter, r *http.Request) 
 	switch {
 	case err == nil:
 	case errors.Is(err, scoring.ErrSamePlayer):
-		s.tournamentBack(w, r, id, "Zwei verschiedene Spieler, bitte.")
+		s.tournamentBack(w, r, id, true, "Zwei verschiedene Spieler, bitte.")
 		return
 	case errors.Is(err, domain.ErrNotFound):
-		s.tournamentBack(w, r, id, "Diesen Spieler gibt es nicht.")
+		s.tournamentBack(w, r, id, true, "Diesen Spieler gibt es nicht.")
 		return
 	case errors.As(err, &rejection):
-		s.tournamentBack(w, r, id, describeRejection(err))
+		s.tournamentBack(w, r, id, true, describeRejection(err))
 		return
 	default:
 		s.log.ErrorContext(ctx, "recording the tournament match failed", "error", err)
-		s.tournamentBack(w, r, id, "Das hat gerade nicht geklappt.")
+		s.tournamentBack(w, r, id, true, "Das hat gerade nicht geklappt.")
 		return
 	}
 
 	s.log.InfoContext(ctx, "tournament match recorded",
 		"tournament_id", id, "home", homeID, "away", awayID)
 
-	s.tournamentBack(w, r, id, "")
+	s.tournamentBack(w, r, id, true, "")
 }
 
 // tournamentBack returns to the draw, carrying a complaint in the query when
@@ -327,8 +328,10 @@ func (s *Server) handleTournamentRecord(w http.ResponseWriter, r *http.Request) 
 // A redirect rather than rendering in place, so a reload after entering a
 // result does not offer to enter it again — the mistake that a settled result
 // makes expensive, because a kiosk entry counts immediately.
-func (s *Server) tournamentBack(w http.ResponseWriter, r *http.Request, id uuid.UUID, msg string) {
-	target := "/kiosk/tournaments/" + id.String()
+func (s *Server) tournamentBack(w http.ResponseWriter, r *http.Request,
+	id uuid.UUID, kiosk bool, msg string,
+) {
+	target := tournamentPath(id, kiosk)
 	if msg != "" {
 		target += "?fehler=" + url.QueryEscape(msg)
 	}
@@ -390,6 +393,75 @@ func tournamentRow(t domain.Tournament) templates.TournamentListRow {
 		Matches: tournament.Matches(len(t.Players)),
 		Mode:    templates.TournamentModeLabel(t.BestOf, t.PointsToWin),
 	}
+}
+
+// tournamentPath is where a draw is read, on the copy the reader came from.
+// Sending somebody back to the other one would take away either the entry
+// boxes or the grant that lets them appear.
+func tournamentPath(id uuid.UUID, kiosk bool) string {
+	if kiosk {
+		return "/kiosk/tournaments/" + id.String()
+	}
+	return "/tournaments/" + id.String()
+}
+
+// tournamentPairing reads a result that came from a draw: which tournament,
+// and the pairing in the order the schedule shows it.
+//
+// Returns a nil tournament and no message when the form named none, which is
+// every ordinary break-time result.
+func (s *Server) tournamentPairing(r *http.Request, self uuid.UUID) (
+	tour *domain.Tournament, home, away uuid.UUID, msg string,
+) {
+	if tournamentIDFrom(r) == nil {
+		return nil, uuid.Nil, uuid.Nil, ""
+	}
+
+	home, away, msg = parseKioskPlayers(r)
+	if msg != "" {
+		return nil, uuid.Nil, uuid.Nil, msg
+	}
+	// A player enters their own result. Entering one for two other people is
+	// what the machine at the table is for, and it settles at once because
+	// somebody is standing there — which is exactly what nobody can check
+	// about a result typed on a phone across the room.
+	if self != home && self != away {
+		return nil, uuid.Nil, uuid.Nil, "In dieser Paarung spielst du nicht mit."
+	}
+
+	tour, msg = s.tournamentEntry(r.Context(), r, home, away)
+	return tour, home, away, msg
+}
+
+// tournamentEntry is a tournament a result is being booked into, or nil when
+// the form named none.
+//
+// Everything a caller has to be told before a result may go in lives here, so
+// the two entry paths cannot drift apart on it: the tournament exists, it is
+// still open, and both players are actually in the field. Without the last
+// check the endpoint would book any two people into somebody else's draw, and
+// the table would grow a row the schedule never had.
+func (s *Server) tournamentEntry(ctx context.Context, r *http.Request,
+	home, away uuid.UUID,
+) (*domain.Tournament, string) {
+	id := tournamentIDFrom(r)
+	if id == nil {
+		return nil, ""
+	}
+
+	tour, err := s.store.Tournaments().ByID(ctx, *id)
+	switch {
+	case errors.Is(err, domain.ErrNotFound):
+		return nil, "Dieses Turnier gibt es nicht."
+	case err != nil:
+		s.log.ErrorContext(ctx, "loading the tournament failed", "error", err)
+		return nil, "Das hat gerade nicht geklappt."
+	case !tour.Open():
+		return nil, "Das Turnier ist beendet."
+	case !slices.Contains(tour.Players, home) || !slices.Contains(tour.Players, away):
+		return nil, "Diese beiden spielen nicht in diesem Turnier."
+	}
+	return &tour, ""
 }
 
 // rejectTournament renders the form again with what was typed and why it was
@@ -457,6 +529,10 @@ func (s *Server) tournamentView(ctx context.Context, id uuid.UUID, kiosk bool) (
 		names[p.ID] = p.DisplayName
 	}
 
+	// Who is reading. A signed-in player may enter their own pairings from
+	// their own device; anybody else reads the draw.
+	self, signedIn := auth.PlayerID(ctx)
+
 	view := templates.TournamentView{
 		Header:      s.headerView(ctx),
 		ID:          tour.ID.String(),
@@ -492,7 +568,11 @@ func (s *Server) tournamentView(ctx context.Context, id uuid.UUID, kiosk bool) (
 			}
 			if m, ok := played[pairKey(p.Home, p.Away)]; ok {
 				pv.Result = describeResult(m, p.Home)
-				pv.Pending = m.Status != domain.MatchConfirmed
+				pv.Pending = m.Status == domain.MatchPending
+				pv.Disputed = m.Status == domain.MatchDisputed
+			} else if signedIn && tour.Open() && (p.Home == self || p.Away == self) {
+				pv.CanReport = true
+				view.CanReport = true
 			}
 			rv.Pairings = append(rv.Pairings, pv)
 		}

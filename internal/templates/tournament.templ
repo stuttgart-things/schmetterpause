@@ -141,7 +141,14 @@ templ TournamentPage(v TournamentView) {
 		</section>
 		<section class="card">
 			<h2>Spielplan</h2>
-			if !v.CanEnter && v.Open {
+			if !v.CanEnter && v.CanReport {
+				<p class="muted">
+					Deine eigenen Spiele trägst du hier ein — dein Gegner
+					bestätigt sie, dann zählen sie. Wer für andere einträgt,
+					tut das am freigeschalteten Gerät an der Platte; dort zählt
+					es sofort.
+				</p>
+			} else if !v.CanEnter && v.Open {
 				// A link rather than a description of an address. Two people
 				// in a row read the old sentence and asked how to get from
 				// here to entering a result, which makes it a dead end with a
@@ -227,8 +234,16 @@ templ tournamentRounds(v TournamentView) {
 							if p.Pending {
 								<span class="tag">wartet auf Bestätigung</span>
 							}
+							if p.Disputed {
+								<span class="tag">bestritten</span>
+							}
 						} else if v.CanEnter {
-							@pairingEntry(v.ID, v.BestOf, v.PointsToWin, p)
+							@pairingEntry("/kiosk/tournaments/"+v.ID+"/matches", v.ID, v.BestOf, v.PointsToWin, p)
+						} else if p.CanReport {
+							// The same form to the ordinary entry endpoint.
+							// It lands as pending and the opponent confirms,
+							// exactly like a break-time match (docs/adr/0010).
+							@pairingEntry("/matches", v.ID, v.BestOf, v.PointsToWin, p)
 						} else {
 							<span class="muted">offen</span>
 						}
@@ -257,8 +272,8 @@ templ tournamentRounds(v TournamentView) {
 // A plain form post rather than HTMX: the answer is a redirect back to the
 // draw, so a reload cannot re-submit a result that already counted, and a
 // kiosk result counts immediately.
-templ pairingEntry(tournamentID string, bestOf, pointsToWin int, p TournamentPairingView) {
-	<form class="pairing-entry" method="post" action={ templ.SafeURL("/kiosk/tournaments/" + tournamentID + "/matches") }>
+templ pairingEntry(action, tournamentID string, bestOf, pointsToWin int, p TournamentPairingView) {
+	<form class="pairing-entry" method="post" action={ templ.SafeURL(action) }>
 		<input type="hidden" name="tournament_id" value={ tournamentID }/>
 		<input type="hidden" name="home_id" value={ p.HomeID }/>
 		<input type="hidden" name="away_id" value={ p.AwayID }/>
