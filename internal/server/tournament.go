@@ -151,7 +151,6 @@ func (s *Server) handleTournament(w http.ResponseWriter, r *http.Request) {
 	// path would always answer false, which is the bug this shape removes
 	// rather than works around.
 	view, err := s.tournamentView(r.Context(), id, s.kioskUnlocked(r))
-	view.Error = r.URL.Query().Get("fehler")
 	switch {
 	case errors.Is(err, domain.ErrNotFound):
 		http.Error(w, "Turnier nicht gefunden", http.StatusNotFound)
@@ -161,6 +160,11 @@ func (s *Server) handleTournament(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Turnier nicht verfügbar", http.StatusInternalServerError)
 		return
 	}
+
+	// The complaint from a refused entry, carried here through the redirect
+	// rather than rendered in place, so a reload cannot re-submit a result.
+	view.Error = r.URL.Query().Get("fehler")
+
 	s.render(w, r, templates.TournamentPage(view))
 }
 
