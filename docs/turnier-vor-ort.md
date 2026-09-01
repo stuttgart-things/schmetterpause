@@ -227,8 +227,15 @@ Der Link funktioniert auf jedem Gerät, aber Eingabefelder zeigt er nur dem
 freigeschalteten: die Kiosk-Kopie rendert für alle, nur eben ohne Boxen. Wer
 sie nicht sieht, liest dort, woran es liegt.
 
-**Turnierergebnisse zählen sofort**, wie alle Kiosk-Eingaben — bei 28 Spielen
-wäre eine Bestätigung pro Match der halbe Abend. Sie bewegen die normale TTR,
+**Seit ADR-0010 gibt es einen zweiten Weg:** wer angemeldet ist, sieht im
+Spielplan an den eigenen Paarungen ein Eingabefeld und trägt sein Ergebnis
+selbst ein. Der Gegner bestätigt es, dann zählt es — wie bei jedem
+Feierabendspiel. Für andere einzutragen geht weiterhin nur am Gerät an der
+Platte; dort steht jemand daneben. Damit läuft ein Turnier auch ohne Laptop,
+nur eben mit Bestätigungen, die sich auf die Spieler verteilen.
+
+**Turnierergebnisse vom Kiosk zählen sofort**, wie alle Kiosk-Eingaben — bei 28
+Spielen wäre eine Bestätigung pro Match der halbe Abend. Sie bewegen die normale TTR,
 und zwar Match für Match; warum nicht veranstaltungsweise verrechnet wird und
 wann das fällig würde, steht in `docs/adr/0009`.
 
@@ -282,10 +289,13 @@ Fenster: gefragt sind Arbeitstage.
 gegen jeden" sind 28 Matches, fast das Dreifache der Hürde. Mitgezählt wäre die
 Messung bestanden und hätte nichts gezeigt.
 
-Dass die Turniereingabe am Kiosk liegt, erledigt das nebenbei: jede Zeile aus
-einem Turnier trägt `entered_via = 'kiosk'` und zählt damit ohnehin nicht in
-die Wertung von `task office:dod`. Das ist kein Zufall, sondern der Grund, aus
-dem die Spalte existiert.
+`task office:dod` schließt Turnierspiele deshalb ausdrücklich aus — über
+`tournament_id`, nicht mehr über `entered_via`. Das war früher ein
+Nebeneffekt: Eingabe ging nur am Kiosk, also trug jede Turnierzeile
+`entered_via = 'kiosk'`. Seit ADR-0010 kann sie `'player'` tragen, und der
+Ausschluss sagt jetzt, was er meint: ein Spielplan ist eine Erinnerung, egal
+wer das Handy gehalten hat. Die Zahlen stehen weiter als eigene Spalte daneben,
+statt zu verschwinden.
 
 Seit Issue #71 sieht die Datenbank den Unterschied selbst: jedes Ergebnis trägt
 in `entered_via`, ob es ein Spieler selbst eingetragen hat oder der Kiosk.

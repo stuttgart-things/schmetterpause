@@ -49,6 +49,30 @@ func (s *Server) handleRecordMatch(w http.ResponseWriter, r *http.Request) {
 	}
 
 	form, opponentID, msg := parseMatchForm(r)
+
+	// A result from the draw comes with the bracket it belongs to, and with
+	// the pairing in the order the schedule shows it rather than as "me and
+	// an opponent" (docs/adr/0010). Everything after this point is the same
+	// path a break-time match takes.
+	tourID := tournamentIDFrom(r)
+	tour, home, away, tourMsg := s.tournamentPairing(r, self)
+	if tourMsg != "" {
+		s.tournamentBack(w, r, *tourID, false, tourMsg)
+		return
+	}
+	if tour != nil {
+		// The mode belongs to the tournament, not to whatever the form says.
+		form.result.Mode = match.Mode{BestOf: tour.BestOf, PointsToWin: tour.PointsToWin}
+		// The draw names both players, so "Wähle einen Gegner" is not a
+		// complaint this form can earn: the pairing already answered it.
+		// Anything parseResultForm found about the sets still stands.
+		_, msg = parseResultForm(r)
+		opponentID = away
+		if away == self {
+			opponentID = home
+		}
+	}
+
 	if msg == "" {
 		if _, err := match.Validate(form.result); err != nil {
 			msg = describeRejection(err)
@@ -56,6 +80,10 @@ func (s *Server) handleRecordMatch(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if msg != "" {
+		if tour != nil {
+			s.tournamentBack(w, r, tour.ID, false, msg)
+			return
+		}
 		s.rejectMatch(w, r, self, opponentID, form, msg)
 		return
 	}
@@ -75,21 +103,40 @@ func (s *Server) handleRecordMatch(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 
+	// Outside a tournament the reporter is always the home side: the form
+	// asks "what did you play". Inside one the draw already fixed the order,
+	// and keeping it means the boxes on screen line up with the names above
+	// them whichever of the two is typing.
+	homeID, awayID := self, opponent.ID
+	var tournamentID *uuid.UUID
+	if tour != nil {
+		homeID, awayID = home, away
+		tournamentID = &tour.ID
+	}
+
 	created, err := s.store.Matches().Create(r.Context(), domain.Match{
-		HomeID:      self,
-		AwayID:      opponent.ID,
+		HomeID:      homeID,
+		AwayID:      awayID,
 		BestOf:      form.result.Mode.BestOf,
 		PointsToWin: form.result.Mode.PointsToWin,
 		Status:      domain.MatchPending,
 		ReportedBy:  self,
 		PlayedAt:    time.Now(),
 		// Somebody entering their own result on their own phone. This is the
-		// kind the Definition of Done counts (issue #71).
-		EnteredVia: domain.EnteredViaPlayer,
-		Sets:       sets,
+		// kind the Definition of Done counts (issue #71) — except inside a
+		// tournament, which the query excludes by tournament_id because a
+		// schedule is a reminder whoever held the phone (docs/adr/0010).
+		EnteredVia:   domain.EnteredViaPlayer,
+		TournamentID: tournamentID,
+		Sets:         sets,
 	})
 	if err != nil {
 		s.log.ErrorContext(r.Context(), "recording the match failed", "error", err)
+		if tour != nil {
+			s.tournamentBack(w, r, tour.ID, false,
+				"Das hat gerade nicht geklappt. Versuch es noch einmal.")
+			return
+		}
 		s.rejectMatch(w, r, self, opponentID, form,
 			"Das hat gerade nicht geklappt. Versuch es noch einmal.")
 		return
@@ -100,6 +147,14 @@ func (s *Server) handleRecordMatch(w http.ResponseWriter, r *http.Request) {
 	s.log.InfoContext(r.Context(), "match recorded",
 		"match_id", created.ID, "home", self, "away", opponent.ID,
 		"sets", fmt.Sprintf("%d:%d", outcome.HomeSets, outcome.AwaySets))
+
+	// Back to the draw, not to the "recorded" card: somebody entering from a
+	// schedule has five more pairings to look at, and a redirect means a
+	// reload cannot offer to enter the same result twice.
+	if tour != nil {
+		s.tournamentBack(w, r, tour.ID, false, "")
+		return
+	}
 
 	s.render(w, r, templates.MatchRecorded(templates.MatchRecordedView{
 		OpponentName: opponent.DisplayName,

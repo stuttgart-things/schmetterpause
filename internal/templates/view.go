@@ -822,6 +822,11 @@ type TournamentView struct {
 	// from "this device is not unlocked", and would offer the reader a link
 	// to the page they are already looking at.
 	OnKioskPath bool
+	// CanReport is whether the reader has a pairing of their own still to
+	// enter. A player enters their own results and the opponent confirms
+	// them (docs/adr/0010); entering somebody else's is what the machine at
+	// the table is for.
+	CanReport bool
 	// CanEnter is whether this browser may enter results here. Only the
 	// unlocked machine at the table may: a quick tournament is run by one
 	// person on one laptop, and those entries settle at once instead of
@@ -857,6 +862,14 @@ type TournamentPairingView struct {
 	// counts for nothing yet — the table would otherwise look wrong to the
 	// person who just entered it.
 	Pending bool
+	// Disputed marks a result the opponent contested. It counts for nothing
+	// and never will without somebody correcting it, which is a different
+	// thing from waiting — and saying "wartet auf Bestätigung" about it would
+	// promise a confirmation that is not coming.
+	Disputed bool
+	// CanReport is whether the reader is one of these two and may enter this
+	// result from their own device.
+	CanReport bool
 }
 
 // Played reports whether this pairing has a result at all.
