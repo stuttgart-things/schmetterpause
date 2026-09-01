@@ -79,7 +79,7 @@ func itoa(n int) string { return strconv.Itoa(n) }
 
 // handleTournaments serves the list and the form that starts a new one.
 func (s *Server) handleTournaments(w http.ResponseWriter, r *http.Request) {
-	view, err := s.tournamentListView(r.Context())
+	view, err := s.tournamentListView(r.Context(), againFrom(r))
 	if err != nil {
 		s.log.ErrorContext(r.Context(), "loading tournaments failed", "error", err)
 		http.Error(w, "Turniere nicht verfügbar", http.StatusInternalServerError)
@@ -338,7 +338,32 @@ func (s *Server) tournamentBack(w http.ResponseWriter, r *http.Request,
 	http.Redirect(w, r, target, http.StatusSeeOther)
 }
 
-func (s *Server) tournamentListView(ctx context.Context) (templates.TournamentListView, error) {
+// againFrom reads the tournament a new one is to be modelled on, from the
+// "nochmal" link at the end of a finished one.
+//
+// Unparseable is "none" rather than an error: the worst it costs is an empty
+// form, which is what the page shows anyway when nobody asked for a repeat.
+func againFrom(r *http.Request) *uuid.UUID {
+	raw := strings.TrimSpace(r.URL.Query().Get("nochmal"))
+	if raw == "" {
+		return nil
+	}
+	id, err := uuid.Parse(raw)
+	if err != nil {
+		return nil
+	}
+	return &id
+}
+
+// tournamentListView builds the page. When again names a tournament, the form
+// comes up holding that one's field and mode: a second lunch break is a second
+// tournament, and re-ticking the same eight names is the part nobody does
+// twice.
+//
+// The name is deliberately not carried over. Two tournaments called the same
+// thing are two rows nobody can tell apart, and the name is the one word that
+// is quick to type.
+func (s *Server) tournamentListView(ctx context.Context, again *uuid.UUID) (templates.TournamentListView, error) {
 	tours, err := s.store.Tournaments().List(ctx, tournamentListLimit)
 	if err != nil {
 		return templates.TournamentListView{}, err
@@ -349,10 +374,31 @@ func (s *Server) tournamentListView(ctx context.Context) (templates.TournamentLi
 		return templates.TournamentListView{}, err
 	}
 
+	var (
+		chosen []uuid.UUID
+		mode   = match.Mode{BestOf: match.DefaultBestOf, PointsToWin: match.PointsToEleven}
+	)
+	if again != nil {
+		// A tournament that has gone missing since somebody clicked the link
+		// is an empty form, not a refusal. There is nothing here that has to
+		// succeed for the page to be useful.
+		if previous, err := s.store.Tournaments().ByID(ctx, *again); err == nil {
+			chosen = previous.Players
+			mode = match.Mode{BestOf: previous.BestOf, PointsToWin: previous.PointsToWin}
+		} else if !errors.Is(err, domain.ErrNotFound) {
+			s.log.WarnContext(ctx, "loading the tournament to repeat failed",
+				"tournament_id", *again, "error", err)
+		}
+	}
+
+	form := templates.NewTournamentFormView(candidates(players, chosen))
+	form.BestOf = mode.BestOf
+	form.PointsToWin = mode.PointsToWin
+
 	view := templates.TournamentListView{
 		Header:     s.headerView(ctx),
 		MaxPlayers: maxTournamentPlayers,
-		Form:       templates.NewTournamentFormView(candidates(players, nil)),
+		Form:       form,
 	}
 	for _, t := range tours {
 		view.Tournaments = append(view.Tournaments, tournamentRow(t))
@@ -485,7 +531,7 @@ func (s *Server) rejectTournament(w http.ResponseWriter, r *http.Request,
 	form.BestOf = mode.BestOf
 	form.PointsToWin = mode.PointsToWin
 
-	view, err := s.tournamentListView(r.Context())
+	view, err := s.tournamentListView(r.Context(), nil)
 	if err != nil {
 		s.log.ErrorContext(r.Context(), "loading tournaments failed", "error", err)
 		http.Error(w, "Turniere nicht verfügbar", http.StatusInternalServerError)
