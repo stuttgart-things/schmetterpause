@@ -29,6 +29,9 @@ import (
 // the scaffolding it serves as proof that template, HTMX and repository work
 // together.
 type StatusView struct {
+	// CommitTime is when the running commit was made, RFC 3339. Empty where
+	// the build did not record it — a binary somebody compiled by hand.
+	CommitTime string
 	// Header is only filled for the whole /info page; the fragment on its
 	// own renders inside one that is already there.
 	Header HeaderView

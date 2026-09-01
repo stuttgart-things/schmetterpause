@@ -23,7 +23,8 @@ func adminHandler(t *testing.T, bootstrap string) (*server.Server, *memStore) {
 	cfg.BootstrapAdmin = bootstrap
 
 	srv := server.New(cfg, store, discardLogger(),
-		auth.NewCookieAuthenticator(store.Identities(), testSessionKey, false), "test")
+		auth.NewCookieAuthenticator(store.Identities(), testSessionKey, false),
+		server.Build{Version: "test"})
 	return srv, store
 }
 

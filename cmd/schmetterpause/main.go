@@ -24,8 +24,26 @@ import (
 	"github.com/stuttgart-things/schmetterpause/internal/server"
 )
 
-// version is set at build time via -ldflags (git tag or commit SHA).
-var version = "dev"
+// Set at build time via -ldflags.
+var (
+	// version is the git tag, or the commit SHA where there is no tag.
+	version = "dev"
+	// commitTime is when that commit was made, RFC 3339, not when the binary
+	// was built. The build clock would make two images from one commit
+	// differ, which turns "is the same thing running here and there" into a
+	// question nobody can answer; the commit date answers "how old is what is
+	// running" and is the same every time it is built.
+	commitTime = ""
+)
+
+// versionLine is what the binary calls itself: the version, and the age of
+// the commit it was built from where that is known.
+func versionLine() string {
+	if commitTime == "" {
+		return version
+	}
+	return version + " (" + commitTime + ")"
+}
 
 const usage = `schmetterpause — office table tennis
 
@@ -81,7 +99,7 @@ func run(ctx context.Context, args []string) error {
 	case "healthcheck":
 		return healthcheck(ctx)
 	case "version":
-		fmt.Println(version)
+		fmt.Println(versionLine())
 		return nil
 	case "help", "-h", "--help":
 		fmt.Print(usage)
@@ -124,7 +142,8 @@ func serve(ctx context.Context) error {
 	// (docs/adr/0003).
 	sessions := auth.NewCookieAuthenticator(store.Identities(), cfg.SessionKey, cfg.CookieSecure)
 
-	srv := server.New(cfg, store, log, sessions, version)
+	srv := server.New(cfg, store, log, sessions,
+		server.Build{Version: version, CommitTime: commitTime})
 
 	// After the migrations, because the flag it writes is a column they add.
 	// Never fatal: a name nobody has yet is the ordinary state when the

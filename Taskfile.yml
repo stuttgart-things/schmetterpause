@@ -9,6 +9,11 @@ vars:
   DSN: postgres://schmetterpause:schmetterpause@127.0.0.1:5432/schmetterpause?sslmode=disable
   VERSION:
     sh: git describe --tags --always --dirty 2>/dev/null || echo dev
+  # The commit's own date, not the clock. Two builds of one commit have to be
+  # able to say they are the same thing, which a build timestamp would make
+  # impossible.
+  COMMIT_TIME:
+    sh: git show -s --format=%cI HEAD 2>/dev/null || true
   # Development only. Fixed so a restart keeps recognising the same browser.
   DEV_SESSION_KEY: development-session-key-not-for-production
   # Pinned. An unpinned module means "task kcl:publish" can render something
@@ -159,6 +164,11 @@ tasks:
       # The one case where the app answers on every interface rather than on
       # loopback: the phones are not on this machine.
       SP_BIND_ADDR: 0.0.0.0
+      # This task builds compose directly rather than through compose:up, so
+      # it needs the build args in its own environment. Without them the
+      # image calls itself "dev" and /info cannot say what is running.
+      VERSION: '{{.VERSION}}'
+      COMMIT_TIME: '{{.COMMIT_TIME}}'
     cmds:
       - docker compose -f compose.yaml -f compose.office.yaml up --build --detach --wait
       - |
@@ -530,20 +540,20 @@ tasks:
     deps: [dagger:check]
     cmds:
       - mkdir -p build
-      - dagger call build --source=. --version={{.VERSION}} export --path=build/schmetterpause-oci.tar
+      - dagger call build --source=. --version={{.VERSION}} --commit-time="{{.COMMIT_TIME}}" export --path=build/schmetterpause-oci.tar
       - 'echo "OCI artefact: build/schmetterpause-oci.tar"'
 
   verify:
     desc: "Dagger verify: the built image against a fresh Postgres"
     deps: [dagger:check]
     cmds:
-      - dagger call verify --source=. --version={{.VERSION}}
+      - dagger call verify --source=. --version={{.VERSION}} --commit-time="{{.COMMIT_TIME}}"
 
   ci:
     desc: "lint + test + build + verify, identical to the pipeline"
     deps: [dagger:check]
     cmds:
-      - dagger call ci --source=. --version={{.VERSION}}
+      - dagger call ci --source=. --version={{.VERSION}} --commit-time="{{.COMMIT_TIME}}"
 
   publish:
     desc: "Push the image to ttl.sh so somebody can look at it — expires by itself"
@@ -551,7 +561,7 @@ tasks:
     vars:
       TTL: '{{.TTL | default "1h"}}'
     cmds:
-      - dagger call publish --source=. --version={{.VERSION}} --ttl={{.TTL}}
+      - dagger call publish --source=. --version={{.VERSION}} --commit-time="{{.COMMIT_TIME}}" --ttl={{.TTL}}
       - 'echo "Expires in {{.TTL}}. ttl.sh is public — pull it, do not store anything in it."'
 
   release:
@@ -569,6 +579,7 @@ tasks:
         dagger call release
         --source=.
         --version={{.VERSION}}
+        --commit-time="{{.COMMIT_TIME}}"
         --registry-token=env:GITHUB_TOKEN
         --username="$GITHUB_USER"
 
@@ -580,6 +591,12 @@ tasks:
 
   compose:up:
     internal: true
+    # Compose reads these from the environment, not from task's variables.
+    # Without them the build args fall back to their defaults and every image
+    # calls itself "dev" — which is what it did until this line existed.
+    env:
+      VERSION: '{{.VERSION}}'
+      COMMIT_TIME: '{{.COMMIT_TIME}}'
     # Without this, task echoes the whole diagnostic block on every start,
     # which is precisely the noise it exists to remove.
     silent: true

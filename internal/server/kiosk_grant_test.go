@@ -28,7 +28,8 @@ func adminAndKiosk(t *testing.T) (*server.Server, *memStore) {
 	cfg.BootstrapAdmin = "Anna"
 
 	srv := server.New(cfg, store, discardLogger(),
-		auth.NewCookieAuthenticator(store.Identities(), testSessionKey, false), "test")
+		auth.NewCookieAuthenticator(store.Identities(), testSessionKey, false),
+		server.Build{Version: "test"})
 	return srv, store
 }
 

@@ -35,7 +35,7 @@ func newHandlerWith(store repository.Store, a auth.SessionAuthenticator) http.Ha
 // newHandlerConfig wires a server with a configuration of the caller's own.
 func newHandlerConfig(cfg config.Config, store repository.Store, a auth.SessionAuthenticator) http.Handler {
 	log := slog.New(slog.NewTextHandler(io.Discard, &slog.HandlerOptions{Level: slog.LevelError}))
-	return server.New(cfg, store, log, a, "test").Handler()
+	return server.New(cfg, store, log, a, server.Build{Version: "test"}).Handler()
 }
 
 // testConfig is the configuration the handler tests run against.

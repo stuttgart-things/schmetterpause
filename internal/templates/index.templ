@@ -121,6 +121,12 @@ templ Status(v StatusView) {
 		<dd>{ strconv.Itoa(v.Players) }</dd>
 		<dt>Version</dt>
 		<dd>{ v.Version }</dd>
+		if v.CommitTime != "" {
+			<dt>Stand</dt>
+			// The commit's date, not the build's. Two images from one commit
+			// have to be able to say they are the same thing.
+			<dd>{ v.CommitTime }</dd>
+		}
 	</dl>
 }
 
