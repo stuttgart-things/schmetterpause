@@ -54,6 +54,25 @@ func tournamentIDFrom(r *http.Request) *uuid.UUID {
 	return &id
 }
 
+// modeFrom reads the mode a tournament is to be played in.
+//
+// A missing or unreadable value is the default rather than a refusal: the
+// form always sends both, so anything else is a request nobody made on
+// purpose, and Known() below catches a value that is there but not allowed.
+func modeFrom(r *http.Request) match.Mode {
+	mode := match.Mode{
+		BestOf:      match.DefaultBestOf,
+		PointsToWin: match.PointsToEleven,
+	}
+	if v, err := strconv.Atoi(strings.TrimSpace(r.FormValue("best_of"))); err == nil {
+		mode.BestOf = v
+	}
+	if v, err := strconv.Atoi(strings.TrimSpace(r.FormValue("points_to_win"))); err == nil {
+		mode.PointsToWin = v
+	}
+	return mode
+}
+
 // itoa is strconv.Itoa under a shorter name, because the score strings below
 // would otherwise be more package qualifier than content.
 func itoa(n int) string { return strconv.Itoa(n) }
@@ -93,8 +112,19 @@ func (s *Server) handleCreateTournament(w http.ResponseWriter, r *http.Request) 
 		}
 	}
 
+	// The mode is settled here, once, and every pairing in the draw is played
+	// under it. A control per pairing would ask the same question twenty-eight
+	// times; a draw with no mode at all was the state before, and it left the
+	// schedule unable to say over how many sets the evening was decided.
+	mode := modeFrom(r)
+	if !mode.Known() {
+		s.rejectTournament(w, r, name, field, mode,
+			"Diesen Modus gibt es nicht.")
+		return
+	}
+
 	if msg := checkField(field); msg != "" {
-		s.rejectTournament(w, r, name, field, msg)
+		s.rejectTournament(w, r, name, field, mode, msg)
 		return
 	}
 
@@ -108,19 +138,22 @@ func (s *Server) handleCreateTournament(w http.ResponseWriter, r *http.Request) 
 	rand.Shuffle(len(field), func(i, j int) { field[i], field[j] = field[j], field[i] })
 
 	created, err := s.store.Tournaments().Create(ctx, domain.Tournament{
-		Name:      name,
-		Format:    domain.TournamentRoundRobin,
-		CreatedBy: author,
-		Players:   field,
+		Name:        name,
+		Format:      domain.TournamentRoundRobin,
+		CreatedBy:   author,
+		BestOf:      mode.BestOf,
+		PointsToWin: mode.PointsToWin,
+		Players:     field,
 	})
 	if err != nil {
 		s.log.ErrorContext(ctx, "creating the tournament failed", "error", err)
-		s.rejectTournament(w, r, name, field, "Das hat gerade nicht geklappt.")
+		s.rejectTournament(w, r, name, field, mode, "Das hat gerade nicht geklappt.")
 		return
 	}
 
 	s.log.InfoContext(ctx, "tournament created",
-		"tournament_id", created.ID, "players", len(created.Players))
+		"tournament_id", created.ID, "players", len(created.Players),
+		"best_of", created.BestOf, "points_to_win", created.PointsToWin)
 
 	http.Redirect(w, r, "/tournaments/"+created.ID.String(), http.StatusSeeOther)
 }
@@ -250,6 +283,12 @@ func (s *Server) handleTournamentRecord(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
+	// The mode comes from the tournament, not from the form. The hidden
+	// fields carry it back correctly, but a result booked into a draw under a
+	// mode the draw was not played in is a table that lies about itself —
+	// and the form is the one part of this a caller can edit.
+	form.result.Mode = match.Mode{BestOf: tour.BestOf, PointsToWin: tour.PointsToWin}
+
 	_, err = scoring.Record(ctx, s.store, homeID, awayID, form.result,
 		domain.EnteredViaKiosk, &tour.ID, time.Now())
 
@@ -344,12 +383,15 @@ func tournamentRow(t domain.Tournament) templates.TournamentListRow {
 		Open:    t.Open(),
 		Players: len(t.Players),
 		Matches: tournament.Matches(len(t.Players)),
+		Mode:    templates.TournamentModeLabel(t.BestOf, t.PointsToWin),
 	}
 }
 
 // rejectTournament renders the form again with what was typed and why it was
 // refused, so nobody re-ticks eight names.
-func (s *Server) rejectTournament(w http.ResponseWriter, r *http.Request, name string, chosen []uuid.UUID, msg string) {
+func (s *Server) rejectTournament(w http.ResponseWriter, r *http.Request,
+	name string, chosen []uuid.UUID, mode match.Mode, msg string,
+) {
 	players, err := s.store.Players().List(r.Context())
 	if err != nil {
 		s.log.ErrorContext(r.Context(), "loading players failed", "error", err)
@@ -360,6 +402,11 @@ func (s *Server) rejectTournament(w http.ResponseWriter, r *http.Request, name s
 	form := templates.NewTournamentFormView(candidates(players, chosen))
 	form.Name = name
 	form.Error = msg
+	// The mode comes back as it was picked, even when it is the reason for
+	// the refusal: a select that snaps back to the default hides what was
+	// wrong with the answer.
+	form.BestOf = mode.BestOf
+	form.PointsToWin = mode.PointsToWin
 
 	view, err := s.tournamentListView(r.Context())
 	if err != nil {
@@ -406,12 +453,14 @@ func (s *Server) tournamentView(ctx context.Context, id uuid.UUID, kiosk bool) (
 	}
 
 	view := templates.TournamentView{
-		Header:   s.headerView(ctx),
-		ID:       tour.ID.String(),
-		Name:     tour.Name,
-		Open:     tour.Open(),
-		CanEnter: tour.Open() && kiosk,
-		Total:    tournament.Matches(len(tour.Players)),
+		Header:      s.headerView(ctx),
+		ID:          tour.ID.String(),
+		Name:        tour.Name,
+		Open:        tour.Open(),
+		BestOf:      tour.BestOf,
+		PointsToWin: tour.PointsToWin,
+		CanEnter:    tour.Open() && kiosk,
+		Total:       tournament.Matches(len(tour.Players)),
 	}
 
 	// What has already been played, so a pairing can say so instead of

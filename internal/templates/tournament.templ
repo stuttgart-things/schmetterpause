@@ -18,7 +18,7 @@ templ TournamentList(v TournamentListView) {
 							<a href={ templ.SafeURL("/tournaments/" + t.ID) }>{ t.Name }</a>
 							<span class="muted">
 								{ strconv.Itoa(t.Players) } Spieler,
-								{ strconv.Itoa(t.Matches) } Spiele
+								{ strconv.Itoa(t.Matches) } Spiele &middot; { t.Mode }
 							</span>
 							if !t.Open {
 								<span class="tag">beendet</span>
@@ -61,6 +61,31 @@ templ tournamentForm(v TournamentFormView, maxPlayers int) {
 					value={ v.Name }
 				/>
 			</div>
+			// Asked once, for the whole draw. No HTMX here, unlike result
+			// entry: nothing on this form redraws when the mode changes, and
+			// the number of set boxes it decides is rendered later, on the
+			// schedule.
+			<div class="row">
+				<label for="tournament-best-of">Modus</label>
+				<select id="tournament-best-of" name="best_of">
+					for _, n := range BestOfOptions {
+						<option value={ strconv.Itoa(n) } selected?={ v.BestOf == n }>
+							{ BestOfLabel(n) }
+						</option>
+					}
+				</select>
+				<select
+					id="tournament-points-to-win"
+					name="points_to_win"
+					aria-label="Punkte pro Satz"
+				>
+					for _, p := range PointsToWinOptions {
+						<option value={ strconv.Itoa(p) } selected?={ v.PointsToWin == p }>
+							bis { strconv.Itoa(p) }
+						</option>
+					}
+				</select>
+			</div>
 			<fieldset class="tournament-field">
 				<legend>Wer spielt mit?</legend>
 				for _, c := range v.Candidates {
@@ -91,6 +116,7 @@ templ TournamentPage(v TournamentView) {
 		<section class="card">
 			<h2>{ v.Name }</h2>
 			<p class="muted">
+				{ TournamentModeLabel(v.BestOf, v.PointsToWin) } &middot;
 				{ strconv.Itoa(v.Played) } von { strconv.Itoa(v.Total) } Spielen gewertet.
 				if !v.Open {
 					Das Turnier ist beendet.
@@ -184,7 +210,7 @@ templ tournamentRounds(v TournamentView) {
 								<span class="tag">wartet auf Bestätigung</span>
 							}
 						} else if v.CanEnter {
-							@pairingEntry(v.ID, p)
+							@pairingEntry(v.ID, v.BestOf, v.PointsToWin, p)
 						} else {
 							<span class="muted">offen</span>
 						}
@@ -200,23 +226,27 @@ templ tournamentRounds(v TournamentView) {
 
 // pairingEntry is result entry for one pairing at the table.
 //
-// The two players ride along hidden: the draw already decided them, and a
-// picker here would be a chance to enter the right score against the wrong
-// pair. Three set rows because the mode is fixed at best of three — a quick
-// tournament that offered a mode control per pairing would ask the same
-// question twenty-eight times.
+// The two players and the mode ride along hidden: the draw decided both, and
+// a control here would be a chance to enter the right score against the wrong
+// pair, or under a mode the rest of the tournament was not played in. The
+// server takes the mode from the tournament regardless — these fields are for
+// the form to be complete, not for it to be trusted.
+//
+// One box per set the mode allows: at best of five there are five, at a
+// single set there is one. Boxes for sets that cannot exist are boxes
+// somebody eventually types into.
 //
 // A plain form post rather than HTMX: the answer is a redirect back to the
 // draw, so a reload cannot re-submit a result that already counted, and a
 // kiosk result counts immediately.
-templ pairingEntry(tournamentID string, p TournamentPairingView) {
+templ pairingEntry(tournamentID string, bestOf, pointsToWin int, p TournamentPairingView) {
 	<form class="pairing-entry" method="post" action={ templ.SafeURL("/kiosk/tournaments/" + tournamentID + "/matches") }>
 		<input type="hidden" name="tournament_id" value={ tournamentID }/>
 		<input type="hidden" name="home_id" value={ p.HomeID }/>
 		<input type="hidden" name="away_id" value={ p.AwayID }/>
-		<input type="hidden" name="best_of" value="3"/>
-		<input type="hidden" name="points_to_win" value="11"/>
-		for i := 1; i <= 3; i++ {
+		<input type="hidden" name="best_of" value={ strconv.Itoa(bestOf) }/>
+		<input type="hidden" name="points_to_win" value={ strconv.Itoa(pointsToWin) }/>
+		for i := 1; i <= bestOf; i++ {
 			<span class="pairing-set">
 				<label class="sr-only" for={ p.HomeID + "-" + p.AwayID + "-h" + strconv.Itoa(i) }>
 					Satz { strconv.Itoa(i) }, { p.HomeName }

@@ -66,14 +66,14 @@ templ Kiosk(v KioskView) {
 			// /kiosk, so the page at /tournaments/<id> cannot offer the link
 			// — it has no way of knowing it is the table.
 			<section class="match">
-				<h2>Läuft gerade</h2>
+				<h2>Offene Turniere</h2>
 				<ul class="tournament-list">
 					for _, t := range v.Tournaments {
 						<li>
 							<a href={ templ.SafeURL("/kiosk/tournaments/" + t.ID) }>{ t.Name }</a>
 							<span class="muted">
 								{ strconv.Itoa(t.Players) } Spieler,
-								{ strconv.Itoa(t.Matches) } Spiele
+								{ strconv.Itoa(t.Matches) } Spiele &middot; { t.Mode }
 							</span>
 						</li>
 					}

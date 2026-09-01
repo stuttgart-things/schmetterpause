@@ -10,16 +10,18 @@ import (
 	"github.com/jackc/pgx/v5"
 
 	"github.com/stuttgart-things/schmetterpause/internal/domain"
+	"github.com/stuttgart-things/schmetterpause/internal/match"
 )
 
 type tournamentRepo struct{ q queryer }
 
-const tournamentColumns = `id, name, format, status, created_by, created_at, closed_at`
+const tournamentColumns = `id, name, format, status, best_of, points_to_win, ` +
+	`created_by, created_at, closed_at`
 
 func (r tournamentRepo) Create(ctx context.Context, t domain.Tournament) (domain.Tournament, error) {
 	const insert = `
-		insert into tournaments (name, format, status, created_by)
-		values ($1, $2, $3, $4)
+		insert into tournaments (name, format, status, best_of, points_to_win, created_by)
+		values ($1, $2, $3, $4, $5, $6)
 		returning ` + tournamentColumns
 
 	format := t.Format
@@ -30,9 +32,19 @@ func (r tournamentRepo) Create(ctx context.Context, t domain.Tournament) (domain
 	if status == "" {
 		status = domain.TournamentOpen
 	}
+	// A zero mode is a caller that did not say, not a caller asking for a
+	// tournament of no sets. The column defaults say the same thing, but an
+	// explicit insert never reaches them.
+	mode := match.Mode{BestOf: t.BestOf, PointsToWin: t.PointsToWin}
+	if mode.BestOf == 0 {
+		mode.BestOf = match.DefaultBestOf
+	}
+	if mode.PointsToWin == 0 {
+		mode.PointsToWin = match.PointsToEleven
+	}
 
 	created, err := scanTournament(r.q.QueryRow(ctx, insert,
-		t.Name, string(format), string(status), t.CreatedBy))
+		t.Name, string(format), string(status), mode.BestOf, mode.PointsToWin, t.CreatedBy))
 	if err != nil {
 		return domain.Tournament{}, fmt.Errorf("create tournament: %w", err)
 	}
@@ -186,7 +198,8 @@ func scanTournament(row pgx.Row) (domain.Tournament, error) {
 		format string
 		status string
 	)
-	err := row.Scan(&t.ID, &t.Name, &format, &status, &t.CreatedBy, &t.CreatedAt, &t.ClosedAt)
+	err := row.Scan(&t.ID, &t.Name, &format, &status, &t.BestOf, &t.PointsToWin,
+		&t.CreatedBy, &t.CreatedAt, &t.ClosedAt)
 	if err != nil {
 		return domain.Tournament{}, err
 	}

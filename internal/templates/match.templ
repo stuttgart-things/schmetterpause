@@ -106,7 +106,7 @@ templ modeRow(prefix string, bestOf, pointsToWin int) {
 			hx-include="closest form"
 			hx-sync="closest form:replace"
 		>
-			for _, p := range []int{11, 21} {
+			for _, p := range PointsToWinOptions {
 				<option value={ strconv.Itoa(p) } selected?={ pointsToWin == p }>
 					bis { strconv.Itoa(p) }
 				</option>

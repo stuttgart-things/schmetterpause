@@ -42,7 +42,7 @@ func newMemStore() *memStore {
 		kiosks:      &memKioskGrants{},
 		matches:     matches,
 		history:     history,
-		tournaments: &memTournaments{},
+		tournaments: &memTournaments{matches: matches},
 	}
 }
 
@@ -663,8 +663,11 @@ func (h *memHistory) ForPlayer(_ context.Context, playerID uuid.UUID, limit int)
 // kiosk asks it which ones are still open, and nothing here needs the draw.
 type memTournaments struct {
 	repository.TournamentRepository
-	mu   sync.Mutex
-	rows []domain.Tournament
+	// matches is where booked results live: a tournament owns which matches
+	// belong to it, not the matches themselves (docs/adr/0009).
+	matches *memMatches
+	mu      sync.Mutex
+	rows    []domain.Tournament
 }
 
 func (m *memTournaments) Create(_ context.Context, t domain.Tournament) (domain.Tournament, error) {
@@ -700,6 +703,48 @@ func (m *memTournaments) List(_ context.Context, limit int) ([]domain.Tournament
 	})
 	if len(out) > limit {
 		out = out[:limit]
+	}
+	return out, nil
+}
+
+func (m *memTournaments) ByID(_ context.Context, id uuid.UUID) (domain.Tournament, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	for _, t := range m.rows {
+		if t.ID == id {
+			return t, nil
+		}
+	}
+	return domain.Tournament{}, domain.ErrNotFound
+}
+
+func (m *memTournaments) Close(_ context.Context, id uuid.UUID, at time.Time) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	for i, t := range m.rows {
+		if t.ID == id {
+			m.rows[i].Status = domain.TournamentClosed
+			m.rows[i].ClosedAt = &at
+			return nil
+		}
+	}
+	return domain.ErrNotFound
+}
+
+// Matches returns what has been booked to this tournament, every status, the
+// way Postgres does — the draw has to tell "not played" from "waiting on a
+// confirmation".
+func (m *memTournaments) Matches(_ context.Context, id uuid.UUID) ([]domain.Match, error) {
+	if m.matches == nil {
+		return nil, nil
+	}
+	var out []domain.Match
+	for _, match := range m.matches.all() {
+		if match.TournamentID != nil && *match.TournamentID == id {
+			out = append(out, match)
+		}
 	}
 	return out, nil
 }

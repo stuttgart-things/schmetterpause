@@ -389,7 +389,7 @@ func modeRow(prefix string, bestOf, pointsToWin int) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		for _, p := range []int{11, 21} {
+		for _, p := range PointsToWinOptions {
 			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 31, "<option value=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
