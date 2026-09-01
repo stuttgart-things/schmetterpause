@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"errors"
+	"fmt"
 	"math/rand/v2"
 	"net/http"
 	"net/url"
@@ -307,15 +308,43 @@ func (s *Server) tournamentListView(ctx context.Context) (templates.TournamentLi
 		Form:       templates.NewTournamentFormView(candidates(players, nil)),
 	}
 	for _, t := range tours {
-		view.Tournaments = append(view.Tournaments, templates.TournamentListRow{
-			ID:      t.ID.String(),
-			Name:    t.Name,
-			Open:    t.Open(),
-			Players: len(t.Players),
-			Matches: tournament.Matches(len(t.Players)),
-		})
+		view.Tournaments = append(view.Tournaments, tournamentRow(t))
 	}
 	return view, nil
+}
+
+// openTournaments are the ones a result can still go into, newest first.
+//
+// The kiosk shows these because it is the only page that can reach the entry
+// view: the grant cookie is scoped to /kiosk, so a page outside it cannot
+// know it is the machine at the table and cannot offer the link. Without this
+// list the way in is somebody copying a UUID out of the address bar (#124).
+func (s *Server) openTournaments(ctx context.Context) ([]templates.TournamentListRow, error) {
+	tours, err := s.store.Tournaments().List(ctx, tournamentListLimit)
+	if err != nil {
+		return nil, fmt.Errorf("list tournaments: %w", err)
+	}
+
+	var rows []templates.TournamentListRow
+	for _, t := range tours {
+		if !t.Open() {
+			continue
+		}
+		rows = append(rows, tournamentRow(t))
+	}
+	return rows, nil
+}
+
+// tournamentRow is one tournament as a list entry. Both lists that show one
+// say the same three things about it, so they say them the same way.
+func tournamentRow(t domain.Tournament) templates.TournamentListRow {
+	return templates.TournamentListRow{
+		ID:      t.ID.String(),
+		Name:    t.Name,
+		Open:    t.Open(),
+		Players: len(t.Players),
+		Matches: tournament.Matches(len(t.Players)),
+	}
 }
 
 // rejectTournament renders the form again with what was typed and why it was
