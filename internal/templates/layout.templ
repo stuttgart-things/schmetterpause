@@ -38,21 +38,23 @@ templ Layout(title string, header HeaderView) {
 					@Whoami(header)
 				</span>
 			</header>
-			<main>
-				{ children... }
-			</main>
-			// Two links, and both lead to a page rather than to a probe:
-			// what /healthz and /readyz used to answer from here is written
-			// out in the status box instead.
-			<footer class="footer">
+			// Above the content rather than under it. At the bottom the
+			// navigation sat behind a ranking that grows with every player,
+			// so on a phone the way to the other pages moved further away the
+			// more the app was used.
+			<nav class="mainnav" aria-label="Bereiche">
 				<a href="/matches">Alle Matches</a>
 				<a href="/statistics">Statistik</a>
 				<a href="/tournaments">Turniere</a>
 				<a href="/qr">QR-Aushang</a>
+				<a href="/info">Info</a>
 				if header.IsAdmin {
 					<a href="/admin">Rechte</a>
 				}
-			</footer>
+			</nav>
+			<main>
+				{ children... }
+			</main>
 		</body>
 	</html>
 }

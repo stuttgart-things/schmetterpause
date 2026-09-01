@@ -102,11 +102,35 @@ func TestIndexRendersLayout(t *testing.T) {
 	body := rec.Body.String()
 	for _, want := range []string{
 		"Schmetterpause", "/static/js/htmx.min.js", "/static/js/app.js",
-		`hx-get="/fragments/status"`,
+		// The navigation, above the content rather than under a ranking that
+		// grows with every player.
+		`class="mainnav"`, `href="/info"`,
 	} {
 		if !strings.Contains(body, want) {
 			t.Errorf("page does not contain %q", want)
 		}
+	}
+	// The status moved to /info: what it answers is asked on purpose, and it
+	// was standing between every player and the bottom of the start page.
+	if strings.Contains(body, `hx-get="/fragments/status"`) {
+		t.Error("the start page still polls the status")
+	}
+}
+
+// The page the status moved to, and the fragment it loads.
+func TestInfoCarriesTheStatus(t *testing.T) {
+	h := newHandler(storeWithPlayers(t, 3))
+
+	rec := get(t, h, "/info")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200", rec.Code)
+	}
+	body := rec.Body.String()
+	if !strings.Contains(body, `hx-get="/fragments/status"`) {
+		t.Error("/info does not load the status")
+	}
+	if !strings.Contains(body, "dev") {
+		t.Error("/info does not name the running version")
 	}
 }
 

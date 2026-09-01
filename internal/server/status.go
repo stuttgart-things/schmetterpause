@@ -6,6 +6,18 @@ import (
 	"github.com/stuttgart-things/schmetterpause/internal/templates"
 )
 
+// handleInfo serves the page the status lives on.
+//
+// The numbers come from the fragment the page loads rather than from here: one
+// place that knows how to ask the database whether it is there, instead of two
+// that can disagree about it.
+func (s *Server) handleInfo(w http.ResponseWriter, r *http.Request) {
+	s.render(w, r, templates.Info(templates.StatusView{
+		Header:  s.headerView(r.Context()),
+		Version: s.version,
+	}))
+}
+
 // handleStatusFragment serves the status fragment loaded by HTMX.
 //
 // It is the proof that handler, repository, database and template work
