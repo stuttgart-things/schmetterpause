@@ -173,7 +173,7 @@ func QRSheet(v QRSheetView) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "</figcaption></figure><ol class=\"sheet-steps\"><li>Code mit der Handykamera scannen.</li><li>Beim ersten Mal einmalig den eigenen Namen eintragen.</li><li>Gegner wählen, Sätze eintragen, <strong>Eintragen</strong> drücken.</li></ol><p class=\"sheet-note muted\">Danach bestätigt der Gegner das Ergebnis — erst dann zählt es für die Wertung.</p><p class=\"sheet-back no-print\"><a href=\"/\">Zurück zur Startseite</a></p></article>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "</figcaption></figure><ol class=\"sheet-steps\"><li>Code mit der Handykamera scannen.</li><li>Beim ersten Mal einmalig den eigenen Namen eintragen.</li><li>Gegner wählen, Sätze eintragen, <strong>Eintragen</strong> drücken.</li></ol><p class=\"sheet-note muted\">Danach bestätigt der Gegner das Ergebnis — erst dann zählt es für die Wertung.</p><p class=\"sheet-back no-print\"><a href=\"/rules\">Zu den Regeln</a> <a href=\"/\">Zurück zur Startseite</a></p></article>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
