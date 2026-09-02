@@ -142,6 +142,7 @@ tasks:
         echo "Written .env"
         echo "  everybody:  http://$address:8080/"
         echo "  the sheet:  http://$address:8080/qr"
+        echo "  the rules:  http://$address:8080/rules"
         echo "  the table:  http://$address:8080/kiosk?token=$token"
         if [ -n "${admin:-}" ]; then
           echo
@@ -175,6 +176,7 @@ tasks:
         echo
         echo "Ranking and result entry:  $SP_PUBLIC_BASE_URL/"
         echo "Sheet to print and tape up: $SP_PUBLIC_BASE_URL/qr"
+        echo "House rules, same again:    $SP_PUBLIC_BASE_URL/rules"
         echo "Machine at the table, once: $SP_PUBLIC_BASE_URL/kiosk?token=$SP_KIOSK_TOKEN"
 
   office:stop:

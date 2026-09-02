@@ -587,7 +587,7 @@ head -c 5 "$mascot" | grep -q "<svg" || {
 }
 # An SVG behind <img src> cannot be reached by the page's CSS, so a linked
 # one would quietly cost the recolourable blade. See issue #64.
-for page in / /qr; do
+for page in / /qr /rules; do
 	body=$(mktemp)
 	curl -fsS "http://app:8080$page" > "$body"
 	grep -q "var(--paddle, #c82828)" "$body" || {
@@ -799,7 +799,7 @@ fi
 # The pages that belong to nobody carry a colour of their own. It is the
 # page's and not the reader's, so it has to be the same signed in and out —
 # a blade that comes up different on every reload reads as a fault.
-for page in /matches /qr; do
+for page in /matches /qr /rules; do
 	curl -fsS "http://app:8080$page" > "$anon"
 	page_colour=$(paddle_of "$anon")
 	[ -n "$page_colour" ] || {

@@ -14,12 +14,17 @@ import (
 	"github.com/stuttgart-things/schmetterpause/web"
 )
 
-// QRSheet is the printable sheet for the wall next to the table.
+// RulesSheet is the second printable sheet: what counts at this table, for
+// the wall beside the QR code.
 //
-// No print button: that would need JavaScript for something every browser
-// already has a menu entry and a keyboard shortcut for (invariant 7). The
-// print rules live in the stylesheet instead.
-func QRSheet(v QRSheetView) templ.Component {
+// The numbers in the prose are derived from the same helpers the entry form
+// reads, not typed out. A sheet taped to a wall outlives the release that
+// printed it, and rules on the wall that the app disagrees with are worse
+// than no rules on the wall.
+//
+// No print button, for the reason given on the QR sheet: every browser has a
+// menu entry and a shortcut for it, and invariant 7 is not spent on that.
+func RulesSheet(v RulesSheetView) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -56,7 +61,7 @@ func QRSheet(v QRSheetView) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			var templ_7745c5c3_Var3 = []any{"sheet-mascot", PaddleSheet}
+			var templ_7745c5c3_Var3 = []any{"sheet-mascot", PaddleRules}
 			templ_7745c5c3_Err = templ.RenderCSSItems(ctx, templ_7745c5c3_Buffer, templ_7745c5c3_Var3...)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
@@ -68,7 +73,7 @@ func QRSheet(v QRSheetView) templ.Component {
 			var templ_7745c5c3_Var4 string
 			templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.ResolveAttributeValue(templ.CSSClasses(templ_7745c5c3_Var3).String())
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `qr.templ`, Line: 1, Col: 0}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `rules.templ`, Line: 1, Col: 0}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var4)
 			if templ_7745c5c3_Err != nil {
@@ -82,104 +87,78 @@ func QRSheet(v QRSheetView) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "</span><h1>Ergebnis eintragen</h1><p class=\"sheet-lead\">Scannen. Gegner wählen. Sätze eintragen.</p><figure class=\"qr\"><svg viewBox=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "</span><h1>Regeln</h1><p class=\"sheet-lead\">Worauf wir uns an der Platte geeinigt haben.</p><dl class=\"rules\"><dt>Aufschlag diagonal (&raquo;Acker&laquo;)</dt><dd>Der Ball springt erst auf der eigenen Hälfte auf und muss danach auf der diagonal gegenüberliegenden Hälfte des Gegners aufkommen &mdash; wie im Doppel.</dd><dt>Aufschlagwechsel nach ")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var5 string
-			templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.ResolveAttributeValue("0 0 " + strconv.Itoa(v.Size) + " " + strconv.Itoa(v.Size))
+			templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(strconv.Itoa(ServeEvery(v.PointsToWin)))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `qr.templ`, Line: 26, Col: 73}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `rules.templ`, Line: 40, Col: 68}
 			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var5)
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "\" role=\"img\" aria-label=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, " Punkten</dt><dd>Wer aufschlägt, schlägt ")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var6 string
-			templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.ResolveAttributeValue("QR-Code für " + v.Target)
+			templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(strconv.Itoa(ServeEvery(v.PointsToWin)))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `qr.templ`, Line: 28, Col: 44}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `rules.templ`, Line: 43, Col: 72}
 			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var6)
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "\" shape-rendering=\"crispEdges\"><title>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, " Punkte am Stück auf &mdash; egal, wer sie holt. Danach wechselt der Aufschlag.</dd><dt>Zwei Punkte Abstand</dt><dd>Ein Satz geht bis ")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var7 string
-			templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs("QR-Code für " + v.Target)
+			templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(strconv.Itoa(v.PointsToWin))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `qr.templ`, Line: 31, Col: 40}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `rules.templ`, Line: 49, Col: 52}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "</title><rect width=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, ". Steht es ")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var8 string
-			templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.ResolveAttributeValue(strconv.Itoa(v.Size))
+			templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinStringErrs(strconv.Itoa(DeuceFrom(v.PointsToWin)))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `qr.templ`, Line: 35, Col: 39}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `rules.templ`, Line: 50, Col: 45}
 			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var8)
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var8))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "\" height=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, ":")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var9 string
-			templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.ResolveAttributeValue(strconv.Itoa(v.Size))
+			templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinStringErrs(strconv.Itoa(DeuceFrom(v.PointsToWin)))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `qr.templ`, Line: 35, Col: 71}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `rules.templ`, Line: 50, Col: 88}
 			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var9)
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "\" fill=\"#fff\"></rect> <path d=\"")
+			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var9))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			var templ_7745c5c3_Var10 string
-			templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.ResolveAttributeValue(v.Path)
-			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `qr.templ`, Line: 36, Col: 21}
-			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var10)
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "\" fill=\"#000\"></path></svg><figcaption>")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			var templ_7745c5c3_Var11 string
-			templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.JoinStringErrs(v.Target)
-			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `qr.templ`, Line: 38, Col: 26}
-			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var11))
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "</figcaption></figure><ol class=\"sheet-steps\"><li>Code mit der Handykamera scannen.</li><li>Beim ersten Mal einmalig den eigenen Namen eintragen.</li><li>Gegner wählen, Sätze eintragen, <strong>Eintragen</strong> drücken.</li></ol><p class=\"sheet-note muted\">Danach bestätigt der Gegner das Ergebnis — erst dann zählt es für die Wertung.</p><p class=\"sheet-back no-print\"><a href=\"/rules\">Zu den Regeln</a> <a href=\"/\">Zurück zur Startseite</a></p></article>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, ", geht er weiter, bis jemand zwei Punkte vorn liegt &mdash; und der Aufschlag wechselt dann nach jedem Punkt.</dd><dt>Netzroller beim Aufschlag wird wiederholt</dt><dd>Berührt der Aufschlag das Netz und kommt trotzdem gültig auf, zählt er nicht. Derselbe Spieler schlägt noch einmal auf.</dd></dl><p class=\"sheet-note muted\">Ergebnis danach eintragen &mdash; der QR-Aushang daneben führt direkt hin.</p><p class=\"sheet-back no-print\"><a href=\"/qr\">Zum QR-Aushang</a> <a href=\"/\">Zurück zur Startseite</a></p></article>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			return nil
 		})
-		templ_7745c5c3_Err = Layout("QR-Aushang", v.Header).Render(templ.WithChildren(ctx, templ_7745c5c3_Var2), templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = Layout("Regeln", v.Header).Render(templ.WithChildren(ctx, templ_7745c5c3_Var2), templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

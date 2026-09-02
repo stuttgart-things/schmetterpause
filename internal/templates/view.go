@@ -146,6 +146,18 @@ type QRSheetView struct {
 	Size int
 }
 
+// RulesSheetView is the printable sheet of house rules.
+//
+// It carries the target score rather than assuming it: two of the four rules
+// are statements about a number the entry form lets people pick, and the
+// sheet derives them from the same helpers instead of spelling them out. A
+// printed sheet that contradicts the form is how a rule gets argued about at
+// the table.
+type RulesSheetView struct {
+	Header      HeaderView
+	PointsToWin int
+}
+
 // IndexView is everything the start page renders. Bundled rather than passed
 // as four parameters so adding a section later does not touch every caller.
 type IndexView struct {
@@ -615,17 +627,20 @@ type ProfileView struct {
 const paddleColours = 7
 
 // The pages that belong to nobody rather than to a player: the kiosk stands
-// at the table, the list is everybody's, and the sheet goes on a wall. They
-// get a colour too, but a fixed one — a blade that comes up different on every
-// reload reads as something broken rather than as decoration.
+// at the table, the list is everybody's, and the two sheets go on a wall.
+// They get a colour too, but a fixed one — a blade that comes up different on
+// every reload reads as something broken rather than as decoration.
 //
-// These three are the widest-apart triple in the palette, no pair closer than
-// dE 73.2, so the pages are told apart at a glance. Which page got which is
-// arbitrary; that it never changes is not.
+// The first three are the widest-apart triple in the palette, no pair closer
+// than dE 73.2. The rules sheet came later and took what was left furthest
+// from all three, dE 42.8 — closer than the triple, and still the best of the
+// four remaining colours. Which page got which is arbitrary; that it never
+// changes is not.
 const (
 	PaddleKiosk     = "paddle-0" // Hellblau
 	PaddleMatchList = "paddle-3" // Moosgrün
 	PaddleSheet     = "paddle-4" // Pink
+	PaddleRules     = "paddle-6" // Stahl
 )
 
 // PaddleClass is the blade colour a player's mascot carries, as a class the
