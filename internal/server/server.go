@@ -132,6 +132,7 @@ func (s *Server) routes() http.Handler {
 	page.Handle("POST /tournaments/{id}/edit",
 		auth.RequirePlayer(http.HandlerFunc(s.handleEditTournament)))
 	page.HandleFunc("GET /qr", s.handleQRSheet)
+	page.HandleFunc("GET /rules", s.handleRulesSheet)
 	// Who may act for other people (docs/adr/0008). Behind the flag itself:
 	// the list is the record of who holds power over other people's records,
 	// and that is not a public page.

@@ -47,12 +47,13 @@ templ Layout(title string, header HeaderView) {
 				<a href="/standings">Rangliste</a>
 				<a href="/statistics">Statistik</a>
 				<a href="/tournaments">Turniere</a>
-				// The tools, set apart at the right end: a sheet to print and
-				// a page to look something up, neither of them somewhere
+				// The tools, set apart at the right end: two sheets to print
+				// and a page to look something up, none of them somewhere
 				// anybody goes between two matches. Set apart rather than
 				// pinned to a corner — a fixed element would sit over the
 				// entry form exactly where a thumb goes.
 				<span class="mainnav-tools">
+					<a href="/rules">Regeln</a>
 					<a href="/qr">QR-Aushang</a>
 					<a href="/info">Info</a>
 					if header.IsAdmin {
