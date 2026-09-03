@@ -511,43 +511,59 @@ echo "generated code: up to date"
 const verifyScript = `
 set -eu
 
+# curl built against libpsl refuses to hand a cookie back to a host whose name
+# has no dot in it (curl#3676), and a Dagger service binding is a single label:
+# "app". Every check below that carries a session would quietly run as a
+# stranger — which is what it did, on every branch at once, the day the tool
+# image picked up a newer curl. The version is not pinned here on purpose;
+# what is fixed instead is the assumption that made an unpinned curl matter.
+#
+# So the checks talk to "app.verify", a name with a dot that no suffix list has
+# ever heard of, and curl is told where that actually is. A defaults file
+# rather than a flag repeated on seventy call sites; CURL_HOME rather than
+# HOME, because curl reads it first and it does not depend on who the image
+# says we are. If it were ever not read, the first request would fail loudly
+# rather than the session checks failing quietly.
+export CURL_HOME=/root
+printf 'connect-to = "app.verify:8080:app:8080"\n' > "$CURL_HOME/.curlrc"
+
 echo "== /healthz =="
 i=0
 while [ $i -lt 60 ]; do
-	curl -fsS http://app:8080/healthz >/dev/null 2>&1 && break
+	curl -fsS http://app.verify:8080/healthz >/dev/null 2>&1 && break
 	i=$((i + 1))
 	sleep 1
 done
-curl -fsS http://app:8080/healthz
+curl -fsS http://app.verify:8080/healthz
 
 echo "== /readyz: migrations applied, database reachable =="
 i=0
 while [ $i -lt 60 ]; do
-	curl -fsS http://app:8080/readyz >/dev/null 2>&1 && break
+	curl -fsS http://app.verify:8080/readyz >/dev/null 2>&1 && break
 	i=$((i + 1))
 	sleep 1
 done
-if ! curl -fsS http://app:8080/readyz; then
+if ! curl -fsS http://app.verify:8080/readyz; then
 	echo "readyz never became ready"
-	curl -sS -i http://app:8080/readyz || true
+	curl -sS -i http://app.verify:8080/readyz || true
 	exit 1
 fi
 
 echo "== start page: templates are embedded =="
-curl -fsS http://app:8080/ | grep -q "Schmetterpause" || {
+curl -fsS http://app.verify:8080/ | grep -q "Schmetterpause" || {
 	echo "start page missing expected content"
 	exit 1
 }
 
 echo "== static assets: HTMX is embedded =="
-size=$(curl -fsS http://app:8080/static/js/htmx.min.js | wc -c)
+size=$(curl -fsS http://app.verify:8080/static/js/htmx.min.js | wc -c)
 [ "$size" -gt 1000 ] || {
 	echo "htmx.min.js missing or empty ($size bytes)"
 	exit 1
 }
 
 echo "== fonts: embedded and served =="
-size=$(curl -fsS http://app:8080/static/fonts/space-grotesk-latin.woff2 | wc -c)
+size=$(curl -fsS http://app.verify:8080/static/fonts/space-grotesk-latin.woff2 | wc -c)
 [ "$size" -gt 10000 ] || {
 	echo "the display font is missing or empty ($size bytes)"
 	exit 1
@@ -556,7 +572,7 @@ size=$(curl -fsS http://app:8080/static/fonts/space-grotesk-latin.woff2 | wc -c)
 echo "== mark: the icons are embedded and are really images =="
 icon=$(mktemp)
 for path in /static/img/mark-32.png /static/img/mark-180.png /favicon.ico; do
-	curl -fsS "http://app:8080$path" > "$icon" || {
+	curl -fsS "http://app.verify:8080$path" > "$icon" || {
 		echo "$path is not served"
 		exit 1
 	}
@@ -576,7 +592,7 @@ done
 # The mascot is a vector now, and it is inlined into the pages rather than
 # linked — so it is checked as text, and where it actually has to appear.
 mascot=$(mktemp)
-curl -fsS "http://app:8080/static/img/mascot.svg" > "$mascot" || {
+curl -fsS "http://app.verify:8080/static/img/mascot.svg" > "$mascot" || {
 	echo "the mascot is not served"
 	exit 1
 }
@@ -589,7 +605,7 @@ head -c 5 "$mascot" | grep -q "<svg" || {
 # one would quietly cost the recolourable blade. See issue #64.
 for page in / /qr /rules; do
 	body=$(mktemp)
-	curl -fsS "http://app:8080$page" > "$body"
+	curl -fsS "http://app.verify:8080$page" > "$body"
 	grep -q "var(--paddle, #c82828)" "$body" || {
 		echo "$page does not carry the mascot inline"
 		exit 1
@@ -601,14 +617,14 @@ for page in / /qr /rules; do
 done
 
 echo "== mark: the top bar shows it =="
-curl -fsS http://app:8080/ | grep -q "class=\"brand-logo\"" || {
+curl -fsS http://app.verify:8080/ | grep -q "class=\"brand-logo\"" || {
 	echo "the mark is missing from the top bar"
 	exit 1
 }
 
 echo "== HTMX fragment: handler, repository and database =="
 status=$(mktemp)
-curl -fsS http://app:8080/fragments/status > "$status"
+curl -fsS http://app.verify:8080/fragments/status > "$status"
 grep -q ">erreichbar<" "$status" || {
 	echo "status fragment does not report the database as reachable"
 	cat "$status"
@@ -628,7 +644,7 @@ done
 echo "== session: a browser is recognised again =="
 cookies=$(mktemp)
 
-curl -fsS -c "$cookies" -X POST http://app:8080/players \
+curl -fsS -c "$cookies" -X POST http://app.verify:8080/players \
 	--data-urlencode "display_name=Verify Anna" | grep -q "Verify Anna" || {
 	echo "joining did not name the player back"
 	exit 1
@@ -644,9 +660,13 @@ grep -q schmetterpause_session "$cookies" || {
 # the top bar, and it is rendered server-side — a name that only turns up
 # once a fragment has loaded would pass a test and flicker for a player.
 home=$(mktemp)
-curl -fsS -b "$cookies" http://app:8080/ > "$home"
+curl -fsS -b "$cookies" http://app.verify:8080/ > "$home"
 grep -q "class=\"whoami-name\"" "$home" || {
 	echo "the top bar does not say who this is"
+	# Almost always the cookie rather than the page: printed here because
+	# without it this line says only that something is wrong somewhere.
+	echo "-- cookie jar --"
+	cat "$cookies"
 	exit 1
 }
 grep -q ">Verify Anna</a>" "$home" || {
@@ -655,14 +675,14 @@ grep -q ">Verify Anna</a>" "$home" || {
 }
 
 echo "== top bar: the badge counts what waits =="
-curl -fsS -b "$cookies" http://app:8080/fragments/whoami | grep -q "whoami-badge" && {
+curl -fsS -b "$cookies" http://app.verify:8080/fragments/whoami | grep -q "whoami-badge" && {
 	echo "a badge turned up with nothing waiting"
 	exit 1
 }
 
 echo "== set rows: as many as the mode can have, and no more =="
 form=$(mktemp)
-curl -fsS -b "$cookies" "http://app:8080/fragments/sets?sets_prefix=entry&best_of=3&points_to_win=11" > "$form"
+curl -fsS -b "$cookies" "http://app.verify:8080/fragments/sets?sets_prefix=entry&best_of=3&points_to_win=11" > "$form"
 grep -q "set_home_3" "$form" || {
 	echo "best-of-three is missing its third set"
 	exit 1
@@ -695,7 +715,7 @@ grep -q "je 2 Punkten" "$form" || {
 
 echo "== the head greets by name, the mascot stands beside it =="
 top=$(mktemp)
-curl -fsS -b "$cookies" http://app:8080/ > "$top"
+curl -fsS -b "$cookies" http://app.verify:8080/ > "$top"
 grep -q "page-mascot" "$top" || {
 	echo "the start page has no mascot"
 	exit 1
@@ -708,7 +728,7 @@ grep -q "<h1>Hallo, Verify Anna</h1>" "$top" || {
 # Without the out-of-band swap the greeting stays on the app's name until the
 # page is reloaded, which is the one moment nobody does.
 fresh=$(mktemp)
-curl -fsS -c "$fresh" -X POST http://app:8080/players \
+curl -fsS -c "$fresh" -X POST http://app.verify:8080/players \
 	--data-urlencode "display_name=Verify Ella" > "$top"
 grep -q "id=\"page-head\"" "$top" || {
 	echo "joining does not send the greeting back"
@@ -737,7 +757,7 @@ grep -q "hx-post=\"/matches\"" "$top" || {
 }
 
 # Nobody recognised: the heading names the app rather than greeting a stranger.
-curl -fsS http://app:8080/ > "$top"
+curl -fsS http://app.verify:8080/ > "$top"
 grep -q "<h1>Büro-Tischtennis</h1>" "$top" || {
 	echo "the start page does not introduce itself to a browser it does not know"
 	exit 1
@@ -762,7 +782,7 @@ paddle_of() {
 	tr " " "\n" < "$1" | grep -o "paddle-[0-6]" | head -1
 }
 
-curl -fsS -b "$cookies" http://app:8080/ > "$top"
+curl -fsS -b "$cookies" http://app.verify:8080/ > "$top"
 mine=$(paddle_of "$top")
 [ -n "$mine" ] || {
 	echo "the start page mascot carries no colour for a recognised player"
@@ -773,7 +793,7 @@ mine=$(paddle_of "$top")
 # from the ranking, which has a page of its own — on the start page the only
 # /players/ link is the reader's own name in the top bar.
 ranking=$(mktemp)
-curl -fsS -b "$cookies" http://app:8080/standings > "$ranking"
+curl -fsS -b "$cookies" http://app.verify:8080/standings > "$ranking"
 pid=$(tr "<" "\n" < "$ranking" | grep "a href=\"/players/" | head -1 \
 	| sed "s|.*players/\([0-9a-f-]*\)\".*|\1|")
 [ -n "$pid" ] || {
@@ -781,7 +801,7 @@ pid=$(tr "<" "\n" < "$ranking" | grep "a href=\"/players/" | head -1 \
 	exit 1
 }
 own=$(mktemp)
-curl -fsS -b "$cookies" "http://app:8080/players/$pid" > "$own"
+curl -fsS -b "$cookies" "http://app.verify:8080/players/$pid" > "$own"
 [ "$(paddle_of "$own")" = "$mine" ] || {
 	echo "the profile shows $(paddle_of "$own") where the start page shows $mine"
 	exit 1
@@ -790,7 +810,7 @@ curl -fsS -b "$cookies" "http://app:8080/players/$pid" > "$own"
 # Nobody recognised: no colour on the start page, and the blade keeps its red
 # rather than picking one at random.
 anon=$(mktemp)
-curl -fsS http://app:8080/ > "$anon"
+curl -fsS http://app.verify:8080/ > "$anon"
 if [ -n "$(paddle_of "$anon")" ]; then
 	echo "the start page hands a colour to a browser nobody is recognised in"
 	exit 1
@@ -800,13 +820,13 @@ fi
 # page's and not the reader's, so it has to be the same signed in and out —
 # a blade that comes up different on every reload reads as a fault.
 for page in /matches /qr /rules; do
-	curl -fsS "http://app:8080$page" > "$anon"
+	curl -fsS "http://app.verify:8080$page" > "$anon"
 	page_colour=$(paddle_of "$anon")
 	[ -n "$page_colour" ] || {
 		echo "$page has no colour at all"
 		exit 1
 	}
-	curl -fsS -b "$cookies" "http://app:8080$page" > "$anon"
+	curl -fsS -b "$cookies" "http://app.verify:8080$page" > "$anon"
 	[ "$(paddle_of "$anon")" = "$page_colour" ] || {
 		echo "$page shows $page_colour signed out and $(paddle_of "$anon") signed in"
 		exit 1
@@ -815,7 +835,7 @@ done
 
 echo "== score columns: each one says whose it is =="
 sides=$(mktemp)
-curl -fsS -b "$cookies" "http://app:8080/fragments/sets?sets_prefix=entry&best_of=3&points_to_win=11" > "$sides"
+curl -fsS -b "$cookies" "http://app.verify:8080/fragments/sets?sets_prefix=entry&best_of=3&points_to_win=11" > "$sides"
 grep -q ">Du<" "$sides" || {
 	echo "the left score column is not named"
 	cat "$sides"
@@ -838,7 +858,7 @@ echo "== the script is not held for an hour =="
 # A deployment replaces the HTML at once and a cached script not at all, and
 # the old script against new markup is a feature that is drawn and does not
 # work. Seen once, hence the check.
-cache=$(curl -fsS -o /dev/null -D - http://app:8080/static/js/app.js | tr -d "\r" \
+cache=$(curl -fsS -o /dev/null -D - http://app.verify:8080/static/js/app.js | tr -d "\r" \
 	| grep -i "^cache-control:" | cut -d" " -f2-)
 [ "$cache" = "no-cache" ] || {
 	echo "app.js is served with Cache-Control: $cache, expected no-cache"
@@ -846,7 +866,7 @@ cache=$(curl -fsS -o /dev/null -D - http://app:8080/static/js/app.js | tr -d "\r
 }
 
 echo "== a rejected form reaches the page =="
-size=$(curl -fsS http://app:8080/static/js/app.js | wc -c)
+size=$(curl -fsS http://app.verify:8080/static/js/app.js | wc -c)
 [ "$size" -gt 100 ] || {
 	# Without it HTMX drops the 422 that carries the reason, and a wrong
 	# score looks like a broken button.
@@ -856,7 +876,7 @@ size=$(curl -fsS http://app:8080/static/js/app.js | wc -c)
 
 echo "== ranking: nobody is on a position before anybody has played =="
 fresh=$(mktemp)
-curl -fsS -b "$cookies" http://app:8080/fragments/standings > "$fresh"
+curl -fsS -b "$cookies" http://app.verify:8080/fragments/standings > "$fresh"
 grep -q "rank-none" "$fresh" || {
 	echo "a player without a confirmed match was given a position"
 	cat "$fresh"
@@ -868,19 +888,19 @@ if grep -q "rank rank-1" "$fresh"; then
 fi
 
 echo "== ranking: the table scrolls, the page does not =="
-curl -fsS http://app:8080/standings | grep -q "class=\"table-scroll\" tabindex=\"0\"" || {
+curl -fsS http://app.verify:8080/standings | grep -q "class=\"table-scroll\" tabindex=\"0\"" || {
 	echo "the ranking is not in a focusable scroll box"
 	exit 1
 }
 
 echo "== match entry: an impossible result is refused, a real one is stored =="
 second=$(mktemp)
-curl -fsS -c "$second" -X POST http://app:8080/players \
+curl -fsS -c "$second" -X POST http://app.verify:8080/players \
 	--data-urlencode "display_name=Verify Bodo" >/dev/null
 
 # The opponent id is only reachable through the rendered picker, which is
 # also the point: it checks that the form offers a usable opponent at all.
-opponent=$(curl -fsS -b "$cookies" http://app:8080/fragments/match \
+opponent=$(curl -fsS -b "$cookies" http://app.verify:8080/fragments/match \
 	| tr "<" "\n" | grep "option value=\"" | grep -v "value=\"\"" | head -1 \
 	| sed "s/.*value=\"\([^\"]*\)\".*/\1/")
 [ -n "$opponent" ] || {
@@ -891,7 +911,7 @@ opponent=$(curl -fsS -b "$cookies" http://app:8080/fragments/match \
 # 11:10 is one clear point, not two. The Definition of Done is that the
 # refusal says why, so the status alone is not enough to check.
 refusal=$(mktemp)
-code=$(curl -sS -b "$cookies" -o "$refusal" -w "%{http_code}" -X POST http://app:8080/matches \
+code=$(curl -sS -b "$cookies" -o "$refusal" -w "%{http_code}" -X POST http://app.verify:8080/matches \
 	--data "opponent_id=$opponent&best_of=3&points_to_win=11&set_home_1=11&set_away_1=10")
 [ "$code" = "422" ] || {
 	echo "an impossible result was answered with $code, expected 422"
@@ -903,7 +923,7 @@ grep -q "zwei Punkte Vorsprung" "$refusal" || {
 	exit 1
 }
 
-curl -fsS -b "$cookies" -X POST http://app:8080/matches \
+curl -fsS -b "$cookies" -X POST http://app.verify:8080/matches \
 	--data "opponent_id=$opponent&best_of=3&points_to_win=11&set_home_1=11&set_away_1=9&set_home_2=12&set_away_2=10" \
 	| grep -q "bestätigen" || {
 	echo "a valid result was not stored as pending confirmation"
@@ -911,7 +931,7 @@ curl -fsS -b "$cookies" -X POST http://app:8080/matches \
 }
 
 # Anna entered one, so it now waits on Bodo and the badge says so.
-curl -fsS -b "$second" http://app:8080/fragments/whoami | grep -q "whoami-badge" || {
+curl -fsS -b "$second" http://app.verify:8080/fragments/whoami | grep -q "whoami-badge" || {
 	echo "the badge does not count the result waiting on the opponent"
 	exit 1
 }
@@ -922,7 +942,7 @@ echo "== refresh: one press catches up what somebody else did =="
 # badge polled and the list under it did not, so the bar could say one result
 # was waiting while the page below showed nothing.
 refresh=$(mktemp)
-curl -fsS -b "$second" http://app:8080/fragments/refresh > "$refresh"
+curl -fsS -b "$second" http://app.verify:8080/fragments/refresh > "$refresh"
 
 for region in "id=\"standings\"" "id=\"pending\"" "id=\"whoami\""; do
 	grep -q "$region" "$refresh" || {
@@ -949,7 +969,7 @@ grep -q "Zu best" "$refresh" || {
 }
 
 # Nothing waits on a reader nobody is recognised as.
-curl -fsS http://app:8080/fragments/refresh > "$refresh"
+curl -fsS http://app.verify:8080/fragments/refresh > "$refresh"
 grep -q "id=\"standings\"" "$refresh" || {
 	echo "a signed-out refresh does not even carry the ranking"
 	exit 1
@@ -960,7 +980,7 @@ if grep -q "id=\"pending\"" "$refresh"; then
 fi
 
 echo "== confirmation: only the opponent settles a result =="
-mid=$(curl -fsS -b "$second" http://app:8080/fragments/pending \
+mid=$(curl -fsS -b "$second" http://app.verify:8080/fragments/pending \
 	| tr "<" "\n" | grep "li id=\"pending-" | head -1 \
 	| sed "s/.*pending-\([0-9a-f-]*\)\".*/\1/")
 [ -n "$mid" ] || {
@@ -971,20 +991,20 @@ mid=$(curl -fsS -b "$second" http://app:8080/fragments/pending \
 # Anna entered it, so Anna cannot confirm it. A result confirmed by whoever
 # reported it is not confirmed at all, which is the point of the step.
 code=$(curl -sS -o /dev/null -w "%{http_code}" -b "$cookies" \
-	-X POST "http://app:8080/matches/$mid/confirm")
+	-X POST "http://app.verify:8080/matches/$mid/confirm")
 [ "$code" = "403" ] || {
 	echo "the reporter was allowed to confirm their own result: $code"
 	exit 1
 }
 
-curl -fsS -b "$second" -X POST "http://app:8080/matches/$mid/confirm" \
+curl -fsS -b "$second" -X POST "http://app.verify:8080/matches/$mid/confirm" \
 	| grep -q "Bestätigt" || {
 	echo "confirming did not settle the match"
 	exit 1
 }
 
 # 11:9 and 12:10 from equal ratings is +8, so the ranking has to have moved.
-curl -fsS -b "$second" http://app:8080/fragments/standings > /tmp/standings
+curl -fsS -b "$second" http://app.verify:8080/fragments/standings > /tmp/standings
 grep -q "1008" /tmp/standings || {
 	echo "the rating did not move after the confirmation"
 	cat /tmp/standings
@@ -1000,11 +1020,11 @@ grep -q "1:0" /tmp/standings || {
 
 echo "== correction: a contested result reaches a rating without SQL =="
 second_match=$(mktemp)
-curl -fsS -b "$cookies" -X POST http://app:8080/matches \
+curl -fsS -b "$cookies" -X POST http://app.verify:8080/matches \
 	--data "opponent_id=$opponent&best_of=3&points_to_win=11&set_home_1=11&set_away_1=8&set_home_2=11&set_away_2=6" \
 	> /dev/null
 
-mid2=$(curl -fsS -b "$second" http://app:8080/fragments/pending \
+mid2=$(curl -fsS -b "$second" http://app.verify:8080/fragments/pending \
 	| tr "<" "\n" | grep "li id=\"pending-" | grep -v "$mid" | head -1 \
 	| sed "s/.*pending-\([0-9a-f-]*\)\".*/\1/")
 [ -n "$mid2" ] || {
@@ -1014,7 +1034,7 @@ mid2=$(curl -fsS -b "$second" http://app:8080/fragments/pending \
 
 # Bodo says it was the other way round. The form has to come back filled in
 # with what Anna claimed, seen from his side.
-curl -fsS -b "$second" -X POST "http://app:8080/matches/$mid2/dispute" > "$second_match"
+curl -fsS -b "$second" -X POST "http://app.verify:8080/matches/$mid2/dispute" > "$second_match"
 grep -q "Strittig" "$second_match" || {
 	echo "disputing did not offer a correction"
 	cat "$second_match"
@@ -1027,21 +1047,21 @@ grep -q "set_home_1\" value=\"8\"" "$second_match" || {
 }
 
 # A contested match must survive a reload, or the correction is unreachable.
-curl -fsS -b "$cookies" http://app:8080/fragments/pending | grep -q "/correct" || {
+curl -fsS -b "$cookies" http://app.verify:8080/fragments/pending | grep -q "/correct" || {
 	echo "the reporter cannot reach the correction after a reload"
 	exit 1
 }
 
 # The corrected result is held to the same rules as a fresh one.
 code=$(curl -sS -b "$second" -o /dev/null -w "%{http_code}" \
-	-X POST "http://app:8080/matches/$mid2/correct" \
+	-X POST "http://app.verify:8080/matches/$mid2/correct" \
 	--data "best_of=3&points_to_win=11&set_home_1=11&set_away_1=10&set_home_2=11&set_away_2=9")
 [ "$code" = "422" ] || {
 	echo "an impossible correction was answered with $code, expected 422"
 	exit 1
 }
 
-curl -fsS -b "$second" -X POST "http://app:8080/matches/$mid2/correct" \
+curl -fsS -b "$second" -X POST "http://app.verify:8080/matches/$mid2/correct" \
 	--data "best_of=3&points_to_win=11&set_home_1=11&set_away_1=8&set_home_2=11&set_away_2=6" \
 	| grep -q "Korrigiert" || {
 	echo "the correction was not accepted"
@@ -1049,7 +1069,7 @@ curl -fsS -b "$second" -X POST "http://app:8080/matches/$mid2/correct" \
 }
 
 # Whoever corrected became the reporter, so the other one confirms.
-curl -fsS -b "$cookies" -X POST "http://app:8080/matches/$mid2/confirm" \
+curl -fsS -b "$cookies" -X POST "http://app.verify:8080/matches/$mid2/confirm" \
 	| grep -q "Bestätigt" || {
 	echo "the corrected result could not be confirmed"
 	exit 1
@@ -1057,7 +1077,7 @@ curl -fsS -b "$cookies" -X POST "http://app:8080/matches/$mid2/confirm" \
 
 # Anna won the first, Bodo the corrected second: back to level, and each with
 # one win and one loss.
-curl -fsS -b "$cookies" http://app:8080/fragments/standings > /tmp/standings2
+curl -fsS -b "$cookies" http://app.verify:8080/fragments/standings > /tmp/standings2
 grep -q "1:1" /tmp/standings2 || {
 	echo "the corrected result did not reach the ranking"
 	cat /tmp/standings2
@@ -1069,7 +1089,7 @@ echo "== kiosk: one machine enters for everybody =="
 # not a refusal — but it must not carry anything from behind it, and it must
 # not hand out a grant.
 door=$(mktemp)
-code=$(curl -sS -o "$door" -w "%{http_code}" -c "$door.jar" http://app:8080/kiosk)
+code=$(curl -sS -o "$door" -w "%{http_code}" -c "$door.jar" http://app.verify:8080/kiosk)
 [ "$code" = "200" ] || {
 	echo "the kiosk answered $code without a grant, expected the code form"
 	exit 1
@@ -1090,14 +1110,14 @@ if grep -q schmetterpause_kiosk "$door.jar"; then
 fi
 
 # A wrong code is refused, and the form is the way in.
-code=$(curl -sS -o /dev/null -w "%{http_code}" -X POST http://app:8080/kiosk/unlock -d code=nope)
+code=$(curl -sS -o /dev/null -w "%{http_code}" -X POST http://app.verify:8080/kiosk/unlock -d code=nope)
 [ "$code" = "401" ] || {
 	echo "a wrong code answered $code, expected 401"
 	exit 1
 }
 
 kiosk=$(mktemp)
-curl -fsS -c "$kiosk" -o /dev/null -X POST http://app:8080/kiosk/unlock \
+curl -fsS -c "$kiosk" -o /dev/null -X POST http://app.verify:8080/kiosk/unlock \
 	-d code=pipeline-only-kiosk-token
 grep -q schmetterpause_kiosk "$kiosk" || {
 	echo "the code did not unlock the kiosk"
@@ -1107,7 +1127,7 @@ grep -q schmetterpause_kiosk "$kiosk" || {
 # The query string is the same lock, kept for the operator who was handed a
 # link rather than a code.
 legacy=$(mktemp)
-curl -fsS -c "$legacy" -o /dev/null "http://app:8080/kiosk?token=pipeline-only-kiosk-token"
+curl -fsS -c "$legacy" -o /dev/null "http://app.verify:8080/kiosk?token=pipeline-only-kiosk-token"
 grep -q schmetterpause_kiosk "$legacy" || {
 	echo "the token in the query no longer unlocks the kiosk"
 	exit 1
@@ -1115,18 +1135,18 @@ grep -q schmetterpause_kiosk "$legacy" || {
 
 # A player created here must not sign the kiosk in as them.
 before=$(grep -c schmetterpause_session "$kiosk" || true)
-curl -fsS -b "$kiosk" -c "$kiosk" -X POST http://app:8080/kiosk/players \
+curl -fsS -b "$kiosk" -c "$kiosk" -X POST http://app.verify:8080/kiosk/players \
 	--data-urlencode "display_name=Kiosk Cara" > /dev/null
 after=$(grep -c schmetterpause_session "$kiosk" || true)
 [ "$before" = "$after" ] || {
 	echo "creating a player at the kiosk signed the kiosk in as them"
 	exit 1
 }
-curl -fsS -b "$kiosk" -X POST http://app:8080/kiosk/players \
+curl -fsS -b "$kiosk" -X POST http://app.verify:8080/kiosk/players \
 	--data-urlencode "display_name=Kiosk Dirk" > /dev/null
 
 kiosk_page=$(mktemp)
-curl -fsS -b "$kiosk" http://app:8080/kiosk > "$kiosk_page"
+curl -fsS -b "$kiosk" http://app.verify:8080/kiosk > "$kiosk_page"
 grep -q "page-mascot" "$kiosk_page" || {
 	echo "the kiosk has no mascot"
 	exit 1
@@ -1140,7 +1160,7 @@ dirk=$(tr "<" "\n" < "$kiosk_page" | grep "option value=\"" | grep "Kiosk Dirk" 
 # list, so the mistake is unavailable rather than punished after the fact.
 picker=$(mktemp)
 curl -fsS -b "$kiosk" -H "HX-Trigger: kiosk-home" \
-	"http://app:8080/fragments/sets?sets_prefix=kiosk&home_id=$cara&best_of=3" > "$picker"
+	"http://app.verify:8080/fragments/sets?sets_prefix=kiosk&home_id=$cara&best_of=3" > "$picker"
 grep -q "hx-swap-oob" "$picker" || {
 	echo "picking a player did not send the other list back"
 	cat "$picker"
@@ -1182,12 +1202,12 @@ both=$(mktemp)
 cat "$kiosk" "$cookies" > "$both"
 
 ttr_page_before=$(mktemp)
-curl -fsS -b "$kiosk" http://app:8080/kiosk > "$ttr_page_before"
+curl -fsS -b "$kiosk" http://app.verify:8080/kiosk > "$ttr_page_before"
 anna_before=$(ttr_of "$ttr_page_before" "Verify Anna")
 
 refused=$(mktemp)
 code=$(curl -sS -o "$refused" -w "%{http_code}" -b "$both" -X POST \
-	http://app:8080/kiosk/matches \
+	http://app.verify:8080/kiosk/matches \
 	--data "home_id=$anna&away_id=$dirk&best_of=3&points_to_win=11&set_home_1=11&set_away_1=2")
 [ "$code" = "422" ] || {
 	echo "the kiosk accepted a match from a browser signed in as one of the players ($code)"
@@ -1199,7 +1219,7 @@ grep -q "Startseite" "$refused" || {
 }
 
 ttr_page_after=$(mktemp)
-curl -fsS -b "$kiosk" http://app:8080/kiosk > "$ttr_page_after"
+curl -fsS -b "$kiosk" http://app.verify:8080/kiosk > "$ttr_page_after"
 anna_after=$(ttr_of "$ttr_page_after" "Verify Anna")
 [ "$anna_before" = "$anna_after" ] || {
 	echo "the refused entry still moved a rating: $anna_before -> $anna_after"
@@ -1208,13 +1228,13 @@ anna_after=$(ttr_of "$ttr_page_after" "Verify Anna")
 
 # Nobody is left to ask, so the result counts on submit.
 recorded=$(mktemp)
-curl -fsS -b "$kiosk" -X POST http://app:8080/kiosk/matches \
+curl -fsS -b "$kiosk" -X POST http://app.verify:8080/kiosk/matches \
 	--data "home_id=$cara&away_id=$dirk&best_of=3&points_to_win=11&set_home_1=11&set_away_1=9&set_home_2=11&set_away_2=7" > "$recorded"
 grep -q "Kiosk Cara schlägt Kiosk Dirk 2:0" "$recorded" || {
 	echo "the kiosk did not record the result"
 	exit 1
 }
-curl -fsS -b "$kiosk" http://app:8080/kiosk > "$kiosk_page"
+curl -fsS -b "$kiosk" http://app.verify:8080/kiosk > "$kiosk_page"
 rated=$(ttr_of "$kiosk_page" "Kiosk Cara")
 [ "$rated" = "1008" ] || {
 	echo "the kiosk result did not reach the ranking: Kiosk Cara stands at ${rated:-nothing}, expected 1008"
@@ -1236,7 +1256,7 @@ if grep -q "/undo" "$kiosk_page"; then
 fi
 
 undone=$(mktemp)
-curl -fsS -b "$kiosk" -X POST "http://app:8080$undo" > "$undone"
+curl -fsS -b "$kiosk" -X POST "http://app.verify:8080$undo" > "$undone"
 grep -q "Zurückgenommen" "$undone" || {
 	echo "the kiosk did not take the result back"
 	cat "$undone"
@@ -1256,7 +1276,7 @@ beaten=$(ttr_of "$undone" "Kiosk Dirk")
 
 # Twice would put the ratings back a second time from a match that no longer
 # exists, so the second attempt has to be refused rather than repeated.
-code=$(curl -sS -b "$kiosk" -o /dev/null -w "%{http_code}" -X POST "http://app:8080$undo")
+code=$(curl -sS -b "$kiosk" -o /dev/null -w "%{http_code}" -X POST "http://app.verify:8080$undo")
 [ "$code" = "422" ] || {
 	echo "taking the same result back twice was answered with $code, expected 422"
 	exit 1
@@ -1265,7 +1285,7 @@ code=$(curl -sS -b "$kiosk" -o /dev/null -w "%{http_code}" -X POST "http://app:8
 echo "== match list: what happened, read from the winner's side =="
 # One more kiosk result, and this time the away player wins. Whoever was
 # picked first is an artefact of the form, so the row has to turn around.
-curl -fsS -b "$kiosk" -X POST http://app:8080/kiosk/matches \
+curl -fsS -b "$kiosk" -X POST http://app.verify:8080/kiosk/matches \
 	--data "home_id=$cara&away_id=$dirk&best_of=3&points_to_win=11&set_home_1=2&set_away_1=11&set_home_2=4&set_away_2=11" \
 	| grep -q "Kiosk Dirk schlägt Kiosk Cara 2:0" || {
 	echo "the second kiosk result was not recorded"
@@ -1277,7 +1297,7 @@ curl -fsS -b "$kiosk" -X POST http://app:8080/kiosk/matches \
 # people. "alle" is a value the picker sends rather than the absence of one,
 # which is exactly what makes asking possible.
 list=$(mktemp)
-curl -fsS -b "$cookies" "http://app:8080/matches?spieler=alle" > "$list"
+curl -fsS -b "$cookies" "http://app.verify:8080/matches?spieler=alle" > "$list"
 
 winner=$(tr "<" "\n" < "$list" | grep -n "Kiosk Dirk" | head -1 | cut -d: -f1)
 loser=$(tr "<" "\n" < "$list" | grep -n "Kiosk Cara" | head -1 | cut -d: -f1)
@@ -1302,7 +1322,7 @@ fi
 # Without asking, a recognised reader gets their own. The picker is the whole
 # point: "alle" above and this here are two different pages from one address.
 own=$(mktemp)
-curl -fsS -b "$cookies" http://app:8080/matches > "$own"
+curl -fsS -b "$cookies" http://app.verify:8080/matches > "$own"
 grep -q "Alles, was Verify Anna gespielt hat" "$own" || {
 	echo "the match list does not start with the reader's own matches"
 	cat "$own"
@@ -1324,7 +1344,7 @@ grep -q "Verify Anna" "$list" || {
 }
 
 # A page nothing leads to is a page nobody finds.
-curl -fsS -b "$cookies" http://app:8080/ | grep -q "href=\"/matches\"" || {
+curl -fsS -b "$cookies" http://app.verify:8080/ | grep -q "href=\"/matches\"" || {
 	echo "the start page does not link to the match list"
 	exit 1
 }
@@ -1336,7 +1356,7 @@ pid=$(tr "<" "\n" < /tmp/standings | grep "a href=\"/players/" | head -1 \
 	echo "the ranking links to no profile"
 	exit 1
 }
-curl -fsS -b "$cookies" "http://app:8080/players/$pid" > /tmp/profile
+curl -fsS -b "$cookies" "http://app.verify:8080/players/$pid" > /tmp/profile
 grep -q "<polyline" /tmp/profile || {
 	echo "the profile shows no rating history"
 	exit 1
@@ -1349,9 +1369,9 @@ grep -q "Verlauf" /tmp/profile || {
 
 echo "== QR sheet: the code points back at this host =="
 sheet=$(mktemp)
-curl -fsS -b "$cookies" http://app:8080/qr > "$sheet"
+curl -fsS -b "$cookies" http://app.verify:8080/qr > "$sheet"
 
-grep -q "http://app:8080/#match" "$sheet" || {
+grep -q "http://app.verify:8080/#match" "$sheet" || {
 	echo "the sheet does not print the address it was reached at"
 	cat "$sheet"
 	exit 1
@@ -1371,15 +1391,15 @@ runs=$(tr "M" "\n" < "$sheet" | grep -c "^[0-9]* [0-9]*h[0-9]*v1h-[0-9]*z" || tr
 }
 
 # The anchor the code carries has to exist on the page it lands on.
-curl -fsS -b "$cookies" http://app:8080/ | grep -q "id=\"match\"" || {
+curl -fsS -b "$cookies" http://app.verify:8080/ | grep -q "id=\"match\"" || {
 	echo "the start page has no #match for a scan to land on"
 	exit 1
 }
 
 # Behind a TLS-terminating proxy the connection is plain and the printed
 # address must not be.
-curl -fsS -H "X-Forwarded-Proto: https" http://app:8080/qr \
-	| grep -q "https://app:8080/#match" || {
+curl -fsS -H "X-Forwarded-Proto: https" http://app.verify:8080/qr \
+	| grep -q "https://app.verify:8080/#match" || {
 	echo "the sheet ignored the forwarded scheme"
 	exit 1
 }
