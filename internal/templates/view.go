@@ -741,6 +741,11 @@ type MatchListView struct {
 // which side "home" was, which is an artefact of the form and not of the
 // evening. Read winner-first, every row is a sentence — "Anna beat Bodo 2:0,
 // and it was worth eight points".
+//
+// The rating change is the exception, and follows the subject below rather
+// than the winner. Everything else on the row stays winner-first, because the
+// two name columns are headed "Sieger" and "Gegner" and flipping the sides
+// under those headings would make the table lie.
 type MatchListRow struct {
 	PlayedAt   string
 	WinnerName string
@@ -751,13 +756,29 @@ type MatchListRow struct {
 	LoserSets  int
 	// Sets are the individual scores, also from the winner's side.
 	Sets []SetScore
-	// Delta is what the win was worth, and HasDelta is false for anything
-	// that has not been settled. For a single match the two players' changes
-	// are equal and opposite, so the winner's number says it all.
+	// Delta is the subject's rating change, and HasDelta is false for
+	// anything that has not been settled.
+	//
+	// The subject's and not the winner's: a list somebody is reading about
+	// themselves has to say their rating got worse, in their own sign. The
+	// two changes in a match are equal and opposite, so the winner's number
+	// carries the same information — but it carries it as a gain on a row
+	// the reader lost, which is the opposite of what they are looking up.
+	// Where there is no subject it falls back to the winner, which is what
+	// this always was.
 	Delta    int
 	HasDelta bool
-	Pending  bool
-	Disputed bool
+	// SubjectName is whose change that is, for a reader who cannot see the
+	// colour. Empty where the row falls back to the winner.
+	SubjectName string
+	// SubjectWon and SubjectLost mark the row from the subject's side, and
+	// are both false where the list has no subject, where they did not play
+	// this match, or where the result is not settled — a pending match has a
+	// winner on the table and has still counted for nothing, so marking it
+	// as won would claim more than the result does.
+	SubjectWon, SubjectLost bool
+	Pending                 bool
+	Disputed                bool
 }
 
 // SparkView is the rating history as ready-to-draw geometry. The arithmetic

@@ -112,8 +112,8 @@ func (s *Server) matchListView(ctx context.Context, asked *matchFilter) (templat
 	if err != nil {
 		return templates.MatchListView{}, err
 	}
-	// Keyed by match and player: the winner's change is the one to show, and
-	// which player that is only becomes clear from the sets below.
+	// Keyed by match and player: which of the two changes a row shows depends
+	// on whose list this is, and both are needed to answer that.
 	deltas := make(map[uuid.UUID]map[uuid.UUID]int, len(changes))
 	for _, c := range changes {
 		if deltas[c.MatchID] == nil {
@@ -138,18 +138,34 @@ func (s *Server) matchListView(ctx context.Context, asked *matchFilter) (templat
 	if !filter.all {
 		view.Filter.Name = names[filter.player]
 	}
+	// Whose side the rows are read from. The player the list is filtered to,
+	// and otherwise the reader — who, on the unfiltered list, is in some of
+	// the rows and not in others. Rows they did not play stay winner-first,
+	// which is what every row was before.
+	subject := uuid.Nil
+	if !filter.all {
+		subject = filter.player
+	} else if self, ok := auth.PlayerID(ctx); ok {
+		subject = self
+	}
 	for _, m := range matches {
-		view.Matches = append(view.Matches, matchListRow(m, names, deltas[m.ID]))
+		view.Matches = append(view.Matches, matchListRow(m, names, deltas[m.ID], subject))
 	}
 	return view, nil
 }
 
-// matchListRow turns one stored match into a row read from the winner's side.
+// matchListRow turns one stored match into a row read from the winner's side,
+// with the rating change read from the subject's.
 //
 // The winner comes from the set scores, not from the rating change: a match
 // that is still waiting for its opponent has no rating change at all, and it
 // still has a winner on the table.
-func matchListRow(m domain.Match, names map[uuid.UUID]string, deltas map[uuid.UUID]int) templates.MatchListRow {
+func matchListRow(
+	m domain.Match,
+	names map[uuid.UUID]string,
+	deltas map[uuid.UUID]int,
+	subject uuid.UUID,
+) templates.MatchListRow {
 	var homeSets, awaySets int
 	for _, set := range m.Sets {
 		if set.HomePoints > set.AwayPoints {
@@ -190,7 +206,20 @@ func matchListRow(m domain.Match, names map[uuid.UUID]string, deltas map[uuid.UU
 		row.Sets = append(row.Sets, templates.SetScore{Own: own, Opponent: other})
 	}
 
-	if delta, ok := deltas[winner]; ok {
+	// The subject where they played in this match, the winner otherwise. Not
+	// the winner's number flipped: the two changes are equal and opposite for
+	// a single match today, and reading the loser's own row keeps that an
+	// observation about the rating rules rather than an assumption this page
+	// makes about them.
+	side := winner
+	if subject != uuid.Nil && (subject == m.HomeID || subject == m.AwayID) {
+		side = subject
+		row.SubjectName = names[subject]
+		settled := !row.Pending && !row.Disputed
+		row.SubjectWon = settled && subject == winner
+		row.SubjectLost = settled && subject == loser
+	}
+	if delta, ok := deltas[side]; ok {
 		row.Delta, row.HasDelta = delta, true
 	}
 	return row

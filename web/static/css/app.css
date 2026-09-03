@@ -455,6 +455,19 @@ h1 {
    phone never shows because a phone has no hover. */
 .matches td.score { white-space: nowrap; }
 
+/* Won or lost, from the side of whoever the list is about — the player it is
+   filtered to, or the reader on the unfiltered one. A stripe down the edge of
+   the row rather than a tinted row: the TTR cell in the same row is already
+   green or red, and two coloured surfaces argue with each other.
+
+   Only on settled rows. A pending result has a winner on the table and has
+   counted for nothing, and a green edge would say otherwise.
+
+   Nothing depends on seeing it: the row names the winner and the loser in the
+   two columns it opens with. */
+.matches tbody tr.match-won td:first-child { box-shadow: inset 3px 0 0 var(--ok); }
+.matches tbody tr.match-lost td:first-child { box-shadow: inset 3px 0 0 var(--bad); }
+
 .state {
 	display: inline-block;
 	margin-left: 0.4rem;
