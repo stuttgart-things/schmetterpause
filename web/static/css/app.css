@@ -1247,6 +1247,16 @@ tr.self td { background: color-mix(in srgb, var(--accent) 8%, transparent); }
    diagonal drawn as a blank rather than a zero nobody earned. */
 .matrix td { font-variant-numeric: tabular-nums; text-align: center; }
 .matrix-head { font-weight: 500; }
+
+/* Ahead or behind, in the two colours a rating change already uses. The
+   figure only, at the ordinary weight: a dozen players make well over a
+   hundred of these, and a hundred bold green cells read as an alarm rather
+   than as a record. A level one stays plain — 2:2 is nothing to mark.
+
+   Nothing is carried by the colour alone: the numbers say the same thing, and
+   a screen reader gets them spelled out. */
+.matrix .record-up { color: var(--ok); }
+.matrix .record-down { color: var(--bad); }
 .matrix-self { background: color-mix(in srgb, currentColor 8%, transparent); }
 
 /* A link that starts something, so it carries a button's weight — but the

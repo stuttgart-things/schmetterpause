@@ -82,6 +82,8 @@ func (s *Server) statisticsView(ctx context.Context) (templates.StatisticsView, 
 		for j, cell := range row.Cells {
 			out.Cells = append(out.Cells, templates.StatisticsCell{
 				Record:   record(cell),
+				Won:      cell.Won,
+				Lost:     cell.Lost,
 				Self:     cell.Self,
 				Opponent: names[j],
 			})

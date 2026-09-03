@@ -1112,15 +1112,57 @@ type StatisticsRow struct {
 	Won, Lost int
 }
 
+// Record is the row's total, in the same shape as the cells beside it.
+func (r StatisticsRow) Record() string { return strconv.Itoa(r.Won) + ":" + strconv.Itoa(r.Lost) }
+
+// Spoken is that total in words. Same reason as StatisticsCell.Spoken.
+func (r StatisticsRow) Spoken() string { return "insgesamt " + spokenRecord(r.Won, r.Lost) }
+
+// Ahead and Behind are how the total is coloured, and are both false at a
+// level record — which is a state, not a result to mark in either direction.
+func (r StatisticsRow) Ahead() bool  { return r.Won > r.Lost }
+func (r StatisticsRow) Behind() bool { return r.Won < r.Lost }
+
 // StatisticsCell is one player's record against one other.
 type StatisticsCell struct {
 	// Record is "3:1" — wins to losses — or empty when these two have not
 	// met. Empty rather than "0:0", because a pairing that never happened
 	// and one that ended goalless are different things.
 	Record string
+	// Won and Lost are what Record is made of, kept as numbers so the cell
+	// can be coloured and read aloud without parsing its own text back.
+	Won, Lost int
 	// Self marks the diagonal, which is drawn as a blank rather than a zero.
 	Self bool
 	// Opponent labels the cell for a screen reader, which cannot see which
 	// column it is in.
 	Opponent string
+}
+
+// Ahead and Behind decide the colour of a cell. Level is neither: 2:2 is not
+// a result to celebrate or to mourn.
+func (c StatisticsCell) Ahead() bool  { return c.Won > c.Lost }
+func (c StatisticsCell) Behind() bool { return c.Won < c.Lost }
+
+// Spoken states the cell in words.
+//
+// "3:1" is a set score by every convention the rest of this app follows —
+// which is exactly how somebody read the matrix — and hearing one where a
+// match record is meant is that same misreading with no heading nearby to
+// correct it.
+func (c StatisticsCell) Spoken() string {
+	return "gegen " + c.Opponent + ": " + spokenRecord(c.Won, c.Lost)
+}
+
+// spokenRecord is "3 Siege, 1 Niederlage", counted rather than abbreviated.
+func spokenRecord(won, lost int) string {
+	return plural(won, "Sieg", "Siege") + ", " + plural(lost, "Niederlage", "Niederlagen")
+}
+
+func plural(n int, one, many string) string {
+	word := many
+	if n == 1 {
+		word = one
+	}
+	return strconv.Itoa(n) + " " + word
 }
