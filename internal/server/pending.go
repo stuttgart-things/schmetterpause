@@ -63,7 +63,7 @@ func (s *Server) handleConfirmMatch(w http.ResponseWriter, r *http.Request) {
 	}
 
 	s.render(w, r, templates.Settled(view))
-	s.refreshAfterRuling(w, r, self)
+	s.refreshAfterRuling(w, r, self, settlement.Match.TournamentID)
 }
 
 // handleDisputeMatch contests a match the player does not agree with, and
@@ -89,7 +89,9 @@ func (s *Server) handleDisputeMatch(w http.ResponseWriter, r *http.Request) {
 	}
 
 	s.render(w, r, templates.PendingItem(view))
-	s.refreshAfterRuling(w, r, self)
+	// No tournament table to refresh: a disputed result was pending, and a
+	// pending result was never in the table to begin with.
+	s.refreshAfterRuling(w, r, self, nil)
 }
 
 // handleCorrectMatch replaces the result of a contested match and hands it
@@ -125,7 +127,9 @@ func (s *Server) handleCorrectMatch(w http.ResponseWriter, r *http.Request) {
 				OwnSets:      ownSets,
 				OpponentSets: opponentSets,
 			}))
-			s.refreshAfterRuling(w, r, self)
+			// Same as a dispute: a corrected result goes back to pending,
+			// so it has not entered any table yet.
+			s.refreshAfterRuling(w, r, self, nil)
 			return
 		case errors.As(err, &rejection):
 			msg = describeRejection(err)
@@ -221,7 +225,19 @@ func (s *Server) reportRulingError(w http.ResponseWriter, r *http.Request, err e
 
 // refreshAfterRuling swaps the ranking, the pending list and the badge out of
 // band, since a ruling changes all three.
-func (s *Server) refreshAfterRuling(w http.ResponseWriter, r *http.Request, self uuid.UUID) {
+//
+// tournamentID is the draw the match belonged to, or nil. Where there is one
+// the tournament table goes with them: a confirmation given on that page has
+// just put the result into it, and a table that still says otherwise reads as
+// a confirmation that did not take. The swaps that find no target on the page
+// the request came from simply land nowhere, which is what lets one response
+// serve both pages.
+func (s *Server) refreshAfterRuling(
+	w http.ResponseWriter,
+	r *http.Request,
+	self uuid.UUID,
+	tournamentID *uuid.UUID,
+) {
 	s.render(w, r, templates.WhoamiOOB(s.headerView(r.Context())))
 
 	table, err := s.standingsView(r.Context())
@@ -237,6 +253,19 @@ func (s *Server) refreshAfterRuling(w http.ResponseWriter, r *http.Request, self
 		return
 	}
 	s.render(w, r, templates.PendingListOOB(pending))
+
+	if tournamentID == nil {
+		return
+	}
+	// kiosk=false: this is the copy a player reads, which is the only one
+	// that could have carried the confirmation.
+	tour, err := s.tournamentView(r.Context(), *tournamentID, false)
+	if err != nil {
+		s.log.ErrorContext(r.Context(), "loading the tournament failed",
+			"tournament_id", *tournamentID, "error", err)
+		return
+	}
+	s.render(w, r, templates.TournamentTableOOB(tour))
 }
 
 // pendingListView describes the results waiting on this player, told from

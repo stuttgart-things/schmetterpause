@@ -882,6 +882,10 @@ type TournamentFormView struct {
 	// CountPoints is whether the table is counted in points. An opt-in, so
 	// the plain reading of an unticked box is the default here.
 	CountPoints bool
+	// SideA and SideB are what the two ends of the table are called. Empty
+	// is not a refusal but the default: a feature meant to save time at the
+	// table must not cost time at the form (docs/adr/0013).
+	SideA, SideB string
 	// Error explains why the last attempt was refused, in words somebody can
 	// act on. Empty on a fresh form.
 	Error string
@@ -915,6 +919,8 @@ func NewTournamentFormView(candidates []TournamentCandidate) TournamentFormView 
 		PointsToWin: match.PointsToEleven,
 		Format:      string(domain.TournamentRoundRobin),
 		Rated:       true,
+		SideA:       domain.DefaultSideA,
+		SideB:       domain.DefaultSideB,
 	}
 }
 
@@ -1036,6 +1042,20 @@ type TournamentView struct {
 	// CountPoints is whether the table is shown in points. It changes the
 	// column and not the order (internal/tournament.PointsPerWin).
 	CountPoints bool
+	// SideA and SideB are the two ends of the table by name. The schedule
+	// prints them behind the two players of every pairing; which is whose is
+	// the pairing itself, so there is nothing per pairing to carry
+	// (docs/adr/0013).
+	SideA, SideB string
+	// Pending is what waits on the reader's word — all of it, not only this
+	// tournament's.
+	//
+	// The whole list rather than a filtered one, and that is the point: it
+	// is the same section as on the start page, with the same id, so the
+	// out-of-band swap after a ruling lands here unchanged. A filtered copy
+	// would refill itself with everything on the first confirmation, which
+	// is worse than showing everything from the start.
+	Pending PendingListView
 	// Started is whether a result is in. From the first one the field is
 	// fixed — and the section that says so is exactly the section that
 	// disappears then, which left the rule invisible at the moment it

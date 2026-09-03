@@ -167,7 +167,7 @@ templ tournamentFields(v TournamentFormView, maxPlayers int, action, mode string
 			// The final is a property of the draw, so it sits in the same
 			// block as the rounds. Directly above "Wer spielt mit?" it read
 			// as the first line of the player list.
-			<label class="chip">
+			<label class="pick">
 				<input
 					type="checkbox"
 					name="with_final"
@@ -187,7 +187,7 @@ templ tournamentFields(v TournamentFormView, maxPlayers int, action, mode string
 		// (docs/adr/0012).
 		<div class="row">
 			<label for="tournament-unrated">Wertung</label>
-			<label class="chip">
+			<label class="pick">
 				<input
 					id="tournament-unrated"
 					type="checkbox"
@@ -199,7 +199,7 @@ templ tournamentFields(v TournamentFormView, maxPlayers int, action, mode string
 			</label>
 			// An opt-in, unlike the one beside it: its default is off, so an
 			// unticked box means what it looks like it means.
-			<label class="chip">
+			<label class="pick">
 				<input
 					type="checkbox"
 					name="count_points"
@@ -208,6 +208,35 @@ templ tournamentFields(v TournamentFormView, maxPlayers int, action, mode string
 				/>
 				<span>Tabelle in Punkten (3 pro Sieg)</span>
 			</label>
+		</div>
+		// The two ends of the table. Not a fixed pair of names: the table
+		// does not always stand in the same room (docs/adr/0013). Left
+		// empty they stay A and B, which still says the ends are told
+		// apart.
+		<div class="row">
+			<label for="tournament-side-a">Seiten</label>
+			<span class="row-group">
+				<input
+					id="tournament-side-a"
+					class="side-name"
+					name="side_a"
+					type="text"
+					maxlength="20"
+					placeholder="A"
+					value={ v.SideA }
+					aria-label="Name der einen Tischseite"
+				/>
+				<span class="row-word">und</span>
+				<input
+					class="side-name"
+					name="side_b"
+					type="text"
+					maxlength="20"
+					placeholder="B"
+					value={ v.SideB }
+					aria-label="Name der anderen Tischseite"
+				/>
+			</span>
 		</div>
 		// Carried so the redrawn button below can say the right thing
 		// without the fragment being told a label to print.
@@ -220,7 +249,7 @@ templ tournamentFields(v TournamentFormView, maxPlayers int, action, mode string
 				@TournamentCount(v.Size(maxPlayers), nil)
 			</legend>
 			for _, c := range v.Candidates {
-				<label class="chip">
+				<label class="pick">
 					<input
 						type="checkbox"
 						name="player_id"
@@ -326,7 +355,12 @@ templ TournamentPage(v TournamentView) {
 				</details>
 			</section>
 		}
-		<section class="card">
+		// Before the reading, because it is the one thing on this page that
+		// somebody has to *do*. It used to live only on the start page, so
+		// confirming a result somebody had just entered at the table meant
+		// leaving the tournament to look for it.
+		@PendingList(v.Pending)
+		<section id="tournament-table" class="card">
 			<h2>Tabelle</h2>
 			@tournamentTable(v.Table, v.CountPoints)
 			if len(v.Table) > 0 {
@@ -408,6 +442,20 @@ templ tieBreaks(shared, points bool) {
 	</details>
 }
 
+// TournamentTableOOB is the table marked for an out-of-band swap, for the
+// response to a confirmation given on the tournament page: the result has
+// just entered the table, and a table that still says otherwise reads as a
+// confirmation that did not take.
+templ TournamentTableOOB(v TournamentView) {
+	<section id="tournament-table" class="card" hx-swap-oob="true">
+		<h2>Tabelle</h2>
+		@tournamentTable(v.Table, v.CountPoints)
+		if len(v.Table) > 0 {
+			@tieBreaks(v.SharedRank(), v.CountPoints)
+		}
+	</section>
+}
+
 templ tournamentTable(rows []TournamentTableRow, points bool) {
 	if len(rows) == 0 {
 		<p class="muted">Noch keine Teilnehmer.</p>
@@ -462,6 +510,13 @@ templ tournamentRounds(v TournamentView) {
 	if len(v.Rounds) == 0 {
 		<p class="muted">Zu wenige Teilnehmer für einen Spielplan.</p>
 	} else {
+		// Once, above the list, rather than behind every pairing: with
+		// twenty-eight of them the sentence would be the schedule. What
+		// stands behind each name is only the side (docs/adr/0013).
+		<p class="muted">
+			Der Erstgenannte beginnt auf { v.SideA } und hat den ersten
+			Aufschlag &mdash; im Turnier wird er nicht ausgespielt.
+		</p>
 		for _, round := range v.Rounds {
 			if round.Final {
 				<h3>Finale</h3>
@@ -477,7 +532,11 @@ templ tournamentRounds(v TournamentView) {
 			<ul class="pairings">
 				for _, p := range round.Pairings {
 					<li>
-						<span class="pairing-names">{ p.HomeName } – { p.AwayName }</span>
+						<span class="pairing-names">
+							{ p.HomeName } <span class="side">{ v.SideA }</span>
+							&ndash;
+							{ p.AwayName } <span class="side">{ v.SideB }</span>
+						</span>
 						if p.Played() {
 							<span class="pairing-result">{ p.Result }</span>
 							if p.Pending {

@@ -15,14 +15,26 @@ import (
 
 type tournamentRepo struct{ q queryer }
 
+// sideOr keeps the column's promise that a side name is never empty. A caller
+// that says nothing means the default, and the check constraint would
+// otherwise turn that into a failed insert rather than an "A".
+func sideOr(name, fallback string) string {
+	if name == "" {
+		return fallback
+	}
+	return name
+}
+
 const tournamentColumns = `id, name, format, status, best_of, points_to_win, ` +
-	`with_final, rated, count_points, created_by, created_at, closed_at`
+	`with_final, rated, count_points, side_a, side_b, ` +
+	`created_by, created_at, closed_at`
 
 func (r tournamentRepo) Create(ctx context.Context, t domain.Tournament) (domain.Tournament, error) {
 	const insert = `
 		insert into tournaments (name, format, status, best_of, points_to_win,
-		                         with_final, rated, count_points, created_by)
-		values ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+		                         with_final, rated, count_points,
+		                         side_a, side_b, created_by)
+		values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
 		returning ` + tournamentColumns
 
 	format := t.Format
@@ -46,7 +58,9 @@ func (r tournamentRepo) Create(ctx context.Context, t domain.Tournament) (domain
 
 	created, err := scanTournament(r.q.QueryRow(ctx, insert,
 		t.Name, string(format), string(status), mode.BestOf, mode.PointsToWin,
-		t.WithFinal, t.Rated, t.CountPoints, t.CreatedBy))
+		t.WithFinal, t.Rated, t.CountPoints,
+		sideOr(t.SideA, domain.DefaultSideA), sideOr(t.SideB, domain.DefaultSideB),
+		t.CreatedBy))
 	if err != nil {
 		return domain.Tournament{}, fmt.Errorf("create tournament: %w", err)
 	}
@@ -201,7 +215,8 @@ func scanTournament(row pgx.Row) (domain.Tournament, error) {
 		status string
 	)
 	err := row.Scan(&t.ID, &t.Name, &format, &status, &t.BestOf, &t.PointsToWin,
-		&t.WithFinal, &t.Rated, &t.CountPoints, &t.CreatedBy, &t.CreatedAt, &t.ClosedAt)
+		&t.WithFinal, &t.Rated, &t.CountPoints, &t.SideA, &t.SideB,
+		&t.CreatedBy, &t.CreatedAt, &t.ClosedAt)
 	if err != nil {
 		return domain.Tournament{}, err
 	}
@@ -238,14 +253,16 @@ func (r tournamentRepo) Replace(ctx context.Context, t domain.Tournament) (domai
 	const update = `
 		update tournaments
 		set name = $2, format = $3, best_of = $4, points_to_win = $5,
-		    with_final = $6, rated = $7, count_points = $8
+		    with_final = $6, rated = $7, count_points = $8,
+		    side_a = $9, side_b = $10
 		where id = $1
 		  and not exists (select 1 from matches m where m.tournament_id = tournaments.id)
 		returning ` + tournamentColumns
 
 	updated, err := scanTournament(r.q.QueryRow(ctx, update,
 		t.ID, t.Name, string(t.Format), t.BestOf, t.PointsToWin, t.WithFinal,
-		t.Rated, t.CountPoints))
+		t.Rated, t.CountPoints,
+		sideOr(t.SideA, domain.DefaultSideA), sideOr(t.SideB, domain.DefaultSideB)))
 	switch {
 	case errors.Is(err, pgx.ErrNoRows):
 		// Either it is gone or somebody entered a result while this form was

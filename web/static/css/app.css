@@ -1283,6 +1283,9 @@ tr.self td { background: color-mix(in srgb, var(--accent) 8%, transparent); }
 .field-count { color: var(--accent-text); letter-spacing: 0.04em; }
 
 /* A name to tap, not a checkbox to hit.
+   Called .pick and not .chip: .chip is the profile page's metadata pill, and
+   sharing the name meant sharing its padding, background and border — the
+   label drew one pill and the span inside it drew a second, offset one.
    This form is filled in on a phone standing next to the table, where a 13px
    box with 30px of air around it is a miss waiting to happen. The box is
    still there — hidden the way .sr-only hides things, so it keeps the click
@@ -1291,14 +1294,14 @@ tr.self td { background: color-mix(in srgb, var(--accent) 8%, transparent); }
    Painted from the sibling selector rather than :has(), which needs no
    fallback anywhere, and from CSS rather than a line of JavaScript
    (invariant 7). */
-.chip {
+.pick {
 	display: inline-flex;
 	align-items: center;
 	min-width: 0;
 	cursor: pointer;
 }
 
-.chip input {
+.pick input {
 	position: absolute;
 	width: 1px;
 	height: 1px;
@@ -1307,7 +1310,7 @@ tr.self td { background: color-mix(in srgb, var(--accent) 8%, transparent); }
 	clip-path: inset(50%);
 }
 
-.chip > span {
+.pick > span {
 	display: inline-block;
 	padding: 0.5rem 0.9rem;
 	border: 1px solid var(--line);
@@ -1320,14 +1323,14 @@ tr.self td { background: color-mix(in srgb, var(--accent) 8%, transparent); }
 	line-height: 1.2;
 }
 
-.chip input:checked + span {
+.pick input:checked + span {
 	background: var(--accent);
 	border-color: var(--accent);
 	color: var(--accent-ink);
 }
 
 /* A keyboard has to see what a thumb sees. */
-.chip input:focus-visible + span { outline: 2px solid var(--accent); outline-offset: 2px; }
+.pick input:focus-visible + span { outline: 2px solid var(--accent); outline-offset: 2px; }
 
 /* Two pickers and the words between them are one setting, so they wrap as
    one. Loose in the row, the second picker lands at the left margin under
@@ -1378,6 +1381,19 @@ tr.self td { background: color-mix(in srgb, var(--accent) 8%, transparent); }
 	text-transform: uppercase;
 	color: var(--muted);
 }
+
+/* Which end of the table somebody starts on, behind their name in the
+   schedule. Mono and quiet: it is a label on a name, not a second name. */
+.side {
+	font-family: var(--font-mono);
+	font-size: 0.72rem;
+	letter-spacing: 0.06em;
+	color: var(--muted);
+}
+
+/* Two ends, two short words. Wide enough for "Fenster" and no wider — the
+   row is a setting, not a sentence. */
+.side-name { width: 7rem; }
 
 .tournament-list { list-style: none; padding: 0; }
 .tournament-list li { display: flex; flex-wrap: wrap; gap: 0.6rem; align-items: baseline; padding: 0.3rem 0; }
