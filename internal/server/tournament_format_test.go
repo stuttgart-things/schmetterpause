@@ -170,8 +170,23 @@ func TestTheSizeSentenceFollowsTheForm(t *testing.T) {
 		})
 	}
 
-	if body := listBody(t, h, "/fragments/tournament-size"); !strings.Contains(body, "Mindestens zwei") {
-		t.Error("an empty field does not ask for names")
+	// An empty field says why the button is off. How many are ticked and how
+	// many may be is the tally beside the question, which rides along with
+	// the same response.
+	body := listBody(t, h, "/fragments/tournament-size")
+	if !strings.Contains(body, "sobald zwei Namen angekreuzt sind") {
+		t.Errorf("an empty field does not say what is missing: %s", body)
+	}
+	if !strings.Contains(body, `id="tournament-count"`) || !strings.Contains(body, "0 von höchstens") {
+		t.Errorf("the response does not carry the tally: %s", body)
+	}
+	if !strings.Contains(body, `id="tournament-submit"`) || !strings.Contains(body, "disabled") {
+		t.Errorf("the response does not hold the button shut: %s", body)
+	}
+	// Both of those are swaps for elements the response is not replacing
+	// wholesale, so they have to say so.
+	if strings.Count(body, `hx-swap-oob="true"`) != 2 {
+		t.Errorf("the extra fragments are not marked out of band: %s", body)
 	}
 }
 

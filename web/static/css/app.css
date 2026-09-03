@@ -75,6 +75,12 @@
 	--fg: #ececff;
 	--muted: #8f8fb8;
 
+	/* Between the two: text that is secondary but still meant to be read at
+	   length, rather than a label somebody glances at. --muted is right for
+	   a caption and too quiet for a sentence explaining a rule on a sheet
+	   somebody reads from a step back. 9.1:1 against --bg. */
+	--fg-soft: #c6c6e4;
+
 	/* One action colour. Everything clickable and consequential is this
 	   violet, everything else stays out of the way.
 
@@ -607,6 +613,18 @@ button {
 
 button:hover { filter: brightness(1.1); }
 
+/* A button that will not do anything has to look like it. Not the accent at
+   reduced opacity — that reads as the page still loading; a flat outline
+   reads as "not yet". The cursor says the same thing on the way in. */
+button:disabled {
+	background: transparent;
+	color: var(--muted);
+	border-color: var(--line);
+	cursor: not-allowed;
+}
+
+button:disabled:hover { filter: none; }
+
 button.secondary {
 	background: transparent;
 	color: var(--fg);
@@ -1100,11 +1118,13 @@ tr.self td { background: color-mix(in srgb, var(--accent) 8%, transparent); }
 
 .sheet-note { margin: 1.25rem 0 0; }
 
+.sheet-next { margin: 2.25rem 0 0; }
+
 .sheet-back {
 	display: flex;
 	justify-content: center;
 	gap: 1.5rem;
-	margin: 2.5rem 0 0;
+	margin: 1rem 0 0;
 	font-family: var(--font-mono);
 	font-size: 0.75rem;
 	letter-spacing: 0.06em;
@@ -1124,17 +1144,27 @@ tr.self td { background: color-mix(in srgb, var(--accent) 8%, transparent); }
 	margin: 0;
 }
 
-.rules dt {
-	font-weight: 700;
-	font-size: 1.1rem;
+/* A rule is a block with the accent down its edge, which is what ties this
+   page to the rest of the app — it was the one page with no violet on it at
+   all. The rule below the print block drops both again for paper. */
+.rules > div {
+	padding-left: 0.9rem;
+	border-left: 2px solid var(--accent);
 	margin-top: 1.5rem;
 }
 
-.rules dt:first-of-type { margin-top: 0; }
+.rules > div:first-child { margin-top: 0; }
 
+.rules dt {
+	font-weight: 700;
+	font-size: 1.1rem;
+}
+
+/* Not --muted: this is the sentence that says what the rule means, and at
+   arm's length on a wall it has to be readable rather than recessive. */
 .rules dd {
 	margin: 0.3rem 0 0;
-	color: var(--muted);
+	color: var(--fg-soft);
 }
 
 /* The sheet exists to be printed, so print is the case that has to look
@@ -1159,7 +1189,10 @@ tr.self td { background: color-mix(in srgb, var(--accent) 8%, transparent); }
 	   sheet is read from further away than a screen, and a line running the
 	   full width of A4 is one the eye loses its place in. */
 	.rules { max-width: 15cm; }
-	.rules dt { font-size: 16pt; margin-top: 1.1cm; }
+	/* No accent bar on paper: a violet edge on every rule is toner spent on
+	   decoration, and the heading already separates them. */
+	.rules > div { border-left: 0; padding-left: 0; margin-top: 1.1cm; }
+	.rules dt { font-size: 16pt; }
 	.rules dd { font-size: 13pt; color: #000; }
 
 	.qr svg { width: 12cm; border: none; }
@@ -1222,8 +1255,113 @@ tr.self td { background: color-mix(in srgb, var(--accent) 8%, transparent); }
 .pairing-result { font-variant-numeric: tabular-nums; font-weight: 600; }
 .pairing-entry { display: flex; flex-wrap: wrap; gap: 0.35rem; align-items: center; }
 .pairing-set { display: inline-flex; gap: 0.2rem; align-items: center; }
-.tournament-field { display: flex; flex-wrap: wrap; gap: 0.75rem; border: 0; padding: 0; }
-.tournament-field .tick { display: inline-flex; gap: 0.35rem; align-items: center; }
+.tournament-field { display: flex; flex-wrap: wrap; gap: 0.5rem; border: 0; padding: 0; }
+
+/* The question above the names, in the same mono as the labels down the left
+   of the form. It was the one heading in sentence case and bold, which read
+   as a different kind of thing than "NAME" and "MODUS" above it. */
+.tournament-field legend {
+	display: flex;
+	align-items: baseline;
+	gap: 0.6rem;
+	width: 100%;
+	padding: 0 0 0.5rem;
+	font-family: var(--font-mono);
+	font-size: 0.72rem;
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+	color: var(--muted);
+}
+
+/* How many are ticked, beside the question rather than under the answer. */
+.field-count { color: var(--accent-text); letter-spacing: 0.04em; }
+
+/* A name to tap, not a checkbox to hit.
+   This form is filled in on a phone standing next to the table, where a 13px
+   box with 30px of air around it is a miss waiting to happen. The box is
+   still there — hidden the way .sr-only hides things, so it keeps the click
+   through the label, its place in the tab order and its meaning to a screen
+   reader — and the pill beside it is what the thumb lands on.
+   Painted from the sibling selector rather than :has(), which needs no
+   fallback anywhere, and from CSS rather than a line of JavaScript
+   (invariant 7). */
+.chip {
+	display: inline-flex;
+	align-items: center;
+	min-width: 0;
+	cursor: pointer;
+}
+
+.chip input {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	margin: -1px;
+	overflow: hidden;
+	clip-path: inset(50%);
+}
+
+.chip > span {
+	display: inline-block;
+	padding: 0.5rem 0.9rem;
+	border: 1px solid var(--line);
+	border-radius: 999px;
+	font-family: var(--font-ui);
+	font-size: 0.9rem;
+	letter-spacing: normal;
+	text-transform: none;
+	color: var(--fg);
+	line-height: 1.2;
+}
+
+.chip input:checked + span {
+	background: var(--accent);
+	border-color: var(--accent);
+	color: var(--accent-ink);
+}
+
+/* A keyboard has to see what a thumb sees. */
+.chip input:focus-visible + span { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* Two pickers and the words between them are one setting, so they wrap as
+   one. Loose in the row, the second picker lands at the left margin under
+   the label column on a phone and reads as a setting of its own. */
+.row-group {
+	display: inline-flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 0.5rem;
+}
+
+/* The words that hold the two mode pickers together into one sentence. */
+.row-word {
+	font-size: 0.9rem;
+	color: var(--muted);
+}
+/* The order a level table is decided in. Quiet while it is background, and
+   the summary carries the same weight as the muted lines around it — the
+   table is what somebody came to read. */
+.tiebreak { margin-top: 0.9rem; }
+
+.tiebreak summary {
+	font-family: var(--font-mono);
+	font-size: 0.72rem;
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+	color: var(--muted);
+	cursor: pointer;
+}
+
+.tiebreak ol {
+	margin: 0.7rem 0 0;
+	padding-left: 1.3rem;
+	color: var(--muted);
+	font-size: 0.9rem;
+}
+
+.tiebreak li { margin: 0.15rem 0; }
+.tiebreak p { font-size: 0.9rem; margin: 0.7rem 0 0; }
+
 .tournament-list { list-style: none; padding: 0; }
 .tournament-list li { display: flex; flex-wrap: wrap; gap: 0.6rem; align-items: baseline; padding: 0.3rem 0; }
 
