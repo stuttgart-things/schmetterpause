@@ -194,6 +194,27 @@ func TestComputeCountsWhitewashes(t *testing.T) {
 	}
 }
 
+// A match played over one set is left out, and that is the point of the
+// number rather than a rounding of it: there, winning without dropping a set
+// is what winning is. An office that plays mostly one-setters would otherwise
+// read "41 of 50 one-sided", which describes the mode and not the matches.
+func TestASingleSetMatchIsNoWhitewash(t *testing.T) {
+	p := ids(2)
+	one := confirmed(p[0], p[1], [2]int{11, 2})
+	one.BestOf = 1
+
+	if got := stats.Compute([]domain.Match{one}); got.Whitewashes != 0 {
+		t.Errorf("Whitewashes = %d, want 0 for a single-set match", got.Whitewashes)
+	}
+
+	// The same score over three sets still is one, so the exclusion is about
+	// the mode and not about the number of sets that happened to be played.
+	three := confirmed(p[0], p[1], [2]int{11, 2}, [2]int{11, 4})
+	if got := stats.Compute([]domain.Match{three}); got.Whitewashes != 1 {
+		t.Errorf("Whitewashes = %d, want 1 for a 2:0 in best of three", got.Whitewashes)
+	}
+}
+
 // Before the first confirmed match every figure is zero rather than a number
 // nobody earned. The page has to be able to say "nothing yet".
 func TestComputeOnNothingIsAllZero(t *testing.T) {
