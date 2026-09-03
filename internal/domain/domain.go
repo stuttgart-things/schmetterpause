@@ -197,6 +197,14 @@ type Tournament struct {
 	// names for four combinations grows quadratically at the next variant
 	// (docs/adr/0011).
 	WithFinal bool
+	// Rated is whether results here move ratings at all (docs/adr/0012).
+	//
+	// True unless somebody says otherwise: a tournament is played for the
+	// rating unless it is the Friday afternoon kind, and the default has to
+	// be the one nobody has to think about. Decided once, for the whole
+	// draw, and changeable only while nobody has played — the same line
+	// every other setting of a tournament is held to.
+	Rated bool
 	// Players are the participants in draw order. The order is the draw:
 	// the circle method is deterministic over it, so the pairings are a
 	// function of this slice rather than a stored copy that could drift.

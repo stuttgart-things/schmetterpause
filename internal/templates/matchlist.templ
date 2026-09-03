@@ -160,9 +160,15 @@ templ matchState(pending, disputed bool) {
 templ matchDelta(pending, disputed, hasDelta bool, delta int) {
 	if pending || disputed {
 		<span class="muted" aria-label="noch keine Wertung">&ndash;</span>
+	} else if !hasDelta {
+		// Settled and no history row: a match in a tournament that does not
+		// count (docs/adr/0012). settle writes both rows or neither, so the
+		// absence is the answer rather than a guess. "±0" below is for the
+		// ones that were rated and really did move nothing.
+		<span class="muted" aria-label="nicht gewertet">&ndash;</span>
 	} else if hasDelta && delta > 0 {
 		<span class="gain">+{ strconv.Itoa(delta) }</span>
-	} else if hasDelta && delta < 0 {
+	} else if delta < 0 {
 		<span class="loss">{ strconv.Itoa(delta) }</span>
 	} else {
 		<span class="muted">&plusmn;0</span>

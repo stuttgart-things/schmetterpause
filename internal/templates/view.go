@@ -539,9 +539,13 @@ type SettledView struct {
 	Won          bool
 	OwnSets      int
 	OpponentSets int
-	// Delta is the viewer's rating change, NewTTR where it left them.
+	// Delta is the viewer's rating change, NewTTR where it left them. Both
+	// are meaningless where Rated is false — a tournament that does not
+	// count moves nothing, and "0 TTR, jetzt 1000" claims a rating that held
+	// rather than one that was never touched (docs/adr/0012).
 	Delta  int
 	NewTTR int
+	Rated  bool
 }
 
 // StandingsView is the ranking.
@@ -846,6 +850,10 @@ type TournamentListRow struct {
 	// that names two tournaments and not the difference between them makes
 	// somebody open both.
 	Mode string
+	// Rated is whether it moves ratings. The list is where somebody decides
+	// which of two open tournaments to walk over to, so it is where the
+	// difference has to be visible (docs/adr/0012).
+	Rated bool
 	// Played is how many of its matches are settled, so a row in the past
 	// list can say whether it was finished or abandoned.
 	Played int
@@ -867,6 +875,10 @@ type TournamentFormView struct {
 	// rejection for the same reason the ticks do.
 	Format    string
 	WithFinal bool
+	// Rated is whether the evening moves ratings (docs/adr/0012). True
+	// unless somebody opts out, which is why the control is an opt-out: an
+	// unticked checkbox sends nothing, and nothing has to mean the default.
+	Rated bool
 	// Error explains why the last attempt was refused, in words somebody can
 	// act on. Empty on a fresh form.
 	Error string
@@ -899,6 +911,7 @@ func NewTournamentFormView(candidates []TournamentCandidate) TournamentFormView 
 		BestOf:      match.DefaultBestOf,
 		PointsToWin: match.PointsToEleven,
 		Format:      string(domain.TournamentRoundRobin),
+		Rated:       true,
 	}
 }
 
@@ -1013,6 +1026,10 @@ type TournamentView struct {
 	// what it is rather than leaving somebody to count rounds.
 	Format    string
 	WithFinal bool
+	// Rated is whether results here move ratings. A tournament nobody can
+	// see is unrated is the argument docs/adr/0012 exists to prevent, only
+	// later.
+	Rated bool
 	// OnKioskPath is whether this render is the copy served from under
 	// /kiosk. Without it the page cannot tell "you are on the wrong address"
 	// from "this device is not unlocked", and would offer the reader a link

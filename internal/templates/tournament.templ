@@ -46,6 +46,9 @@ templ tournamentRows(rows []TournamentListRow) {
 					{ strconv.Itoa(t.Played) } von { strconv.Itoa(t.Matches) } Spielen
 					&middot; { t.Mode }
 				</span>
+				if !t.Rated {
+					<span class="unrated">ohne Wertung</span>
+				}
 				if t.Empty {
 					// Only an untouched one. Deleting a tournament with
 					// results would leave them behind as casual matches —
@@ -174,6 +177,23 @@ templ tournamentFields(v TournamentFormView, maxPlayers int, action, mode string
 				<span>Finale zwischen den besten zwei</span>
 			</label>
 		</div>
+		// An opt-out rather than an opt-in, and not because the wording is
+		// nicer: an unticked checkbox sends nothing, so "nothing" has to
+		// mean the default, and the default is that a tournament counts
+		// (docs/adr/0012).
+		<div class="row">
+			<label for="tournament-unrated">Wertung</label>
+			<label class="chip">
+				<input
+					id="tournament-unrated"
+					type="checkbox"
+					name="unrated"
+					value="1"
+					checked?={ !v.Rated }
+				/>
+				<span>Zählt nicht für die Rangliste</span>
+			</label>
+		</div>
 		// Carried so the redrawn button below can say the right thing
 		// without the fragment being told a label to print.
 		<input type="hidden" name="form_mode" value={ mode }/>
@@ -214,6 +234,10 @@ templ TournamentPage(v TournamentView) {
 				{ TournamentFormatLabel(v.Format, v.WithFinal) } &middot;
 				{ TournamentModeLabel(v.BestOf, v.PointsToWin) } &middot;
 				{ strconv.Itoa(v.Played) } von { strconv.Itoa(v.Total) } Spielen gewertet.
+				if !v.Rated {
+					// Where somebody would otherwise find out afterwards.
+					<strong class="unrated">Zählt nicht für die Rangliste.</strong>
+				}
 				if !v.Open {
 					Das Turnier ist beendet.
 				} else if v.Done() {
