@@ -326,7 +326,12 @@ templ TournamentPage(v TournamentView) {
 				</details>
 			</section>
 		}
-		<section class="card">
+		// Before the reading, because it is the one thing on this page that
+		// somebody has to *do*. It used to live only on the start page, so
+		// confirming a result somebody had just entered at the table meant
+		// leaving the tournament to look for it.
+		@PendingList(v.Pending)
+		<section id="tournament-table" class="card">
 			<h2>Tabelle</h2>
 			@tournamentTable(v.Table, v.CountPoints)
 			if len(v.Table) > 0 {
@@ -406,6 +411,20 @@ templ tieBreaks(shared, points bool) {
 			&mdash; nicht das Los.
 		</p>
 	</details>
+}
+
+// TournamentTableOOB is the table marked for an out-of-band swap, for the
+// response to a confirmation given on the tournament page: the result has
+// just entered the table, and a table that still says otherwise reads as a
+// confirmation that did not take.
+templ TournamentTableOOB(v TournamentView) {
+	<section id="tournament-table" class="card" hx-swap-oob="true">
+		<h2>Tabelle</h2>
+		@tournamentTable(v.Table, v.CountPoints)
+		if len(v.Table) > 0 {
+			@tieBreaks(v.SharedRank(), v.CountPoints)
+		}
+	</section>
 }
 
 templ tournamentTable(rows []TournamentTableRow, points bool) {

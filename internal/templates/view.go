@@ -1036,6 +1036,15 @@ type TournamentView struct {
 	// CountPoints is whether the table is shown in points. It changes the
 	// column and not the order (internal/tournament.PointsPerWin).
 	CountPoints bool
+	// Pending is what waits on the reader's word — all of it, not only this
+	// tournament's.
+	//
+	// The whole list rather than a filtered one, and that is the point: it
+	// is the same section as on the start page, with the same id, so the
+	// out-of-band swap after a ruling lands here unchanged. A filtered copy
+	// would refill itself with everything on the first confirmation, which
+	// is worse than showing everything from the start.
+	Pending PendingListView
 	// Started is whether a result is in. From the first one the field is
 	// fixed — and the section that says so is exactly the section that
 	// disappears then, which left the rule invisible at the moment it

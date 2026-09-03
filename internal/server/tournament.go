@@ -962,6 +962,18 @@ func (s *Server) tournamentView(ctx context.Context, id uuid.UUID, kiosk bool) (
 	// rather than a record. Only for somebody signed in, because the two
 	// things it leads to — edit and delete — are.
 	view.Started = len(booked) > 0
+	if signedIn {
+		// The same list the start page shows, so a result entered at the
+		// table can be confirmed without leaving the tournament.
+		if pending, err := s.pendingListView(ctx, self); err == nil {
+			view.Pending = pending
+		} else {
+			// A page that cannot say what is waiting is still a page. The
+			// badge in the top bar polls and will say it a minute later.
+			s.log.ErrorContext(ctx, "loading the pending matches failed",
+				"tournament_id", id, "error", err)
+		}
+	}
 	if signedIn && tour.Open() && len(booked) == 0 {
 		players, err := s.store.Players().List(ctx)
 		if err != nil {
