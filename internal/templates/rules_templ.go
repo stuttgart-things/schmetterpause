@@ -152,7 +152,7 @@ func RulesSheet(v RulesSheetView) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, ", geht er weiter, bis jemand zwei Punkte vorn liegt &mdash; und der Aufschlag wechselt dann nach jedem Punkt.</dd></div><div><dt>Netzroller beim Aufschlag wird wiederholt</dt><dd>Berührt der Aufschlag das Netz und kommt trotzdem gültig auf, zählt er nicht. Derselbe Spieler schlägt noch einmal auf.</dd></div></dl><p class=\"sheet-note muted\">Ergebnis danach eintragen &mdash; der QR-Aushang daneben führt direkt hin.</p><p class=\"sheet-next no-print\"><a class=\"button-link\" href=\"/qr\">Zum QR-Aushang</a></p><p class=\"sheet-back no-print\"><a href=\"/\">Zurück zur Startseite</a></p></article>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, ", geht er weiter, bis jemand zwei Punkte vorn liegt &mdash; und der Aufschlag wechselt dann nach jedem Punkt.</dd></div><div><dt>Netzroller beim Aufschlag wird wiederholt</dt><dd>Berührt der Aufschlag das Netz und kommt trotzdem gültig auf, zählt er nicht. Derselbe Spieler schlägt noch einmal auf.</dd></div><div><dt>Kein zweiter Aufschlag</dt><dd>Anders als beim Tennis gibt es keinen zweiten Versuch. Bleibt der Aufschlag im Netz oder geht er darüber, ohne auf der Platte aufzukommen, geht der Punkt an den Gegner.</dd></div></dl><p class=\"sheet-note muted\">Ergebnis danach eintragen &mdash; der QR-Aushang daneben führt direkt hin.</p><p class=\"sheet-next no-print\"><a class=\"button-link\" href=\"/qr\">Zum QR-Aushang</a></p><p class=\"sheet-back no-print\"><a href=\"/\">Zurück zur Startseite</a></p></article>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

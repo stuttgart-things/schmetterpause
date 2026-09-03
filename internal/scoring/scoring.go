@@ -79,6 +79,12 @@ type Settlement struct {
 	// wrong that looks right.
 	HomeWon            bool
 	HomeSets, AwaySets int
+	// Rated is false for a match in a tournament that does not count
+	// (docs/adr/0012). The two changes are then both zero, and a caller that
+	// prints them without asking would say "±0" where nothing was computed —
+	// which reads as a rating that held rather than one that was never
+	// touched.
+	Rated bool
 }
 
 // Confirm settles a pending match and records the result.
@@ -244,23 +250,40 @@ func settle(ctx context.Context, tx repository.Store, m domain.Match, at time.Ti
 		return Settlement{}, fmt.Errorf("stored match %s is not a possible result: %w", m.ID, err)
 	}
 
-	homeChange, awayChange := ttr.RateMatch(home.TTR, away.TTR, outcome.HomeWon)
-
-	if err := tx.Players().UpdateTTR(ctx, home.ID, homeChange.After); err != nil {
-		return Settlement{}, err
-	}
-	if err := tx.Players().UpdateTTR(ctx, away.ID, awayChange.After); err != nil {
-		return Settlement{}, err
-	}
-
-	// Written before the status changes, so a failure here leaves the match
-	// pending rather than confirmed-but-unexplained.
-	err = tx.TTRHistory().Append(ctx, []domain.TTRChange{
-		{PlayerID: home.ID, MatchID: m.ID, TTRBefore: homeChange.Before, TTRAfter: homeChange.After},
-		{PlayerID: away.ID, MatchID: m.ID, TTRBefore: awayChange.Before, TTRAfter: awayChange.After},
-	})
+	rated, err := ratedMatch(ctx, tx, m)
 	if err != nil {
 		return Settlement{}, err
+	}
+
+	// A tournament that does not count still produces matches; it just moves
+	// nothing (docs/adr/0012). The match is confirmed either way — it was
+	// played, and it belongs in the table, the list and the statistics.
+	var homeChange, awayChange ttr.Change
+	if rated {
+		homeChange, awayChange = ttr.RateMatch(home.TTR, away.TTR, outcome.HomeWon)
+
+		if err := tx.Players().UpdateTTR(ctx, home.ID, homeChange.After); err != nil {
+			return Settlement{}, err
+		}
+		if err := tx.Players().UpdateTTR(ctx, away.ID, awayChange.After); err != nil {
+			return Settlement{}, err
+		}
+
+		// Written before the status changes, so a failure here leaves the
+		// match pending rather than confirmed-but-unexplained.
+		err = tx.TTRHistory().Append(ctx, []domain.TTRChange{
+			{PlayerID: home.ID, MatchID: m.ID, TTRBefore: homeChange.Before, TTRAfter: homeChange.After},
+			{PlayerID: away.ID, MatchID: m.ID, TTRBefore: awayChange.Before, TTRAfter: awayChange.After},
+		})
+		if err != nil {
+			return Settlement{}, err
+		}
+	} else {
+		// Both sides stand where they stood. Zero values here would read as a
+		// rating of zero to anybody who takes Before and After without
+		// checking Rated first.
+		homeChange = ttr.Change{Before: home.TTR, After: home.TTR}
+		awayChange = ttr.Change{Before: away.TTR, After: away.TTR}
 	}
 
 	confirmedAt := at
@@ -275,7 +298,24 @@ func settle(ctx context.Context, tx repository.Store, m domain.Match, at time.Ti
 		HomeChange: homeChange, AwayChange: awayChange,
 		HomeWon:  outcome.HomeWon,
 		HomeSets: outcome.HomeSets, AwaySets: outcome.AwaySets,
+		Rated: rated,
 	}, nil
+}
+
+// ratedMatch answers whether this match moves ratings.
+//
+// A match outside a tournament always does — casual play is what the rating
+// is of. Inside one, the tournament decides, once, for the whole draw
+// (docs/adr/0012).
+func ratedMatch(ctx context.Context, tx repository.Store, m domain.Match) (bool, error) {
+	if m.TournamentID == nil {
+		return true, nil
+	}
+	tour, err := tx.Tournaments().ByID(ctx, *m.TournamentID)
+	if err != nil {
+		return false, fmt.Errorf("load the tournament of match %s: %w", m.ID, err)
+	}
+	return tour.Rated, nil
 }
 
 // Record stores a result between two players and settles it at once.
@@ -430,16 +470,26 @@ func Undo(ctx context.Context, store repository.Store, matchID uuid.UUID, at tim
 			return fmt.Errorf("match %s was confirmed at %s: %w", m.ID, m.ConfirmedAt, ErrTooLate)
 		}
 
+		rated, err := ratedMatch(ctx, tx, m)
+		if err != nil {
+			return err
+		}
+
 		changes, err := tx.TTRHistory().ForMatch(ctx, m.ID)
 		if err != nil {
 			return err
 		}
-		if len(changes) == 0 {
+		if rated && len(changes) == 0 {
 			// Confirmed without history is a match that was never settled,
-			// which means something else wrote that status.
+			// which means something else wrote that status. In a tournament
+			// that does not count it is the ordinary state (docs/adr/0012),
+			// which is why the question is asked first.
 			return fmt.Errorf("match %s has no rating history: %w", m.ID, ErrNotUndoable)
 		}
 
+		// An unrated match is in nobody's chain, so there is nothing to
+		// restore and nothing a later match could have been built on: the
+		// ErrNotLast guard below has no work to do and no right to refuse.
 		for _, change := range changes {
 			newest, err := tx.TTRHistory().ForPlayer(ctx, change.PlayerID, 1)
 			if err != nil {

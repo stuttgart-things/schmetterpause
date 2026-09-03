@@ -1362,6 +1362,17 @@ tr.self td { background: color-mix(in srgb, var(--accent) 8%, transparent); }
 .tiebreak li { margin: 0.15rem 0; }
 .tiebreak p { font-size: 0.9rem; margin: 0.7rem 0 0; }
 
+/* A tournament that does not count says so wherever it is named. Not the
+   accent — this is not something to click — and not red either: it is a
+   property of the evening, not a warning about it. */
+.unrated {
+	font-family: var(--font-mono);
+	font-size: 0.72rem;
+	letter-spacing: 0.06em;
+	text-transform: uppercase;
+	color: var(--muted);
+}
+
 .tournament-list { list-style: none; padding: 0; }
 .tournament-list li { display: flex; flex-wrap: wrap; gap: 0.6rem; align-items: baseline; padding: 0.3rem 0; }
 

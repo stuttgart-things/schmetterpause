@@ -49,7 +49,7 @@ func (s *Server) handleConfirmMatch(w http.ResponseWriter, r *http.Request) {
 
 	// The settlement is told from the home player's side; the reader is on
 	// whichever side they played.
-	view := templates.SettledView{ID: matchID.String()}
+	view := templates.SettledView{ID: matchID.String(), Rated: settlement.Rated}
 	if settlement.Home.ID == self {
 		view.OpponentName = settlement.Away.DisplayName
 		view.Won = settlement.HomeWon

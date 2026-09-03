@@ -164,13 +164,17 @@ templ Settled(v SettledView) {
 			gegen { v.OpponentName } mit
 			{ strconv.Itoa(v.OwnSets) }:{ strconv.Itoa(v.OpponentSets) } Sätzen.
 		</p>
-		<p>
-			if v.Delta > 0 {
-				<span class="gain">+{ strconv.Itoa(v.Delta) }</span>
-			} else {
-				<span class="loss">{ strconv.Itoa(v.Delta) }</span>
-			}
-			TTR, jetzt { strconv.Itoa(v.NewTTR) }.
-		</p>
+		if !v.Rated {
+			<p class="muted">Das Turnier zählt nicht für die Rangliste.</p>
+		} else {
+			<p>
+				if v.Delta > 0 {
+					<span class="gain">+{ strconv.Itoa(v.Delta) }</span>
+				} else {
+					<span class="loss">{ strconv.Itoa(v.Delta) }</span>
+				}
+				TTR, jetzt { strconv.Itoa(v.NewTTR) }.
+			</p>
+		}
 	</li>
 }
