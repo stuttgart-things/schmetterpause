@@ -23,9 +23,18 @@ import (
 
 // Pairing is one encounter in the draw.
 //
-// Home and Away are an orientation, not a venue: they decide which player's
-// points go in the left column of the entry form. The draw alternates them so
-// the same person is not listed first in every round.
+// Home and Away decide two things: which player's points go in the left
+// column of the entry form, and — since docs/adr/0013 — which end of the
+// table each of them starts on. Home is side A and takes the first serve.
+//
+// It used to say "an orientation, not a venue". In a tournament it is both
+// now: at twenty-eight pairings, tossing for ends and serve before every one
+// of them costs the afternoon. The draw alternates Home and Away, so the
+// side and the serve alternate with it rather than falling to the same person
+// every round.
+//
+// Outside a tournament it stays an orientation. A match in the break has no
+// draw that could assign anybody a side.
 type Pairing struct {
 	Home uuid.UUID
 	Away uuid.UUID

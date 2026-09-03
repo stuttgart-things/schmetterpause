@@ -28,6 +28,23 @@ var ErrConflict = errors.New("already exists")
 // MVP plan and will only be answered with real data.
 const DefaultTTR = 1000
 
+// The names the two ends of a table carry when nobody gives them one
+// (docs/adr/0013).
+//
+// Letters rather than "links" and "rechts", which depend on where the reader
+// is standing, and rather than a feature of the room, which depends on the
+// room. They say the two ends are told apart without claiming to know which
+// is which.
+const (
+	DefaultSideA = "A"
+	DefaultSideB = "B"
+)
+
+// MaxSideNameLen bounds a side name in runes, matching the check constraint
+// on the column and the maxlength on the input. Twenty is enough for
+// "Fenster" and short of a sentence.
+const MaxSideNameLen = 20
+
 // Provider names the method by which an identity was proven. New methods are
 // a row, not a schema change (docs/adr/0003).
 type Provider string
@@ -205,6 +222,13 @@ type Tournament struct {
 	// draw, and changeable only while nobody has played — the same line
 	// every other setting of a tournament is held to.
 	Rated bool
+	// SideA and SideB name the two ends of the table for this tournament,
+	// "A" and "B" unless somebody says otherwise (docs/adr/0013).
+	//
+	// Per tournament because the table does not always stand in the same
+	// room, so no fixed pair of names can be right. Who plays on which is
+	// not stored: it is the pairing, where Home is side A.
+	SideA, SideB string
 	// CountPoints is whether the table is counted in points — three a win —
 	// rather than in wins. It changes what the table says and not who is
 	// above whom: a match cannot end level, so no draw point is ever

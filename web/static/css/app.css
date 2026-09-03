@@ -1376,6 +1376,19 @@ tr.self td { background: color-mix(in srgb, var(--accent) 8%, transparent); }
 	color: var(--muted);
 }
 
+/* Which end of the table somebody starts on, behind their name in the
+   schedule. Mono and quiet: it is a label on a name, not a second name. */
+.side {
+	font-family: var(--font-mono);
+	font-size: 0.72rem;
+	letter-spacing: 0.06em;
+	color: var(--muted);
+}
+
+/* Two ends, two short words. Wide enough for "Fenster" and no wider — the
+   row is a setting, not a sentence. */
+.side-name { width: 7rem; }
+
 .tournament-list { list-style: none; padding: 0; }
 .tournament-list li { display: flex; flex-wrap: wrap; gap: 0.6rem; align-items: baseline; padding: 0.3rem 0; }
 
