@@ -209,6 +209,15 @@ func ratedFrom(r *http.Request) bool { return r.FormValue("unrated") == "" }
 // reason: this one's default is off, so an absent box means what it says.
 func countPointsFrom(r *http.Request) bool { return r.FormValue("count_points") != "" }
 
+// scoringOf is how this tournament's table is counted, in the form the
+// domain package asks for.
+func scoringOf(t domain.Tournament) tournament.Scoring {
+	if t.CountPoints {
+		return tournament.ScoreByPoints
+	}
+	return tournament.ScoreByWins
+}
+
 // handleTournamentSize redraws the sentence under the picker while somebody
 // is still deciding. The size of an evening depends on the names, the format
 // and the final at once, and the number is worth seeing before agreeing to it
@@ -747,7 +756,8 @@ func (s *Server) checkSlot(ctx context.Context, tour domain.Tournament,
 	if round == groupRounds+1 && tour.WithFinal {
 		// The final's participants are derived too, so they are checked the
 		// same way: recompute the table and ask who it named.
-		pairing, ok := tournament.Final(tournament.Table(tour.Players, booked, groupRounds))
+		pairing, ok := tournament.Final(
+			tournament.Table(tour.Players, booked, groupRounds, scoringOf(tour)))
 		if !ok {
 			return "Das Finale steht noch nicht fest."
 		}
@@ -969,7 +979,7 @@ func (s *Server) tournamentView(ctx context.Context, id uuid.UUID, kiosk bool) (
 		view.Edit = &form
 	}
 
-	table := tournament.Table(tour.Players, booked, groupRounds)
+	table := tournament.Table(tour.Players, booked, groupRounds, scoringOf(tour))
 
 	if tour.WithFinal {
 		// The slot exists from the start; the names arrive when the group is

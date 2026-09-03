@@ -177,7 +177,7 @@ func TestTableCountsWinsSetsAndPoints(t *testing.T) {
 	p := ids(2)
 	rows := tournament.Table(p, []domain.Match{
 		confirmed(p[0], p[1], [2]int{11, 5}, [2]int{11, 7}),
-	}, 0)
+	}, 0, tournament.ScoreByWins)
 
 	if len(rows) != 2 {
 		t.Fatalf("got %d rows, want 2", len(rows))
@@ -209,7 +209,7 @@ func TestTableCountsWinsSetsAndPoints(t *testing.T) {
 // every tournament is in for its first twenty minutes.
 func TestParticipantsWithoutResultsStillAppear(t *testing.T) {
 	p := ids(4)
-	rows := tournament.Table(p, nil, 0)
+	rows := tournament.Table(p, nil, 0, tournament.ScoreByWins)
 
 	if len(rows) != 4 {
 		t.Fatalf("got %d rows, want 4", len(rows))
@@ -238,7 +238,7 @@ func TestTheDirectEncounterBreaksATie(t *testing.T) {
 		confirmed(b, c, [2]int{11, 0}, [2]int{11, 0}),
 		confirmed(b, d, [2]int{11, 0}, [2]int{11, 0}),
 		confirmed(c, d, [2]int{11, 0}, [2]int{11, 0}),
-	}, 0)
+	}, 0, tournament.ScoreByWins)
 
 	if rows[0].PlayerID != a {
 		t.Errorf("first is %v, want %v — the direct encounter should outrank set difference",
@@ -268,7 +268,7 @@ func TestPlayersNothingSeparatesShareARank(t *testing.T) {
 	rows := tournament.Table(p, []domain.Match{
 		confirmed(a, c, [2]int{11, 5}, [2]int{11, 5}),
 		confirmed(b, c, [2]int{11, 5}, [2]int{11, 5}),
-	}, 0)
+	}, 0, tournament.ScoreByWins)
 
 	if rows[0].Rank != 1 || rows[1].Rank != 1 {
 		t.Errorf("ranks = %d and %d, want 1 and 1", rows[0].Rank, rows[1].Rank)
@@ -293,7 +293,7 @@ func TestTableIgnoresUnconfirmedAndOutsideMatches(t *testing.T) {
 		{HomeID: p[0], AwayID: p[1], Status: domain.MatchDisputed,
 			Sets: []domain.MatchSet{{SetNo: 1, HomePoints: 11, AwayPoints: 0}}},
 		confirmed(p[0], outsider, [2]int{11, 0}),
-	}, 0)
+	}, 0, tournament.ScoreByWins)
 
 	for _, r := range rows {
 		if r.Played != 0 {
@@ -314,7 +314,7 @@ func TestEveryPairInTheDrawCanReachTheTable(t *testing.T) {
 		}
 	}
 
-	rows := tournament.Table(p, matches, 0)
+	rows := tournament.Table(p, matches, 0, tournament.ScoreByWins)
 	if len(rows) != len(p) {
 		t.Fatalf("got %d rows, want %d", len(rows), len(p))
 	}
@@ -342,7 +342,7 @@ func TestAPlayerWhoTurnedUpOutranksOneWhoDidNot(t *testing.T) {
 
 	rows := tournament.Table(p, []domain.Match{
 		confirmed(winner, loser, [2]int{11, 0}, [2]int{11, 0}),
-	}, 0)
+	}, 0, tournament.ScoreByWins)
 
 	var positions = map[uuid.UUID]int{}
 	for i, r := range rows {
@@ -381,7 +381,7 @@ func TestAThreeWayCycleSharesOneRank(t *testing.T) {
 		confirmed(c, d, [2]int{11, 5}, [2]int{11, 7}),
 	}
 
-	rows := tournament.Table(p, matches, 0)
+	rows := tournament.Table(p, matches, 0, tournament.ScoreByWins)
 	for _, r := range rows[:3] {
 		if r.Rank != 1 || !r.Shared {
 			t.Errorf("%v has rank %d (shared=%v), want a shared rank 1",
@@ -399,7 +399,7 @@ func TestAThreeWayCycleSharesOneRank(t *testing.T) {
 	// And the order must not depend on the order the results arrived in,
 	// which is what an intransitive comparison cannot promise.
 	slices.Reverse(matches)
-	reversed := tournament.Table(p, matches, 0)
+	reversed := tournament.Table(p, matches, 0, tournament.ScoreByWins)
 	for i := range rows {
 		if rows[i].Rank != reversed[i].Rank {
 			t.Errorf("row %d ranks %d and %d differ between input orders",

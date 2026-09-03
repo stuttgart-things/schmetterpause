@@ -164,7 +164,7 @@ func TestTheGroupTableLeavesTheFinalOut(t *testing.T) {
 		confirmedIn(p[1], p[0], final, 11, 2),
 	}
 
-	rows := tournament.Table(p, matches, 3)
+	rows := tournament.Table(p, matches, 3, tournament.ScoreByWins)
 	for _, r := range rows {
 		if r.Played != 2 {
 			t.Errorf("player %v played %d group matches, want 2", r.PlayerID, r.Played)
@@ -173,7 +173,7 @@ func TestTheGroupTableLeavesTheFinalOut(t *testing.T) {
 
 	// With no group boundary given, everything counts — which is what a
 	// tournament without a final needs.
-	all := tournament.Table(p, matches, 0)
+	all := tournament.Table(p, matches, 0, tournament.ScoreByWins)
 	total := 0
 	for _, r := range all {
 		total += r.Played
@@ -190,7 +190,7 @@ func TestATableCountsMatchesWithoutARound(t *testing.T) {
 	m := confirmedIn(p[0], p[1], 0, 11, 4)
 	m.TournamentRound = nil
 
-	rows := tournament.Table(p, []domain.Match{m}, 1)
+	rows := tournament.Table(p, []domain.Match{m}, 1, tournament.ScoreByWins)
 	if rows[0].Played != 1 {
 		t.Error("a match from before rounds existed was dropped from the table")
 	}

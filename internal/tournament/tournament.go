@@ -205,6 +205,12 @@ type TableRow struct {
 	// Played, Won and Lost count confirmed matches only, for the same reason
 	// the ranking does: a result nobody has agreed to is not a result.
 	Played, Won, Lost int
+	// LostDeciding is how many of those losses went to the last set the mode
+	// allows — 1:2 of three, 2:3 of five. It is what a point is worth where
+	// a tournament counts in points, and it is counted whether or not this
+	// one does: a table that only knows its own scoring cannot be shown the
+	// other way without being rebuilt.
+	LostDeciding      int
 	SetsWon, SetsLost int
 	PointsFor         int
 	PointsAgainst     int
@@ -217,19 +223,40 @@ type TableRow struct {
 	Shared bool
 }
 
-// PointsPerWin is what a win is worth where a tournament counts in points
-// rather than in wins.
+// What a result is worth where a tournament counts in points rather than in
+// wins.
 //
-// There is no value for a draw, and there is no draw: a match runs until
-// somebody has the sets, so the 1 of a 3/1/0 system is never awarded here.
-// Which means the two ways of counting cannot disagree — 3·W is a monotone
-// transform of W, so it produces the same order and the same shared ranks.
-// The choice is what the table says, not who is above whom.
+// Three for a win and one for a loss in the deciding set. The bonus point is
+// what makes counting in points a different answer rather than a different
+// column: without it there is no draw in table tennis, the 1 is never
+// awarded, and 3·W orders a field exactly as W does. With it, a player who
+// loses close can stand above one who loses flat on the same number of wins —
+// which is the whole reason an office would ask for points.
 //
-// Written down because it is the thing somebody will eventually want to
-// change: a bonus point for losing in a deciding set would make the two
-// differ, and it would be a new rule rather than a new format for this one.
-const PointsPerWin = 3
+// It is only ever awarded in a round robin, where everybody plays everybody:
+// there the number of matches is equal, so a bonus cannot be farmed by
+// playing more.
+const (
+	PointsPerWin          = 3
+	PointsPerDecidingLoss = 1
+)
+
+// Scoring is how a table is counted.
+//
+// Not a bool at the call sites: "true" there says nothing about which of the
+// two it is, and this decides the order of the table rather than only its
+// columns.
+type Scoring int
+
+const (
+	// ScoreByWins counts a table in wins. The default, and the zero value on
+	// purpose: a caller that says nothing gets the way every tournament was
+	// read before there was a choice.
+	ScoreByWins Scoring = iota
+	// ScoreByPoints counts it in points, three a win and one for a loss in
+	// the deciding set.
+	ScoreByPoints
+)
 
 // SetDiff is sets won less sets lost, the first tie-break the overall table
 // applies. Exposed because the table shows it.
@@ -237,7 +264,9 @@ func (r TableRow) SetDiff() int { return r.SetsWon - r.SetsLost }
 
 // TablePoints is the row in points. Not to be confused with PointsFor, which
 // is the balls: one is what the table awards, the other what was played.
-func (r TableRow) TablePoints() int { return PointsPerWin * r.Won }
+func (r TableRow) TablePoints() int {
+	return PointsPerWin*r.Won + PointsPerDecidingLoss*r.LostDeciding
+}
 
 // PointDiff is points for less points against, the last tie-break before two
 // players share a rank.
@@ -264,7 +293,12 @@ func (r TableRow) PointDiff() int { return r.PointsFor - r.PointsAgainst }
 // when the sub-table is level too do the overall set and point differences
 // speak, and players still equal after all four share a rank rather than being
 // separated by their names.
-func Table(participants []uuid.UUID, matches []domain.Match, groupRounds int) []TableRow {
+func Table(
+	participants []uuid.UUID,
+	matches []domain.Match,
+	groupRounds int,
+	scoring Scoring,
+) []TableRow {
 	index := make(map[uuid.UUID]int, len(participants))
 	rows := make([]TableRow, 0, len(participants))
 	for _, id := range participants {
@@ -304,6 +338,10 @@ func Table(participants []uuid.UUID, matches []domain.Match, groupRounds int) []
 		rows[away].PointsFor += awayPoints
 		rows[away].PointsAgainst += homePoints
 
+		loser := away
+		if awaySets > homeSets {
+			loser = home
+		}
 		if homeSets > awaySets {
 			rows[home].Won++
 			rows[away].Lost++
@@ -311,14 +349,33 @@ func Table(participants []uuid.UUID, matches []domain.Match, groupRounds int) []
 			rows[away].Won++
 			rows[home].Lost++
 		}
+		if wentTheDistance(m, homeSets, awaySets) {
+			rows[loser].LostDeciding++
+		}
 	}
 
 	keys := subTableKeys(rows, counted)
 	slices.SortStableFunc(rows, func(a, b TableRow) int {
-		return compareRows(a, b, keys)
+		return compareRows(a, b, keys, scoring)
 	})
-	assignRanks(rows, keys)
+	assignRanks(rows, keys, scoring)
 	return rows
+}
+
+// wentTheDistance reports whether the match needed the last set the mode
+// allows: 2:1 of three, 3:2 of five, 4:3 of seven.
+//
+// A single set is excluded, and not for tidiness. In best-of-one every loss
+// is a loss in the only set there is, so every loss would earn a point — and
+// then a player who loses more stands above one who loses less on the same
+// wins, which is not a bonus for playing close but a reward for playing at
+// all.
+func wentTheDistance(m domain.Match, homeSets, awaySets int) bool {
+	if m.BestOf <= 1 {
+		return false
+	}
+	needed := m.BestOf/2 + 1
+	return max(homeSets, awaySets) == needed && min(homeSets, awaySets) == needed-1
 }
 
 // subKey is a player's standing inside the group of players they are level
@@ -387,7 +444,7 @@ func tally(m domain.Match) (homeSets, awaySets, homePoints, awayPoints int) {
 
 // compareRows orders two rows, most successful first. It returns 0 for
 // players nothing separates, which is what produces a shared rank.
-func compareRows(a, b TableRow, keys map[uuid.UUID]subKey) int {
+func compareRows(a, b TableRow, keys map[uuid.UUID]subKey, scoring Scoring) int {
 	// Everybody who has played comes first, whatever the numbers say. A
 	// player with no results has a set difference of zero, which would put
 	// them above somebody who has lost three times — and a table that ranks
@@ -397,10 +454,14 @@ func compareRows(a, b TableRow, keys map[uuid.UUID]subKey) int {
 	if c := cmp.Compare(hasPlayed(b), hasPlayed(a)); c != 0 {
 		return c
 	}
-	if c := cmp.Compare(b.Won, a.Won); c != 0 {
+	// Wins, or points where the tournament counts in points — which is the
+	// one place the two answers differ, and the reason the choice is offered
+	// at all. Everything below is unchanged: the sub-table asks who beat
+	// whom, and that question has no points in it.
+	if c := cmp.Compare(leading(b, scoring), leading(a, scoring)); c != 0 {
 		return c
 	}
-	// The sub-table: what the players on this many wins did to each other.
+	// The sub-table: what the players level at the top did to each other.
 	// For exactly two that is the direct encounter — "ja, aber ich hab gegen
 	// dich gewonnen" — and for more it is the group's own little table.
 	subA, subB := keys[a.PlayerID], keys[b.PlayerID]
@@ -414,6 +475,15 @@ func compareRows(a, b TableRow, keys map[uuid.UUID]subKey) int {
 		return c
 	}
 	return cmp.Compare(b.PointDiff(), a.PointDiff())
+}
+
+// leading is the number a table is read down: wins, or points where the
+// tournament counts in points.
+func leading(r TableRow, scoring Scoring) int {
+	if scoring == ScoreByPoints {
+		return r.TablePoints()
+	}
+	return r.Won
 }
 
 // hasPlayed is 1 for a player with results and 0 for one without, so the
@@ -431,7 +501,7 @@ func hasPlayed(r TableRow) int {
 // A player who has not played yet gets rank 0 rather than last place, the same
 // way the overall ranking treats an untested rating: a placement nobody has
 // earned reads as a bug to the person holding it.
-func assignRanks(rows []TableRow, keys map[uuid.UUID]subKey) {
+func assignRanks(rows []TableRow, keys map[uuid.UUID]subKey, scoring Scoring) {
 	rank := 0
 	for i := range rows {
 		if rows[i].Played == 0 {
@@ -439,7 +509,7 @@ func assignRanks(rows []TableRow, keys map[uuid.UUID]subKey) {
 			continue
 		}
 		switch {
-		case i > 0 && rows[i-1].Played > 0 && compareRows(rows[i-1], rows[i], keys) == 0:
+		case i > 0 && rows[i-1].Played > 0 && compareRows(rows[i-1], rows[i], keys, scoring) == 0:
 			rows[i].Rank = rows[i-1].Rank
 			rows[i].Shared = true
 			rows[i-1].Shared = true
