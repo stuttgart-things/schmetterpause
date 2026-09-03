@@ -16,7 +16,7 @@ func rulesSheet(t *testing.T) string {
 	return get(t, newHandler(newMemStore()), "/rules").Body.String()
 }
 
-// TestTheRulesSheetNamesEveryHouseRule holds the sheet to the five rules it
+// TestTheRulesSheetNamesEveryHouseRule holds the sheet to the six rules it
 // exists for. A sheet that quietly loses one is a rule that gets argued about
 // at the table.
 func TestTheRulesSheetNamesEveryHouseRule(t *testing.T) {
@@ -28,6 +28,7 @@ func TestTheRulesSheetNamesEveryHouseRule(t *testing.T) {
 		"Aufschlagwechsel nach",
 		"Zwei Punkte Abstand",
 		"Netzroller",
+		"Kein zweiter Aufschlag",
 	} {
 		if !strings.Contains(body, want) {
 			t.Errorf("the sheet does not carry %q: %s", want, body)
