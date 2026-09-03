@@ -193,6 +193,17 @@ templ tournamentFields(v TournamentFormView, maxPlayers int, action, mode string
 				/>
 				<span>Zählt nicht für die Rangliste</span>
 			</label>
+			// An opt-in, unlike the one beside it: its default is off, so an
+			// unticked box means what it looks like it means.
+			<label class="chip">
+				<input
+					type="checkbox"
+					name="count_points"
+					value="1"
+					checked?={ v.CountPoints }
+				/>
+				<span>Tabelle in Punkten (3 pro Sieg)</span>
+			</label>
 		</div>
 		// Carried so the redrawn button below can say the right thing
 		// without the fragment being told a label to print.
@@ -260,6 +271,19 @@ templ TournamentPage(v TournamentView) {
 					}
 				</form>
 			}
+			if v.Open && v.Started {
+				// Said here because the place it used to be said — inside
+				// "Turnier ändern" — is gone from the moment it becomes
+				// true. Somebody looking for where to add a latecomer finds
+				// the answer instead of an absence.
+				<p class="muted">
+					Das Feld steht fest, seit das erste Ergebnis drin ist. Wer
+					jetzt noch dazu will, ist beim nächsten Turnier dabei — ein
+					Spielplan, der sich nachträglich verschiebt, legt
+					eingetragene Ergebnisse in Runden, in denen sie nicht
+					gespielt wurden.
+				</p>
+			}
 			if v.Done() || !v.Open {
 				// A second lunch break is a second tournament, not more rounds
 				// in this one — the table stays readable and nothing here has
@@ -300,9 +324,9 @@ templ TournamentPage(v TournamentView) {
 		}
 		<section class="card">
 			<h2>Tabelle</h2>
-			@tournamentTable(v.Table)
+			@tournamentTable(v.Table, v.CountPoints)
 			if len(v.Table) > 0 {
-				@tieBreaks(v.SharedRank())
+				@tieBreaks(v.SharedRank(), v.CountPoints)
 			}
 		</section>
 		<section class="card">
@@ -355,11 +379,15 @@ templ TournamentPage(v TournamentView) {
 //
 // Folded away while it is background, and open by itself the moment two
 // players actually share a place.
-templ tieBreaks(shared bool) {
+templ tieBreaks(shared, points bool) {
 	<details class="tiebreak" open?={ shared }>
 		<summary>Wenn zwei gleich stehen</summary>
 		<ol>
-			<li>Siege</li>
+			if points {
+				<li>Punkte</li>
+			} else {
+				<li>Siege</li>
+			}
 			<li>Direkter Vergleich &mdash; bei mehr als zweien die Spiele dieser Gruppe untereinander</li>
 			<li>Satzdifferenz</li>
 			<li>Ballpunktdifferenz</li>
@@ -372,7 +400,7 @@ templ tieBreaks(shared bool) {
 	</details>
 }
 
-templ tournamentTable(rows []TournamentTableRow) {
+templ tournamentTable(rows []TournamentTableRow, points bool) {
 	if len(rows) == 0 {
 		<p class="muted">Noch keine Teilnehmer.</p>
 	} else {
@@ -381,6 +409,13 @@ templ tournamentTable(rows []TournamentTableRow) {
 				<tr>
 					<th scope="col">#</th>
 					<th scope="col">Spieler</th>
+					if points {
+						// Beside the wins rather than instead of them: the
+						// number is three times the one next to it, and a
+						// column that replaced it would hide the count it is
+						// made of.
+						<th scope="col">Pkt</th>
+					}
 					<th scope="col">S</th>
 					<th scope="col">N</th>
 					<th scope="col">Sätze</th>
@@ -401,6 +436,9 @@ templ tournamentTable(rows []TournamentTableRow) {
 							}
 						</td>
 						<td>{ r.DisplayName }</td>
+						if points {
+							<td><strong>{ strconv.Itoa(r.Points) }</strong></td>
+						}
 						<td>{ strconv.Itoa(r.Won) }</td>
 						<td>{ strconv.Itoa(r.Lost) }</td>
 						<td>{ r.Sets }</td>

@@ -205,6 +205,11 @@ type Tournament struct {
 	// draw, and changeable only while nobody has played — the same line
 	// every other setting of a tournament is held to.
 	Rated bool
+	// CountPoints is whether the table is counted in points — three a win —
+	// rather than in wins. It changes what the table says and not who is
+	// above whom: a match cannot end level, so no draw point is ever
+	// awarded, and the two counts order the field identically.
+	CountPoints bool
 	// Players are the participants in draw order. The order is the draw:
 	// the circle method is deterministic over it, so the pairings are a
 	// function of this slice rather than a stored copy that could drift.

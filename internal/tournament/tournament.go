@@ -217,9 +217,27 @@ type TableRow struct {
 	Shared bool
 }
 
+// PointsPerWin is what a win is worth where a tournament counts in points
+// rather than in wins.
+//
+// There is no value for a draw, and there is no draw: a match runs until
+// somebody has the sets, so the 1 of a 3/1/0 system is never awarded here.
+// Which means the two ways of counting cannot disagree — 3·W is a monotone
+// transform of W, so it produces the same order and the same shared ranks.
+// The choice is what the table says, not who is above whom.
+//
+// Written down because it is the thing somebody will eventually want to
+// change: a bonus point for losing in a deciding set would make the two
+// differ, and it would be a new rule rather than a new format for this one.
+const PointsPerWin = 3
+
 // SetDiff is sets won less sets lost, the first tie-break the overall table
 // applies. Exposed because the table shows it.
 func (r TableRow) SetDiff() int { return r.SetsWon - r.SetsLost }
+
+// TablePoints is the row in points. Not to be confused with PointsFor, which
+// is the balls: one is what the table awards, the other what was played.
+func (r TableRow) TablePoints() int { return PointsPerWin * r.Won }
 
 // PointDiff is points for less points against, the last tie-break before two
 // players share a rank.
