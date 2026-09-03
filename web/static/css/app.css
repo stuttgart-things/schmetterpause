@@ -784,6 +784,12 @@ button.secondary:hover {
    nobody anticipated would take the whole page sideways with it. The table
    scrolls inside its own box instead, and the page never does. */
 .table-scroll {
+	/* Positioned so the box is the containing block for what is inside it.
+	   Without this the absolutely positioned screen-reader labels in the
+	   cells belong to the document instead, which cannot clip them — and a
+	   dozen players' worth of them dragged the whole page sideways on a
+	   phone while the table itself scrolled perfectly inside its box. */
+	position: relative;
 	overflow-x: auto;
 	overscroll-behavior-x: contain;
 }
