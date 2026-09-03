@@ -24,17 +24,3 @@ func TestARecordIsSpokenWithTheRightNumber(t *testing.T) {
 		}
 	}
 }
-
-// Ahead and Behind decide a colour, so a level record has to leave both
-// false rather than falling into one of them.
-func TestALevelRecordIsNeitherAheadNorBehind(t *testing.T) {
-	cell := templates.StatisticsCell{Won: 2, Lost: 2}
-
-	if cell.Ahead() || cell.Behind() {
-		t.Errorf("2:2 is marked: ahead=%v behind=%v", cell.Ahead(), cell.Behind())
-	}
-	row := templates.StatisticsRow{Won: 2, Lost: 2}
-	if row.Ahead() || row.Behind() {
-		t.Errorf("a level total is marked: ahead=%v behind=%v", row.Ahead(), row.Behind())
-	}
-}
