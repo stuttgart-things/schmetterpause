@@ -1,6 +1,10 @@
 package templates
 
-import "strconv"
+import (
+	"strconv"
+
+	"github.com/stuttgart-things/schmetterpause/internal/tournament"
+)
 
 // TournamentList is the page that lists tournaments and starts one.
 templ TournamentList(v TournamentListView) {
@@ -384,7 +388,11 @@ templ tieBreaks(shared, points bool) {
 		<summary>Wenn zwei gleich stehen</summary>
 		<ol>
 			if points {
-				<li>Punkte</li>
+				<li>
+					Punkte &mdash; { strconv.Itoa(tournament.PointsPerWin) } pro Sieg,
+					{ strconv.Itoa(tournament.PointsPerDecidingLoss) } für eine
+					Niederlage im Entscheidungssatz
+				</li>
 			} else {
 				<li>Siege</li>
 			}

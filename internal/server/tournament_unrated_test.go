@@ -212,8 +212,13 @@ func TestATournamentCanShowItsTableInPoints(t *testing.T) {
 	if !strings.Contains(body, "<td><strong>3</strong></td><td>1</td>") {
 		t.Errorf("the winner does not have three points beside one win: %s", body)
 	}
-	// The tie-break list names the first step the way the table does.
-	if !strings.Contains(body, "<li>Punkte</li>") {
+	// The tie-break list leads with what the table counts, and says where
+	// the odd point comes from — a table with a 4 in it and no explanation
+	// is the argument the block exists to prevent.
+	if !strings.Contains(body, "<li>Punkte") {
 		t.Errorf("the tie-breaks still lead with wins: %s", body)
+	}
+	if !strings.Contains(body, "Niederlage im Entscheidungssatz") {
+		t.Errorf("the tie-breaks do not say what the bonus point is for: %s", body)
 	}
 }

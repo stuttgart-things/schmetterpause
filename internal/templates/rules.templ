@@ -47,6 +47,18 @@ templ RulesSheet(v RulesSheetView) {
 						weiteren Satz beginnt, wer den vorherigen verloren hat.
 					</dd>
 				</div>
+				// Directly after the rule about who serves the next set: both
+				// are what changes when a set ends, and somebody reading one
+				// is about to want the other.
+				<div>
+					<dt>Seitenwechsel nach jedem Satz</dt>
+					<dd>
+						Nach jedem Satz werden die Seiten getauscht. Wer wo
+						steht, entscheidet über Licht, Zug und die Tischseite
+						mit der Delle &mdash; über einen ganzen Satz gerechnet
+						ist das kein Detail.
+					</dd>
+				</div>
 				<div>
 					<dt>
 						Aufschlagwechsel nach { strconv.Itoa(ServeEvery(v.PointsToWin)) } Punkten
