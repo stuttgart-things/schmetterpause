@@ -154,7 +154,7 @@ func (s *Server) handleEditTournament(w http.ResponseWriter, r *http.Request) {
 
 	_, err = s.store.Tournaments().Replace(ctx, domain.Tournament{
 		ID: id, Name: name, Format: formatFrom(r), WithFinal: withFinalFrom(r),
-		Rated:  ratedFrom(r),
+		Rated: ratedFrom(r), CountPoints: countPointsFrom(r),
 		BestOf: mode.BestOf, PointsToWin: mode.PointsToWin, Players: field,
 	})
 	switch {
@@ -204,6 +204,10 @@ func withFinalFrom(r *http.Request) bool { return r.FormValue("with_final") != "
 // round. An unticked checkbox sends nothing, and nothing has to mean the
 // default — which is that a tournament counts (docs/adr/0012).
 func ratedFrom(r *http.Request) bool { return r.FormValue("unrated") == "" }
+
+// countPointsFrom reads the other way round from ratedFrom, and for the same
+// reason: this one's default is off, so an absent box means what it says.
+func countPointsFrom(r *http.Request) bool { return r.FormValue("count_points") != "" }
 
 // handleTournamentSize redraws the sentence under the picker while somebody
 // is still deciding. The size of an evening depends on the names, the format
@@ -262,7 +266,7 @@ func (s *Server) handleCreateTournament(w http.ResponseWriter, r *http.Request) 
 	// times; a draw with no mode at all was the state before, and it left the
 	// schedule unable to say over how many sets the evening was decided.
 	format, withFinal := formatFrom(r), withFinalFrom(r)
-	rated := ratedFrom(r)
+	rated, countPoints := ratedFrom(r), countPointsFrom(r)
 
 	mode := modeFrom(r)
 	if !mode.Known() {
@@ -290,6 +294,7 @@ func (s *Server) handleCreateTournament(w http.ResponseWriter, r *http.Request) 
 		Format:      format,
 		WithFinal:   withFinal,
 		Rated:       rated,
+		CountPoints: countPoints,
 		CreatedBy:   author,
 		BestOf:      mode.BestOf,
 		PointsToWin: mode.PointsToWin,
@@ -305,7 +310,7 @@ func (s *Server) handleCreateTournament(w http.ResponseWriter, r *http.Request) 
 		"tournament_id", created.ID, "players", len(created.Players),
 		"best_of", created.BestOf, "points_to_win", created.PointsToWin,
 		"format", created.Format, "with_final", created.WithFinal,
-		"rated", created.Rated)
+		"rated", created.Rated, "count_points", created.CountPoints)
 
 	http.Redirect(w, r, "/tournaments/"+created.ID.String(), http.StatusSeeOther)
 }
@@ -538,9 +543,10 @@ func (s *Server) tournamentListView(ctx context.Context, again *uuid.UUID) (temp
 		mode      = match.Mode{BestOf: match.DefaultBestOf, PointsToWin: match.PointsToEleven}
 		format    = domain.TournamentRoundRobin
 		withFinal bool
-		// A fresh form counts, and repeating an evening repeats the answer
+		// A fresh form counts, and repeating an evening repeats the answers
 		// it was played under.
-		rated = true
+		rated       = true
+		countPoints bool
 	)
 	if again != nil {
 		// A tournament that has gone missing since somebody clicked the link
@@ -549,7 +555,8 @@ func (s *Server) tournamentListView(ctx context.Context, again *uuid.UUID) (temp
 		if previous, err := s.store.Tournaments().ByID(ctx, *again); err == nil {
 			chosen = previous.Players
 			mode = match.Mode{BestOf: previous.BestOf, PointsToWin: previous.PointsToWin}
-			format, withFinal, rated = previous.Format, previous.WithFinal, previous.Rated
+			format, withFinal = previous.Format, previous.WithFinal
+			rated, countPoints = previous.Rated, previous.CountPoints
 		} else if !errors.Is(err, domain.ErrNotFound) {
 			s.log.WarnContext(ctx, "loading the tournament to repeat failed",
 				"tournament_id", *again, "error", err)
@@ -562,6 +569,7 @@ func (s *Server) tournamentListView(ctx context.Context, again *uuid.UUID) (temp
 	form.Format = string(format)
 	form.WithFinal = withFinal
 	form.Rated = rated
+	form.CountPoints = countPoints
 
 	view := templates.TournamentListView{
 		Header:     s.headerView(ctx),
@@ -810,6 +818,7 @@ func (s *Server) rejectTournament(w http.ResponseWriter, r *http.Request,
 	form.Format = r.FormValue("format")
 	form.WithFinal = r.FormValue("with_final") != ""
 	form.Rated = ratedFrom(r)
+	form.CountPoints = countPointsFrom(r)
 	// The mode comes back as it was picked, even when it is the reason for
 	// the refusal: a select that snaps back to the default hides what was
 	// wrong with the answer.
@@ -877,6 +886,7 @@ func (s *Server) tournamentView(ctx context.Context, id uuid.UUID, kiosk bool) (
 		Format:      string(tour.Format),
 		WithFinal:   tour.WithFinal,
 		Rated:       tour.Rated,
+		CountPoints: tour.CountPoints,
 		CanEnter:    tour.Open() && kiosk,
 		MaxPlayers:  maxTournamentPlayers,
 		Total:       tournament.Matches(len(tour.Players), legs, tour.WithFinal),
@@ -941,6 +951,7 @@ func (s *Server) tournamentView(ctx context.Context, id uuid.UUID, kiosk bool) (
 	// Nothing played yet, so the field and the mode are still a decision
 	// rather than a record. Only for somebody signed in, because the two
 	// things it leads to — edit and delete — are.
+	view.Started = len(booked) > 0
 	if signedIn && tour.Open() && len(booked) == 0 {
 		players, err := s.store.Players().List(ctx)
 		if err != nil {
@@ -950,6 +961,11 @@ func (s *Server) tournamentView(ctx context.Context, id uuid.UUID, kiosk bool) (
 		form.Name = tour.Name
 		form.BestOf, form.PointsToWin = tour.BestOf, tour.PointsToWin
 		form.Format, form.WithFinal = string(tour.Format), tour.WithFinal
+		// Carried, or the form would hand back the constructor's default and
+		// a tournament somebody set to not count would quietly start
+		// counting on the next edit (docs/adr/0012).
+		form.Rated = tour.Rated
+		form.CountPoints = tour.CountPoints
 		view.Edit = &form
 	}
 
@@ -983,6 +999,7 @@ func (s *Server) tournamentView(ctx context.Context, id uuid.UUID, kiosk bool) (
 			Lost:        row.Lost,
 			Sets:        itoa(row.SetsWon) + ":" + itoa(row.SetsLost),
 			SetDiff:     row.SetDiff(),
+			Points:      row.TablePoints(),
 		})
 	}
 	return view, nil

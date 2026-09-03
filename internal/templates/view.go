@@ -879,6 +879,9 @@ type TournamentFormView struct {
 	// unless somebody opts out, which is why the control is an opt-out: an
 	// unticked checkbox sends nothing, and nothing has to mean the default.
 	Rated bool
+	// CountPoints is whether the table is counted in points. An opt-in, so
+	// the plain reading of an unticked box is the default here.
+	CountPoints bool
 	// Error explains why the last attempt was refused, in words somebody can
 	// act on. Empty on a fresh form.
 	Error string
@@ -1030,6 +1033,14 @@ type TournamentView struct {
 	// see is unrated is the argument docs/adr/0012 exists to prevent, only
 	// later.
 	Rated bool
+	// CountPoints is whether the table is shown in points. It changes the
+	// column and not the order (internal/tournament.PointsPerWin).
+	CountPoints bool
+	// Started is whether a result is in. From the first one the field is
+	// fixed — and the section that says so is exactly the section that
+	// disappears then, which left the rule invisible at the moment it
+	// starts applying.
+	Started bool
 	// OnKioskPath is whether this render is the copy served from under
 	// /kiosk. Without it the page cannot tell "you are on the wrong address"
 	// from "this device is not unlocked", and would offer the reader a link
@@ -1116,6 +1127,10 @@ type TournamentTableRow struct {
 	// tie when the sub-table cannot.
 	Sets    string
 	SetDiff int
+	// Points is the row in table points, shown instead of nothing where the
+	// tournament counts that way. Three a win, and never a draw point —
+	// which is why it cannot reorder anything.
+	Points int
 }
 
 // Ranked reports whether this player has a position yet. Somebody who has not
