@@ -493,7 +493,7 @@ func tournamentFields(v TournamentFormView, maxPlayers int, action, mode string)
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 44, ">Mit Rückspiel</option></select><label class=\"chip\"><input type=\"checkbox\" name=\"with_final\" value=\"1\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 44, ">Mit Rückspiel</option></select><label class=\"pick\"><input type=\"checkbox\" name=\"with_final\" value=\"1\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -503,7 +503,7 @@ func tournamentFields(v TournamentFormView, maxPlayers int, action, mode string)
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 46, " hx-get=\"/fragments/tournament-size\" hx-target=\"#tournament-size\" hx-swap=\"outerHTML\" hx-include=\"closest form\"> <span>Finale zwischen den besten zwei</span></label></div><div class=\"row\"><label for=\"tournament-unrated\">Wertung</label> <label class=\"chip\"><input id=\"tournament-unrated\" type=\"checkbox\" name=\"unrated\" value=\"1\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 46, " hx-get=\"/fragments/tournament-size\" hx-target=\"#tournament-size\" hx-swap=\"outerHTML\" hx-include=\"closest form\"> <span>Finale zwischen den besten zwei</span></label></div><div class=\"row\"><label for=\"tournament-unrated\">Wertung</label> <label class=\"pick\"><input id=\"tournament-unrated\" type=\"checkbox\" name=\"unrated\" value=\"1\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -513,7 +513,7 @@ func tournamentFields(v TournamentFormView, maxPlayers int, action, mode string)
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 48, "> <span>Zählt nicht für die Rangliste</span></label><label class=\"chip\"><input type=\"checkbox\" name=\"count_points\" value=\"1\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 48, "> <span>Zählt nicht für die Rangliste</span></label><label class=\"pick\"><input type=\"checkbox\" name=\"count_points\" value=\"1\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -549,7 +549,7 @@ func tournamentFields(v TournamentFormView, maxPlayers int, action, mode string)
 			return templ_7745c5c3_Err
 		}
 		for _, c := range v.Candidates {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 53, "<label class=\"chip\"><input type=\"checkbox\" name=\"player_id\" value=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 53, "<label class=\"pick\"><input type=\"checkbox\" name=\"player_id\" value=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

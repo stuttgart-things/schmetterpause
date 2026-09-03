@@ -167,7 +167,7 @@ templ tournamentFields(v TournamentFormView, maxPlayers int, action, mode string
 			// The final is a property of the draw, so it sits in the same
 			// block as the rounds. Directly above "Wer spielt mit?" it read
 			// as the first line of the player list.
-			<label class="chip">
+			<label class="pick">
 				<input
 					type="checkbox"
 					name="with_final"
@@ -187,7 +187,7 @@ templ tournamentFields(v TournamentFormView, maxPlayers int, action, mode string
 		// (docs/adr/0012).
 		<div class="row">
 			<label for="tournament-unrated">Wertung</label>
-			<label class="chip">
+			<label class="pick">
 				<input
 					id="tournament-unrated"
 					type="checkbox"
@@ -199,7 +199,7 @@ templ tournamentFields(v TournamentFormView, maxPlayers int, action, mode string
 			</label>
 			// An opt-in, unlike the one beside it: its default is off, so an
 			// unticked box means what it looks like it means.
-			<label class="chip">
+			<label class="pick">
 				<input
 					type="checkbox"
 					name="count_points"
@@ -220,7 +220,7 @@ templ tournamentFields(v TournamentFormView, maxPlayers int, action, mode string
 				@TournamentCount(v.Size(maxPlayers), nil)
 			</legend>
 			for _, c := range v.Candidates {
-				<label class="chip">
+				<label class="pick">
 					<input
 						type="checkbox"
 						name="player_id"
