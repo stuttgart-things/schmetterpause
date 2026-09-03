@@ -30,49 +30,62 @@ templ RulesSheet(v RulesSheetView) {
 			// all at once, and numbering them would claim an order or a
 			// precedence between them that does not exist.
 			<dl class="rules">
-				<dt>Aufschlag diagonal (&raquo;Acker&laquo;)</dt>
-				<dd>
-					Der Ball springt erst auf der eigenen Hälfte auf und muss
-					danach auf der diagonal gegenüberliegenden Hälfte des
-					Gegners aufkommen &mdash; wie im Doppel. Kommt er woanders
-					auf, geht der Punkt an den Gegner.
-				</dd>
-				<dt>Der erste Aufschlag wird ausgespielt</dt>
-				<dd>
-					Vor dem ersten Satz wirft ein Spieler den Ball ein, und wer
-					den Ballwechsel gewinnt, schlägt zuerst auf. In jedem
-					weiteren Satz beginnt, wer den vorherigen verloren hat.
-				</dd>
-				<dt>
-					Aufschlagwechsel nach { strconv.Itoa(ServeEvery(v.PointsToWin)) } Punkten
-				</dt>
-				<dd>
-					Wer aufschlägt, schlägt { strconv.Itoa(ServeEvery(v.PointsToWin)) } Punkte
-					am Stück auf &mdash; egal, wer sie holt. Danach wechselt der
-					Aufschlag.
-				</dd>
-				<dt>Zwei Punkte Abstand</dt>
-				<dd>
-					Ein Satz geht bis { strconv.Itoa(v.PointsToWin) }. Steht es
-					{ strconv.Itoa(DeuceFrom(v.PointsToWin)) }:{ strconv.Itoa(DeuceFrom(v.PointsToWin)) },
-					geht er weiter, bis jemand zwei Punkte vorn liegt &mdash; und
-					der Aufschlag wechselt dann nach jedem Punkt.
-				</dd>
-				<dt>Netzroller beim Aufschlag wird wiederholt</dt>
-				<dd>
-					Berührt der Aufschlag das Netz und kommt trotzdem gültig
-					auf, zählt er nicht. Derselbe Spieler schlägt noch einmal
-					auf.
-				</dd>
+				<div>
+					<dt>Aufschlag diagonal (&raquo;Acker&laquo;)</dt>
+					<dd>
+						Der Ball springt erst auf der eigenen Hälfte auf und muss
+						danach auf der diagonal gegenüberliegenden Hälfte des
+						Gegners aufkommen &mdash; wie im Doppel. Kommt er woanders
+						auf, geht der Punkt an den Gegner.
+					</dd>
+				</div>
+				<div>
+					<dt>Der erste Aufschlag wird ausgespielt</dt>
+					<dd>
+						Vor dem ersten Satz wirft ein Spieler den Ball ein, und wer
+						den Ballwechsel gewinnt, schlägt zuerst auf. In jedem
+						weiteren Satz beginnt, wer den vorherigen verloren hat.
+					</dd>
+				</div>
+				<div>
+					<dt>
+						Aufschlagwechsel nach { strconv.Itoa(ServeEvery(v.PointsToWin)) } Punkten
+					</dt>
+					<dd>
+						Wer aufschlägt, schlägt { strconv.Itoa(ServeEvery(v.PointsToWin)) } Punkte
+						am Stück auf &mdash; egal, wer sie holt. Danach wechselt der
+						Aufschlag.
+					</dd>
+				</div>
+				<div>
+					<dt>Zwei Punkte Abstand</dt>
+					<dd>
+						Ein Satz geht bis { strconv.Itoa(v.PointsToWin) }. Steht es
+						{ strconv.Itoa(DeuceFrom(v.PointsToWin)) }:{ strconv.Itoa(DeuceFrom(v.PointsToWin)) },
+						geht er weiter, bis jemand zwei Punkte vorn liegt &mdash; und
+						der Aufschlag wechselt dann nach jedem Punkt.
+					</dd>
+				</div>
+				<div>
+					<dt>Netzroller beim Aufschlag wird wiederholt</dt>
+					<dd>
+						Berührt der Aufschlag das Netz und kommt trotzdem gültig
+						auf, zählt er nicht. Derselbe Spieler schlägt noch einmal
+						auf.
+					</dd>
+				</div>
 			</dl>
 			<p class="sheet-note muted">
 				Ergebnis danach eintragen &mdash; der QR-Aushang daneben führt
 				direkt hin.
 			</p>
-			<p class="sheet-back no-print">
-				<a href="/qr">Zum QR-Aushang</a>
-				<a href="/">Zurück zur Startseite</a>
+			// The other sheet is the thing to do next — whoever printed this
+			// one is standing at the printer for both — so it looks like an
+			// action and the way home stays the quiet line under it.
+			<p class="sheet-next no-print">
+				<a class="button-link" href="/qr">Zum QR-Aushang</a>
 			</p>
+			<p class="sheet-back no-print"><a href="/">Zurück zur Startseite</a></p>
 		</article>
 	}
 }

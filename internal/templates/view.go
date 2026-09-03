@@ -9,6 +9,8 @@ import (
 	"hash/fnv"
 	"strconv"
 
+	"github.com/a-h/templ"
+
 	"github.com/stuttgart-things/schmetterpause/internal/credential"
 	"github.com/stuttgart-things/schmetterpause/internal/domain"
 	"github.com/stuttgart-things/schmetterpause/internal/match"
@@ -914,6 +916,40 @@ type TournamentSizeView struct {
 	MaxPlayers int
 }
 
+// Enough reports whether this many names make a tournament. The button is
+// disabled until they do — the server refuses either way, but a form that
+// only says no after being submitted is one somebody submits.
+func (v TournamentSizeView) Enough() bool {
+	return v.Players >= 2 && v.Players <= v.MaxPlayers
+}
+
+// The two things the tournament form can be. A mode rather than a label
+// travels with the request, so the fragment that redraws the button chooses
+// from a fixed set instead of printing back what it was handed.
+const (
+	TournamentFormCreate = "create"
+	TournamentFormEdit   = "edit"
+)
+
+// OutOfBand marks a fragment as an out-of-band swap, for a response that
+// carries more than the thing the request asked for.
+//
+// A function rather than the attribute written into the template, because the
+// same fragment is rendered twice: once as part of the page, where htmx never
+// looks at the attribute and its presence only invites the next reader to
+// believe it does something, and once as a response, where it is the whole
+// point.
+func OutOfBand() templ.Attributes { return templ.Attributes{"hx-swap-oob": "true"} }
+
+// TournamentSubmitLabel names the button for a mode. Anything unrecognised is
+// the create form, which is the one a stray request would have come from.
+func TournamentSubmitLabel(mode string) string {
+	if mode == TournamentFormEdit {
+		return "Änderung speichern"
+	}
+	return "Turnier anlegen"
+}
+
 // Size is how big the evening this form describes would be.
 func (v TournamentFormView) Size(maxPlayers int) TournamentSizeView {
 	legs := domain.TournamentFormat(v.Format).Legs()
@@ -1069,6 +1105,18 @@ type TournamentTableRow struct {
 // played gets none, the same way the overall ranking treats an untested
 // rating.
 func (r TournamentTableRow) Ranked() bool { return r.Rank > 0 }
+
+// SharedRank reports whether anybody is sharing a position right now, which
+// is when the order of tie-breaks stops being background and becomes the
+// question somebody is about to ask out loud.
+func (v TournamentView) SharedRank() bool {
+	for _, r := range v.Table {
+		if r.Shared {
+			return true
+		}
+	}
+	return false
+}
 
 // StatisticsView drives the statistics page.
 //

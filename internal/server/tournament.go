@@ -222,11 +222,18 @@ func (s *Server) handleTournamentSize(w http.ResponseWriter, r *http.Request) {
 	legs := domain.TournamentFormat(r.FormValue("format")).Legs()
 	withFinal := r.FormValue("with_final") != ""
 
-	s.render(w, r, templates.TournamentSize(templates.TournamentSizeView{
+	size := templates.TournamentSizeView{
 		Players:    chosen,
 		Matches:    tournament.Matches(chosen, legs, withFinal),
 		MaxPlayers: maxTournamentPlayers,
-	}))
+	}
+	// Three things move together while somebody ticks names: the sentence
+	// this request targets, the tally beside the question, and whether the
+	// button will let them through. The other two ride along out of band
+	// rather than as two more requests.
+	s.render(w, r, templates.TournamentSize(size))
+	s.render(w, r, templates.TournamentCount(size, templates.OutOfBand()))
+	s.render(w, r, templates.TournamentSubmit(size, r.FormValue("form_mode"), templates.OutOfBand()))
 }
 
 // handleCreateTournament starts one.

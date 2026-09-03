@@ -75,7 +75,7 @@ templ tournamentForm(v TournamentFormView, maxPlayers int) {
 			Dafür braucht es mindestens zwei Spieler in der Rangliste.
 		</p>
 	} else {
-		@tournamentFields(v, maxPlayers, "/tournaments", "Turnier anlegen")
+		@tournamentFields(v, maxPlayers, "/tournaments", TournamentFormCreate)
 	}
 }
 
@@ -84,7 +84,7 @@ templ tournamentForm(v TournamentFormView, maxPlayers int) {
 // Starting a tournament and changing one that has not been played are the
 // same set of questions, so they are the same form. Only where it posts to
 // and what the button says differ.
-templ tournamentFields(v TournamentFormView, maxPlayers int, action, submit string) {
+templ tournamentFields(v TournamentFormView, maxPlayers int, action, mode string) {
 	if v.Error != "" {
 		<p class="error" role="alert">{ v.Error }</p>
 	}
@@ -104,26 +104,37 @@ templ tournamentFields(v TournamentFormView, maxPlayers int, action, submit stri
 		// entry: nothing on this form redraws when the mode changes, and
 		// the number of set boxes it decides is rendered later, on the
 		// schedule.
+		// Two pickers in a row say nothing about which is which, so the
+		// sentence they sit inside does it: "Best of 3 Sätze, bis 11
+		// Punkte". Words rather than two more labels, because the row is
+		// already read as one setting.
 		<div class="row">
 			<label for="tournament-best-of">Modus</label>
-			<select id="tournament-best-of" name="best_of">
-				for _, n := range BestOfOptions {
-					<option value={ strconv.Itoa(n) } selected?={ v.BestOf == n }>
-						{ BestOfLabel(n) }
-					</option>
-				}
-			</select>
-			<select
-				id="tournament-points-to-win"
-				name="points_to_win"
-				aria-label="Punkte pro Satz"
-			>
-				for _, p := range PointsToWinOptions {
-					<option value={ strconv.Itoa(p) } selected?={ v.PointsToWin == p }>
-						bis { strconv.Itoa(p) }
-					</option>
-				}
-			</select>
+			// One sentence, so it wraps as one thing. Without the group the
+			// second picker drops to the far left margin on a phone, under
+			// the label column, and reads as a setting of its own.
+			<span class="row-group">
+				<select id="tournament-best-of" name="best_of">
+					for _, n := range BestOfOptions {
+						<option value={ strconv.Itoa(n) } selected?={ v.BestOf == n }>
+							{ BestOfLabel(n) }
+						</option>
+					}
+				</select>
+				<span class="row-word">Sätze, bis</span>
+				<select
+					id="tournament-points-to-win"
+					name="points_to_win"
+					aria-label="Punkte pro Satz"
+				>
+					for _, p := range PointsToWinOptions {
+						<option value={ strconv.Itoa(p) } selected?={ v.PointsToWin == p }>
+							{ strconv.Itoa(p) }
+						</option>
+					}
+				</select>
+				<span class="row-word">Punkte</span>
+			</span>
 		</div>
 		// Everything that changes the size of the evening redraws the
 		// sentence below: the number depends on the names, the format and
@@ -146,24 +157,35 @@ templ tournamentFields(v TournamentFormView, maxPlayers int, action, submit stri
 					Mit Rückspiel
 				</option>
 			</select>
+			// The final is a property of the draw, so it sits in the same
+			// block as the rounds. Directly above "Wer spielt mit?" it read
+			// as the first line of the player list.
+			<label class="chip">
+				<input
+					type="checkbox"
+					name="with_final"
+					value="1"
+					checked?={ v.WithFinal }
+					hx-get="/fragments/tournament-size"
+					hx-target="#tournament-size"
+					hx-swap="outerHTML"
+					hx-include="closest form"
+				/>
+				<span>Finale zwischen den besten zwei</span>
+			</label>
 		</div>
-		<label class="tick">
-			<input
-				type="checkbox"
-				name="with_final"
-				value="1"
-				checked?={ v.WithFinal }
-				hx-get="/fragments/tournament-size"
-				hx-target="#tournament-size"
-				hx-swap="outerHTML"
-				hx-include="closest form"
-			/>
-			Finale zwischen den besten zwei
-		</label>
+		// Carried so the redrawn button below can say the right thing
+		// without the fragment being told a label to print.
+		<input type="hidden" name="form_mode" value={ mode }/>
 		<fieldset class="tournament-field">
-			<legend>Wer spielt mit?</legend>
+			<legend>
+				Wer spielt mit?
+				// Beside the question rather than under the answer: how many
+				// are ticked is what somebody wants to know while ticking.
+				@TournamentCount(v.Size(maxPlayers), nil)
+			</legend>
 			for _, c := range v.Candidates {
-				<label class="tick">
+				<label class="chip">
 					<input
 						type="checkbox"
 						name="player_id"
@@ -174,12 +196,12 @@ templ tournamentFields(v TournamentFormView, maxPlayers int, action, submit stri
 						hx-swap="outerHTML"
 						hx-include="closest form"
 					/>
-					{ c.DisplayName }
+					<span>{ c.DisplayName }</span>
 				</label>
 			}
 		</fieldset>
 		@TournamentSize(v.Size(maxPlayers))
-		<button type="submit">{ submit }</button>
+		@TournamentSubmit(v.Size(maxPlayers), mode, nil)
 	</form>
 }
 
@@ -245,7 +267,7 @@ templ TournamentPage(v TournamentView) {
 						verschiebt, würde eingetragene Ergebnisse in Runden
 						legen, in denen sie nicht gespielt wurden.
 					</p>
-					@tournamentFields(*v.Edit, v.MaxPlayers, "/tournaments/"+v.ID+"/edit", "Änderung speichern")
+					@tournamentFields(*v.Edit, v.MaxPlayers, "/tournaments/"+v.ID+"/edit", TournamentFormEdit)
 					<form method="post" action={ templ.SafeURL("/tournaments/" + v.ID + "/delete") }>
 						<button class="linklike" type="submit">Turnier löschen</button>
 					</form>
@@ -255,6 +277,9 @@ templ TournamentPage(v TournamentView) {
 		<section class="card">
 			<h2>Tabelle</h2>
 			@tournamentTable(v.Table)
+			if len(v.Table) > 0 {
+				@tieBreaks(v.SharedRank())
+			}
 		</section>
 		<section class="card">
 			<h2>Spielplan</h2>
@@ -294,6 +319,33 @@ templ TournamentPage(v TournamentView) {
 			@tournamentRounds(v)
 		</section>
 	}
+}
+
+// tieBreaks states the order in which a level table is decided.
+//
+// Written down because it is the thing an office argues about instead of
+// playing: at six to twelve players a round robin produces a tie almost every
+// time, and a rule nobody can read is a rule everybody has an opinion on. It
+// is not configurable and not meant to be — the point of a fixed order is
+// that it was fixed before anybody knew who it would favour.
+//
+// Folded away while it is background, and open by itself the moment two
+// players actually share a place.
+templ tieBreaks(shared bool) {
+	<details class="tiebreak" open?={ shared }>
+		<summary>Wenn zwei gleich stehen</summary>
+		<ol>
+			<li>Siege</li>
+			<li>Direkter Vergleich &mdash; bei mehr als zweien die Spiele dieser Gruppe untereinander</li>
+			<li>Satzdifferenz</li>
+			<li>Ballpunktdifferenz</li>
+		</ol>
+		<p class="muted">
+			Bleibt es auch dann gleich, teilen sich die Plätze in der Tabelle.
+			Wer den Pokal nimmt, entscheidet ein Satz bis 11 an der Platte
+			&mdash; nicht das Los.
+		</p>
+	</details>
 }
 
 templ tournamentTable(rows []TournamentTableRow) {
@@ -441,10 +493,35 @@ func signed(n int) string {
 // a quarter of an hour each — the number the cap on the field exists for. With
 // return legs it doubles, and that is exactly why this is computed rather than
 // written down.
+// TournamentCount is the tally beside "Wer spielt mit?".
+//
+// Out of band: it belongs next to the question and the swap that redraws it
+// targets the sentence under the answer, so it rides along with that response
+// rather than needing a second request.
+templ TournamentCount(v TournamentSizeView, oob templ.Attributes) {
+	<span id="tournament-count" class="field-count" { oob... }>
+		{ strconv.Itoa(v.Players) } von höchstens { strconv.Itoa(v.MaxPlayers) }
+	</span>
+}
+
+// TournamentSubmit is the button, disabled until the form describes a
+// tournament that could exist.
+//
+// The mode rather than the label travels with the form, so the fragment picks
+// its own words from a fixed set instead of printing back whatever a request
+// asked it to.
+templ TournamentSubmit(v TournamentSizeView, mode string, oob templ.Attributes) {
+	<button id="tournament-submit" type="submit" disabled?={ !v.Enough() } { oob... }>
+		{ TournamentSubmitLabel(mode) }
+	</button>
+}
+
 templ TournamentSize(v TournamentSizeView) {
 	<p id="tournament-size" class="muted">
 		if v.Players < 2 {
-			Mindestens zwei Namen ankreuzen, höchstens { strconv.Itoa(v.MaxPlayers) }.
+			// The count and the cap are beside the question now, so this
+			// says the one thing they do not: why the button is off.
+			Der Knopf wird frei, sobald zwei Namen angekreuzt sind.
 		} else {
 			{ strconv.Itoa(v.Players) } Spieler,
 			<strong>{ strconv.Itoa(v.Matches) } Spiele</strong>.
@@ -452,7 +529,6 @@ templ TournamentSize(v TournamentSizeView) {
 			// starts its own line here is silently dropped by templ, which
 			// compiles and then renders the wrong sentence.
 			<span>Bei einer Viertelstunde pro Spiel sind das { TournamentHours(v.Matches) }.</span>
-			Höchstens { strconv.Itoa(v.MaxPlayers) } Spieler.
 		}
 	</p>
 }
