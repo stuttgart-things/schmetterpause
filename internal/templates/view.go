@@ -148,7 +148,7 @@ type QRSheetView struct {
 
 // RulesSheetView is the printable sheet of house rules.
 //
-// It carries the target score rather than assuming it: two of the four rules
+// It carries the target score rather than assuming it: two of the five rules
 // are statements about a number the entry form lets people pick, and the
 // sheet derives them from the same helpers instead of spelling them out. A
 // printed sheet that contradicts the form is how a rule gets argued about at

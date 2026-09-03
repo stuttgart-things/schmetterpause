@@ -83,9 +83,9 @@ Der Aushang ist zum Drucken gemacht: schwarz auf weiß, der Code groß genug, um
 aus Armlänge gescannt zu werden. Menü → Drucken reicht, es gibt bewusst keinen
 Knopf dafür.
 
-`/rules` ist genauso gebaut und gehört daneben: Aufschlag diagonal,
-Aufschlagwechsel nach zwei Punkten, zwei Punkte Abstand, Netzroller wird
-wiederholt. Die Zahlen darin stammen aus denselben Regeln wie das
+`/rules` ist genauso gebaut und gehört daneben: Aufschlag diagonal, der erste
+Aufschlag wird ausgespielt, Aufschlagwechsel nach zwei Punkten, zwei Punkte
+Abstand, Netzroller wird wiederholt. Die Zahlen darin stammen aus denselben Regeln wie das
 Eingabeformular — der Ausdruck kann dem Formular also nicht widersprechen,
 solange beide aus derselben Version kommen. Er hängt nicht am QR-Code und muss
 nach einem Adresswechsel auch nicht neu gedruckt werden.
