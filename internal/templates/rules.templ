@@ -34,7 +34,14 @@ templ RulesSheet(v RulesSheetView) {
 				<dd>
 					Der Ball springt erst auf der eigenen Hälfte auf und muss
 					danach auf der diagonal gegenüberliegenden Hälfte des
-					Gegners aufkommen &mdash; wie im Doppel.
+					Gegners aufkommen &mdash; wie im Doppel. Kommt er woanders
+					auf, geht der Punkt an den Gegner.
+				</dd>
+				<dt>Der erste Aufschlag wird ausgespielt</dt>
+				<dd>
+					Vor dem ersten Satz wirft ein Spieler den Ball ein, und wer
+					den Ballwechsel gewinnt, schlägt zuerst auf. In jedem
+					weiteren Satz beginnt, wer den vorherigen verloren hat.
 				</dd>
 				<dt>
 					Aufschlagwechsel nach { strconv.Itoa(ServeEvery(v.PointsToWin)) } Punkten

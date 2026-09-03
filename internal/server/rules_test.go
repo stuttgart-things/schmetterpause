@@ -16,7 +16,7 @@ func rulesSheet(t *testing.T) string {
 	return get(t, newHandler(newMemStore()), "/rules").Body.String()
 }
 
-// TestTheRulesSheetNamesEveryHouseRule holds the sheet to the four rules it
+// TestTheRulesSheetNamesEveryHouseRule holds the sheet to the five rules it
 // exists for. A sheet that quietly loses one is a rule that gets argued about
 // at the table.
 func TestTheRulesSheetNamesEveryHouseRule(t *testing.T) {
@@ -24,6 +24,7 @@ func TestTheRulesSheetNamesEveryHouseRule(t *testing.T) {
 
 	for _, want := range []string{
 		"Aufschlag diagonal",
+		"Der erste Aufschlag wird ausgespielt",
 		"Aufschlagwechsel nach",
 		"Zwei Punkte Abstand",
 		"Netzroller",
@@ -35,7 +36,7 @@ func TestTheRulesSheetNamesEveryHouseRule(t *testing.T) {
 }
 
 // TestTheRulesSheetAgreesWithTheEntryForm is the reason the sheet is rendered
-// rather than a static file. Two of the four rules are statements about the
+// rather than a static file. Two of the five rules are statements about the
 // target score, and a sheet on the wall that contradicts the form is worse
 // than no sheet: the form can be corrected, the printout cannot.
 func TestTheRulesSheetAgreesWithTheEntryForm(t *testing.T) {
@@ -91,5 +92,24 @@ func TestTheRulesSheetPrintsLikeTheQRSheet(t *testing.T) {
 	}
 	if !strings.Contains(body, `class="sheet-mascot `+templates.PaddleRules) {
 		t.Errorf("the sheet does not carry the mascot in its own colour: %s", body)
+	}
+}
+
+// TestTheRulesSheetNamesWhatARuleCosts: a rule on the wall that says what to
+// do but not what happens when somebody does not is the kind that gets argued
+// about mid-rally. Both rules that carry a consequence have to state it.
+func TestTheRulesSheetNamesWhatARuleCosts(t *testing.T) {
+	body := rulesSheet(t)
+
+	// A serve that lands outside the diagonal half is not replayed.
+	if !strings.Contains(body, "geht der Punkt an den Gegner") {
+		t.Errorf("the diagonal serve costs nothing on the sheet: %s", body)
+	}
+	// Who begins is decided once, and afterwards by the previous set.
+	if !strings.Contains(body, "wirft ein Spieler den Ball ein") {
+		t.Errorf("the sheet does not say how the first serve is decided: %s", body)
+	}
+	if !strings.Contains(body, "wer den vorherigen verloren hat") {
+		t.Errorf("the sheet does not say who serves in the sets after the first: %s", body)
 	}
 }
