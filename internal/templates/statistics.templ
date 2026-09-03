@@ -117,7 +117,7 @@ templ headToHead(v StatisticsView) {
 										<span aria-hidden="true">·</span>
 									</td>
 								} else {
-									<td class={ templ.KV("record-up", cell.Ahead()), templ.KV("record-down", cell.Behind()) }>
+									<td>
 										// Spelled out rather than read as
 										// "drei Doppelpunkt eins", and the
 										// figure hidden so it is not said
@@ -127,7 +127,7 @@ templ headToHead(v StatisticsView) {
 									</td>
 								}
 							}
-							<td class={ templ.KV("record-up", row.Ahead()), templ.KV("record-down", row.Behind()) }>
+							<td>
 								<span class="sr-only">{ row.Spoken() }</span>
 								<span aria-hidden="true">{ row.Record() }</span>
 							</td>

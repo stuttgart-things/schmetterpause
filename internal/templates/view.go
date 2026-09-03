@@ -1118,14 +1118,6 @@ func (r StatisticsRow) Record() string { return strconv.Itoa(r.Won) + ":" + strc
 // Spoken is that total in words. Same reason as StatisticsCell.Spoken.
 func (r StatisticsRow) Spoken() string { return "insgesamt " + spokenRecord(r.Won, r.Lost) }
 
-// Ahead reports whether the row has won more than it has lost, which is what
-// colours the total.
-func (r StatisticsRow) Ahead() bool { return r.Won > r.Lost }
-
-// Behind is the other direction. Both are false at a level record, which is a
-// state rather than a result to mark either way.
-func (r StatisticsRow) Behind() bool { return r.Won < r.Lost }
-
 // StatisticsCell is one player's record against one other.
 type StatisticsCell struct {
 	// Record is "3:1" — wins to losses — or empty when these two have not
@@ -1133,7 +1125,7 @@ type StatisticsCell struct {
 	// and one that ended goalless are different things.
 	Record string
 	// Won and Lost are what Record is made of, kept as numbers so the cell
-	// can be coloured and read aloud without parsing its own text back.
+	// can be read aloud without parsing its own text back.
 	Won, Lost int
 	// Self marks the diagonal, which is drawn as a blank rather than a zero.
 	Self bool
@@ -1141,14 +1133,6 @@ type StatisticsCell struct {
 	// column it is in.
 	Opponent string
 }
-
-// Ahead reports whether this player leads the pairing, which is what colours
-// the cell.
-func (c StatisticsCell) Ahead() bool { return c.Won > c.Lost }
-
-// Behind is the other direction. Level is neither: 2:2 is not a result to
-// celebrate or to mourn.
-func (c StatisticsCell) Behind() bool { return c.Won < c.Lost }
 
 // Spoken states the cell in words.
 //

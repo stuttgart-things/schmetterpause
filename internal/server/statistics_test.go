@@ -39,38 +39,31 @@ func TestTheMatrixSaysWhatItCounts(t *testing.T) {
 	}
 }
 
-// One win for Anna: her cell against Bodo and her total are ahead, his are
-// behind. Four marks and no more — the counts catch a rule that colours the
-// diagonal or an unplayed pairing.
-func TestALeadIsMarkedOnBothSides(t *testing.T) {
-	h, store, anna, bodo := twoBrowsers(t)
-	settledMatch(t, h, store, anna, bodo)
-
-	body := listBody(t, h, "/statistics")
-
-	if got := strings.Count(body, "record-up"); got != 2 {
-		t.Errorf("%d cells marked as ahead, want 2 (the cell and the total): %s", got, body)
-	}
-	if got := strings.Count(body, "record-down"); got != 2 {
-		t.Errorf("%d cells marked as behind, want 2 (the cell and the total): %s", got, body)
-	}
-}
-
-// One each. A level record is a state rather than a result, and marking it in
-// either colour would claim something the matches do not say.
-func TestALevelRecordIsNotMarked(t *testing.T) {
+// The matrix is everybody against everybody, and it is not colour-coded.
+//
+// It was, briefly. In a full matrix every winning record is the mirror of a
+// losing one on the other side of the diagonal, so colouring both says the
+// same thing twice and turns a reading of the office into a scoreboard with a
+// winning half and a losing half. Where a page really is written from one
+// person's side — the match list — the colour stays.
+func TestTheMatrixIsNotColoured(t *testing.T) {
 	h, store, anna, bodo := twoBrowsers(t)
 	beat(t, h, store, anna, bodo, "Bodo")
 	beat(t, h, store, bodo, anna, "Anna")
+	beat(t, h, store, anna, bodo, "Bodo")
 
 	body := listBody(t, h, "/statistics")
 
-	if strings.Contains(body, "record-up") || strings.Contains(body, "record-down") {
-		t.Errorf("a level record is marked: %s", body)
+	for _, marker := range []string{"record-up", "record-down", "gain", "loss"} {
+		if strings.Contains(body, `class="`+marker) {
+			t.Errorf("the matrix marks a record with %q: %s", marker, body)
+		}
 	}
-	// And it is still a cell with a record in it, not an empty one.
-	if !strings.Contains(body, "1:1") {
-		t.Errorf("the level record is not shown at all: %s", body)
+	// Still a table with records in it: 2:1 for Anna, 1:2 for Bodo.
+	for _, want := range []string{"2:1", "1:2"} {
+		if !strings.Contains(body, want) {
+			t.Errorf("the matrix does not show %q: %s", want, body)
+		}
 	}
 }
 
