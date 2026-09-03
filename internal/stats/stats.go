@@ -112,6 +112,12 @@ type Totals struct {
 	// Whitewashes are matches won without dropping a set. A count, and the
 	// counterpart to Deuce: one says how close it gets, the other how
 	// one-sided.
+	//
+	// Matches played over a single set are left out, and that is the whole
+	// point of the number. There, winning without dropping a set is what
+	// winning *is*: every single-set win would be a whitewash, and a count
+	// that says "41 of 50" because 40 of them were one-setters describes the
+	// mode the office plays in rather than how one-sided its matches are.
 	Whitewashes int
 }
 
@@ -155,7 +161,8 @@ func Compute(matches []domain.Match) Totals {
 			}
 		}
 
-		if homeSets == 0 || awaySets == 0 {
+		// Best-of-one cannot answer this: see the field's own comment.
+		if m.BestOf > 1 && (homeSets == 0 || awaySets == 0) {
 			t.Whitewashes++
 		}
 	}

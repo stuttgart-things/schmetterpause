@@ -70,7 +70,10 @@ templ statisticsTotals(t StatisticsTotals) {
 			<dd>{ strconv.Itoa(t.Deuce) }</dd>
 		</div>
 		<div>
-			<dt>Ohne Satzverlust gewonnen</dt>
+			// The qualifier is not decoration: in a single set, winning
+			// without dropping one is what winning is, so those are left out
+			// and the label has to say so.
+			<dt>Ohne Satzverlust gewonnen (ab Best of 3)</dt>
 			<dd>{ strconv.Itoa(t.Whitewashes) }</dd>
 		</div>
 		if t.LongestSet != "" {
