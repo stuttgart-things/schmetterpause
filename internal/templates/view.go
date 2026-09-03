@@ -741,6 +741,11 @@ type MatchListView struct {
 // which side "home" was, which is an artefact of the form and not of the
 // evening. Read winner-first, every row is a sentence — "Anna beat Bodo 2:0,
 // and it was worth eight points".
+//
+// The rating change is the exception, and follows the subject below rather
+// than the winner. Everything else on the row stays winner-first, because the
+// two name columns are headed "Sieger" and "Gegner" and flipping the sides
+// under those headings would make the table lie.
 type MatchListRow struct {
 	PlayedAt   string
 	WinnerName string
@@ -751,13 +756,29 @@ type MatchListRow struct {
 	LoserSets  int
 	// Sets are the individual scores, also from the winner's side.
 	Sets []SetScore
-	// Delta is what the win was worth, and HasDelta is false for anything
-	// that has not been settled. For a single match the two players' changes
-	// are equal and opposite, so the winner's number says it all.
+	// Delta is the subject's rating change, and HasDelta is false for
+	// anything that has not been settled.
+	//
+	// The subject's and not the winner's: a list somebody is reading about
+	// themselves has to say their rating got worse, in their own sign. The
+	// two changes in a match are equal and opposite, so the winner's number
+	// carries the same information — but it carries it as a gain on a row
+	// the reader lost, which is the opposite of what they are looking up.
+	// Where there is no subject it falls back to the winner, which is what
+	// this always was.
 	Delta    int
 	HasDelta bool
-	Pending  bool
-	Disputed bool
+	// SubjectName is whose change that is, for a reader who cannot see the
+	// colour. Empty where the row falls back to the winner.
+	SubjectName string
+	// SubjectWon and SubjectLost mark the row from the subject's side, and
+	// are both false where the list has no subject, where they did not play
+	// this match, or where the result is not settled — a pending match has a
+	// winner on the table and has still counted for nothing, so marking it
+	// as won would claim more than the result does.
+	SubjectWon, SubjectLost bool
+	Pending                 bool
+	Disputed                bool
 }
 
 // SparkView is the rating history as ready-to-draw geometry. The arithmetic
@@ -1091,15 +1112,63 @@ type StatisticsRow struct {
 	Won, Lost int
 }
 
+// Record is the row's total, in the same shape as the cells beside it.
+func (r StatisticsRow) Record() string { return strconv.Itoa(r.Won) + ":" + strconv.Itoa(r.Lost) }
+
+// Spoken is that total in words. Same reason as StatisticsCell.Spoken.
+func (r StatisticsRow) Spoken() string { return "insgesamt " + spokenRecord(r.Won, r.Lost) }
+
+// Ahead reports whether the row has won more than it has lost, which is what
+// colours the total.
+func (r StatisticsRow) Ahead() bool { return r.Won > r.Lost }
+
+// Behind is the other direction. Both are false at a level record, which is a
+// state rather than a result to mark either way.
+func (r StatisticsRow) Behind() bool { return r.Won < r.Lost }
+
 // StatisticsCell is one player's record against one other.
 type StatisticsCell struct {
 	// Record is "3:1" — wins to losses — or empty when these two have not
 	// met. Empty rather than "0:0", because a pairing that never happened
 	// and one that ended goalless are different things.
 	Record string
+	// Won and Lost are what Record is made of, kept as numbers so the cell
+	// can be coloured and read aloud without parsing its own text back.
+	Won, Lost int
 	// Self marks the diagonal, which is drawn as a blank rather than a zero.
 	Self bool
 	// Opponent labels the cell for a screen reader, which cannot see which
 	// column it is in.
 	Opponent string
+}
+
+// Ahead reports whether this player leads the pairing, which is what colours
+// the cell.
+func (c StatisticsCell) Ahead() bool { return c.Won > c.Lost }
+
+// Behind is the other direction. Level is neither: 2:2 is not a result to
+// celebrate or to mourn.
+func (c StatisticsCell) Behind() bool { return c.Won < c.Lost }
+
+// Spoken states the cell in words.
+//
+// "3:1" is a set score by every convention the rest of this app follows —
+// which is exactly how somebody read the matrix — and hearing one where a
+// match record is meant is that same misreading with no heading nearby to
+// correct it.
+func (c StatisticsCell) Spoken() string {
+	return "gegen " + c.Opponent + ": " + spokenRecord(c.Won, c.Lost)
+}
+
+// spokenRecord is "3 Siege, 1 Niederlage", counted rather than abbreviated.
+func spokenRecord(won, lost int) string {
+	return plural(won, "Sieg", "Siege") + ", " + plural(lost, "Niederlage", "Niederlagen")
+}
+
+func plural(n int, one, many string) string {
+	word := many
+	if n == 1 {
+		word = one
+	}
+	return strconv.Itoa(n) + " " + word
 }

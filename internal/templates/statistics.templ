@@ -24,9 +24,14 @@ templ Statistics(v StatisticsView) {
 		if v.Any() {
 			<section class="card">
 				<h2>Direktvergleich</h2>
+				// Says what the number is before anybody reads one. "Zeile
+				// schlägt Spalte" over a cell like 3:6 was read as a set
+				// score, which is what a colon between two numbers means
+				// everywhere else in this app.
 				<p class="muted">
-					Zeile schlägt Spalte. Wer noch nicht gegeneinander gespielt
-					hat, hat ein leeres Feld — kein 0:0.
+					Zeile gegen Spalte, <strong>Siege:Niederlagen</strong> —
+					gezählt werden Matches, nicht Sätze. Wer noch nicht
+					gegeneinander gespielt hat, hat ein leeres Feld statt 0:0.
 				</p>
 				@headToHead(v)
 			</section>
@@ -112,13 +117,20 @@ templ headToHead(v StatisticsView) {
 										<span aria-hidden="true">·</span>
 									</td>
 								} else {
-									<td>
-										<span class="sr-only">gegen { cell.Opponent }: </span>
-										{ cell.Record }
+									<td class={ templ.KV("record-up", cell.Ahead()), templ.KV("record-down", cell.Behind()) }>
+										// Spelled out rather than read as
+										// "drei Doppelpunkt eins", and the
+										// figure hidden so it is not said
+										// twice.
+										<span class="sr-only">{ cell.Spoken() }</span>
+										<span aria-hidden="true">{ cell.Record }</span>
 									</td>
 								}
 							}
-							<td>{ strconv.Itoa(row.Won) }:{ strconv.Itoa(row.Lost) }</td>
+							<td class={ templ.KV("record-up", row.Ahead()), templ.KV("record-down", row.Behind()) }>
+								<span class="sr-only">{ row.Spoken() }</span>
+								<span aria-hidden="true">{ row.Record() }</span>
+							</td>
 						</tr>
 					}
 				</tbody>

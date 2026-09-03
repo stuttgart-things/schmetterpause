@@ -465,7 +465,7 @@ func Info(v StatusView) templ.Component {
 				}()
 			}
 			ctx = templ.InitializeContext(ctx)
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 28, "<div class=\"page-head\"><div class=\"page-greeting\"><h1>Info</h1><p class=\"muted\">Was die beiden Proben antworten würden, und was gerade läuft.</p></div></div><section id=\"status\" class=\"card\" hx-get=\"/fragments/status\" hx-trigger=\"load, every 10s\" hx-swap=\"innerHTML\"><p class=\"muted\">Status wird geladen …</p></section>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 28, "<div class=\"page-head\"><div class=\"page-greeting\"><h1>Info</h1><p class=\"muted\">Ob die App antwortet, ob die Datenbank erreichbar ist, und welche Version gerade läuft.</p></div></div><section id=\"status\" class=\"card\" hx-get=\"/fragments/status\" hx-trigger=\"load, every 10s\" hx-swap=\"innerHTML\"><p class=\"muted\">Status wird geladen …</p></section>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

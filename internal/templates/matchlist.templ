@@ -75,7 +75,11 @@ templ MatchList(v MatchListView) {
 						</thead>
 						<tbody>
 							for _, m := range v.Matches {
-								<tr>
+								// Won or lost, from the side of whoever the list
+								// is about. Redundant with the two name columns
+								// on purpose: nothing here is carried by colour
+								// alone, the stripe only saves the reading.
+								<tr class={ templ.KV("match-won", m.SubjectWon), templ.KV("match-lost", m.SubjectLost) }>
 									<td class="when">{ m.PlayedAt }</td>
 									<td class="name">
 										<a href={ templ.SafeURL("/players/" + m.WinnerID) }>{ m.WinnerName }</a>
@@ -88,6 +92,13 @@ templ MatchList(v MatchListView) {
 										@matchState(m.Pending, m.Disputed)
 									</td>
 									<td class="num">
+										// Whose change this is. The colour and the
+										// sign say it to somebody looking at the
+										// row; this says it to somebody who is
+										// hearing it.
+										if m.SubjectName != "" {
+											<span class="sr-only">{ m.SubjectName }: </span>
+										}
 										@matchDelta(m.Pending, m.Disputed, m.HasDelta, m.Delta)
 									</td>
 									<td class="sets-line">
