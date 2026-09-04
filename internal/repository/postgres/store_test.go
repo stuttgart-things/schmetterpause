@@ -464,6 +464,112 @@ func TestPendingForIncludesContestedMatches(t *testing.T) {
 	}
 }
 
+// TestWaitingOnOpponentForIsTheComplementOfPendingFor pins the property the
+// two lists on the page depend on: every unsettled match a player is in
+// appears in exactly one of them. Both are cheap to write correctly and easy
+// to drift apart, and either kind of drift is silent — an overlap shows one
+// match under two headings, a gap is a result nobody is told about, which is
+// the bug issue #159 was.
+func TestWaitingOnOpponentForIsTheComplementOfPendingFor(t *testing.T) {
+	store, ctx := newStore(t)
+	matches := store.Matches()
+
+	anna := mustPlayer(ctx, t, store, "Anna", domain.DefaultTTR)
+	bodo := mustPlayer(ctx, t, store, "Bodo", domain.DefaultTTR)
+
+	report := func(reporter uuid.UUID, playedAt time.Time) domain.Match {
+		t.Helper()
+
+		created, err := matches.Create(ctx, domain.Match{
+			HomeID: anna.ID, AwayID: bodo.ID,
+			BestOf: 3, PointsToWin: 11,
+			Status: domain.MatchPending, ReportedBy: reporter,
+			PlayedAt: playedAt,
+			Sets:     []domain.MatchSet{{SetNo: 1, HomePoints: 11, AwayPoints: 9}},
+		})
+		if err != nil {
+			t.Fatalf("Create(): %v", err)
+		}
+		return created
+	}
+
+	now := time.Now()
+	older := report(anna.ID, now.Add(-3*time.Hour))
+	newer := report(anna.ID, now.Add(-1*time.Hour))
+	byBodo := report(bodo.ID, now.Add(-2*time.Hour))
+
+	waiting, err := matches.WaitingOnOpponentFor(ctx, anna.ID)
+	if err != nil {
+		t.Fatalf("WaitingOnOpponentFor(Anna): %v", err)
+	}
+	if len(waiting) != 2 {
+		t.Fatalf("WaitingOnOpponentFor(Anna) = %d matches, want the 2 she reported", len(waiting))
+	}
+	// Oldest first, the opposite of PendingFor. This list is read to find
+	// what is stuck, and what is stuck belongs at the top.
+	if waiting[0].ID != older.ID || waiting[1].ID != newer.ID {
+		t.Errorf("the list is not oldest first: got %v, want %v",
+			[]uuid.UUID{waiting[0].ID, waiting[1].ID}, []uuid.UUID{older.ID, newer.ID})
+	}
+
+	// Bodo reported one of the three, so exactly that one is his to wait on.
+	forBodo, err := matches.WaitingOnOpponentFor(ctx, bodo.ID)
+	if err != nil {
+		t.Fatalf("WaitingOnOpponentFor(Bodo): %v", err)
+	}
+	if len(forBodo) != 1 || forBodo[0].ID != byBodo.ID {
+		t.Errorf("WaitingOnOpponentFor(Bodo) = %d matches, want only the one he reported", len(forBodo))
+	}
+
+	// The complement, stated as one assertion: three unsettled matches, and
+	// each player sees each of them exactly once across the two queries.
+	for name, id := range map[string]uuid.UUID{"Anna": anna.ID, "Bodo": bodo.ID} {
+		pending, err := matches.PendingFor(ctx, id)
+		if err != nil {
+			t.Fatalf("PendingFor(%s): %v", name, err)
+		}
+		mine, err := matches.WaitingOnOpponentFor(ctx, id)
+		if err != nil {
+			t.Fatalf("WaitingOnOpponentFor(%s): %v", name, err)
+		}
+
+		seen := map[uuid.UUID]int{}
+		for _, m := range append(append([]domain.Match{}, pending...), mine...) {
+			seen[m.ID]++
+		}
+		if len(seen) != 3 {
+			t.Errorf("%s sees %d of the 3 unsettled matches", name, len(seen))
+		}
+		for id, n := range seen {
+			if n != 1 {
+				t.Errorf("%s sees match %s in both lists", name, id)
+			}
+		}
+	}
+
+	// A contested match is the one that must NOT move: it is in PendingFor
+	// for both sides already, because either may correct it.
+	if err := matches.SetStatus(ctx, older.ID, domain.MatchDisputed, nil); err != nil {
+		t.Fatalf("SetStatus(disputed): %v", err)
+	}
+	waiting, err = matches.WaitingOnOpponentFor(ctx, anna.ID)
+	if err != nil {
+		t.Fatalf("WaitingOnOpponentFor(Anna) after the dispute: %v", err)
+	}
+	if len(waiting) != 1 || waiting[0].ID != newer.ID {
+		t.Errorf("the contested match is still listed as merely waiting: %d matches", len(waiting))
+	}
+
+	// And a confirmed one leaves entirely.
+	confirmedAt := time.Now()
+	if err := matches.SetStatus(ctx, newer.ID, domain.MatchConfirmed, &confirmedAt); err != nil {
+		t.Fatalf("SetStatus(confirmed): %v", err)
+	}
+	if waiting, err := matches.WaitingOnOpponentFor(ctx, anna.ID); err != nil || len(waiting) != 0 {
+		t.Errorf("WaitingOnOpponentFor(Anna) = %d, %v, want nothing left", len(waiting), err)
+	}
+}
+
 func TestTTRHistoryRepository(t *testing.T) {
 	store, ctx := newStore(t)
 

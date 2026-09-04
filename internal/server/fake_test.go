@@ -450,6 +450,20 @@ func (m *memMatches) Create(_ context.Context, in domain.Match) (domain.Match, e
 	return in, nil
 }
 
+// backdate moves a stored match into the past, so a test can watch something
+// age without waiting for it to.
+func (m *memMatches) backdate(id uuid.UUID, at time.Time) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	for i := range m.rows {
+		if m.rows[i].ID == id {
+			m.rows[i].PlayedAt = at
+			return
+		}
+	}
+}
+
 // all returns a copy of the stored matches, for assertions.
 func (m *memMatches) all() []domain.Match {
 	m.mu.Lock()
@@ -493,6 +507,32 @@ func (m *memMatches) PendingFor(_ context.Context, playerID uuid.UUID) ([]domain
 func (m *memMatches) PendingCountFor(ctx context.Context, playerID uuid.UUID) (int, error) {
 	waiting, err := m.PendingFor(ctx, playerID)
 	return len(waiting), err
+}
+
+// WaitingOnOpponentFor mirrors the Postgres query: pending under this
+// player's own name. Disputed is deliberately absent — those are in
+// PendingFor for both sides already, and one match under two headings reads
+// as two matches.
+//
+// Oldest first, like the query, so a test that asserts on order asserts on
+// the order a reader sees.
+func (m *memMatches) WaitingOnOpponentFor(_ context.Context, playerID uuid.UUID) ([]domain.Match, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	var out []domain.Match
+	for _, row := range m.rows {
+		if row.HomeID != playerID && row.AwayID != playerID {
+			continue
+		}
+		if row.Status == domain.MatchPending && row.ReportedBy == playerID {
+			out = append(out, row)
+		}
+	}
+	slices.SortFunc(out, func(a, b domain.Match) int {
+		return a.PlayedAt.Compare(b.PlayedAt)
+	})
+	return out, nil
 }
 
 // RecentFor mirrors the Postgres query: every match the player is in, newest

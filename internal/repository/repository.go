@@ -142,6 +142,12 @@ type MatchRepository interface {
 	// bar needs a number and not the matches behind it, and asking for the
 	// list on every page render would load their sets along with it.
 	PendingCountFor(ctx context.Context, playerID uuid.UUID) (int, error)
+	// WaitingOnOpponentFor returns the other half of PendingFor: the results
+	// this player recorded that their opponent has not answered yet. Nobody
+	// can act on these — that is the point of them. They exist because the
+	// person who typed a result is otherwise the only participant never told
+	// that it did not land. See issue #159.
+	WaitingOnOpponentFor(ctx context.Context, playerID uuid.UUID) ([]domain.Match, error)
 	// RecentFor returns a player's most recent matches.
 	RecentFor(ctx context.Context, playerID uuid.UUID, limit int) ([]domain.Match, error)
 	// Recent returns the most recent matches of everybody, newest first, at
