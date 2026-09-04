@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.2.1](https://github.com/stuttgart-things/schmetterpause/compare/v0.2.0...v0.2.1) (2026-09-04)
+
+
+### Bug Fixes
+
+* **ci:** name snapshots by commit so they cannot claim a release tag ([#177](https://github.com/stuttgart-things/schmetterpause/issues/177)) ([4e851fb](https://github.com/stuttgart-things/schmetterpause/commit/4e851fbe842f4ece8e7d8e2cd6cf633cc226b223)), closes [#172](https://github.com/stuttgart-things/schmetterpause/issues/172)
+* **ci:** tag the pushed artefact instead of rendering it twice ([#179](https://github.com/stuttgart-things/schmetterpause/issues/179)) ([7cca1ef](https://github.com/stuttgart-things/schmetterpause/commit/7cca1ef0ad7bd455f21d41a33424b436f115dd65)), closes [#172](https://github.com/stuttgart-things/schmetterpause/issues/172)
+
 ## [0.2.0](https://github.com/stuttgart-things/schmetterpause/compare/v0.1.0...v0.2.0) (2026-09-04)
 
 
