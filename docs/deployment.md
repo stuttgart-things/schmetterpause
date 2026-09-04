@@ -137,6 +137,13 @@ With the operator in place and the secrets settled, the rest is one command:
 task kcl:up PROFILE=~/environments/cicd-test2.yaml
 ```
 
+The path in that example is a home directory on purpose. A profile is flat
+`key: value` with no `apiVersion` and no `kind`, so a GitOps engine that
+reconciles the directory it sits in will fail to decode it — and a failing root
+Kustomization applies nothing at all, not just the file it choked on. See
+"Where a profile must not live" in [`kcl/README.md`](../kcl/README.md); it
+happened, and it stalled a whole cluster.
+
 It creates the namespace, applies the application, waits for
 `schmetterpause-db` to appear, and only then applies the CloudNativePG Cluster.
 

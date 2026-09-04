@@ -344,6 +344,32 @@ that names a cluster is what the published base must not contain.
 `kcl:kustomize` and `kcl:publish` deliberately keep to the profiles in the
 repository: those two produce the artefact, and the artefact is neutral.
 
+### Where a profile must not live
+
+Outside this repository is not the same as anywhere. **A profile is not a
+Kubernetes manifest** — it is flat `key: value` with no `apiVersion` and no
+`kind` — so it must not land in a directory a GitOps engine reconciles.
+
+This is not hypothetical. The profile for `homerun2-test1` was first put beside
+the Argo Application manifests it belongs with, in
+`clusters/labul/vsphere/platform-sthings/argocd/homerun2-test1/`. Flux syncs
+that tree **recursively** and decodes every `.yaml` under it:
+
+```
+failed to decode Kubernetes YAML from .../schmetterpause-profile.yaml:
+missing Resource metadata <nil>
+```
+
+A failing root Kustomization applies **nothing at all** — not just the file it
+choked on. The cluster stopped reconciling entirely and sat on a stale revision
+while unrelated merges piled up behind it, until somebody moved the file out
+(`stuttgart-things#2757`). The blast radius of a malformed profile is the whole
+cluster, not the application it configures.
+
+So: keep the profile next to the environment's *documentation*, not next to its
+*manifests*, unless it is certain nothing reconciles that directory. Somewhere
+a person reads and no controller does.
+
 ## The chain behind it
 
 `kcl:kustomize` and `kcl:publish` call a shared Dagger module rather than
