@@ -87,15 +87,34 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          version="$(git describe --tags --always --dirty)"
           commit_time="$(git show -s --format=%cI HEAD)"
 
+          # A release build is named by its tag; a snapshot is named by its
+          # commit, and the two namespaces must not touch.
+          #
+          # They did. `git describe --tags` returns the bare tag on the
+          # commit the tag points at — which is the release commit, the one
+          # main gets pushed. So the push-to-main run and the dispatched tag
+          # run both published "v0.2.0", from separate builds that are not
+          # bit-identical, and whichever finished last won the tag. It left
+          # latest and v0.2.0 pointing at different images of the same
+          # source: 543ed2b3 and f7832452. Nothing was broken for a reader,
+          # but a tag that does not identify an artefact is not a tag.
+          #
+          # The short SHA is also what this repository tagged snapshots with
+          # for its whole life before v0.1.0 existed, so nothing about the
+          # naming changes — it only stops being derived from a tag that has
+          # nothing to do with the commit being built.
+          #
           # Only a tag moves "latest". A push to main is a snapshot, and
           # pointing latest at one would make it mean "most recent build"
           # rather than "most recent release".
-          latest=false
           if [ "${GITHUB_REF_TYPE}" = "tag" ]; then
+            version="${GITHUB_REF_NAME}"
             latest=true
+          else
+            version="$(git rev-parse --short HEAD)"
+            latest=false
           fi
 
           # dagger writes the function's result to stdout and its progress to
