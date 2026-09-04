@@ -225,3 +225,76 @@ func TestKioskGrantSecretsAreUnique(t *testing.T) {
 		t.Error("the same secret was accepted twice")
 	}
 }
+
+// Issue #90: a grant names who is typing, so a kiosk result carries a person
+// rather than being credited to the home player.
+func TestKioskGrantOperator(t *testing.T) {
+	store, ctx := newStore(t)
+	grants := store.KioskGrants()
+
+	now := time.Now()
+	anna := mustPlayer(ctx, t, store, "Anna", domain.DefaultTTR)
+	clara := mustPlayer(ctx, t, store, "Clara", domain.DefaultTTR)
+
+	grant, err := grants.Create(ctx, hashOf("table"), now.Add(12*time.Hour), "Turnier-Laptop")
+	if err != nil {
+		t.Fatalf("Create(): %v", err)
+	}
+	if grant.OperatorID != nil {
+		t.Errorf("a fresh grant already names %v, want nobody", grant.OperatorID)
+	}
+
+	if err := grants.SetOperator(ctx, grant.ID, anna.ID, now); err != nil {
+		t.Fatalf("SetOperator(): %v", err)
+	}
+	got, err := grants.BySecret(ctx, hashOf("table"))
+	if err != nil {
+		t.Fatalf("BySecret(): %v", err)
+	}
+	if got.OperatorID == nil || *got.OperatorID != anna.ID {
+		t.Fatalf("OperatorID = %v, want %s", got.OperatorID, anna.ID)
+	}
+
+	// The laptop is handed on during an evening, so naming is not once-only.
+	if err := grants.SetOperator(ctx, grant.ID, clara.ID, now); err != nil {
+		t.Fatalf("handing on: %v", err)
+	}
+	got, err = grants.BySecret(ctx, hashOf("table"))
+	if err != nil {
+		t.Fatalf("BySecret(): %v", err)
+	}
+	if got.OperatorID == nil || *got.OperatorID != clara.ID {
+		t.Fatalf("after handing on OperatorID = %v, want %s", got.OperatorID, clara.ID)
+	}
+
+	// A machine somebody took back must not be given an operator and put
+	// back to work.
+	if err := grants.Revoke(ctx, grant.ID, now); err != nil {
+		t.Fatalf("Revoke(): %v", err)
+	}
+	if err := grants.SetOperator(ctx, grant.ID, anna.ID, now); !errors.Is(err, domain.ErrNotFound) {
+		t.Errorf("naming a revoked machine = %v, want ErrNotFound", err)
+	}
+}
+
+// An expired grant is as good as revoked: the machine stopped being a kiosk
+// on its own, and naming it must not quietly extend that.
+func TestKioskGrantOperatorNeedsAnUnexpiredGrant(t *testing.T) {
+	store, ctx := newStore(t)
+	grants := store.KioskGrants()
+
+	now := time.Now()
+	anna := mustPlayer(ctx, t, store, "Anna", domain.DefaultTTR)
+
+	// The schema refuses a grant that is born expired, so this one expires a
+	// moment from now and is named a moment after that.
+	grant, err := grants.Create(ctx, hashOf("yesterday"), now.Add(time.Minute), "Alter Laptop")
+	if err != nil {
+		t.Fatalf("Create(): %v", err)
+	}
+
+	later := now.Add(2 * time.Minute)
+	if err := grants.SetOperator(ctx, grant.ID, anna.ID, later); !errors.Is(err, domain.ErrNotFound) {
+		t.Errorf("naming an expired machine = %v, want ErrNotFound", err)
+	}
+}
