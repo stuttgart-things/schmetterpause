@@ -94,6 +94,18 @@ httprouteRedirect = {
         hostnames: [labels.hostname]
         rules: [
             {
+                # The API server defaults an empty matches to exactly this, so
+                # writing it is what keeps ArgoCD from reporting the redirect
+                # route OutOfSync forever — the same reason group, kind and
+                # weight are spelled out above.
+                matches: [
+                    {
+                        path: {
+                            type: "PathPrefix"
+                            value: "/"
+                        }
+                    }
+                ]
                 filters: [
                     {
                         type: "RequestRedirect"
