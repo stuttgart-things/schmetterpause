@@ -35,6 +35,12 @@ func newStore(t *testing.T) (*postgres.Store, context.Context) {
 		t.Skipf("%s not set, skipping integration test", testDSNEnv)
 	}
 
+	// Before Migrate, not only before the truncate: a wrong DSN must not
+	// reach a live database with a schema change either (issue #163).
+	if err := postgres.RequireTestDatabase(dsn); err != nil {
+		t.Fatal(err)
+	}
+
 	ctx := t.Context()
 	if err := postgres.Migrate(ctx, dsn); err != nil {
 		t.Fatalf("Migrate(): %v", err)
