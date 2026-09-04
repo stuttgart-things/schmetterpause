@@ -264,10 +264,19 @@ Wertung, die sich um null bewegt.
 
 Bewusst noch nicht entschieden — gehören in Issues, nicht in ADRs:
 
-- Startwert für neue Spieler. Aktuell 1000 angesetzt. Ob das für eine Bürogruppe
-  gut streut, zeigt sich erst mit echten Daten.
+- Derzeit keine. Der letzte Punkt hier war der Startwert für neue Spieler, und
+  er ist entschieden.
 
 Entschieden, seit dieser Abschnitt geschrieben wurde: `points_to_win` ist
 konfigurierbar (11 als Vorgabe, 21 als Option), die Images liegen auf ttl.sh
 zum Herumzeigen und auf ghcr.io als Artefakt, und `disputed` löst sich über
 die Korrektur in AP5 auf.
+
+**Der Startwert bleibt 1000** (Issue #17), entschieden an der ersten Woche
+echter Ergebnisse statt an einer Simulation. Über 54 bestätigte Spiele liegt
+bei jedem Spieler die Zahl der Siege im Rahmen von etwa einer
+Standardabweichung um das, was seine Wertung vorhergesagt hat. Das Feld sieht
+flach aus — 81 Punkte von oben nach unten —, aber nicht weil die Wertung
+hinterherhinkt: der Beste gewinnt 67 % seiner Spiele, und 67 % sind bei
+Divisor 150 genau ein Abstand von 46 Punkten. Ein flaches Feld ist hier die
+richtige Antwort auf eine ausgeglichene Gruppe.

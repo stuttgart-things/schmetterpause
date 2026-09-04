@@ -24,8 +24,13 @@ var ErrConflict = errors.New("already exists")
 
 // DefaultTTR is the starting rating for newly created players.
 //
-// Whether 1000 spreads well across an office group is an open question in the
-// MVP plan and will only be answered with real data.
+// 1000 stays, decided on the first week of real results (issue #17). Across 54
+// confirmed matches every player's wins landed within about one standard
+// deviation of what their rating predicted, so the value calibrates the group
+// it was doubted for. The field looks flat — 81 points from top to bottom —
+// because the office is evenly matched, not because the rating lags: the best
+// player wins 67% of their matches, and 67% is what a 46-point gap means at
+// divisor 150.
 const DefaultTTR = 1000
 
 // The names the two ends of a table carry when nobody gives them one
