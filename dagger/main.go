@@ -1133,6 +1133,39 @@ grep -q schmetterpause_kiosk "$legacy" || {
 	exit 1
 }
 
+# Unlocked is not enough: the machine has to say who is typing before it may
+# write anything, and until it does it shows the question and nothing else
+# (issue #90).
+operator_page=$(mktemp)
+curl -fsS -b "$kiosk" http://app.verify:8080/kiosk > "$operator_page"
+grep -q "Wer trägt ein?" "$operator_page" || {
+	echo "the unlocked kiosk does not ask who is typing"
+	cat "$operator_page"
+	exit 1
+}
+if grep -q "Ergebnis eintragen" "$operator_page"; then
+	echo "the kiosk offers the entry form before anybody is named"
+	exit 1
+fi
+
+code=$(curl -sS -o /dev/null -w "%{http_code}" -b "$kiosk" -X POST \
+	http://app.verify:8080/kiosk/players --data-urlencode "display_name=Zu Frueh")
+[ "$code" = "403" ] || {
+	echo "an unnamed kiosk wrote a player anyway ($code)"
+	exit 1
+}
+
+# Bodo holds the pen. Somebody who already exists, because naming comes before
+# creating and the operator is picked from the players there are.
+bodo=$(tr "<" "\n" < "$operator_page" | grep "option value=\"" | grep "Verify Bodo" \
+	| sed "s/.*value=\"\([^\"]*\)\".*/\1/" | head -1)
+[ -n "$bodo" ] || {
+	echo "the operator picker does not list the players"
+	exit 1
+}
+curl -fsS -b "$kiosk" -o /dev/null -X POST http://app.verify:8080/kiosk/operator \
+	-d "operator_id=$bodo"
+
 # A player created here must not sign the kiosk in as them.
 before=$(grep -c schmetterpause_session "$kiosk" || true)
 curl -fsS -b "$kiosk" -c "$kiosk" -X POST http://app.verify:8080/kiosk/players \
@@ -1225,6 +1258,34 @@ anna_after=$(ttr_of "$ttr_page_after" "Verify Anna")
 	echo "the refused entry still moved a rating: $anna_before -> $anna_after"
 	exit 1
 }
+
+# The same refusal without a player session anywhere near it. This is the
+# private window the check above cannot see: only the kiosk cookie travels,
+# and it is the operator on the grant that says no (issue #90).
+curl -fsS -b "$kiosk" -o /dev/null -X POST http://app.verify:8080/kiosk/operator \
+	-d "operator_id=$anna"
+alone=$(mktemp)
+code=$(curl -sS -o "$alone" -w "%{http_code}" -b "$kiosk" -X POST \
+	http://app.verify:8080/kiosk/matches \
+	--data "home_id=$anna&away_id=$dirk&best_of=3&points_to_win=11&set_home_1=11&set_away_1=2")
+[ "$code" = "422" ] || {
+	echo "the operator scored a match they play in, with no session at all ($code)"
+	exit 1
+}
+grep -q "Startseite" "$alone" || {
+	echo "the operator's own match was refused without pointing anywhere"
+	exit 1
+}
+
+# And who is typing is on the page, so the laptop can be handed on.
+handover=$(mktemp)
+curl -fsS -b "$kiosk" http://app.verify:8080/kiosk > "$handover"
+grep -q "Es trägt ein:" "$handover" || {
+	echo "the kiosk does not say who is typing"
+	exit 1
+}
+curl -fsS -b "$kiosk" -o /dev/null -X POST http://app.verify:8080/kiosk/operator \
+	-d "operator_id=$bodo"
 
 # Nobody is left to ask, so the result counts on submit.
 recorded=$(mktemp)
