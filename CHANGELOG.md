@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.0](https://github.com/stuttgart-things/schmetterpause/compare/v0.1.0...v0.2.0) (2026-09-04)
+
+
+### Features
+
+* **pending:** show the reporter what is still waiting ([#174](https://github.com/stuttgart-things/schmetterpause/issues/174)) ([706a55d](https://github.com/stuttgart-things/schmetterpause/commit/706a55df94393db2c2983e4ae86de40188cd8bc7))
+
 ## 0.1.0 (2026-09-04)
 
 
