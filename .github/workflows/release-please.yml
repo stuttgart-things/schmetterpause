@@ -76,10 +76,16 @@ jobs:
       # exceptions: those DO fire under the GITHUB_TOKEN. So say plainly that a
       # release happened rather than hoping the tag is noticed.
       #
-      # This means a release commit produces two CI runs — one on main, one at
-      # the tag. They build the same source and publish the same version, so
-      # the second is a re-push of identical content; only it moves "latest".
-      # Cheaper than teaching the main run to recognise a release commit.
+      # This means a release commit produces two CI runs — one on main, one
+      # at the tag. That is fine, and it is fine only because they now
+      # publish under different names: the tag run publishes the version, the
+      # main run publishes the commit's short SHA.
+      #
+      # It was not fine when this was written. Both used `git describe`, which
+      # returns the bare tag on the release commit, so both published
+      # "v0.2.0" from separate non-identical builds and the later one won —
+      # leaving latest and v0.2.0 pointing at different images. See the
+      # version block in ci.yml.
       - name: Run the release pipeline at the new tag
         if: ${{ steps.release.outputs.release_created }}
         env:
