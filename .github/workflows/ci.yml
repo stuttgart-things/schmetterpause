@@ -11,10 +11,16 @@ name: CI
 on:
   push:
     branches: [main]
-    # Tags trigger the release job below; without this, "latest" would never
-    # move and the tag would never reach the registry.
+    # Kept for a tag pushed by a human, which does trigger a workflow. A tag
+    # from release-please does NOT: GitHub suppresses triggers for events made
+    # with the GITHUB_TOKEN, so that path arrives through workflow_dispatch
+    # below instead. See issue #172.
     tags: ["v*"]
   pull_request:
+  # release-please dispatches this at the tag it just created. Running AT the
+  # tag rather than on main is the whole point: github.ref_type is then "tag",
+  # so the release job below moves "latest" without needing a special case.
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -55,7 +61,7 @@ jobs:
   # request from a fork must not be able to write to the package, and there is
   # nothing to keep from a branch that may never merge. See issue #20.
   release:
-    if: github.event_name == 'push'
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
     needs: ci
     runs-on: ubuntu-latest
     timeout-minutes: 30
