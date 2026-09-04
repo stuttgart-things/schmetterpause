@@ -8,7 +8,7 @@ import "strconv"
 // the whole point of the step, and the reason it is the app's real defence
 // against a joke score rather than the login is.
 templ PendingList(v PendingListView) {
-	<section id="pending" class={ templ.KV("pending", len(v.Matches) > 0) }>
+	<section id="pending" class={ templ.KV("pending", v.Any()) }>
 		@pendingItems(v)
 	</section>
 }
@@ -16,7 +16,7 @@ templ PendingList(v PendingListView) {
 // PendingListOOB is PendingList marked for an out-of-band swap, so an action
 // elsewhere on the page can refresh it in the same response.
 templ PendingListOOB(v PendingListView) {
-	<section id="pending" class={ templ.KV("pending", len(v.Matches) > 0) } hx-swap-oob="true">
+	<section id="pending" class={ templ.KV("pending", v.Any()) } hx-swap-oob="true">
 		@pendingItems(v)
 	</section>
 }
@@ -27,24 +27,16 @@ templ PendingListOOB(v PendingListView) {
 //
 // The empty <section> stays in the document because the out-of-band swaps
 // after a ruling need something to aim at.
+//
+// Two lists with two headings, each true on its own: one is work the reader
+// has to do, the other is an answer to "did that go through?". Neither
+// heading is shown for an empty list, which is why "Zu bestätigen" cannot
+// appear above results nobody can confirm.
 templ pendingItems(v PendingListView) {
 	if len(v.Matches) > 0 {
-		// The refresh used to sit only in the ranking, which now has a page
-		// of its own — and this list is the one that must not go stale. The
-		// badge in the top bar polls; before the two were refreshed together
-		// the bar could say a result was waiting while the page below showed
-		// nothing. Same endpoint, same three swaps; the ones that find no
-		// target on this page simply land nowhere.
 		<div class="standings-head">
 			<h2>Zu bestätigen</h2>
-			<button
-				class="secondary refresh"
-				hx-get="/fragments/refresh"
-				hx-swap="none"
-				hx-disabled-elt="this"
-			>
-				Aktualisieren
-			</button>
+			@refreshPending()
 		</div>
 		<ul class="pending-list">
 			for _, m := range v.Matches {
@@ -52,13 +44,92 @@ templ pendingItems(v PendingListView) {
 			}
 		</ul>
 	}
+	@waitingItems(v)
+}
+
+// refreshPending re-reads both lists and the badge.
+//
+// The refresh used to sit only in the ranking, which now has a page of its
+// own — and these lists are the ones that must not go stale. The badge in the
+// top bar polls; before the two were refreshed together the bar could say a
+// result was waiting while the page below showed nothing. Same endpoint, same
+// swaps; the ones that find no target on this page simply land nowhere.
+//
+// Rendered once per page, by whichever list is first — two buttons doing the
+// identical thing a heading apart would only make the reader choose.
+templ refreshPending() {
+	<button
+		class="secondary refresh"
+		hx-get="/fragments/refresh"
+		hx-swap="none"
+		hx-disabled-elt="this"
+	>
+		Aktualisieren
+	</button>
+}
+
+// waitingItems is what the reporter sees about their own results.
+//
+// A section of its own rather than more entries above, because the two ask
+// opposite things of the reader. Mixing them would put entries with no
+// buttons among entries with buttons and make both harder to scan.
+//
+// Read-only by construction, not by omission: you may not confirm your own
+// report, and that rule is the application's real defence against a joke
+// score. A button here would be the one place it could be worked around.
+templ waitingItems(v PendingListView) {
+	if len(v.Waiting) > 0 {
+		<div class="standings-head">
+			<h2>Wartet auf den Gegner</h2>
+			if len(v.Matches) == 0 {
+				@refreshPending()
+			}
+		</div>
+		<ul class="pending-list waiting-list">
+			for _, m := range v.Waiting {
+				<li id={ "waiting-" + m.ID } class={ templ.KV("stale", m.Stale) }>
+					<div class="pending-match">
+						<p>
+							Du hast eingetragen:
+							if m.Won {
+								{ strconv.Itoa(m.OwnSets) }:{ strconv.Itoa(m.OpponentSets) } für dich
+							} else {
+								{ strconv.Itoa(m.OpponentSets) }:{ strconv.Itoa(m.OwnSets) } für { m.OpponentName }
+							}
+						</p>
+						<p class="sets-line muted">
+							for i, s := range m.Sets {
+								if i > 0 {
+									{ ", " }
+								}
+								{ strconv.Itoa(s.Own) }:{ strconv.Itoa(s.Opponent) }
+							}
+							@waitedFor(m.Age, m.Stale)
+						</p>
+						<p class="muted">
+							{ m.OpponentName } hat es noch nicht bestätigt. Bis
+							dahin zählt es nicht für die Wertung.
+						</p>
+					</div>
+				</li>
+			}
+		</ul>
+	}
+}
+
+// waitedFor renders the age, and nothing at all below an hour — a result
+// typed two minutes ago is the normal case and does not need a number on it.
+templ waitedFor(age string, stale bool) {
+	if age != "" {
+		<span class={ "age", templ.KV("stale", stale) }>{ age }</span>
+	}
 }
 
 // PendingItem is one entry, and the only place that decides which of the two
 // states it is in. The actions swap this same element, so the list and the
 // answer to an action cannot drift apart.
 templ PendingItem(m PendingMatchView) {
-	<li id={ "pending-" + m.ID } class={ templ.KV("disputed", m.Disputed) }>
+	<li id={ "pending-" + m.ID } class={ templ.KV("disputed", m.Disputed), templ.KV("stale", m.Stale) }>
 		if m.Disputed {
 			@correctionForm(m)
 		} else {
@@ -84,6 +155,7 @@ templ reportedResult(m PendingMatchView) {
 				}
 				{ strconv.Itoa(s.Own) }:{ strconv.Itoa(s.Opponent) }
 			}
+			@waitedFor(m.Age, m.Stale)
 		</p>
 		<div class="actions">
 			<button

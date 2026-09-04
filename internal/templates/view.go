@@ -509,6 +509,40 @@ type MatchRecordedView struct {
 // PendingListView is the set of results waiting on the viewer.
 type PendingListView struct {
 	Matches []PendingMatchView
+	// Waiting is the other side of the same coin: results this player
+	// reported, still unanswered. Nobody can act on them, which is why they
+	// are a separate slice and not more Matches — the list they belong to
+	// has no buttons. See issue #159.
+	Waiting []WaitingMatchView
+}
+
+// Any is whether there is anything unsettled at all. It decides the section's
+// class, and it is a method rather than two comparisons in the template
+// because the two lists have to stay in step: a section styled as empty while
+// one of them has entries is the bug this whole change is about.
+func (v PendingListView) Any() bool {
+	return len(v.Matches) > 0 || len(v.Waiting) > 0
+}
+
+// WaitingMatchView is a result this player recorded that the opponent has not
+// answered yet. Read-only by construction: you may not confirm your own
+// report, so there is nothing here to press.
+//
+// It carries no BestOf, PointsToWin or Inputs. Those exist on
+// PendingMatchView to pre-fill a correction form, and this entry has none —
+// a result the opponent has not seen is not contested, it is unread.
+type WaitingMatchView struct {
+	ID           string
+	OpponentName string
+	OwnSets      int
+	OpponentSets int
+	Sets         []SetScore
+	// Won is what this player recorded for themselves.
+	Won bool
+	// Age is how long it has been waiting, coarsely, or empty below an hour.
+	Age string
+	// Stale marks the ones worth chasing. See waitedSince in the server.
+	Stale bool
 }
 
 // PendingMatchView is one result awaiting a decision, seen from the side of
@@ -539,6 +573,14 @@ type PendingMatchView struct {
 	Inputs      []SetInput
 	// Error explains why a correction was rejected. Empty otherwise.
 	Error string
+
+	// Age is how long this has been waiting on the viewer, coarsely, or
+	// empty below an hour. Shown on this side too: the opponent is the one
+	// who can end the wait, and a badge that has read the same number since
+	// yesterday tells them nothing about which entry is old.
+	Age string
+	// Stale marks the ones worth answering now.
+	Stale bool
 }
 
 // CorrectedView reports a corrected result on its way back to the opponent.

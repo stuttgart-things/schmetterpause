@@ -951,6 +951,30 @@ curl -fsS -b "$second" http://app.verify:8080/fragments/whoami | grep -q "whoami
 	exit 1
 }
 
+# Issue #159: the person who typed the result was the only participant never
+# told it had not landed. Their own page says so now.
+own=$(mktemp)
+curl -fsS -b "$cookies" http://app.verify:8080/fragments/pending > "$own"
+grep -q "Wartet auf den Gegner" "$own" || {
+	echo "the reporter is not shown their own waiting result"
+	cat "$own"
+	exit 1
+}
+# And still offers nothing to press. Confirming your own report is the one
+# thing the confirmation step exists to prevent, so a read-only list is the
+# one place a button would quietly undo it.
+if grep -q "/confirm" "$own"; then
+	echo "the reporter was offered a way to confirm their own result"
+	cat "$own"
+	exit 1
+fi
+# The heading that means work stays on the other side.
+if grep -q "Zu best" "$own"; then
+	echo "the reporter is told they have something to confirm"
+	cat "$own"
+	exit 1
+fi
+
 echo "== refresh: one press catches up what somebody else did =="
 # The ranking, the results waiting on the reader and the badge all change
 # because somebody *else* acted, and none of them moved without a reload. The
