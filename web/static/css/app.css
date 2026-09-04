@@ -102,6 +102,11 @@
 	/* The mascot's own orange, on purpose: it is the only place the logo
 	   colour appears in the interface, and it marks the one thing worth
 	   marking. Dark ink on it measures 8.9:1. */
+	/* Amber for "this has been sitting too long". Not --bad: a result nobody
+	   has confirmed yet is not an error, and colouring it like one would put
+	   an alarm on the ordinary end of a slow day. 8.9:1 against --bg. */
+	--warn: #f8b45a;
+
 	--rank-1: #f89828;
 	--rank-ink: #0a0a12;
 
@@ -777,6 +782,40 @@ button.secondary:hover {
 /* The rating change is what everybody scrolls to after a confirmation, so it
    gets the size that says so. */
 .settled .gain, .settled .loss { font-size: 1.6rem; }
+
+/* --- Wartet auf den Gegner ---------------------------------------------- */
+
+/* The second list is read, not acted on, so it recedes: no buttons and a
+   lighter weight than the one above it. It must still be findable, because
+   the whole point is that the reporter had no way to see this at all. */
+.waiting-list > li { color: var(--fg-soft); }
+
+/* How long something has waited, inline with the score. Below an hour the
+   server sends nothing and this never renders — a number on the ordinary
+   case is how a field teaches its reader to skip it. */
+.age {
+	font-family: var(--font-mono);
+	font-variant-numeric: tabular-nums;
+	font-size: 0.85rem;
+	color: var(--muted);
+	/* Set apart from the score it follows. A space in the template would do
+	   it too, but the sets line is built from a loop and a stray text node
+	   there is one edit away from landing in the wrong place. */
+	margin-left: 0.6rem;
+}
+
+/* Past a day it stops being an aside. Colour on the label rather than the
+   whole entry: the reader is looking for which one is old, not for a wall
+   that is uniformly alarming. */
+.age.stale { color: var(--warn); font-weight: 700; }
+
+/* A rule down the left edge, so a stale entry is findable while scrolling
+   past without reading. Padding keeps the text where it was, so entries do
+   not shift sideways as they age. */
+.pending-list > li.stale {
+	border-left: 3px solid var(--warn);
+	padding-left: 0.7rem;
+}
 
 /* --- Rangliste und Profil ---------------------------------------------- */
 

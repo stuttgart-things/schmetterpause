@@ -268,25 +268,117 @@ func (s *Server) refreshAfterRuling(
 	s.render(w, r, templates.TournamentTableOOB(tour))
 }
 
-// pendingListView describes the results waiting on this player, told from
-// their side of the table.
+// pendingListView describes both halves of what is unsettled for this player,
+// told from their side of the table: the results waiting on their word, and
+// the ones they recorded that are waiting on somebody else's.
+//
+// Both live in one view because every caller of this function renders both —
+// the start page, the profile, the tournament page, and the out-of-band swaps
+// after a ruling. Splitting them would mean teaching five call sites the same
+// thing twice.
 func (s *Server) pendingListView(ctx context.Context, self uuid.UUID) (templates.PendingListView, error) {
 	matches, err := s.store.Matches().PendingFor(ctx, self)
 	if err != nil {
 		return templates.PendingListView{}, err
 	}
 
-	names := make(map[uuid.UUID]string, len(matches))
-	view := templates.PendingListView{Matches: make([]templates.PendingMatchView, 0, len(matches))}
+	waiting, err := s.store.Matches().WaitingOnOpponentFor(ctx, self)
+	if err != nil {
+		return templates.PendingListView{}, err
+	}
+
+	// One cache across both lists: the same opponent frequently appears in
+	// each, and a name is a row in players either way.
+	names := make(map[uuid.UUID]string, len(matches)+len(waiting))
+	now := time.Now()
+
+	view := templates.PendingListView{
+		Matches: make([]templates.PendingMatchView, 0, len(matches)),
+		Waiting: make([]templates.WaitingMatchView, 0, len(waiting)),
+	}
 
 	for _, m := range matches {
 		entry, err := s.pendingEntry(ctx, m, self, names)
 		if err != nil {
 			return templates.PendingListView{}, err
 		}
+		entry.Age, entry.Stale = waitedSince(now, m.PlayedAt)
 		view.Matches = append(view.Matches, entry)
 	}
+
+	for _, m := range waiting {
+		entry, err := s.waitingEntry(ctx, m, self, names)
+		if err != nil {
+			return templates.PendingListView{}, err
+		}
+		entry.Age, entry.Stale = waitedSince(now, m.PlayedAt)
+		view.Waiting = append(view.Waiting, entry)
+	}
 	return view, nil
+}
+
+// waitingEntry turns a result this player reported into the entry they see
+// about it. names caches display names across a list.
+//
+// Deliberately not pendingEntry with a flag: that one is told from the side
+// of somebody deciding, and half of what it computes — the pre-filled
+// correction form, the reporter's name, which of two states the entry is in —
+// has no meaning here. The reporter is the reader.
+func (s *Server) waitingEntry(
+	ctx context.Context,
+	m domain.Match,
+	self uuid.UUID,
+	names map[uuid.UUID]string,
+) (templates.WaitingMatchView, error) {
+	opponentID := m.AwayID
+	if m.AwayID == self {
+		opponentID = m.HomeID
+	}
+
+	opponentName, err := s.displayName(ctx, opponentID, names)
+	if err != nil {
+		return templates.WaitingMatchView{}, err
+	}
+
+	atHome := m.HomeID == self
+	entry := templates.WaitingMatchView{
+		ID:           m.ID.String(),
+		OpponentName: opponentName,
+		Sets:         make([]templates.SetScore, 0, len(m.Sets)),
+	}
+
+	for _, set := range m.Sets {
+		own, opponent := set.HomePoints, set.AwayPoints
+		if !atHome {
+			own, opponent = opponent, own
+		}
+		entry.Sets = append(entry.Sets, templates.SetScore{Own: own, Opponent: opponent})
+		if own > opponent {
+			entry.OwnSets++
+		} else {
+			entry.OpponentSets++
+		}
+	}
+	entry.Won = entry.OwnSets > entry.OpponentSets
+
+	return entry, nil
+}
+
+// displayName reads a player's name through a cache shared across one render.
+func (s *Server) displayName(
+	ctx context.Context,
+	id uuid.UUID,
+	names map[uuid.UUID]string,
+) (string, error) {
+	if name, ok := names[id]; ok {
+		return name, nil
+	}
+	player, err := s.store.Players().ByID(ctx, id)
+	if err != nil {
+		return "", err
+	}
+	names[id] = player.DisplayName
+	return player.DisplayName, nil
 }
 
 // pendingEntryView describes a single waiting match, for the responses that
@@ -308,15 +400,7 @@ func (s *Server) pendingEntry(
 	names map[uuid.UUID]string,
 ) (templates.PendingMatchView, error) {
 	lookup := func(id uuid.UUID) (string, error) {
-		if name, ok := names[id]; ok {
-			return name, nil
-		}
-		player, err := s.store.Players().ByID(ctx, id)
-		if err != nil {
-			return "", err
-		}
-		names[id] = player.DisplayName
-		return player.DisplayName, nil
+		return s.displayName(ctx, id, names)
 	}
 
 	opponentID := m.AwayID

@@ -117,6 +117,26 @@ func (r matchRepo) PendingCountFor(ctx context.Context, playerID uuid.UUID) (int
 	return n, nil
 }
 
+func (r matchRepo) WaitingOnOpponentFor(ctx context.Context, playerID uuid.UUID) ([]domain.Match, error) {
+	// The exact complement of the pending half of PendingFor: same status,
+	// the other side of the reported_by test. Disputed matches are NOT in
+	// here — those already appear in PendingFor for both participants,
+	// because either of them may put the result right, and listing one match
+	// in both sections would read as two.
+	//
+	// Ordered oldest first, the opposite of PendingFor. This list is read to
+	// find what is stuck, and what is stuck is at the top.
+	const q = `
+		select ` + matchColumns + `
+		from matches
+		where (home_id = $1 or away_id = $1)
+		  and status = 'pending'
+		  and reported_by = $1
+		order by played_at asc`
+
+	return r.list(ctx, q, playerID)
+}
+
 func (r matchRepo) RecentFor(ctx context.Context, playerID uuid.UUID, limit int) ([]domain.Match, error) {
 	const q = `
 		select ` + matchColumns + `

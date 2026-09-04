@@ -94,15 +94,15 @@ func TestThePendingListOnlyReachesTheOpponent(t *testing.T) {
 		t.Errorf("Bodo does not see the result Anna entered: %s", forBodo.Body.String())
 	}
 
-	// Anna entered it, so there is nothing for her to agree with — and
-	// nothing to read either. An empty list renders an empty section, kept
-	// only so the out-of-band swaps have something to aim at.
+	// Anna entered it, so there is nothing for her to agree with. She is not
+	// shown nothing, though — since #159 her own report appears under a
+	// heading of its own, read-only. What must not reach her is the decision.
 	forAnna := fragment(t, h, "/fragments/pending", anna).Body.String()
 	if strings.Contains(forAnna, "/confirm") {
 		t.Errorf("Anna is asked to confirm her own result: %s", forAnna)
 	}
 	if strings.Contains(forAnna, "Zu bestätigen") {
-		t.Errorf("an empty list still costs a heading: %s", forAnna)
+		t.Errorf("Anna is given the heading that means work: %s", forAnna)
 	}
 }
 
