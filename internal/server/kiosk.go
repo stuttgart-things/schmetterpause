@@ -113,13 +113,110 @@ func (s *Server) handleKiosk(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	grant, ok := s.kioskGrant(r)
+	if !ok {
+		// Same form as above. kioskUnlocked and this cannot disagree — they
+		// are the same lookup — but the compiler does not know that.
+		s.render(w, r, templates.KioskUnlock(templates.KioskUnlockView{}))
+		return
+	}
+
+	// Who is typing, before anything can be typed (issue #90). A machine that
+	// has not answered gets the question and nothing else: offering the entry
+	// form alongside it would make the answer look optional, and the whole
+	// point is that a kiosk result carries a name.
+	if grant.OperatorID == nil || r.URL.Query().Has("operator") {
+		view, err := s.kioskOperatorView(r.Context(), grant)
+		if err != nil {
+			s.log.ErrorContext(r.Context(), "loading the kiosk operators failed", "error", err)
+			http.Error(w, "Kiosk nicht verfügbar", http.StatusInternalServerError)
+			return
+		}
+		s.render(w, r, templates.KioskOperator(view))
+		return
+	}
+
 	view, err := s.kioskView(r.Context())
 	if err != nil {
 		s.log.ErrorContext(r.Context(), "loading the kiosk failed", "error", err)
 		http.Error(w, "Kiosk nicht verfügbar", http.StatusInternalServerError)
 		return
 	}
+	view.Operator = s.operatorName(r.Context(), grant)
 	s.render(w, r, templates.Kiosk(view))
+}
+
+// handleKioskOperator records who is typing at this machine.
+//
+// Not a login: it names a person on the grant, and the person is picked from
+// the same public list the ranking already shows. What it buys is that a
+// kiosk result stops being anonymous — matches.reported_by names the operator
+// instead of the home player, and the operator may not be one of the two
+// players, which is a check the server can make rather than a look at the
+// browser's own cookie (issue #90).
+//
+// What it deliberately does not buy: it is not proof. Somebody holding the
+// token can pick a name that is not theirs. The room is still doing work, and
+// this is the smallest thing that makes the room's answer legible afterwards.
+func (s *Server) handleKioskOperator(w http.ResponseWriter, r *http.Request) {
+	grant, ok := s.kioskGrant(r)
+	if !ok {
+		http.Error(w, "Zugang nötig", http.StatusForbidden)
+		return
+	}
+
+	operator, err := uuid.Parse(strings.TrimSpace(r.FormValue("operator_id")))
+	if err != nil {
+		s.rejectKioskOperator(w, r, grant, "Wähle, wer einträgt.")
+		return
+	}
+
+	if _, err := s.store.Players().ByID(r.Context(), operator); err != nil {
+		if errors.Is(err, domain.ErrNotFound) {
+			s.rejectKioskOperator(w, r, grant, "Diesen Spieler gibt es nicht.")
+			return
+		}
+		s.log.ErrorContext(r.Context(), "loading the kiosk operator failed", "error", err)
+		s.rejectKioskOperator(w, r, grant, "Das hat gerade nicht geklappt.")
+		return
+	}
+
+	if err := s.store.KioskGrants().SetOperator(r.Context(), grant.ID, operator, time.Now()); err != nil {
+		if errors.Is(err, domain.ErrNotFound) {
+			// The grant went away between the page and the form: revoked
+			// from /admin, or expired. The door, not an error.
+			s.render(w, r, templates.KioskUnlock(templates.KioskUnlockView{
+				Error: "Diese Maschine ist kein Kiosk mehr.",
+			}))
+			return
+		}
+		s.log.ErrorContext(r.Context(), "setting the kiosk operator failed", "error", err)
+		s.rejectKioskOperator(w, r, grant, "Das hat gerade nicht geklappt.")
+		return
+	}
+
+	// A line, like unlocking and like issuing a credential for somebody else.
+	// This is the half of issue #77 that is not about revocation, extended to
+	// the question issue #90 asks: who was at the machine.
+	s.log.InfoContext(r.Context(), "kiosk operator set",
+		"grant_id", grant.ID, "operator_id", operator)
+
+	http.Redirect(w, r, "/kiosk", http.StatusSeeOther)
+}
+
+// rejectKioskOperator re-renders the picker with a reason.
+func (s *Server) rejectKioskOperator(
+	w http.ResponseWriter, r *http.Request, grant domain.KioskGrant, msg string,
+) {
+	view, err := s.kioskOperatorView(r.Context(), grant)
+	if err != nil {
+		s.log.ErrorContext(r.Context(), "loading the kiosk operators failed", "error", err)
+		http.Error(w, "Kiosk nicht verfügbar", http.StatusInternalServerError)
+		return
+	}
+	view.Error = msg
+	w.WriteHeader(http.StatusUnprocessableEntity)
+	s.render(w, r, templates.KioskOperator(view))
 }
 
 // handleKioskAddPlayer creates a player without touching this browser's own
@@ -132,7 +229,10 @@ func (s *Server) handleKiosk(w http.ResponseWriter, r *http.Request) {
 // automatically, because the code would then be on the laptop's screen at a
 // moment when the person it belongs to may be three tables away.
 func (s *Server) handleKioskAddPlayer(w http.ResponseWriter, r *http.Request) {
-	if !s.kioskUnlocked(r) {
+	operator, named := s.kioskOperator(r)
+	if !named {
+		// Unlocked but unnamed counts as locked. Every kiosk write says who
+		// did it, and there is nobody to say (issue #90).
 		http.Error(w, "Zugang nötig", http.StatusForbidden)
 		return
 	}
@@ -154,6 +254,9 @@ func (s *Server) handleKioskAddPlayer(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	s.log.InfoContext(r.Context(), "kiosk created a player",
+		"display_name", name, "operator_id", operator)
+
 	s.renderKiosk(w, r, templates.KioskView{Note: name + " ist dabei."})
 }
 
@@ -173,7 +276,10 @@ func (s *Server) handleKioskAddPlayer(w http.ResponseWriter, r *http.Request) {
 // anywhere else: somebody who turns up saying they lost it is far more likely
 // to have lost it than to be somebody else.
 func (s *Server) handleKioskIssueCode(w http.ResponseWriter, r *http.Request) {
-	if !s.kioskUnlocked(r) {
+	operator, named := s.kioskOperator(r)
+	if !named {
+		// Unlocked but unnamed counts as locked. Every kiosk write says who
+		// did it, and there is nobody to say (issue #90).
 		http.Error(w, "Zugang nötig", http.StatusForbidden)
 		return
 	}
@@ -211,7 +317,8 @@ func (s *Server) handleKioskIssueCode(w http.ResponseWriter, r *http.Request) {
 	// line in the log. Recording and undo already have one; issue #77 asks
 	// for this to have it too.
 	s.log.InfoContext(r.Context(), "recovery code issued at the kiosk",
-		"player_id", playerID, "display_name", player.DisplayName)
+		"player_id", playerID, "display_name", player.DisplayName,
+		"operator_id", operator)
 
 	s.renderKiosk(w, r, templates.KioskView{
 		IssuedCode: code,
@@ -223,7 +330,10 @@ func (s *Server) handleKioskIssueCode(w http.ResponseWriter, r *http.Request) {
 // once. Nobody is asked to confirm: somebody watched the match and wrote it
 // down, which is what a tournament sheet is.
 func (s *Server) handleKioskRecord(w http.ResponseWriter, r *http.Request) {
-	if !s.kioskUnlocked(r) {
+	operator, named := s.kioskOperator(r)
+	if !named {
+		// Unlocked but unnamed counts as locked. Every kiosk write says who
+		// did it, and there is nobody to say (issue #90).
 		http.Error(w, "Zugang nötig", http.StatusForbidden)
 		return
 	}
@@ -239,6 +349,19 @@ func (s *Server) handleKioskRecord(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// The check the browser cookie could only approximate. The operator is
+	// on the grant, so a private window carrying nothing but the kiosk cookie
+	// is refused by the same rule as the signed-in browser (issue #90).
+	if operator == homeID || operator == awayID {
+		s.rejectKiosk(w, r,
+			"Dein eigenes Spiel nicht hier — trag es auf der Startseite ein, "+
+				"dann bestätigt es dein Gegner.", "")
+		return
+	}
+
+	// Belt and braces, and cheap: somebody signed in as one of the two
+	// players on this browser is refused even if the machine names a third
+	// person as operator.
 	if s.kioskSelfEntry(r, homeID, awayID) {
 		s.rejectKiosk(w, r,
 			"Dein eigenes Spiel nicht hier — trag es auf der Startseite ein, "+
@@ -247,7 +370,7 @@ func (s *Server) handleKioskRecord(w http.ResponseWriter, r *http.Request) {
 	}
 
 	settlement, err := scoring.Record(r.Context(), s.store, homeID, awayID, form.result,
-		domain.EnteredViaKiosk, tournamentIDFrom(r), nil, time.Now())
+		domain.EnteredViaKiosk, tournamentIDFrom(r), nil, operator, time.Now())
 
 	var rejection *match.Rejection
 	switch {
@@ -275,7 +398,8 @@ func (s *Server) handleKioskRecord(w http.ResponseWriter, r *http.Request) {
 	}
 
 	s.log.InfoContext(r.Context(), "kiosk recorded a match",
-		"match_id", settlement.Match.ID, "winner", winner.ID, "loser", loser.ID)
+		"match_id", settlement.Match.ID, "winner", winner.ID, "loser", loser.ID,
+		"operator_id", operator)
 
 	s.renderKiosk(w, r, templates.KioskView{
 		Note: winner.DisplayName + " schlägt " + loser.DisplayName + " " +
@@ -341,6 +465,62 @@ func (s *Server) kioskView(ctx context.Context) (templates.KioskView, error) {
 	return view, nil
 }
 
+// kioskOperatorView is the question a machine answers before it may enter
+// anything: who is holding the pen.
+func (s *Server) kioskOperatorView(
+	ctx context.Context, grant domain.KioskGrant,
+) (templates.KioskOperatorView, error) {
+	players, err := s.store.Players().List(ctx)
+	if err != nil {
+		return templates.KioskOperatorView{}, err
+	}
+
+	view := templates.KioskOperatorView{
+		Players: make([]templates.OpponentOption, 0, len(players)),
+	}
+	for _, p := range players {
+		view.Players = append(view.Players, templates.OpponentOption{
+			ID: p.ID.String(), DisplayName: p.DisplayName,
+		})
+		if grant.OperatorID != nil && p.ID == *grant.OperatorID {
+			view.Current = p.DisplayName
+		}
+	}
+	return view, nil
+}
+
+// operatorName is who to put on the page. A grant whose operator has since
+// been removed reads as unnamed rather than as an error: the column is
+// nullable and set null on delete for exactly that case, and a page that
+// refuses to render is worse than one that asks the question again.
+func (s *Server) operatorName(ctx context.Context, grant domain.KioskGrant) string {
+	if grant.OperatorID == nil {
+		return ""
+	}
+	p, err := s.store.Players().ByID(ctx, *grant.OperatorID)
+	if err != nil {
+		s.log.WarnContext(ctx, "loading the kiosk operator failed",
+			"grant_id", grant.ID, "operator_id", *grant.OperatorID, "error", err)
+		return ""
+	}
+	return p.DisplayName
+}
+
+// kioskOperator is the player this machine says is typing, and the refusal to
+// print when it has not said.
+//
+// Every kiosk write goes through here. A machine that skipped the question —
+// by posting straight to an endpoint rather than walking the page — gets the
+// same answer as one that was never unlocked, because an unnamed operator is
+// exactly the state issue #90 is about.
+func (s *Server) kioskOperator(r *http.Request) (uuid.UUID, bool) {
+	grant, ok := s.kioskGrant(r)
+	if !ok || grant.OperatorID == nil {
+		return uuid.Nil, false
+	}
+	return *grant.OperatorID, true
+}
+
 // parseKioskPlayers reads the two pickers. Unlike result entry there is no
 // "self" here, so both sides have to be chosen.
 func parseKioskPlayers(r *http.Request) (uuid.UUID, uuid.UUID, string) {
@@ -375,14 +555,25 @@ const touchAfter = time.Minute
 // a lie: the page this guards cannot render without the database anyway, and
 // no result can be entered into one that is not there.
 func (s *Server) kioskUnlocked(r *http.Request) bool {
+	_, ok := s.kioskGrant(r)
+	return ok
+}
+
+// kioskGrant is the machine behind this request, if it is a kiosk at all.
+//
+// Separate from kioskUnlocked because most callers only want the yes or no,
+// and the two that matter want the row: the operator lives on it (issue #90),
+// and a handler that only asked "is this a kiosk" would have to look the same
+// grant up a second time to find out who is typing.
+func (s *Server) kioskGrant(r *http.Request) (domain.KioskGrant, bool) {
 	cookie, err := r.Cookie(kioskCookieName)
 	if err != nil {
-		return false
+		return domain.KioskGrant{}, false
 	}
 
 	raw, err := base64.RawURLEncoding.DecodeString(cookie.Value)
 	if err != nil {
-		return false
+		return domain.KioskGrant{}, false
 	}
 	hash := sha256.Sum256(raw)
 
@@ -391,15 +582,15 @@ func (s *Server) kioskUnlocked(r *http.Request) bool {
 	case errors.Is(err, domain.ErrNotFound):
 		// A cookie nothing stands for: a machine somebody took back, or a
 		// value this database never issued.
-		return false
+		return domain.KioskGrant{}, false
 	case err != nil:
 		s.log.ErrorContext(r.Context(), "loading the kiosk grant failed", "error", err)
-		return false
+		return domain.KioskGrant{}, false
 	}
 
 	now := time.Now()
 	if !grant.Active(now) {
-		return false
+		return domain.KioskGrant{}, false
 	}
 
 	if now.Sub(grant.LastSeenAt) > touchAfter {
@@ -410,7 +601,7 @@ func (s *Server) kioskUnlocked(r *http.Request) bool {
 				"grant_id", grant.ID, "error", err)
 		}
 	}
-	return true
+	return grant, true
 }
 
 // unlockKiosk records this machine and hands it a cookie that stands for the
@@ -499,7 +690,10 @@ func (s *Server) kioskSelfEntry(r *http.Request, players ...uuid.UUID) bool {
 // nothing to correct — without this, a mistyped one stands for good and two
 // ratings stay wrong. See issue #49.
 func (s *Server) handleKioskUndo(w http.ResponseWriter, r *http.Request) {
-	if !s.kioskUnlocked(r) {
+	operator, named := s.kioskOperator(r)
+	if !named {
+		// Unlocked but unnamed counts as locked. Every kiosk write says who
+		// did it, and there is nobody to say (issue #90).
 		http.Error(w, "Zugang nötig", http.StatusForbidden)
 		return
 	}
@@ -539,7 +733,8 @@ func (s *Server) handleKioskUndo(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	s.log.InfoContext(r.Context(), "kiosk took a match back", "match_id", id)
+	s.log.InfoContext(r.Context(), "kiosk took a match back",
+		"match_id", id, "operator_id", operator)
 
 	s.renderKiosk(w, r, templates.KioskView{
 		Note: "Zurückgenommen: " + undone.Home.DisplayName + " gegen " +

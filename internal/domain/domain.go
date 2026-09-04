@@ -144,6 +144,18 @@ type KioskGrant struct {
 	UserAgent string
 	// RevokedAt is set when somebody took this grant back.
 	RevokedAt *time.Time
+	// OperatorID is the player typing at this machine (issue #90).
+	//
+	// The kiosk has no login, and giving it one would put a person's session
+	// on a laptop eight people share. Naming an operator is the smaller
+	// thing that answers the same question: a kiosk result settles at once,
+	// so "who entered this" has to have an answer that is not "the room".
+	//
+	// nil until the machine is asked, which happens right after unlocking.
+	// The handlers refuse to record anything while it is nil rather than
+	// falling back to something, because a fallback is what reported_by was
+	// before this existed.
+	OperatorID *uuid.UUID
 }
 
 // Active reports whether this grant still unlocks anything at t.

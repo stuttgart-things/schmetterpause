@@ -8,6 +8,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/google/uuid"
+
 	"github.com/stuttgart-things/schmetterpause/internal/auth"
 	"github.com/stuttgart-things/schmetterpause/internal/domain"
 )
@@ -26,8 +28,24 @@ func kioskHandler(t *testing.T) (http.Handler, *memStore) {
 	return h, store
 }
 
-// unlock walks the token exchange and returns the kiosk cookie.
-func unlock(t *testing.T, h http.Handler) *http.Cookie {
+// unlock walks the token exchange, names an operator and returns the kiosk
+// cookie — a kiosk that can actually be used.
+//
+// Naming is part of unlocking here because it is part of it in the
+// application: since issue #90 a machine that has not said who is typing may
+// not write anything, so a helper that stopped at the token would hand every
+// test a kiosk that refuses everything. The tests about the unnamed state use
+// unlockOnly.
+func unlock(t *testing.T, h http.Handler, store *memStore) *http.Cookie {
+	t.Helper()
+
+	cookie := unlockOnly(t, h)
+	nameOperator(t, h, store, cookie)
+	return cookie
+}
+
+// unlockOnly walks the token exchange and stops there: unlocked, unnamed.
+func unlockOnly(t *testing.T, h http.Handler) *http.Cookie {
 	t.Helper()
 
 	rec := get(t, h, "/kiosk?token="+testKioskToken)
@@ -41,6 +59,48 @@ func unlock(t *testing.T, h http.Handler) *http.Cookie {
 	}
 	t.Fatal("unlocking set no kiosk cookie")
 	return nil
+}
+
+// scorekeeperName is who tests put behind the kiosk. Somebody who plays no
+// matches, because the operator may not be one of the two players and a
+// helper that picked a competitor would fail half the tests for the right
+// reason at the wrong moment.
+const scorekeeperName = "Schiri"
+
+// nameOperator answers the "wer trägt ein?" question for a machine, creating
+// the scorekeeper the first time it is asked.
+func nameOperator(t *testing.T, h http.Handler, store *memStore, cookie *http.Cookie) uuid.UUID {
+	t.Helper()
+
+	id := scorekeeper(t, store)
+	rec := kioskPost(t, h, "/kiosk/operator", cookie, url.Values{
+		"operator_id": {id.String()},
+	})
+	if rec.Code != http.StatusSeeOther {
+		t.Fatalf("naming the operator = %d, want 303: %s", rec.Code, rec.Body.String())
+	}
+	return id
+}
+
+// scorekeeper is the operator player, created once per store.
+func scorekeeper(t *testing.T, store *memStore) uuid.UUID {
+	t.Helper()
+
+	players, err := store.Players().List(t.Context())
+	if err != nil {
+		t.Fatalf("listing the players: %v", err)
+	}
+	for _, p := range players {
+		if p.DisplayName == scorekeeperName {
+			return p.ID
+		}
+	}
+
+	p, err := store.Players().Create(t.Context(), scorekeeperName, domain.DefaultTTR)
+	if err != nil {
+		t.Fatalf("creating the scorekeeper: %v", err)
+	}
+	return p.ID
 }
 
 func kioskPost(t *testing.T, h http.Handler, path string, cookie *http.Cookie, form url.Values) *httptest.ResponseRecorder {
@@ -73,7 +133,7 @@ func TestTheKioskDoesNotExistWithoutAToken(t *testing.T) {
 }
 
 func TestTheKioskWantsTheToken(t *testing.T) {
-	h, _ := kioskHandler(t)
+	h, store := kioskHandler(t)
 
 	// Without a grant the door is a form, not a refusal: the address alone
 	// tells nobody anything, and whoever sets up the table was told the code
@@ -93,7 +153,7 @@ func TestTheKioskWantsTheToken(t *testing.T) {
 		t.Errorf("posting without a cookie = %d, want 403", rec.Code)
 	}
 
-	kiosk := unlock(t, h)
+	kiosk := unlock(t, h, store)
 
 	r := httptest.NewRequest(http.MethodGet, "/kiosk", nil)
 	r.AddCookie(kiosk)
@@ -113,7 +173,7 @@ func TestTheKioskWantsTheToken(t *testing.T) {
 // from one laptop would leave the laptop signed in as the eighth.
 func TestTheKioskLeavesItsOwnSessionAlone(t *testing.T) {
 	h, store := kioskHandler(t)
-	kiosk := unlock(t, h)
+	kiosk := unlock(t, h, store)
 
 	for _, name := range []string{"Anna", "Bodo", "Cara"} {
 		rec := kioskPost(t, h, "/kiosk/players", kiosk, url.Values{"display_name": {name}})
@@ -131,14 +191,15 @@ func TestTheKioskLeavesItsOwnSessionAlone(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Count(): %v", err)
 	}
-	if n != 3 {
-		t.Errorf("%d players exist, want 3", n)
+	// Three added here, plus the scorekeeper the kiosk names as operator.
+	if n != 4 {
+		t.Errorf("%d players exist, want 4", n)
 	}
 }
 
 func TestTheKioskRefusesATakenName(t *testing.T) {
-	h, _ := kioskHandler(t)
-	kiosk := unlock(t, h)
+	h, store := kioskHandler(t)
+	kiosk := unlock(t, h, store)
 
 	kioskPost(t, h, "/kiosk/players", kiosk, url.Values{"display_name": {"Anna"}})
 	rec := kioskPost(t, h, "/kiosk/players", kiosk, url.Values{"display_name": {"anna"}})
@@ -175,7 +236,7 @@ func kioskPostAs(t *testing.T, h http.Handler, path string,
 // it; that limit is recorded in the handler rather than pretended away here.
 func TestTheKioskRefusesYourOwnMatch(t *testing.T) {
 	h, store := kioskHandler(t)
-	kiosk := unlock(t, h)
+	kiosk := unlock(t, h, store)
 
 	// Anna joins normally, so this browser holds a session of her own.
 	session := sessionCookie(t, join(t, h, "Anna"))
@@ -208,7 +269,7 @@ func TestTheKioskRefusesYourOwnMatch(t *testing.T) {
 // side: taking back a result you played in is entering one, in reverse.
 func TestTheKioskRefusesTakingBackYourOwnMatch(t *testing.T) {
 	h, store := kioskHandler(t)
-	kiosk := unlock(t, h)
+	kiosk := unlock(t, h, store)
 
 	session := sessionCookie(t, join(t, h, "Anna"))
 	kioskPost(t, h, "/kiosk/players", kiosk, url.Values{"display_name": {"Bodo"}})
@@ -244,7 +305,7 @@ func TestTheKioskRefusesTakingBackYourOwnMatch(t *testing.T) {
 // that also stopped that would be a regression rather than a fix.
 func TestTheKioskStillWorksForOtherPeoplesMatches(t *testing.T) {
 	h, store := kioskHandler(t)
-	kiosk := unlock(t, h)
+	kiosk := unlock(t, h, store)
 
 	// Signed in as Anna, entering a match between two other people.
 	session := sessionCookie(t, join(t, h, "Anna"))
@@ -316,7 +377,7 @@ func kioskResult(home, away string, bestOf, points int, sets ...string) url.Valu
 // moves immediately.
 func TestTheKioskSettlesAtOnce(t *testing.T) {
 	h, store := kioskHandler(t)
-	kiosk := unlock(t, h)
+	kiosk := unlock(t, h, store)
 
 	kioskPost(t, h, "/kiosk/players", kiosk, url.Values{"display_name": {"Anna"}})
 	kioskPost(t, h, "/kiosk/players", kiosk, url.Values{"display_name": {"Bodo"}})
@@ -349,7 +410,7 @@ func TestTheKioskSettlesAtOnce(t *testing.T) {
 
 func TestTheKioskRefusesImpossibleInput(t *testing.T) {
 	h, store := kioskHandler(t)
-	kiosk := unlock(t, h)
+	kiosk := unlock(t, h, store)
 
 	kioskPost(t, h, "/kiosk/players", kiosk, url.Values{"display_name": {"Anna"}})
 	kioskPost(t, h, "/kiosk/players", kiosk, url.Values{"display_name": {"Bodo"}})
@@ -389,8 +450,8 @@ func TestTheKioskRefusesImpossibleInput(t *testing.T) {
 func TestTheKioskLeadsWithTheThingThatHappensAllEvening(t *testing.T) {
 	// Adding a player happens once per person, entering a result happens
 	// after every match. The order on the page follows the frequency.
-	h, _ := kioskHandler(t)
-	cookie := unlock(t, h)
+	h, store := kioskHandler(t)
+	cookie := unlock(t, h, store)
 
 	body := fragment(t, h, "/kiosk", cookie).Body.String()
 
@@ -410,7 +471,7 @@ func TestTheKioskCannotPitchAPlayerAgainstThemselves(t *testing.T) {
 	// in. The name comes out of the other list instead, so the mistake is
 	// unavailable rather than punished.
 	h, store := kioskHandler(t)
-	cookie := unlock(t, h)
+	cookie := unlock(t, h, store)
 
 	for _, name := range []string{"Anna", "Bodo"} {
 		if _, err := store.Players().Create(t.Context(), name, domain.DefaultTTR); err != nil {
@@ -446,7 +507,7 @@ func TestAModeChangeLeavesThePickersAlone(t *testing.T) {
 	// The two selects already agree with each other then, and replacing a
 	// select somebody is not touching is a change they did not ask for.
 	h, store := kioskHandler(t)
-	cookie := unlock(t, h)
+	cookie := unlock(t, h, store)
 	if _, err := store.Players().Create(t.Context(), "Anna", domain.DefaultTTR); err != nil {
 		t.Fatalf("seeding: %v", err)
 	}
@@ -465,7 +526,7 @@ func TestAModeChangeLeavesThePickersAlone(t *testing.T) {
 func TestBothPagesGreetWithTheMascot(t *testing.T) {
 	// One drawing, at the top of both pages, and hidden in print.
 	h, store := kioskHandler(t)
-	cookie := unlock(t, h)
+	cookie := unlock(t, h, store)
 
 	kiosk := fragment(t, h, "/kiosk", cookie).Body.String()
 	// Beside the heading rather than above it: in the same row, and before
@@ -530,7 +591,7 @@ func TestTheKioskCanTakeTheLastResultBack(t *testing.T) {
 	// A kiosk result counts at once, so there is nothing to dispute and
 	// nothing to correct. Without this a typo stands for good.
 	h, store := kioskHandler(t)
-	cookie := unlock(t, h)
+	cookie := unlock(t, h, store)
 	for _, name := range []string{"Anna", "Bodo"} {
 		if _, err := store.Players().Create(t.Context(), name, domain.DefaultTTR); err != nil {
 			t.Fatalf("seeding %s: %v", name, err)
@@ -543,14 +604,20 @@ func TestTheKioskCanTakeTheLastResultBack(t *testing.T) {
 		t.Fatalf("no way back was offered: %s", body)
 	}
 
-	// The rating moved.
+	// The rating moved — for the two who played. The scorekeeper who typed it
+	// in is a player too and stays exactly where they were, which is the
+	// point of naming an operator rather than crediting the home player.
 	moved, err := store.Players().List(t.Context())
 	if err != nil {
 		t.Fatalf("List(): %v", err)
 	}
 	for _, p := range moved {
-		if p.TTR == domain.DefaultTTR {
+		played := p.ID.String() == anna || p.ID.String() == bodo
+		switch {
+		case played && p.TTR == domain.DefaultTTR:
 			t.Fatalf("%s did not move at all: %d", p.DisplayName, p.TTR)
+		case !played && p.TTR != domain.DefaultTTR:
+			t.Fatalf("%s moved without playing: %d", p.DisplayName, p.TTR)
 		}
 	}
 
@@ -582,7 +649,7 @@ func TestASecondResultBlocksTheUndo(t *testing.T) {
 	// Putting the ratings back means writing the ones from before the match
 	// straight back, and that is only right while nothing has counted since.
 	h, store := kioskHandler(t)
-	cookie := unlock(t, h)
+	cookie := unlock(t, h, store)
 	for _, name := range []string{"Anna", "Bodo"} {
 		if _, err := store.Players().Create(t.Context(), name, domain.DefaultTTR); err != nil {
 			t.Fatalf("seeding %s: %v", name, err)
@@ -602,7 +669,7 @@ func TestASecondResultBlocksTheUndo(t *testing.T) {
 
 func TestOnlyTheKioskMayTakeAResultBack(t *testing.T) {
 	h, store := kioskHandler(t)
-	cookie := unlock(t, h)
+	cookie := unlock(t, h, store)
 	for _, name := range []string{"Anna", "Bodo"} {
 		if _, err := store.Players().Create(t.Context(), name, domain.DefaultTTR); err != nil {
 			t.Fatalf("seeding %s: %v", name, err)

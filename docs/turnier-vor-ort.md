@@ -152,6 +152,25 @@ selbst steht in keiner Antwort mehr. Neu laden, Tab schließen, Seite wechseln:
 alles unproblematisch. Ein anderes Gerät bekommt auf `/kiosk` eine **403**,
 solange es den Link mit Token nicht selbst geöffnet hat.
 
+**Danach fragt der Kiosk: wer trägt ein?** Eine Auswahl aus der Spielerliste,
+und erst danach zeigt die Seite überhaupt Felder zum Tippen. Der Grund steht
+im Ergebnis: ein Kiosk-Ergebnis zählt sofort, ohne dass der Gegner es
+bestätigt, und deshalb steht dabei, wer es eingetippt hat. Vorher stand dort
+der Heimspieler — was in den Daten aussah, als hätte der sein eigenes Spiel
+gemeldet.
+
+Zwei Dinge folgen daraus, und beide sind am Abend spürbar:
+
+- **Das eigene Spiel geht hier nicht.** Wer eintippt, kann kein Match werten,
+  in dem er selbst steht — der Kiosk lehnt es ab und verweist auf die
+  Startseite, wo der Gegner bestätigt. Das gilt auch im Turnier.
+- **Der Laptop wird weitergereicht.** Oben auf der Kiosk-Seite steht, wer
+  gerade einträgt, mit einem *Übernehmen* daneben. Wer den Stift übernimmt,
+  wählt sich dort aus; die Freischaltung des Geräts bleibt davon unberührt.
+
+Wer gerade an welchem Gerät tippt, steht auch unter `/admin` in der
+Geräteliste.
+
 **Jedes Gerät bekommt eine eigene Freigabe.** Zwei Laptops, die das Token
 öffnen, halten zwei verschiedene Cookies — und das ist der Unterschied, der
 zählt, wenn jemand das Token über die Schulter mitgelesen hat. Unter `/admin`

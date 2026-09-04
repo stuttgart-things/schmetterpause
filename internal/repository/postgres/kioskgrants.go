@@ -14,7 +14,7 @@ import (
 
 type kioskGrantRepo struct{ q queryer }
 
-const kioskGrantColumns = `id, created_at, last_seen_at, expires_at, user_agent, revoked_at`
+const kioskGrantColumns = `id, created_at, last_seen_at, expires_at, user_agent, revoked_at, operator_id`
 
 func (r kioskGrantRepo) Create(
 	ctx context.Context, secretHash []byte, expiresAt time.Time, userAgent string,
@@ -51,6 +51,30 @@ func (r kioskGrantRepo) Touch(ctx context.Context, id uuid.UUID, at time.Time) e
 
 	if _, err := r.q.Exec(ctx, q, id, at); err != nil {
 		return fmt.Errorf("touch kiosk grant %s: %w", id, err)
+	}
+	return nil
+}
+
+// SetOperator names who is typing at this machine (issue #90).
+//
+// Writable more than once on purpose: the person at the laptop changes during
+// an evening, and the alternative is a machine that has to be unlocked again
+// to hand over. Only an active grant can be named, so a revoked machine
+// cannot be quietly given an operator and put back to work.
+func (r kioskGrantRepo) SetOperator(
+	ctx context.Context, id, playerID uuid.UUID, at time.Time,
+) error {
+	const q = `
+		update kiosk_grants
+		   set operator_id = $2
+		 where id = $1 and revoked_at is null and expires_at > $3`
+
+	tag, err := r.q.Exec(ctx, q, id, playerID, at)
+	if err != nil {
+		return fmt.Errorf("set operator of kiosk grant %s: %w", id, err)
+	}
+	if tag.RowsAffected() == 0 {
+		return fmt.Errorf("set operator of kiosk grant %s: %w", id, domain.ErrNotFound)
 	}
 	return nil
 }
@@ -108,7 +132,8 @@ func (r kioskGrantRepo) Active(ctx context.Context, at time.Time) ([]domain.Kios
 
 func scanKioskGrant(row pgx.Row) (domain.KioskGrant, error) {
 	var g domain.KioskGrant
-	err := row.Scan(&g.ID, &g.CreatedAt, &g.LastSeenAt, &g.ExpiresAt, &g.UserAgent, &g.RevokedAt)
+	err := row.Scan(&g.ID, &g.CreatedAt, &g.LastSeenAt, &g.ExpiresAt, &g.UserAgent,
+		&g.RevokedAt, &g.OperatorID)
 	if err != nil {
 		return domain.KioskGrant{}, err
 	}

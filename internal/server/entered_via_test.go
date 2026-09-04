@@ -14,7 +14,7 @@ import (
 // people logging their own results.
 func TestKioskResultsAreMarkedAsSuch(t *testing.T) {
 	h, store := kioskHandler(t)
-	kiosk := unlock(t, h)
+	kiosk := unlock(t, h, store)
 
 	anna, _ := store.Players().Create(t.Context(), "Anna", domain.DefaultTTR)
 	bodo, _ := store.Players().Create(t.Context(), "Bodo", domain.DefaultTTR)

@@ -486,7 +486,7 @@ func TestRecordSettlesWithoutAsking(t *testing.T) {
 	settlement, err := scoring.Record(ctx, store, anna.ID, bodo.ID, match.Result{
 		Mode: match.Mode{BestOf: 3, PointsToWin: 11},
 		Sets: []match.Set{{Home: 11, Away: 9}, {Home: 12, Away: 10}},
-	}, domain.EnteredViaKiosk, nil, nil, time.Now())
+	}, domain.EnteredViaKiosk, nil, nil, anna.ID, time.Now())
 	if err != nil {
 		t.Fatalf("Record(): %v", err)
 	}
@@ -553,7 +553,7 @@ func TestRecordLeavesNothingBehindWhenItRefuses(t *testing.T) {
 	_, err = scoring.Record(ctx, store, anna.ID, bodo.ID, match.Result{
 		Mode: match.Mode{BestOf: 3, PointsToWin: 11},
 		Sets: []match.Set{{Home: 11, Away: 10}, {Home: 11, Away: 9}},
-	}, domain.EnteredViaKiosk, nil, nil, time.Now())
+	}, domain.EnteredViaKiosk, nil, nil, anna.ID, time.Now())
 
 	var rejection *match.Rejection
 	if !errors.As(err, &rejection) {
@@ -583,7 +583,7 @@ func TestRecordRefusesAPlayerAgainstThemselves(t *testing.T) {
 	_, err = scoring.Record(ctx, store, anna.ID, anna.ID, match.Result{
 		Mode: match.Mode{BestOf: 3, PointsToWin: 11},
 		Sets: []match.Set{{Home: 11, Away: 9}, {Home: 11, Away: 7}},
-	}, domain.EnteredViaKiosk, nil, nil, time.Now())
+	}, domain.EnteredViaKiosk, nil, nil, anna.ID, time.Now())
 
 	if !errors.Is(err, scoring.ErrSamePlayer) {
 		t.Errorf("Record() against themselves = %v, want ErrSamePlayer", err)
@@ -645,7 +645,7 @@ func TestUndoRefusesOnceSomethingElseHasCounted(t *testing.T) {
 	if _, err := scoring.Record(ctx, store, bodo.ID, anna.ID, match.Result{
 		Mode: match.Mode{BestOf: 3, PointsToWin: 11},
 		Sets: []match.Set{{Home: 11, Away: 4}, {Home: 11, Away: 6}},
-	}, domain.EnteredViaKiosk, nil, nil, time.Now()); err != nil {
+	}, domain.EnteredViaKiosk, nil, nil, bodo.ID, time.Now()); err != nil {
 		t.Fatalf("Record(): %v", err)
 	}
 

@@ -150,6 +150,9 @@ func (s *Server) routes() http.Handler {
 		// The code goes in a form rather than a query string, so it does not
 		// end up in the browser history of a laptop somebody borrows next.
 		page.HandleFunc("POST /kiosk/unlock", s.handleKioskUnlock)
+		// Who is typing. It comes before everything below it: an unlocked
+		// machine that has not answered may not write anything (issue #90).
+		page.HandleFunc("POST /kiosk/operator", s.handleKioskOperator)
 		page.HandleFunc("POST /kiosk/players", s.handleKioskAddPlayer)
 		page.HandleFunc("POST /kiosk/credentials", s.handleKioskIssueCode)
 		page.HandleFunc("POST /kiosk/matches", s.handleKioskRecord)

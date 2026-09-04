@@ -15,7 +15,7 @@ import (
 // are, and what stands in for the proof is the room.
 func TestTheKioskIssuesACodeForSomebodyElse(t *testing.T) {
 	h, store := kioskHandler(t)
-	kiosk := unlock(t, h)
+	kiosk := unlock(t, h, store)
 
 	anna, err := store.Players().Create(t.Context(), "Anna", domain.DefaultTTR)
 	if err != nil {
@@ -48,15 +48,21 @@ func TestTheKioskIssuesACodeForSomebodyElse(t *testing.T) {
 // issued code is the whole path from there to their own phone.
 func TestAKioskPlayerCanBeGivenAWayIn(t *testing.T) {
 	h, store := kioskHandler(t)
-	kiosk := unlock(t, h)
+	kiosk := unlock(t, h, store)
 
 	kioskPost(t, h, "/kiosk/players", kiosk, url.Values{"display_name": {"Anna"}})
 
+	// Two: Anna, and the scorekeeper the kiosk names as its operator.
 	players, err := store.Players().List(t.Context())
-	if err != nil || len(players) != 1 {
+	if err != nil || len(players) != 2 {
 		t.Fatalf("List() = %v, %v", players, err)
 	}
-	anna := players[0]
+	var anna domain.Player
+	for _, p := range players {
+		if p.DisplayName == "Anna" {
+			anna = p
+		}
+	}
 
 	// Creating them does not hand out a code: the laptop's screen is not
 	// where a code belongs at a moment when the person may be three tables
@@ -78,7 +84,7 @@ func TestAKioskPlayerCanBeGivenAWayIn(t *testing.T) {
 // A new code invalidates the old one immediately, wherever it was issued.
 func TestAKioskCodeReplacesTheOldOne(t *testing.T) {
 	h, store := kioskHandler(t)
-	kiosk := unlock(t, h)
+	kiosk := unlock(t, h, store)
 
 	joined := join(t, h, "Anna")
 	old := codeInPage.FindStringSubmatch(joined.Body.String())
@@ -104,7 +110,7 @@ func TestAKioskCodeReplacesTheOldOne(t *testing.T) {
 // knows is not a PIN (ADR-0007, open point 3).
 func TestTheKioskCannotSetAPIN(t *testing.T) {
 	h, store := kioskHandler(t)
-	kiosk := unlock(t, h)
+	kiosk := unlock(t, h, store)
 
 	anna, _ := store.Players().Create(t.Context(), "Anna", domain.DefaultTTR)
 
@@ -146,8 +152,8 @@ func TestIssuingACodeNeedsTheKioskUnlocked(t *testing.T) {
 }
 
 func TestIssuingACodeNeedsAPlayer(t *testing.T) {
-	h, _ := kioskHandler(t)
-	kiosk := unlock(t, h)
+	h, store := kioskHandler(t)
+	kiosk := unlock(t, h, store)
 
 	for _, id := range []string{"", "not-a-uuid", "3f9d3b1e-0000-4000-8000-000000000000"} {
 		// 422, the same shape every other refused kiosk form takes: the

@@ -69,13 +69,29 @@ func (s *Server) handleAdmin(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Liste nicht verfügbar", http.StatusInternalServerError)
 		return
 	}
-	view.Kiosks = kioskGrantViews(grants)
+	// Names for the operators the grants point at. One list rather than a
+	// lookup per row: the page already holds every player for the flag list
+	// above, and a kiosk evening has a handful of machines at most.
+	players, err := s.store.Players().List(r.Context())
+	if err != nil {
+		s.log.ErrorContext(r.Context(), "loading the players failed", "error", err)
+		http.Error(w, "Liste nicht verfügbar", http.StatusInternalServerError)
+		return
+	}
+	names := make(map[uuid.UUID]string, len(players))
+	for _, p := range players {
+		names[p.ID] = p.DisplayName
+	}
+
+	view.Kiosks = kioskGrantViews(grants, names)
 
 	s.render(w, r, templates.Admin(view))
 }
 
 // kioskGrantViews puts the grants into the words the page uses.
-func kioskGrantViews(grants []domain.KioskGrant) []templates.KioskGrantView {
+func kioskGrantViews(
+	grants []domain.KioskGrant, names map[uuid.UUID]string,
+) []templates.KioskGrantView {
 	views := make([]templates.KioskGrantView, 0, len(grants))
 	for _, g := range grants {
 		views = append(views, templates.KioskGrantView{
@@ -84,9 +100,21 @@ func kioskGrantViews(grants []domain.KioskGrant) []templates.KioskGrantView {
 			Unlocked:  g.CreatedAt.Local().Format("02.01.2006 15:04"),
 			LastSeen:  g.LastSeenAt.Local().Format("02.01.2006 15:04"),
 			Expires:   g.ExpiresAt.Local().Format("02.01.2006 15:04"),
+			Operator:  operatorLabel(g, names),
 		})
 	}
 	return views
+}
+
+// operatorLabel is who a machine says is typing. Empty when it has not been
+// asked yet, or when the player it named has since been removed — the column
+// is set null on delete, and either way the machine cannot write anything
+// until somebody answers again (issue #90).
+func operatorLabel(g domain.KioskGrant, names map[uuid.UUID]string) string {
+	if g.OperatorID == nil {
+		return ""
+	}
+	return names[*g.OperatorID]
 }
 
 // handleRevokeKiosk takes one machine back.

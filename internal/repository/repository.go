@@ -120,6 +120,12 @@ type KioskGrantRepository interface {
 	RevokeAll(ctx context.Context, at time.Time) (int, error)
 	// Active lists the machines that are kiosks at t, newest first.
 	Active(ctx context.Context, at time.Time) ([]domain.KioskGrant, error)
+	// SetOperator names the player typing at this machine (issue #90). It
+	// may be called again when somebody else takes over the laptop, and it
+	// refuses a grant that is revoked or expired with domain.ErrNotFound —
+	// a machine that is no longer a kiosk must not be given an operator and
+	// put back to work.
+	SetOperator(ctx context.Context, id, playerID uuid.UUID, at time.Time) error
 }
 
 // MatchRepository manages encounters along with their sets.

@@ -15,7 +15,7 @@ import (
 // would show the first one's result (docs/adr/0011).
 func TestAReturnLegIsItsOwnMatch(t *testing.T) {
 	h, store := kioskHandler(t)
-	cookie := unlock(t, h)
+	cookie := unlock(t, h, store)
 	field := seedField(t, store)
 	id := seedFormat(t, store, domain.TournamentDoubleRoundRobin, false, field)
 
@@ -51,7 +51,7 @@ func TestAReturnLegIsItsOwnMatch(t *testing.T) {
 // The form is the one part a caller can edit, so a slot it names has to exist.
 func TestAResultCannotClaimASlotItDoesNotFill(t *testing.T) {
 	h, store := kioskHandler(t)
-	cookie := unlock(t, h)
+	cookie := unlock(t, h, store)
 	field := seedField(t, store)
 	id := seedFormat(t, store, domain.TournamentRoundRobin, false, field)
 
@@ -71,7 +71,7 @@ func TestAResultCannotClaimASlotItDoesNotFill(t *testing.T) {
 // The final's slot exists from the start and its names arrive with the table.
 func TestTheFinalWaitsForTheGroup(t *testing.T) {
 	h, store := kioskHandler(t)
-	cookie := unlock(t, h)
+	cookie := unlock(t, h, store)
 	field := seedField(t, store)
 	id := seedFormat(t, store, domain.TournamentRoundRobin, true, field)
 
@@ -110,7 +110,7 @@ func TestTheFinalWaitsForTheGroup(t *testing.T) {
 // right two before the group is out.
 func TestTheFinalRefusesThePairTheTableDidNotName(t *testing.T) {
 	h, store := kioskHandler(t)
-	cookie := unlock(t, h)
+	cookie := unlock(t, h, store)
 	field := seedField(t, store)
 	cesar, err := store.Players().Create(t.Context(), "Cesar", domain.DefaultTTR)
 	if err != nil {
@@ -211,7 +211,7 @@ func seedFormat(t *testing.T, store *memStore, format domain.TournamentFormat,
 // one of them could ever be shown in the schedule.
 func TestASlotHoldsOneResult(t *testing.T) {
 	h, store := kioskHandler(t)
-	cookie := unlock(t, h)
+	cookie := unlock(t, h, store)
 	field := seedField(t, store)
 	id := seedFormat(t, store, domain.TournamentRoundRobin, false, field)
 

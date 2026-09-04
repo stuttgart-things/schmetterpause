@@ -14,7 +14,7 @@ import (
 // where it was (docs/adr/0012).
 func TestAnUnratedTournamentLeavesTheRatingAlone(t *testing.T) {
 	h, store := kioskHandler(t)
-	cookie := unlock(t, h)
+	cookie := unlock(t, h, store)
 	field := seedField(t, store)
 	id := seedRated(t, store, field, false)
 
@@ -46,7 +46,7 @@ func TestAnUnratedTournamentLeavesTheRatingAlone(t *testing.T) {
 // because something else stopped rating altogether.
 func TestARatedTournamentStillMovesTheRating(t *testing.T) {
 	h, store := kioskHandler(t)
-	cookie := unlock(t, h)
+	cookie := unlock(t, h, store)
 	field := seedField(t, store)
 	id := seedRated(t, store, field, true)
 
@@ -152,7 +152,7 @@ func TestEditingDoesNotSilentlyReRateATournament(t *testing.T) {
 // no form and no reason.
 func TestThePageSaysTheFieldIsFixedOnceSomebodyHasPlayed(t *testing.T) {
 	h, store := kioskHandler(t)
-	cookie := unlock(t, h)
+	cookie := unlock(t, h, store)
 	field := seedField(t, store)
 	id := seedRated(t, store, field, true)
 
@@ -184,7 +184,7 @@ func TestThePageSaysTheFieldIsFixedOnceSomebodyHasPlayed(t *testing.T) {
 // Counting in points adds a column and changes nothing else.
 func TestATournamentCanShowItsTableInPoints(t *testing.T) {
 	h, store := kioskHandler(t)
-	cookie := unlock(t, h)
+	cookie := unlock(t, h, store)
 	field := seedField(t, store)
 
 	id, err := store.tournaments.Create(t.Context(), domain.Tournament{

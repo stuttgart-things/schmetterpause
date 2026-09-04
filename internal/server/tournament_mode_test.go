@@ -83,7 +83,7 @@ func TestTheDrawOffersOneBoxPerSet(t *testing.T) {
 	for _, bestOf := range []int{1, 3, 5, 7} {
 		t.Run(strconv.Itoa(bestOf), func(t *testing.T) {
 			h, store := kioskHandler(t)
-			cookie := unlock(t, h)
+			cookie := unlock(t, h, store)
 			field := seedField(t, store)
 
 			id := seedTournamentMode(t, store, bestOf, 11, field)
@@ -109,7 +109,7 @@ func TestTheDrawOffersOneBoxPerSet(t *testing.T) {
 // the draw was never played in, and the table says something untrue.
 func TestAResultTakesTheModeFromTheTournament(t *testing.T) {
 	h, store := kioskHandler(t)
-	cookie := unlock(t, h)
+	cookie := unlock(t, h, store)
 	field := seedField(t, store)
 
 	id := seedTournamentMode(t, store, 1, 11, field)

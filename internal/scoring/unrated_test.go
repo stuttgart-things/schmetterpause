@@ -26,7 +26,7 @@ func TestATournamentWithoutRatingMovesNoRating(t *testing.T) {
 	before := anna.TTR
 
 	settlement, err := scoring.Record(ctx, store, anna.ID, bodo.ID,
-		result(t), domain.EnteredViaKiosk, &tour.ID, nil, time.Now())
+		result(t), domain.EnteredViaKiosk, &tour.ID, nil, anna.ID, time.Now())
 	if err != nil {
 		t.Fatalf("Record(): %v", err)
 	}
@@ -68,7 +68,7 @@ func TestATournamentWithRatingStillRates(t *testing.T) {
 	anna, bodo, tour := ratedTournament(ctx, t, store)
 
 	settlement, err := scoring.Record(ctx, store, anna.ID, bodo.ID,
-		result(t), domain.EnteredViaKiosk, &tour.ID, nil, time.Now())
+		result(t), domain.EnteredViaKiosk, &tour.ID, nil, anna.ID, time.Now())
 	if err != nil {
 		t.Fatalf("Record(): %v", err)
 	}
@@ -91,7 +91,7 @@ func TestAnUnratedMatchCanBeTakenBack(t *testing.T) {
 	anna, bodo, tour := unratedTournament(ctx, t, store)
 
 	settlement, err := scoring.Record(ctx, store, anna.ID, bodo.ID,
-		result(t), domain.EnteredViaKiosk, &tour.ID, nil, time.Now())
+		result(t), domain.EnteredViaKiosk, &tour.ID, nil, anna.ID, time.Now())
 	if err != nil {
 		t.Fatalf("Record(): %v", err)
 	}

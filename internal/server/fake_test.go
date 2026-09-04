@@ -357,6 +357,22 @@ func (k *memKioskGrants) Touch(_ context.Context, id uuid.UUID, at time.Time) er
 	return nil
 }
 
+func (k *memKioskGrants) SetOperator(
+	_ context.Context, id, playerID uuid.UUID, at time.Time,
+) error {
+	k.mu.Lock()
+	defer k.mu.Unlock()
+
+	for i := range k.rows {
+		if k.rows[i].ID != id || !k.rows[i].Active(at) {
+			continue
+		}
+		k.rows[i].OperatorID = &playerID
+		return nil
+	}
+	return domain.ErrNotFound
+}
+
 func (k *memKioskGrants) Revoke(_ context.Context, id uuid.UUID, at time.Time) error {
 	k.mu.Lock()
 	defer k.mu.Unlock()

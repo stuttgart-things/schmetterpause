@@ -21,6 +21,16 @@ templ Kiosk(v KioskView) {
 			// The kiosk's own colour: it belongs to the table, not to a player.
 			@PageMascot(PaddleKiosk)
 		</div>
+		if v.Operator != "" {
+			// Who the results are being credited to, and the way to hand the
+			// laptop on. Visible rather than buried, because the machine
+			// keeps the name for twelve hours and the person holding it
+			// changes rather more often than that (issue #90).
+			<p class="muted kiosk-operator">
+				Es trägt ein: <strong>{ v.Operator }</strong>
+				<a href="/kiosk?operator=1">Übernehmen</a>
+			</p>
+		}
 		if v.Note != "" {
 			<div class="kiosk-note" role="status">
 				<p>{ v.Note }</p>
@@ -234,6 +244,61 @@ templ KioskUnlock(v KioskUnlockView) {
 			<p class="field-alt">
 				Einmal pro Gerät. Danach bleibt es rund zwölf Stunden
 				freigeschaltet, und ein Admin kann es jederzeit zurücknehmen.
+			</p>
+		</section>
+	}
+}
+
+// KioskOperator asks who is holding the pen, and is the only thing an
+// unlocked machine shows until it has an answer (issue #90).
+//
+// A kiosk result settles the moment it is entered, so the opponent never gets
+// to agree with it. That was defensible while the trust came from the room —
+// a laptop at a table, everybody watching. On a server the room stops being
+// the boundary, and the smallest honest replacement is a name: the result is
+// credited to whoever typed it, and the server refuses a match that person
+// plays in.
+//
+// Deliberately not a login. The laptop is shared by everybody at the table
+// and must not end up signed in as one of them.
+templ KioskOperator(v KioskOperatorView) {
+	@Layout("Kiosk", HeaderView{}) {
+		<div class="page-head">
+			<div class="page-greeting">
+				<h1>Wer trägt ein?</h1>
+				<p class="muted">
+					Ergebnisse von diesem Gerät zählen sofort, ohne dass jemand
+					sie bestätigt. Deshalb steht dabei, wer sie eingetippt hat.
+				</p>
+			</div>
+			@PageMascot(PaddleKiosk)
+		</div>
+		<section class="session">
+			if v.Current != "" {
+				<p class="muted">
+					Bisher trägt <strong>{ v.Current }</strong> ein. Wer jetzt
+					übernimmt, wählt sich hier aus.
+				</p>
+			}
+			if v.Error != "" {
+				<p class="error" role="alert">{ v.Error }</p>
+			}
+			<form method="post" action="/kiosk/operator">
+				// A plain select and not playerPicker: that one carries the
+				// hx-get that reloads the set rows, which belongs to result
+				// entry and has nothing to do here.
+				<label class="sr-only" for="kiosk-operator">Wer trägt ein?</label>
+				<select id="kiosk-operator" name="operator_id" required>
+					<option value="">Bitte wählen</option>
+					for _, p := range v.Players {
+						<option value={ p.ID }>{ p.DisplayName }</option>
+					}
+				</select>
+				<button type="submit">Weiter</button>
+			</form>
+			<p class="muted">
+				Das eigene Spiel trägt niemand hier ein — das geht auf der
+				Startseite, damit der Gegner es bestätigen kann.
 			</p>
 		</section>
 	}
