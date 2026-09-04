@@ -15,6 +15,14 @@
 #   push to main ──▶ release-please updates the release PR
 #   merge that PR ──▶ tag v0.1.0 ──▶ ci.yml `release` job ──▶ GHCR + latest
 #
+# That v0.1.0 is not automatic. release-please defaults the FIRST release to
+# 1.0.0 whatever the commits say — `0.0.0` in the manifest means "nothing
+# released yet", not "a version to bump from", so `bump-minor-pre-major` has
+# nothing to act on and does not engage. It took proposing 1.0.0 to notice.
+# `initial-version` in the config is what puts the first tag at 0.1.0; from
+# there the pre-major rules apply normally and a breaking change bumps the
+# minor.
+#
 # Pinned by SHA rather than by tag. ci.yml uses tags for actions that only
 # read; this one holds `contents: write` and can push tags, and the note in
 # ci.yml about the shared scan workflow draws exactly that line — "a workflow
