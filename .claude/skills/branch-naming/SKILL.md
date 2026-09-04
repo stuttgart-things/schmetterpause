@@ -1,6 +1,6 @@
 ---
 name: branch-naming
-description: Name a git branch so it reads well and stays compatible with semantic-release. Use when starting work on a change, creating a branch, or when a branch name needs correcting before a pull request is opened.
+description: Name a git branch so it reads well and stays out of release-please's way. Use when starting work on a change, creating a branch, or when a branch name needs correcting before a pull request is opened.
 ---
 
 Branch names carry the conventional-commit type of the change they hold, so the name says what is in the branch rather than who made it.
@@ -35,20 +35,23 @@ Pick the type of the change that defines the branch. A branch that adds a featur
 
 ## Names that are reserved
 
-semantic-release treats a set of branch names as **release branches**. Its defaults are:
+Almost none, and that is a deliberate consequence of the tooling. **Releases are cut by release-please** (issue #39), which keeps its own branch:
 
 ```
-main            master          next          next-major
-beta            alpha           1.x           1.2.x
+release-please--branches--main
 ```
 
-More precisely, the maintenance pattern is `+([0-9])?(.{+([0-9]),x}).x`, which matches `1.x`, `1.2.x`, `2.x` and so on.
+It creates and force-pushes that branch itself. Do not work on it, and do not create it by hand — everything else is yours.
 
-Never give a working branch one of those names. A branch called `beta` does not just read oddly — semantic-release would treat it as a prerelease channel and start publishing from it. The `<type>/<description>` shape can never collide, which is the point of insisting on it.
+`main` is the release branch: what lands there is what a release is derived from.
+
+This section used to list `beta`, `alpha`, `next`, `1.x`, `1.2.x` and a maintenance glob, because semantic-release treats those as prerelease and maintenance channels and would start publishing from a working branch that happened to be called `beta`. **That was decided against** — see #39 for why the release-PR model was preferred — so those names are no longer dangerous here. They are still poor branch names, but for the ordinary reason: they do not say what is in the branch.
+
+The `<type>/<description>` shape collides with nothing under either tool, which is the point of insisting on it.
 
 ## What actually decides the version
 
-**Commit messages, not branch names.** semantic-release reads the commits that reach the release branch and derives the bump:
+**Commit messages, not branch names.** release-please reads the commits that reach `main` and derives the bump:
 
 | Commit | Release |
 |---|---|
@@ -60,15 +63,24 @@ Never give a working branch one of those names. A branch called `beta` does not 
 
 The branch name is for humans. It is worth getting right so the pull request list reads like a changelog, but it never moves a version number on its own.
 
+What release-please then does with that is open a **release pull request** which accumulates the changes and maintains `CHANGELOG.md`. Merging it is what tags. So the bump is derived automatically and taken deliberately — nothing releases because a commit landed.
+
 ## The merge strategy changes which messages count
 
 This matters more than it looks:
 
-- **Merge commit** — every commit on the branch reaches the release branch, so every commit's type counts. A branch with three `chore:` commits and one `feat:` produces a minor bump.
+- **Merge commit** — every commit on the branch reaches `main`, so every commit's type counts. A branch with three `chore:` commits and one `feat:` produces a minor bump.
 - **Squash merge** — only the squashed subject counts, and GitHub fills it from the pull request title. The **PR title must then be a valid conventional commit**, or the release is silently wrong. A perfect set of commits squashed under "Update stuff" releases nothing.
 - **Rebase merge** — like a merge commit: all of them count.
 
 Check which one the repository uses before assuming the commits will speak for themselves.
+
+**In this repository all three are enabled, and two are in active use** — recent
+pull requests landed as merge commits, #165 as a squash. So neither rule can be
+relied on alone, and the safe habit is the one that satisfies both: write
+conventional-commit messages on the branch *and* a conventional-commit pull
+request title. Under a merge commit the title costs nothing; under a squash it
+is the only thing release-please sees.
 
 ## Pull request titles
 
