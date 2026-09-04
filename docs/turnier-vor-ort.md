@@ -349,6 +349,13 @@ task office:stop     # anhalten, alle Ergebnisse bleiben erhalten
 > **`task down` nicht verwenden.** Das ist der Entwicklungsbefehl und löscht das
 > Datenbank-Volume mitsamt allen Ergebnissen.
 
+`task test:integration` ist dagegen unbedenklich, seit die Integrationstests
+eine eigene Datenbank haben (`schmetterpause_test`) und `TruncateAll` sich
+weigert, irgendetwas zu leeren, dessen Name nicht auf `_test` endet — Issue
+#163. Vorher zeigte der Test-DSN auf genau die Datenbank, auf der hier gespielt
+wird. Wer den Task auf einer Maschine laufen lässt, auf der ein Abend läuft,
+verliert nichts und startet den Datenbank-Container auch nicht neu.
+
 ## Die Messung — und warum dieser Abend nicht dazugehört
 
 Die Frage, für die es diese Anwendung gibt, steht in `docs/mvp-plan.md`: über
