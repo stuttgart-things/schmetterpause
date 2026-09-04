@@ -1,0 +1,51 @@
+# Cutting a version, and nothing else.
+#
+# A workflow of its own rather than a job in ci.yml, because the two answer
+# different questions. ci.yml asks "does this commit work" and holds no build
+# logic; this asks "is it time to call the accumulated work a version", and the
+# answer is a pull request somebody merges.
+#
+# What it does NOT do is release. release-please only opens and maintains the
+# release pull request; merging that PR creates the tag, and the tag is what
+# the existing `release` job in ci.yml already reacts to (`tags: ["v*"]`). So
+# nothing about the pipeline changes — see issue #39, which is the whole point:
+# the release job has been correct since it was written and has simply never
+# been given a tag.
+#
+#   push to main ──▶ release-please updates the release PR
+#   merge that PR ──▶ tag v0.1.0 ──▶ ci.yml `release` job ──▶ GHCR + latest
+#
+# Pinned by SHA rather than by tag. ci.yml uses tags for actions that only
+# read; this one holds `contents: write` and can push tags, and the note in
+# ci.yml about the shared scan workflow draws exactly that line — "a workflow
+# that gates or publishes deserves a pinned revision".
+name: Release Please
+
+on:
+  push:
+    branches: [main]
+
+# Read-only by default; the job widens it for itself alone.
+permissions:
+  contents: read
+
+concurrency:
+  # One release PR at a time. Two pushes in quick succession would otherwise
+  # race to rewrite the same branch.
+  group: release-please
+  cancel-in-progress: false
+
+jobs:
+  release-please:
+    runs-on: ubuntu-latest
+    permissions:
+      # Creates the tag and the GitHub release.
+      contents: write
+      # Opens and updates the release pull request.
+      pull-requests: write
+    steps:
+      # v5.0.0 — the SHA is the pin, the tag is the comment.
+      - uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
+        with:
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
