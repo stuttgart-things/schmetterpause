@@ -7,6 +7,13 @@ vars:
   MODULE: github.com/stuttgart-things/schmetterpause
   # DSN for the Compose database when tools reach it from the host.
   DSN: postgres://schmetterpause:schmetterpause@127.0.0.1:5432/schmetterpause?sslmode=disable
+  # And the one the integration tests empty. A database of its own on the same
+  # server, because the one above is the database the office plays on:
+  # compose.office.yaml is an overlay on the same `db` service, so `task up`
+  # and `task office:up` share a volume and a port (issue #163). The name has
+  # to end in _test or TruncateAll refuses to empty it.
+  TEST_DB: schmetterpause_test
+  DSN_TEST: postgres://schmetterpause:schmetterpause@127.0.0.1:5432/{{.TEST_DB}}?sslmode=disable
   VERSION:
     sh: git describe --tags --always --dirty 2>/dev/null || echo dev
   # The commit's own date, not the clock. Two builds of one commit have to be
@@ -516,17 +523,46 @@ tasks:
       - go test -race -cover ./...
 
   test:integration:
-    desc: "Repository tests against the local database, empties every table"
+    desc: "Repository tests against their own database, which they empty"
     deps: [generate]
     env:
-      SP_TEST_DATABASE_URL: '{{.DSN}}'
+      SP_TEST_DATABASE_URL: '{{.DSN_TEST}}'
     cmds:
-      - task: compose:up
-        vars: { SERVICES: db }
+      - task: test:database
       # -p 1: both suites talk to the same database and empty it between
       # tests, so running the packages concurrently has them migrating and
       # truncating over each other.
       - go test -race -count=1 -p 1 ./internal/repository/... ./internal/scoring/...
+
+  test:database:
+    desc: "Create the database the integration tests empty, if it is not there"
+    silent: true
+    cmds:
+      - |
+        set -e
+
+        # Start the server only when nothing is serving. "compose up db" from
+        # the base file alone is not a no-op against a container the office
+        # overlay started: compose sees a different configuration and recreates
+        # it, which drops "restart: unless-stopped" and leaves a laptop that
+        # reboots without its database. The data is on a volume and survives;
+        # the settings do not (issue #163).
+        if [ -z "$(docker compose ps --status running --quiet db)" ]; then
+          docker compose up --detach --wait db
+        fi
+
+        # Postgres has no "create database if not exists", and createdb on an
+        # existing one is an error rather than a no-op. Asking first is the
+        # whole of it.
+        exists=$(docker compose exec -T db psql -U schmetterpause -d postgres -tAc \
+          "select 1 from pg_database where datname = '{{.TEST_DB}}'")
+        if [ "$exists" = "1" ]; then
+          echo "{{.TEST_DB}} is there."
+        else
+          docker compose exec -T db psql -U schmetterpause -d postgres \
+            -c "create database {{.TEST_DB}} owner schmetterpause"
+          echo "Created {{.TEST_DB}}. The tests migrate it themselves."
+        fi
 
   # ------------------------------------------------------------------ Dagger
   # These tasks invoke the same pipeline that runs in CI.

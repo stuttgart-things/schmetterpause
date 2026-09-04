@@ -56,6 +56,14 @@ const (
 	// service during verify. It applies only inside the pipeline.
 	verifyDSN = "postgres://schmetterpause:schmetterpause@db:5432/schmetterpause?sslmode=disable"
 
+	// testDSN is what the repository and scoring suites empty. A database
+	// named for the job even though the pipeline's Postgres is ephemeral and
+	// holds nothing worth keeping: TruncateAll refuses anything that is not
+	// named _test, and a rule with an exception for "this one is fine" is how
+	// issue #163 happened in the first place.
+	testDatabase = "schmetterpause_test"
+	testDSN      = "postgres://schmetterpause:schmetterpause@db:5432/" + testDatabase + "?sslmode=disable"
+
 	// verifySessionKey signs cookies inside the pipeline only. It never
 	// leaves the ephemeral verify containers.
 	verifySessionKey = "pipeline-only-session-key-0123456789abcdef"
@@ -128,9 +136,9 @@ func (m *Schmetterpause) Test(
 	source *dagger.Directory,
 ) (string, error) {
 	out, err := m.goBase(source).
-		WithServiceBinding("db", m.Postgres()).
+		WithServiceBinding("db", m.postgres(testDatabase)).
 		// Set so the repository tests do not skip themselves.
-		WithEnvVariable("SP_TEST_DATABASE_URL", verifyDSN).
+		WithEnvVariable("SP_TEST_DATABASE_URL", testDSN).
 		// -p 1: the repository and scoring suites share this database and
 		// empty it between tests, so running their packages concurrently has
 		// them migrating and truncating over each other.
@@ -223,11 +231,18 @@ func (m *Schmetterpause) Build(
 
 // Postgres starts a fresh database as a Dagger service.
 func (m *Schmetterpause) Postgres() *dagger.Service {
+	return m.postgres("schmetterpause")
+}
+
+// postgres starts a fresh server holding one database, named by the caller.
+// The test step asks for a different name than verify does, so the rule about
+// what may be emptied holds inside the pipeline too.
+func (m *Schmetterpause) postgres(database string) *dagger.Service {
 	return dag.Container().
 		From(postgresImage).
 		WithEnvVariable("POSTGRES_USER", "schmetterpause").
 		WithEnvVariable("POSTGRES_PASSWORD", "schmetterpause").
-		WithEnvVariable("POSTGRES_DB", "schmetterpause").
+		WithEnvVariable("POSTGRES_DB", database).
 		WithEnvVariable("PGDATA", "/var/lib/postgresql/data/pgdata").
 		WithExposedPort(5432).
 		AsService(dagger.ContainerAsServiceOpts{UseEntrypoint: true})
