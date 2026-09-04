@@ -33,6 +33,9 @@ concurrency:
 
 env:
   DAGGER_VERSION: "0.21.8"
+  # Same version the kcl module installs, so a tag written here and an
+  # artefact pushed there cannot come from two different oras.
+  ORAS_VERSION: "1.2.2"
 
 jobs:
   ci:
@@ -257,7 +260,36 @@ jobs:
           # a release, a push to main is a snapshot. Letting the two repos
           # disagree about what "latest" means is the one way this pair can
           # still drift once the version tags line up.
+          #
+          # It is a TAG on what was just pushed, not a second publish. Calling
+          # publish again renders and pushes the base a second time, and oras
+          # stamps a created annotation, so the two tags end up on two
+          # digests. That is not theory: v0.2.0 and latest were fee3ca9c and
+          # ab10f222, from one run, minutes apart. #177 fixed the same class
+          # of defect for the image, where it took two runs to appear; here
+          # one run is enough.
           if [ "${GITHUB_REF_TYPE:-}" = "tag" ]; then
-            publish latest
-            echo "moved ${repo}:latest"
+            mkdir -p "${RUNNER_TEMP}/bin"
+            curl -fsSL "https://github.com/oras-project/oras/releases/download/v${ORAS_VERSION}/oras_${ORAS_VERSION}_linux_amd64.tar.gz" \
+              | tar xz -C "${RUNNER_TEMP}/bin" oras
+            export PATH="${RUNNER_TEMP}/bin:${PATH}"
+
+            printenv GITHUB_TOKEN \
+              | oras login ghcr.io --username "${GITHUB_USER}" --password-stdin
+
+            oras tag "${repo}:${VERSION}" latest
+            echo "moved ${repo}:latest onto ${repo}:${VERSION}"
+
+            # Prove it rather than trust it. Both times this drifted it was
+            # invisible until somebody compared digests by hand, and both
+            # tags reported success while disagreeing.
+            for r in "${repo}" "${image_repo}"; do
+              v="$(oras manifest fetch --descriptor "${r}:${VERSION}" | sed 's/.*"digest":"\([^"]*\)".*/\1/')"
+              l="$(oras manifest fetch --descriptor "${r}:latest" | sed 's/.*"digest":"\([^"]*\)".*/\1/')"
+              if [ "${v}" != "${l}" ]; then
+                echo "${r}: latest is ${l}, ${VERSION} is ${v} — the release tag does not identify the artefact" >&2
+                exit 1
+              fi
+              echo "${r}: latest and ${VERSION} agree on ${v}"
+            done
           fi
