@@ -11,7 +11,7 @@ import (
 // autocomplete of a laptop somebody borrows next, and so a link nobody meant
 // to share does not carry it.
 func TestTheCodeFormUnlocksTheKiosk(t *testing.T) {
-	h, _ := kioskHandler(t)
+	h, store := kioskHandler(t)
 
 	rec := kioskPost(t, h, "/kiosk/unlock", nil, url.Values{"code": {testKioskToken}})
 	if rec.Code != http.StatusSeeOther {
@@ -30,8 +30,15 @@ func TestTheCodeFormUnlocksTheKiosk(t *testing.T) {
 	if grant == nil {
 		t.Fatal("no grant was issued")
 	}
-	if body := kioskBody(t, h, grant); !strings.Contains(body, "Ergebnis eintragen") {
+	// An unlocked machine asks who is typing before it shows anything to type
+	// into (issue #90), so that is what the grant opens onto.
+	if body := kioskBody(t, h, grant); !strings.Contains(body, "Wer trägt ein?") {
 		t.Error("the grant does not open the kiosk")
+	}
+
+	nameOperator(t, h, store, grant)
+	if body := kioskBody(t, h, grant); !strings.Contains(body, "Ergebnis eintragen") {
+		t.Error("a named machine does not reach the entry form")
 	}
 }
 

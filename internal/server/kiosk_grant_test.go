@@ -38,10 +38,10 @@ func adminAndKiosk(t *testing.T) (*server.Server, *memStore) {
 // laptop at the table was indistinguishable from a phone that read the token
 // over a shoulder.
 func TestEachMachineGetsItsOwnGrant(t *testing.T) {
-	h, _ := kioskHandler(t)
+	h, store := kioskHandler(t)
 
-	first := unlock(t, h)
-	second := unlock(t, h)
+	first := unlock(t, h, store)
+	second := unlock(t, h, store)
 
 	if first.Value == second.Value {
 		t.Fatal("two machines were handed the same cookie value")
@@ -63,8 +63,8 @@ func TestRevokingOneMachineLeavesTheOther(t *testing.T) {
 	annaCookie := sessionCookie(t, join(t, h, "Anna"))
 	srv.GrantBootstrapAdmin(t.Context())
 
-	table := unlock(t, h)
-	shoulder := unlock(t, h)
+	table := unlock(t, h, store)
+	shoulder := unlock(t, h, store)
 
 	grants, err := store.KioskGrants().Active(t.Context(), timeNow())
 	if err != nil || len(grants) != 2 {
@@ -108,8 +108,8 @@ func TestRevokingAllMachines(t *testing.T) {
 	annaCookie := sessionCookie(t, join(t, h, "Anna"))
 	srv.GrantBootstrapAdmin(t.Context())
 
-	first := unlock(t, h)
-	second := unlock(t, h)
+	first := unlock(t, h, store)
+	second := unlock(t, h, store)
 
 	if got := postForm(t, h, "/admin/kiosk/revoke-all", nil, annaCookie).Code; got != http.StatusSeeOther {
 		t.Fatalf("revoking all = %d, want %d", got, http.StatusSeeOther)
@@ -127,7 +127,7 @@ func TestRevokingAllMachines(t *testing.T) {
 
 	// And the way back is the same as the way in: enter the token again.
 	// A revocation must not be a restart in disguise.
-	again := unlock(t, h)
+	again := unlock(t, h, store)
 	if got := kioskPost(t, h, "/kiosk/players", again, url.Values{"display_name": {"Y"}}).Code; got != http.StatusOK {
 		t.Errorf("a revoked machine cannot unlock again: %d", got)
 	}
@@ -143,7 +143,7 @@ func TestRevokingNeedsAnAdmin(t *testing.T) {
 	bodoCookie := sessionCookie(t, join(t, h, "Bodo"))
 	srv.GrantBootstrapAdmin(t.Context())
 
-	unlock(t, h)
+	unlock(t, h, store)
 	grants, _ := store.KioskGrants().Active(t.Context(), timeNow())
 	id := grants[0].ID.String()
 

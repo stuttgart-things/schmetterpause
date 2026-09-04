@@ -347,6 +347,12 @@ func Record(
 	via domain.EnteredVia,
 	tournamentID *uuid.UUID,
 	tournamentRound *int,
+	// reportedBy is who the result is credited to. The kiosk passes its
+	// operator, which is the person who typed it (issue #90). It used to be
+	// the home player, which made a kiosk row indistinguishable from a result
+	// that player entered themselves — a lie the Definition of Done in issue
+	// #43 had to work around.
+	reportedBy uuid.UUID,
 	at time.Time,
 ) (Settlement, error) {
 	if homeID == awayID {
@@ -373,10 +379,10 @@ func Record(
 			BestOf:      result.Mode.BestOf,
 			PointsToWin: result.Mode.PointsToWin,
 			// Recorded rather than reported: the match never waits on
-			// anybody, so reported_by names who it is credited to and not
-			// who has to agree.
+			// anybody, so reported_by names who wrote it down and not who
+			// has to agree.
 			Status:          domain.MatchPending,
-			ReportedBy:      homeID,
+			ReportedBy:      reportedBy,
 			PlayedAt:        at,
 			EnteredVia:      via,
 			TournamentID:    tournamentID,

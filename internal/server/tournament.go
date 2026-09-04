@@ -444,7 +444,8 @@ func (s *Server) handleTournamentRecord(w http.ResponseWriter, r *http.Request) 
 		http.Error(w, "Turnier nicht gefunden", http.StatusNotFound)
 		return
 	}
-	if !s.kioskUnlocked(r) {
+	operator, named := s.kioskOperator(r)
+	if !named {
 		http.Error(w, "Zugang nötig", http.StatusForbidden)
 		return
 	}
@@ -496,8 +497,18 @@ func (s *Server) handleTournamentRecord(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
+	// The operator is not playing this one. Same rule as the casual kiosk
+	// path (issue #90); a draw is not a reason to score your own match with
+	// nobody agreeing, and ADR-0010 gives a player the phone route instead.
+	if operator == homeID || operator == awayID {
+		s.tournamentBack(w, r, id, true,
+			"Dein eigenes Spiel nicht hier — trag es auf der Turnierseite "+
+				"ein, dann bestätigt es dein Gegner.")
+		return
+	}
+
 	_, err = scoring.Record(ctx, s.store, homeID, awayID, form.result,
-		domain.EnteredViaKiosk, &tour.ID, &round, time.Now())
+		domain.EnteredViaKiosk, &tour.ID, &round, operator, time.Now())
 
 	var rejection *match.Rejection
 	switch {

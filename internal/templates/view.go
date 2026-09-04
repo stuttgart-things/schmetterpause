@@ -95,6 +95,29 @@ type KioskView struct {
 	// difference between this display and the one after joining.
 	IssuedCode string
 	IssuedFor  string
+	// Operator is who this machine says is typing (issue #90). Shown because
+	// a name nobody can see is a name nobody corrects: the laptop is passed
+	// around, and the person holding it should be able to tell at a glance
+	// that the results are still being credited to whoever had it before.
+	Operator string
+}
+
+// KioskOperatorView is the question a machine answers before it may enter
+// anything: who is holding the pen.
+//
+// A picker and not a login. The kiosk has no session of its own and should
+// not acquire one — a laptop eight people share must not be signed in as any
+// of them (see handleKioskAddPlayer). What this buys is that a kiosk result
+// carries a name instead of being credited to the home player, and that the
+// server can refuse a result the operator plays in. What it does not buy is
+// proof; issue #90 says so in as many words.
+type KioskOperatorView struct {
+	Players []OpponentOption
+	// Current is who the machine already named, when this page is reached by
+	// somebody handing the laptop on rather than by a fresh unlock.
+	Current string
+	// Error explains a refusal. Empty otherwise.
+	Error string
 }
 
 // HeaderView is the state in the top bar: who this is, and how much is
@@ -691,6 +714,10 @@ type KioskGrantView struct {
 	Unlocked  string
 	LastSeen  string
 	Expires   string
+	// Operator is who this machine says is typing (issue #90). Empty for a
+	// machine that has been unlocked but has not answered yet, which is a
+	// machine that cannot write anything.
+	Operator string
 }
 
 // Label is what to call this machine in a list. The user agent when there is

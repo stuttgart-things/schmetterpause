@@ -48,7 +48,7 @@ func TestTheKioskCopyDoesNotSendYouWhereYouAre(t *testing.T) {
 // explain to somebody who can already enter.
 func TestTheUnlockedDrawJustOffersTheBoxes(t *testing.T) {
 	h, store := kioskHandler(t)
-	cookie := unlock(t, h)
+	cookie := unlock(t, h, store)
 	field := seedField(t, store)
 	id := seedTournamentMode(t, store, 3, 11, field)
 

@@ -17,7 +17,7 @@ import (
 // all, and the way in was somebody retyping a UUID out of the address bar.
 func TestTheKioskLinksToARunningTournament(t *testing.T) {
 	h, store := kioskHandler(t)
-	cookie := unlock(t, h)
+	cookie := unlock(t, h, store)
 	field := seedField(t, store)
 
 	open := seedTournament(t, store, "Mittwochs-Cup", domain.TournamentOpen, field)
@@ -40,7 +40,7 @@ func TestTheKioskLinksToARunningTournament(t *testing.T) {
 // locked, and at a table that costs somebody a walk over to find out.
 func TestTheKioskLeavesOutClosedTournaments(t *testing.T) {
 	h, store := kioskHandler(t)
-	cookie := unlock(t, h)
+	cookie := unlock(t, h, store)
 	field := seedField(t, store)
 
 	done := seedTournament(t, store, "Letzte Woche", domain.TournamentClosed, field)
@@ -58,7 +58,7 @@ func TestTheKioskLeavesOutClosedTournaments(t *testing.T) {
 // would be noise on the page people look at most.
 func TestTheKioskStaysPlainWithoutATournament(t *testing.T) {
 	h, store := kioskHandler(t)
-	cookie := unlock(t, h)
+	cookie := unlock(t, h, store)
 	seedField(t, store)
 
 	body := kioskBody(t, h, cookie)
