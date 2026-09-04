@@ -5,15 +5,17 @@
 # logic; this asks "is it time to call the accumulated work a version", and the
 # answer is a pull request somebody merges.
 #
-# What it does NOT do is release. release-please only opens and maintains the
-# release pull request; merging that PR creates the tag, and the tag is what
-# the existing `release` job in ci.yml already reacts to (`tags: ["v*"]`). So
-# nothing about the pipeline changes — see issue #39, which is the whole point:
-# the release job has been correct since it was written and has simply never
-# been given a tag.
+# What it does NOT do is build. release-please opens and maintains the release
+# pull request; merging that PR creates the tag, and the `release` job in
+# ci.yml does the publishing — see issue #39, whose point was that the release
+# job had been correct since it was written and had simply never been given a
+# tag.
 #
 #   push to main ──▶ release-please updates the release PR
-#   merge that PR ──▶ tag v0.1.0 ──▶ ci.yml `release` job ──▶ GHCR + latest
+#   merge that PR ──▶ tag v0.2.0 ──▶ dispatch ci.yml AT the tag ──▶ GHCR + latest
+#
+# That last arrow is a dispatch and not the tag push, which is the part #39 got
+# wrong and #172 corrected. The reasoning is at the step that does it.
 #
 # That v0.1.0 is not automatic. release-please defaults the FIRST release to
 # 1.0.0 whatever the commits say — `0.0.0` in the manifest means "nothing
@@ -51,9 +53,38 @@ jobs:
       contents: write
       # Opens and updates the release pull request.
       pull-requests: write
+      # Dispatches ci.yml at the new tag. See the step at the bottom.
+      actions: write
     steps:
       # v5.0.0 — the SHA is the pin, the tag is the comment.
       - uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
+        id: release
         with:
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
+
+      # The tag alone wakes nobody. GitHub suppresses workflow triggers for
+      # events created with the GITHUB_TOKEN so a workflow cannot loop by
+      # pushing, and release-please tags with exactly that token — so
+      # `on: push: tags` in ci.yml never fires for a release. v0.1.0 still
+      # reached the registry only because the push-to-main run for the release
+      # commit resolves `git describe` to the tag sitting on it; the version
+      # was right by coincidence and `latest`, which is gated on the ref being
+      # a tag, was never set at all. Issue #172.
+      #
+      # workflow_dispatch and repository_dispatch are the documented
+      # exceptions: those DO fire under the GITHUB_TOKEN. So say plainly that a
+      # release happened rather than hoping the tag is noticed.
+      #
+      # This means a release commit produces two CI runs — one on main, one at
+      # the tag. They build the same source and publish the same version, so
+      # the second is a re-push of identical content; only it moves "latest".
+      # Cheaper than teaching the main run to recognise a release commit.
+      - name: Run the release pipeline at the new tag
+        if: ${{ steps.release.outputs.release_created }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ steps.release.outputs.tag_name }}
+        run: |
+          echo "released ${TAG} — dispatching ci.yml at it"
+          gh workflow run ci.yml --repo "${GITHUB_REPOSITORY}" --ref "${TAG}"
