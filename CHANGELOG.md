@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.3.0](https://github.com/stuttgart-things/schmetterpause/compare/v0.2.1...v0.3.0) (2026-09-05)
+
+
+### Features
+
+* **ci:** gate pull requests on govulncheck against the source ([#181](https://github.com/stuttgart-things/schmetterpause/issues/181)) ([513a08d](https://github.com/stuttgart-things/schmetterpause/commit/513a08d7fc7d728fcf8beec2cfa5a90cf72768c8))
+* **ci:** run govulncheck from Ci, and gate on the Trivy scan ([#183](https://github.com/stuttgart-things/schmetterpause/issues/183)) ([d67795e](https://github.com/stuttgart-things/schmetterpause/commit/d67795ecb9172765e3db307daf71bc7ca7eb56a5))
+
 ## [0.2.1](https://github.com/stuttgart-things/schmetterpause/compare/v0.2.0...v0.2.1) (2026-09-04)
 
 
