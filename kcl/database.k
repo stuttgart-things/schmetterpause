@@ -50,6 +50,31 @@ _initdb = {
     }
 }
 
+# The PVC carries an ownerReference to the Cluster, so deleting the Cluster
+# object deletes the data — there is no CNPG-side retention flag that survives
+# it. Under an Application with `prune: true` and the resources-finalizer, two
+# ordinary GitOps events reach the data that way: the resource leaving the
+# render, and the Application itself being deleted. They are separate events
+# and one sync-option does not imply the other, hence both.
+#
+# The comment at the top of this file argues the Cluster stays out of the
+# published base so nothing prunes it. This is that argument finished: the
+# guard travels on the object, so it also holds for whoever re-adds the Cluster
+# to a chart of their own, and for `task kcl:database` applied by hand.
+#
+# The cost is deliberate and not a bug: the database then has to be removed by
+# hand. That is the right trade for an object whose deletion is not recoverable
+# from git.
+#
+# config.annotations is spread after the guard rather than before it. A caller
+# adding its own annotations gets them; a caller setting this same key gets a
+# render error rather than a silently unprotected Cluster, because KCL's dict
+# union rejects a conflicting value instead of letting the later one win.
+_annotations = {
+    "argocd.argoproj.io/sync-options": "Prune=false,Delete=false"
+    **_config.annotations
+}
+
 _dbCluster = {
     apiVersion: "postgresql.cnpg.io/v1"
     kind: "Cluster"
@@ -57,6 +82,7 @@ _dbCluster = {
         name: _config.dbClusterName
         namespace: _config.namespace
         labels: labels.databaseLabels
+        annotations: _annotations
     }
     spec: {
         instances: _config.dbInstances
