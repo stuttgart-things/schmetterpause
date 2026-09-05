@@ -2,15 +2,18 @@
 # function that "task ci" runs locally. It holds no build logic — that lives in
 # dagger/main.go and behaves identically here and on a developer machine.
 #
-# The exceptions are the two vulnerability scans, which call shared workflows
-# from stuttgart-things/github-workflow-templates. Neither is build logic. The
-# image scan reads an artefact that has already been published, so there is
-# nothing about it to reproduce locally. The source scan is the one place that
-# claim is weaker: govulncheck reads this working tree, so "task ci" and CI do
-# now differ by one check. Closing that gap means taking the shared go module
-# as a dependency of dagger/main.go and calling Govulncheck from Ci — worth
-# doing, and deliberately not done in the same change as adopting it. See
-# issue #86, and #85 for what else moves there and what does not.
+# The exceptions are three calls into shared workflows from
+# stuttgart-things/github-workflow-templates, and none of them is build logic.
+# The image scan reads an artefact that has already been published, so there is
+# nothing about it to reproduce locally. Repository linting has an opinion
+# about YAML and Markdown, which the Go pipeline has no business holding. The
+# source scan is the one place the claim above is weaker: govulncheck reads
+# this working tree, so it could have lived in "dagger call ci" — and now does,
+# in addition, which is why that job says why it runs twice.
+#
+# See issue #85 for what else moves here and what does not: the container
+# build via ko is a real decision rather than an adoption, and call-go-release
+# is ruled out because it brings semantic-release with it (issue #39).
 name: CI
 
 on:
@@ -64,6 +67,45 @@ jobs:
             --source=. \
             --version="$(git describe --tags --always --dirty)" \
             --commit-time="$(git show -s --format=%cI HEAD)"
+
+  # yamllint and markdownlint over the whole repository. Neither has ever run
+  # here, and neither belongs in "dagger call ci": that pipeline is about the
+  # Go application, and a linter with an opinion about how a workflow file is
+  # indented has nothing to say about whether the binary works. This is the
+  # kind of adoption issue #85 asks for — a genuine reusable workflow rather
+  # than a hand-rolled job.
+  #
+  # Report-only, and not by our choice: the shared workflow does not expose
+  # the module's fail-on input, so it cannot gate no matter what is passed. A
+  # findings file lands as an artefact and in the step summary; nothing turns
+  # red. Same posture Trivy started from, for the same reason — a first run
+  # over a repository nobody has linted is a measurement, not a verdict — and
+  # if the findings turn out to be worth acting on, gating them needs a change
+  # upstream rather than here.
+  #
+  # No config files. The module writes its own .yamllint and .mdlrc when the
+  # repository has none, and those defaults are what this template was tuned
+  # against; shipping ours would be a decision about rules taken before
+  # reading a single finding. Both are inputs, so it stays a one-line change.
+  #
+  # Pinned like every other call here, at the same revision, so one Renovate
+  # bump moves all three. @main would be defensible for a job that cannot
+  # fail, but a repository with two digests for one dependency is worse than
+  # the pin is strict.
+  #
+  # Deliberately no "needs": lint findings do not depend on a build, and a
+  # failing test should not hide them.
+  lint:
+    uses: stuttgart-things/github-workflow-templates/.github/workflows/call-repository-linting.yaml@abd54d1bec6ca733105ed782ce795f2d827ad040 # main
+    with:
+      runs-on: ubuntu-latest
+      app-directory: "./"
+      output-file: "/tmp/schmetterpause-findings.txt"
+      # A pull request checks out the merge commit by default; the template
+      # takes a ref and checks that out itself, so it has to be told which
+      # branch the run is about. Without it every pull-request run would lint
+      # main and report nothing about the change under review.
+      branch-name: ${{ github.head_ref || github.ref_name }}
 
   # Artefacts that are meant to last go to GHCR. Only on a push — a pull
   # request from a fork must not be able to write to the package, and there is
