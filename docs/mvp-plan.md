@@ -103,9 +103,12 @@ wären nicht nachträglich rekonstruierbar.
 ### AP1 — Gerüst
 
 Go-Modul, Verzeichnisstruktur, templ- und HTMX-Setup, Postgres-Migrations
-(goose), Repository-Interfaces, `/healthz` und `/readyz`, Dockerfile
-(Multi-Stage, distroless), `compose.yaml` mit App und Postgres, Taskfile,
-Dagger-Pipeline.
+(goose), Repository-Interfaces, `/healthz` und `/readyz`, Runtime-Image
+(distroless), `compose.yaml` mit App und Postgres, Taskfile, Dagger-Pipeline.
+
+Das Image entstand zunächst aus einem Dockerfile. Das ist entfallen, weil die
+Pipeline das Image ohnehin selbst zusammensetzt und zwei Definitionen desselben
+Images eine zu viel sind — Compose zieht heute das veröffentlichte Artefakt.
 
 *Fertig, wenn:* `task up` startet die Anwendung, `task ci` läuft lokal grün
 durch und liefert dasselbe Ergebnis wie in der Pipeline.

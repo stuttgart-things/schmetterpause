@@ -17,9 +17,16 @@ import (
 )
 
 const (
-	// goVersion must carry at least the Go version from go.mod, and must match
-	// the builder stage in the Dockerfile — otherwise the pipeline verifies an
-	// image built by a different compiler than the one the Dockerfile uses.
+	// goVersion must carry at least the Go version from go.mod. It used to
+	// have a second job — matching the builder stage in the Dockerfile — and
+	// that file is gone, because the two ways of building this image were one
+	// too many.
+	//
+	// It carries a Renovate marker for the same reason. The Dockerfile's FROM
+	// line was what kept the toolchain moving; the customManager in
+	// renovate.json reads Image constants and cannot see this one, since
+	// goImage is assembled rather than written out. Without the marker,
+	// deleting the Dockerfile would have quietly frozen the Go version.
 	//
 	// Split out of goImage rather than spelled into it, because Govulncheck
 	// needs the version on its own. Its scan container takes a floor, not a
@@ -29,6 +36,7 @@ const (
 	// standard-library vulnerabilities, all fixed in go1.26.1, because it ran
 	// at go1.26.0 while the build was already on 1.27. Deriving both from one
 	// constant is what stops that from coming back.
+	// renovate: datasource=docker depName=golang versioning=docker
 	goVersion         = "1.27"
 	goVariant         = "alpine"
 	goImage           = "golang:" + goVersion + "-" + goVariant
@@ -244,8 +252,21 @@ func (m *Schmetterpause) Binary(
 		File("/out/schmetterpause")
 }
 
-// Image builds the runtime image. It matches the Dockerfile: the same image
-// for Compose, Kubernetes and Azure Container Apps (invariant 1).
+// Image builds the runtime image, and is the only thing that does.
+//
+// One binary, one image (invariant 1): this image runs unchanged in Docker
+// Compose, Kubernetes and Azure Container Apps. It contains no config file;
+// everything environment-dependent arrives through SP_* variables
+// (invariant 2). Templates, static assets and migrations are embedded in the
+// binary — the image needs no volume.
+//
+// That paragraph is inherited from the Dockerfile, which said it while a
+// second definition of the same image sat here and Compose used the other
+// one. Compose now runs what this function produced and CI published, so the
+// claim has one place to be true in.
+//
+// gcr.io/distroless/static-debian12:nonroot with USER 65532 is what makes
+// runAsNonRoot and readOnlyRootFilesystem work in Kubernetes as-is.
 func (m *Schmetterpause) Image(
 	// +defaultPath="/"
 	// +ignore=["**/.git", "build", ".task", "dagger/internal", "dagger/dagger.gen.go"]
