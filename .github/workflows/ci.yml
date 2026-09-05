@@ -215,6 +215,18 @@ jobs:
       working-directory: "."
       artifact-name: govulncheck-report
       fail-on-finding: true
+      # Must track goImage in dagger/main.go, and the first run showed why.
+      # The template's default is a *floor*: it sets GOTOOLCHAIN=auto, so a
+      # go.mod requiring something newer wins — but nothing pulls the
+      # toolchain any higher than that. go.mod says "go 1.26.0", so the scan
+      # ran against the go1.26.0 standard library and reported 20 reachable
+      # vulnerabilities in it, every one of them "Fixed in: go1.26.1".
+      #
+      # The binary that ships is built from golang:1.27-alpine and contains
+      # none of them. So the scan was answering a question about a toolchain
+      # this project does not use. Reachability analysis is only as accurate
+      # as the standard library it analyses.
+      go-version: "1.27"
 
   # The second half of what a release is: the image says how the application
   # runs, the kustomize base says how it is deployed. Issue #80 — until now
