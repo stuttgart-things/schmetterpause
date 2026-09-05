@@ -209,7 +209,7 @@ jobs:
   # when a lint run is failing, and there is nothing about the scan that
   # depends on the build.
   govulncheck:
-    uses: stuttgart-things/github-workflow-templates/.github/workflows/call-dagger-govulncheck.yaml@123f33b93cfff93e72259a9f37a82ed9a7cd181a # main
+    uses: stuttgart-things/github-workflow-templates/.github/workflows/call-dagger-govulncheck.yaml@5c9a21c7ce6c82cfbd0c495c199dd681361d9bed # main
     with:
       runs-on: ubuntu-latest
       working-directory: "."
