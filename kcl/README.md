@@ -88,6 +88,17 @@ flag** on purpose. `kcl:publish` renders `main.k`, so no value anyone sets can
 put a Cluster into the published artefact — the invariant holds by construction
 instead of by a default nobody changed.
 
+The `Cluster` it renders carries `argocd.argoproj.io/sync-options:
+Prune=false,Delete=false`. The PVC holds an ownerReference on the `Cluster`, so
+deleting that object deletes the data, and two ordinary GitOps events reach it:
+the resource dropping out of an Application's render, and the Application itself
+being deleted while the resources-finalizer is set. Because the annotation
+travels on the object, it also holds where this module cannot reach — a
+consumer's own chart that re-adds the `Cluster`, which is the case that nearly
+cost a database. It is an instruction to ArgoCD and nothing more: `kubectl
+delete` is unaffected, deliberately, and is now the one way the database gets
+removed on purpose.
+
 Rendering it from the same module is what stops values drifting: `initdb.owner`,
 `initdb.database` and the Service the DSN dials come from `config.dbOwner`,
 `config.dbName` and `config.dbClusterName`, and `initdb.secret` names the Secret
