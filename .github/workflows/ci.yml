@@ -165,6 +165,15 @@ jobs:
   # verdict, and the measurement has now been taken three times, so leaving it
   # report-only would mean a scan nobody has to act on.
   #
+  # fail-on-finding is what makes that true, and dropping continue-on-error
+  # was not. Until dagger v0.129.0 the shared module could not fail on a
+  # vulnerability at all: trivy exits 0 on findings, its exit code was thrown
+  # away, and the summary meant to carry the verdict was parsing secrets
+  # rather than vulnerabilities. An image with a CRITICAL scanned green; only
+  # an image that could not be pulled failed. So between #183 and here this
+  # job was blocking in name and reported success on exactly the case it
+  # exists for.
+  #
   # Only on a push, because that is the only event that publishes an image —
   # a pull request has nothing to scan. That is a real gap: a vulnerable
   # dependency is caught on main rather than in review. Closing it needs a
@@ -177,12 +186,13 @@ jobs:
   # workflow that gates or publishes deserves a pinned revision; see #85.
   scan:
     needs: release
-    uses: stuttgart-things/github-workflow-templates/.github/workflows/call-dagger-trivy-image-scan.yaml@main
+    uses: stuttgart-things/github-workflow-templates/.github/workflows/call-dagger-trivy-image-scan.yaml@abd54d1bec6ca733105ed782ce795f2d827ad040 # main
     with:
       runs-on: ubuntu-latest
       image-ref: ${{ needs.release.outputs.image-ref }}
       severity: HIGH,CRITICAL
       artifact-name: trivy-image-report
+      fail-on-finding: true
 
   # govulncheck against the source, on every event — which is the point. The
   # image scan above only runs on a push, because a pull request publishes no
@@ -213,7 +223,7 @@ jobs:
   # Deliberately not "needs: ci": a dependency advisory is worth seeing even
   # when a lint run is failing, and nothing about the scan depends on a build.
   govulncheck:
-    uses: stuttgart-things/github-workflow-templates/.github/workflows/call-dagger-govulncheck.yaml@5c9a21c7ce6c82cfbd0c495c199dd681361d9bed # main
+    uses: stuttgart-things/github-workflow-templates/.github/workflows/call-dagger-govulncheck.yaml@abd54d1bec6ca733105ed782ce795f2d827ad040 # main
     with:
       runs-on: ubuntu-latest
       working-directory: "."
