@@ -186,7 +186,7 @@ jobs:
   # workflow that gates or publishes deserves a pinned revision; see #85.
   scan:
     needs: release
-    uses: stuttgart-things/github-workflow-templates/.github/workflows/call-dagger-trivy-image-scan.yaml@abd54d1bec6ca733105ed782ce795f2d827ad040 # main
+    uses: stuttgart-things/github-workflow-templates/.github/workflows/call-dagger-trivy-image-scan.yaml@24c44cec43b658faf7faddcd9d38d56f17448efb # main
     with:
       runs-on: ubuntu-latest
       image-ref: ${{ needs.release.outputs.image-ref }}
@@ -223,7 +223,7 @@ jobs:
   # Deliberately not "needs: ci": a dependency advisory is worth seeing even
   # when a lint run is failing, and nothing about the scan depends on a build.
   govulncheck:
-    uses: stuttgart-things/github-workflow-templates/.github/workflows/call-dagger-govulncheck.yaml@abd54d1bec6ca733105ed782ce795f2d827ad040 # main
+    uses: stuttgart-things/github-workflow-templates/.github/workflows/call-dagger-govulncheck.yaml@24c44cec43b658faf7faddcd9d38d56f17448efb # main
     with:
       runs-on: ubuntu-latest
       working-directory: "."
