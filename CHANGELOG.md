@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.1](https://github.com/stuttgart-things/schmetterpause/compare/v0.3.0...v0.3.1) (2026-09-05)
+
+
+### Bug Fixes
+
+* **ci:** make the Trivy gate actually gate ([#186](https://github.com/stuttgart-things/schmetterpause/issues/186)) ([c29e187](https://github.com/stuttgart-things/schmetterpause/commit/c29e187674991b13284f081094e8a5e1a1f80907))
+
 ## [0.3.0](https://github.com/stuttgart-things/schmetterpause/compare/v0.2.1...v0.3.0) (2026-09-05)
 
 
