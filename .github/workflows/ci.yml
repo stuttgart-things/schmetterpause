@@ -158,11 +158,12 @@ jobs:
           # ties the artefact to the image it names.
           echo "version=${version}" >> "$GITHUB_OUTPUT"
 
-  # Trivy against the image that was just published. Report-only for now
-  # (continue-on-error): this repository has never been scanned, so the first
-  # run is a measurement, not a verdict. Making it blocking today would mean
-  # every build failing on findings nobody has looked at yet. Flipping it to
-  # false is a separate, deliberate step once the list is known and empty.
+  # Trivy against the image that was just published. Blocking, as of the third
+  # consecutive clean report: 7cca1ef, eb0abcc and 513a08d each came back with
+  # zero HIGH/CRITICAL findings across both result classes — the debian base
+  # packages and the Go binary. The first run was a measurement rather than a
+  # verdict, and the measurement has now been taken three times, so leaving it
+  # report-only would mean a scan nobody has to act on.
   #
   # Only on a push, because that is the only event that publishes an image —
   # a pull request has nothing to scan. That is a real gap: a vulnerable
@@ -182,32 +183,35 @@ jobs:
       image-ref: ${{ needs.release.outputs.image-ref }}
       severity: HIGH,CRITICAL
       artifact-name: trivy-image-report
-      continue-on-error: true
 
   # govulncheck against the source, on every event — which is the point. The
   # image scan above only runs on a push, because a pull request publishes no
-  # image, so until now a vulnerable dependency was caught on main rather than
-  # in review. This closes that without needing a PR image build: govulncheck
+  # image, so a vulnerable dependency was caught on main rather than in
+  # review. This closes that without needing a PR image build: govulncheck
   # reads source, publishes nothing and runs in seconds.
   #
-  # Blocking from the first run, unlike Trivy, and the difference is not
-  # nerve. govulncheck does call-graph analysis: it stays quiet about a CVE in
-  # a dependency whose affected function this code never calls, and reports
-  # only what is reachable. A finding therefore means something is genuinely
+  # Blocking, unlike Trivy was to begin with, and the difference is not nerve.
+  # govulncheck does call-graph analysis: it stays quiet about a CVE in a
+  # dependency whose affected function this code never calls, and reports only
+  # what is reachable. A finding therefore means something is genuinely
   # exposed, which is what makes it gateable on day one where a whole-image
-  # inventory is not. If this pull request's own run comes back red, the list
-  # is the answer to whether that judgement holds — decide per finding before
-  # merging rather than reaching for continue-on-error.
+  # inventory is not.
+  #
+  # "dagger call ci" now runs the same check too, so on a push this scans
+  # twice. Deliberate, and worth the duplicate: this job uploads the report as
+  # an artefact and reports independently of lint and test, so a dependency
+  # advisory is still visible on a run that failed for an unrelated reason.
+  # The ci job is what makes "task ci" and CI agree; this job is what makes
+  # the result readable afterwards.
   #
   # Pinned to a revision rather than @main. The Trivy call above can afford
-  # @main because it is report-only and holds none of our credentials; this
-  # one gates, so an upstream change to it can turn a build here red. That is
-  # the pinning decision issue #85 leaves open, taken at the first call site
-  # where it costs something.
+  # @main because it holds none of our credentials and its findings were
+  # advisory when it was written; this one gates, so an upstream change to it
+  # can turn a build here red. That is the pinning decision issue #85 leaves
+  # open, taken at the first call site where it costs something.
   #
   # Deliberately not "needs: ci": a dependency advisory is worth seeing even
-  # when a lint run is failing, and there is nothing about the scan that
-  # depends on the build.
+  # when a lint run is failing, and nothing about the scan depends on a build.
   govulncheck:
     uses: stuttgart-things/github-workflow-templates/.github/workflows/call-dagger-govulncheck.yaml@123f33b93cfff93e72259a9f37a82ed9a7cd181a # main
     with:
@@ -215,17 +219,17 @@ jobs:
       working-directory: "."
       artifact-name: govulncheck-report
       fail-on-finding: true
-      # Must track goImage in dagger/main.go, and the first run showed why.
-      # The template's default is a *floor*: it sets GOTOOLCHAIN=auto, so a
-      # go.mod requiring something newer wins — but nothing pulls the
-      # toolchain any higher than that. go.mod says "go 1.26.0", so the scan
-      # ran against the go1.26.0 standard library and reported 20 reachable
-      # vulnerabilities in it, every one of them "Fixed in: go1.26.1".
+      # Must track goVersion in dagger/main.go, and the first run showed why.
+      # The template's input is a floor, not a pin: GOTOOLCHAIN is auto, so a
+      # go.mod requiring something newer wins, but nothing raises the
+      # toolchain above that requirement. go.mod says "go 1.26.0", so the scan
+      # ran against the go1.26.0 standard library and failed with 20 reachable
+      # vulnerabilities in it, every one "Fixed in: go1.26.1".
       #
-      # The binary that ships is built from golang:1.27-alpine and contains
-      # none of them. So the scan was answering a question about a toolchain
-      # this project does not use. Reachability analysis is only as accurate
-      # as the standard library it analyses.
+      # The binary that ships is built from goImage, which is derived from
+      # goVersion = "1.27", and contains none of them. The scan was answering
+      # a question about a toolchain this project does not use. Reachability
+      # analysis is only as accurate as the standard library it analyses.
       go-version: "1.27"
 
   # The second half of what a release is: the image says how the application

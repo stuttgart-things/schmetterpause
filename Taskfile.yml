@@ -587,8 +587,14 @@ tasks:
     cmds:
       - dagger call verify --source=. --version={{.VERSION}} --commit-time="{{.COMMIT_TIME}}"
 
+  govulncheck:
+    desc: "Dagger govulncheck: reachable vulnerabilities in the source"
+    deps: [dagger:check]
+    cmds:
+      - dagger call govulncheck --source=.
+
   ci:
-    desc: "lint + test + build + verify, identical to the pipeline"
+    desc: "lint + test + govulncheck + build + verify, identical to the pipeline"
     deps: [dagger:check]
     cmds:
       - dagger call ci --source=. --version={{.VERSION}} --commit-time="{{.COMMIT_TIME}}"

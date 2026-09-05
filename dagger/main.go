@@ -17,10 +17,21 @@ import (
 )
 
 const (
-	// goImage must carry at least the Go version from go.mod, and must match
+	// goVersion must carry at least the Go version from go.mod, and must match
 	// the builder stage in the Dockerfile — otherwise the pipeline verifies an
 	// image built by a different compiler than the one the Dockerfile uses.
-	goImage           = "golang:1.27-alpine"
+	//
+	// Split out of goImage rather than spelled into it, because Govulncheck
+	// needs the version on its own. Its scan container takes a floor, not a
+	// pin: given a lower one it resolves to whatever go.mod requires, and then
+	// reports on a standard library this project does not ship. That is not
+	// hypothetical — the first CI run of the scan failed with 20 reachable
+	// standard-library vulnerabilities, all fixed in go1.26.1, because it ran
+	// at go1.26.0 while the build was already on 1.27. Deriving both from one
+	// constant is what stops that from coming back.
+	goVersion         = "1.27"
+	goVariant         = "alpine"
+	goImage           = "golang:" + goVersion + "-" + goVariant
 	golangciLintImage = "golangci/golangci-lint:v2.13.2-alpine"
 	postgresImage     = "postgres:18-alpine"
 	runtimeImage      = "gcr.io/distroless/static-debian12:nonroot"
@@ -117,6 +128,53 @@ func (m *Schmetterpause) Lint(
 	}
 
 	return vetOut + lintOut + "lint: passed\n", nil
+}
+
+// Govulncheck reports known vulnerabilities that are reachable from this
+// code's call graph.
+//
+// It is a thin call into the shared stuttgart-things/dagger go module rather
+// than a scan built here. That module gained the function in v0.128.0, and
+// github-workflow-templates wraps the same one — so what runs in CI and what
+// "task ci" runs are the same code, which is the property ci.yml's header
+// claims for everything else in the pipeline.
+//
+// Not the same question as the Trivy scan on the published image. Trivy takes
+// an inventory of an artefact; this reads source and filters by reachability,
+// staying quiet about a CVE in a dependency whose affected function is never
+// called. That filter is what makes it worth failing a build over: a finding
+// here means something is genuinely exposed, not merely present.
+//
+// goVersion is passed explicitly and matters. The module treats it as a
+// floor, so leaving it at the default lets the scan resolve to whatever
+// go.mod requires — which is older than what this pipeline builds with, and
+// makes the report describe a standard library that never ships.
+//
+// Needs the network: the vulnerability database lives at vuln.go.dev. A
+// failure to reach it is an error rather than a clean result — the module
+// distinguishes "found nothing" from "could not look".
+func (m *Schmetterpause) Govulncheck(
+	ctx context.Context,
+	// +defaultPath="/"
+	// +ignore=["**/.git", "build", ".task", "dagger/internal", "dagger/dagger.gen.go"]
+	source *dagger.Directory,
+	// Report without failing. The default gates, because a reachable finding
+	// is worth stopping for; "task govulncheck --fail-on-finding=false" is
+	// how you read the report while deciding what to do about one.
+	// +optional
+	// +default=true
+	failOnFinding bool,
+) (string, error) {
+	report, err := dag.Go().Govulncheck(source, dagger.GoGovulncheckOpts{
+		GoVersion:     goVersion,
+		Variant:       goVariant,
+		FailOnFinding: failOnFinding,
+	}).Contents(ctx)
+	if err != nil {
+		return "", fmt.Errorf("govulncheck: %w", err)
+	}
+
+	return report, nil
 }
 
 // Test runs unit and repository tests against a fresh Postgres.
@@ -317,10 +375,10 @@ func (m *Schmetterpause) Verify(
 	return out, nil
 }
 
-// Ci runs lint, test, build and verify in that order. The two source-level
-// steps come first because they are the cheap ones; verify depends on the
-// build artefact rather than on the source, so it comes last. If a step
-// fails, the following ones are skipped.
+// Ci runs lint, test, govulncheck, build and verify in that order. The three
+// source-level steps come first because they are the cheap ones; verify
+// depends on the build artefact rather than on the source, so it comes last.
+// If a step fails, the following ones are skipped.
 func (m *Schmetterpause) Ci(
 	ctx context.Context,
 	// +defaultPath="/"
@@ -345,6 +403,14 @@ func (m *Schmetterpause) Ci(
 		return "", err
 	}
 
+	// After the tests and before the build: a reachable CVE is a property of
+	// the source, like lint and test, and there is no point building an image
+	// around a dependency that is about to be replaced.
+	vulnOut, err := m.Govulncheck(ctx, source, true)
+	if err != nil {
+		return "", err
+	}
+
 	if _, err := m.Image(source, version, commitTime, defaultArch).Sync(ctx); err != nil {
 		return "", fmt.Errorf("build: %w", err)
 	}
@@ -355,8 +421,8 @@ func (m *Schmetterpause) Ci(
 	}
 
 	return fmt.Sprintf(
-		"== lint ==\n%s\n== test ==\n%s\n== build ==\nimage built (version %s)\n\n== verify ==\n%s",
-		lintOut, testOut, version, verifyOut), nil
+		"== lint ==\n%s\n== test ==\n%s\n== govulncheck ==\n%s\n== build ==\nimage built (version %s)\n\n== verify ==\n%s",
+		lintOut, testOut, vulnOut, version, verifyOut), nil
 }
 
 // Publish pushes the runtime image to ttl.sh so it can be handed to somebody
