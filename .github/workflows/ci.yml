@@ -213,7 +213,7 @@ jobs:
   # Deliberately not "needs: ci": a dependency advisory is worth seeing even
   # when a lint run is failing, and nothing about the scan depends on a build.
   govulncheck:
-    uses: stuttgart-things/github-workflow-templates/.github/workflows/call-dagger-govulncheck.yaml@123f33b93cfff93e72259a9f37a82ed9a7cd181a # main
+    uses: stuttgart-things/github-workflow-templates/.github/workflows/call-dagger-govulncheck.yaml@5c9a21c7ce6c82cfbd0c495c199dd681361d9bed # main
     with:
       runs-on: ubuntu-latest
       working-directory: "."
