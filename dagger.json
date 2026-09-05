@@ -4,5 +4,12 @@
   "sdk": {
     "source": "go"
   },
+  "dependencies": [
+    {
+      "name": "go",
+      "source": "github.com/stuttgart-things/dagger/go@v0.128.0",
+      "pin": "e9949d2da5ffc94d5d703686b418e4ca35a9c95c"
+    }
+  ],
   "source": "dagger"
 }
