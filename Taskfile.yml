@@ -46,6 +46,49 @@ tasks:
         vars: { SERVICES: "" }
       - 'echo "Schmetterpause is running on http://127.0.0.1:8080"'
 
+  image:local:
+    desc: "Build the working tree as schmetterpause:dev and load it into Docker"
+    deps: [dagger:check]
+    silent: true
+    cmds:
+      - mkdir -p build
+      - |
+        set -eu
+
+        # Docker media types rather than the OCI default: "docker load" reads
+        # a docker-archive, not an OCI layout, and refuses the latter with an
+        # error about a missing manifest.json that says nothing about why.
+        dagger call image \
+          --source=. \
+          --version={{.VERSION}} \
+          --commit-time="{{.COMMIT_TIME}}" \
+          export --path=build/schmetterpause-docker.tar --media-types=dockermediatypes
+
+        # The export carries no repository tag, so docker load prints an id
+        # and nothing else. Both of its output forms are read, because which
+        # one appears depends on whether the archive names the image.
+        loaded=$(docker load --input build/schmetterpause-docker.tar)
+        echo "${loaded}"
+
+        ref=$(printf '%s\n' "${loaded}" | sed -n 's/^Loaded image ID: //p' | tail -1)
+        [ -n "${ref}" ] || ref=$(printf '%s\n' "${loaded}" | sed -n 's/^Loaded image: //p' | tail -1)
+
+        if [ -z "${ref}" ]; then
+          echo "docker load printed neither an image id nor an image name" >&2
+          exit 1
+        fi
+
+        docker tag "${ref}" schmetterpause:dev
+        echo "tagged schmetterpause:dev ({{.VERSION}})"
+
+  up:local:
+    desc: "Start Compose against the locally built image instead of the released one"
+    deps: [image:local]
+    silent: true
+    cmds:
+      - docker compose -f compose.yaml -f compose.dev.yaml up --detach --wait
+      - 'echo "Schmetterpause {{.VERSION}} is running on http://127.0.0.1:8080"'
+
   down:
     desc: "Stop the Compose environment and discard the development data"
     cmds:
@@ -172,13 +215,10 @@ tasks:
       # The one case where the app answers on every interface rather than on
       # loopback: the phones are not on this machine.
       SP_BIND_ADDR: 0.0.0.0
-      # This task builds compose directly rather than through compose:up, so
-      # it needs the build args in its own environment. Without them the
-      # image calls itself "dev" and /info cannot say what is running.
-      VERSION: '{{.VERSION}}'
-      COMMIT_TIME: '{{.COMMIT_TIME}}'
     cmds:
-      - docker compose -f compose.yaml -f compose.office.yaml up --build --detach --wait
+      # The released image, pinned in compose.yaml — so the evening runs the
+      # artefact CI built and Trivy scanned, and /info says which one.
+      - docker compose -f compose.yaml -f compose.office.yaml up --detach --wait
       - |
         echo
         echo "Ranking and result entry:  $SP_PUBLIC_BASE_URL/"
@@ -683,12 +723,11 @@ tasks:
 
   compose:up:
     internal: true
-    # Compose reads these from the environment, not from task's variables.
-    # Without them the build args fall back to their defaults and every image
-    # calls itself "dev" — which is what it did until this line existed.
-    env:
-      VERSION: '{{.VERSION}}'
-      COMMIT_TIME: '{{.COMMIT_TIME}}'
+    # No VERSION or COMMIT_TIME here any more, and no --build below. Compose
+    # runs the released image rather than building one, so the version is
+    # already baked into what it pulls — passing a version in would only be a
+    # second, quieter opinion about which one is running.
+    #
     # Without this, task echoes the whole diagnostic block on every start,
     # which is precisely the noise it exists to remove.
     silent: true
@@ -697,7 +736,7 @@ tasks:
     # too many when a service refuses to start — so it is printed here.
     cmds:
       - |
-        if docker compose up --build --detach --wait {{.SERVICES}}; then
+        if docker compose up --detach --wait {{.SERVICES}}; then
           exit 0
         fi
 

@@ -20,10 +20,16 @@ generierten Teile des Pipeline-Moduls.
 
 ```sh
 task up        # Compose-Umgebung starten (App + Postgres)
+task run       # App lokal gegen die Compose-Datenbank, ohne Container
 task ci        # lint, test, build, verify — identisch zur Pipeline
 task office:setup # .env für einen Abend an der Platte
 task office:up    # starten, im Netz erreichbar
 ```
+
+`task up` startet das **veröffentlichte** Image aus GHCR, nicht eines aus dem
+Arbeitsverzeichnis — dasselbe Artefakt, das im Cluster läuft. Für den eigenen
+Stand gibt es `task run` (schnell, ohne Container) und `task up:local` (baut das
+Image mit Dagger und startet Compose damit).
 
 Alle Befehle laufen über [Task](https://taskfile.dev/). Die eigentliche
 Pipeline-Logik steckt in [Dagger](https://dagger.io/) und läuft lokal wie in der
