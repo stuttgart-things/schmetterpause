@@ -2,10 +2,15 @@
 # function that "task ci" runs locally. It holds no build logic — that lives in
 # dagger/main.go and behaves identically here and on a developer machine.
 #
-# The one exception is the image scan, which calls a shared workflow from
-# stuttgart-things/github-workflow-templates. It is not build logic and there
-# is nothing about it to reproduce locally: it reads an image that has already
-# been published. See issue #85 for what else moves there, and what does not.
+# The exceptions are the two vulnerability scans, which call shared workflows
+# from stuttgart-things/github-workflow-templates. Neither is build logic. The
+# image scan reads an artefact that has already been published, so there is
+# nothing about it to reproduce locally. The source scan is the one place that
+# claim is weaker: govulncheck reads this working tree, so "task ci" and CI do
+# now differ by one check. Closing that gap means taking the shared go module
+# as a dependency of dagger/main.go and calling Govulncheck from Ci — worth
+# doing, and deliberately not done in the same change as adopting it. See
+# issue #86, and #85 for what else moves there and what does not.
 name: CI
 
 on:
@@ -178,6 +183,38 @@ jobs:
       severity: HIGH,CRITICAL
       artifact-name: trivy-image-report
       continue-on-error: true
+
+  # govulncheck against the source, on every event — which is the point. The
+  # image scan above only runs on a push, because a pull request publishes no
+  # image, so until now a vulnerable dependency was caught on main rather than
+  # in review. This closes that without needing a PR image build: govulncheck
+  # reads source, publishes nothing and runs in seconds.
+  #
+  # Blocking from the first run, unlike Trivy, and the difference is not
+  # nerve. govulncheck does call-graph analysis: it stays quiet about a CVE in
+  # a dependency whose affected function this code never calls, and reports
+  # only what is reachable. A finding therefore means something is genuinely
+  # exposed, which is what makes it gateable on day one where a whole-image
+  # inventory is not. If this pull request's own run comes back red, the list
+  # is the answer to whether that judgement holds — decide per finding before
+  # merging rather than reaching for continue-on-error.
+  #
+  # Pinned to a revision rather than @main. The Trivy call above can afford
+  # @main because it is report-only and holds none of our credentials; this
+  # one gates, so an upstream change to it can turn a build here red. That is
+  # the pinning decision issue #85 leaves open, taken at the first call site
+  # where it costs something.
+  #
+  # Deliberately not "needs: ci": a dependency advisory is worth seeing even
+  # when a lint run is failing, and there is nothing about the scan that
+  # depends on the build.
+  govulncheck:
+    uses: stuttgart-things/github-workflow-templates/.github/workflows/call-dagger-govulncheck.yaml@123f33b93cfff93e72259a9f37a82ed9a7cd181a # main
+    with:
+      runs-on: ubuntu-latest
+      working-directory: "."
+      artifact-name: govulncheck-report
+      fail-on-finding: true
 
   # The second half of what a release is: the image says how the application
   # runs, the kustomize base says how it is deployed. Issue #80 — until now
