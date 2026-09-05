@@ -482,6 +482,54 @@ tasks:
     cmds:
       - docker compose exec db psql -U schmetterpause -d schmetterpause
 
+  # ----------------------------------------------------------- Documentation
+
+  docs:index:
+    desc: "Regenerate the ADR index from the ADRs themselves"
+    sources:
+      - docs/adr/[0-9]*.md
+      - scripts/adr_index.sh
+    generates:
+      - docs/adr/index.md
+    cmds:
+      - sh scripts/adr_index.sh > docs/adr/index.md
+      - echo "wrote docs/adr/index.md"
+    silent: true
+
+  docs:check:
+    desc: "Check that the ADR index and the site nav still match docs/"
+    cmds:
+      - sh scripts/docs_test.sh
+    silent: true
+
+  docs:serve:
+    desc: "Preview the site at http://localhost:8000 (Ctrl-C to stop)"
+    cmds:
+      # In a container, so nobody needs a Python environment for a preview.
+      #
+      # What it renders is close to the published site but not identical: the
+      # shared Pages workflow replaces the theme block in mkdocs.yml with its
+      # own. Layout, colours and the interface language are therefore worth
+      # checking on the deployed site rather than here; content and nav are
+      # the same in both.
+      - |
+        docker run --rm -it \
+          -p 8000:8000 \
+          -v "$(pwd):/docs" \
+          squidfunk/mkdocs-material:9 serve --dev-addr 0.0.0.0:8000
+    silent: true
+
+  docs:build:
+    desc: "Build the site into build/site"
+    deps: [docs:check]
+    cmds:
+      - |
+        docker run --rm \
+          -v "$(pwd):/docs" \
+          squidfunk/mkdocs-material:9 build --strict --site-dir build/site
+      - echo "built build/site"
+    silent: true
+
   # ------------------------------------------------------------ Development
 
   generate:

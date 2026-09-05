@@ -33,9 +33,16 @@ CI gleich — `task ci` ist kein Näherungswert, sondern derselbe Code.
 
 ## Dokumentation
 
+Alles aus `docs/` steht als Website unter
+**<https://stuttgart-things.github.io/schmetterpause/>** — mit Navigation und
+Suche, und damit die bessere Adresse für alles, was jemand im Stehen oder auf
+dem Handy liest. Diese Datei bleibt der Einstieg für alle, die das Repository
+ohnehin ausgecheckt haben.
+
 - `CLAUDE.md` — Invarianten, fachliche Begriffe, Konventionen. Vor Änderungen lesen.
 - `docs/mvp-plan.md` — Scope, Datenmodell, Arbeitspakete, Definition of Done.
-- `docs/adr/` — Architekturentscheidungen samt verworfener Alternativen.
+- `docs/adr/` — Architekturentscheidungen samt verworfener Alternativen. Der
+  Index unter `docs/adr/index.md` wird generiert: `task docs:index`.
 - `docs/turnier-vor-ort.md` — ein Abend an der Platte mit einem Laptop für alle.
 
 Eine Änderung, die einem ADR widerspricht, braucht ein neues ADR mit

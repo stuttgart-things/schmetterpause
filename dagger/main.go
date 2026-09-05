@@ -109,6 +109,10 @@ func (m *Schmetterpause) Lint(
 		// the table, so this is the only place it is exercised at all. What it
 		// gets wrong is printed into a QR code and found out by a phone.
 		WithExec([]string{"sh", "scripts/addresses_test.sh"}).
+		// Documentation drift, for the same reason: nothing else notices it.
+		// A stale ADR index and a nav naming a page nobody wrote both build
+		// cleanly and are only visible once the site is published.
+		WithExec([]string{"sh", "scripts/docs_test.sh"}).
 		Stdout(ctx)
 	if err != nil {
 		return "", fmt.Errorf("formatting, generated code and go vet: %w", err)
