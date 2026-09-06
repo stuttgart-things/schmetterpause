@@ -42,7 +42,7 @@ jobs:
       contents: read
       pages: write
       id-token: write
-    uses: stuttgart-things/github-workflow-templates/.github/workflows/call-deploy-pages.yaml@abd54d1bec6ca733105ed782ce795f2d827ad040 # main
+    uses: stuttgart-things/github-workflow-templates/.github/workflows/call-deploy-pages.yaml@24c44cec43b658faf7faddcd9d38d56f17448efb # main
     with:
       runs-on: ubuntu-latest
       branch-name: ${{ github.ref_name }}
