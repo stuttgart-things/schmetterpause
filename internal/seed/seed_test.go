@@ -193,13 +193,13 @@ func TestSeedRefusesADatabaseThatIsInUse(t *testing.T) {
 func TestSeedIsDeterministic(t *testing.T) {
 	store, ctx := newStore(t)
 
-	first := ratingsAfterSeed(t, ctx, store)
+	first := ratingsAfterSeed(ctx, t, store)
 
 	if err := postgres.TruncateAll(ctx, store); err != nil {
 		t.Fatalf("TruncateAll(): %v", err)
 	}
 
-	second := ratingsAfterSeed(t, ctx, store)
+	second := ratingsAfterSeed(ctx, t, store)
 
 	if len(first) != len(second) {
 		t.Fatalf("two runs produced %d and %d players", len(first), len(second))
@@ -211,7 +211,7 @@ func TestSeedIsDeterministic(t *testing.T) {
 	}
 }
 
-func ratingsAfterSeed(t *testing.T, ctx context.Context, store *postgres.Store) map[string]int {
+func ratingsAfterSeed(ctx context.Context, t *testing.T, store *postgres.Store) map[string]int {
 	t.Helper()
 
 	if _, err := seed.Run(ctx, store, reference); err != nil {
