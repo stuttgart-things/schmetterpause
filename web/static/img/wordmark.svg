@@ -1,0 +1,16 @@
+<!-- SCHMETTERPAUSE in a 5x7 pixel grid, 83x7 units, one unit per pixel.
+
+     Two paths on purpose. The first carries the twelve letters and takes
+     currentColor, so the mark inherits its colour from whatever it sits in:
+     the fg token on screen, the print block's black on paper, with nothing
+     to switch. The second carries only the double T, the one place in the
+     name that also reads as "table tennis"; the custom property wordmark-tt
+     colours it, and the fallback is the mascot's orange so the file is
+     correct on its own.
+
+     shape-rendering="crispEdges" is load bearing: without it the renderer
+     antialiases the pixel edges and the whole point of the mark is gone.
+     Below about 14px the one unit gap between letters falls under a device
+     pixel and the letters run together.
+ -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 83 7" shape-rendering="crispEdges" role="img" aria-label="Schmetterpause"><title>Schmetterpause</title><path fill="currentColor" d="M1 0h4v1h-4zM7 0h3v1h-3zM12 0h1v1h-1zM16 0h1v1h-1zM18 0h1v1h-1zM22 0h1v1h-1zM24 0h5v1h-5zM42 0h5v1h-5zM48 0h4v1h-4zM54 0h4v1h-4zM61 0h3v1h-3zM66 0h1v1h-1zM70 0h1v1h-1zM73 0h4v1h-4zM78 0h5v1h-5zM0 1h1v1h-1zM6 1h1v1h-1zM10 1h1v1h-1zM12 1h1v1h-1zM16 1h1v1h-1zM18 1h2v1h-2zM21 1h2v1h-2zM24 1h1v1h-1zM42 1h1v1h-1zM48 1h1v1h-1zM52 1h1v1h-1zM54 1h1v1h-1zM58 1h1v1h-1zM60 1h1v1h-1zM64 1h1v1h-1zM66 1h1v1h-1zM70 1h1v1h-1zM72 1h1v1h-1zM78 1h1v1h-1zM0 2h1v1h-1zM6 2h1v1h-1zM12 2h1v1h-1zM16 2h1v1h-1zM18 2h1v1h-1zM20 2h1v1h-1zM22 2h1v1h-1zM24 2h1v1h-1zM42 2h1v1h-1zM48 2h1v1h-1zM52 2h1v1h-1zM54 2h1v1h-1zM58 2h1v1h-1zM60 2h1v1h-1zM64 2h1v1h-1zM66 2h1v1h-1zM70 2h1v1h-1zM72 2h1v1h-1zM78 2h1v1h-1zM1 3h3v1h-3zM6 3h1v1h-1zM12 3h5v1h-5zM18 3h1v1h-1zM20 3h1v1h-1zM22 3h1v1h-1zM24 3h4v1h-4zM42 3h4v1h-4zM48 3h4v1h-4zM54 3h4v1h-4zM60 3h5v1h-5zM66 3h1v1h-1zM70 3h1v1h-1zM73 3h3v1h-3zM78 3h4v1h-4zM4 4h1v1h-1zM6 4h1v1h-1zM12 4h1v1h-1zM16 4h1v1h-1zM18 4h1v1h-1zM22 4h1v1h-1zM24 4h1v1h-1zM42 4h1v1h-1zM48 4h1v1h-1zM50 4h1v1h-1zM54 4h1v1h-1zM60 4h1v1h-1zM64 4h1v1h-1zM66 4h1v1h-1zM70 4h1v1h-1zM76 4h1v1h-1zM78 4h1v1h-1zM4 5h1v1h-1zM6 5h1v1h-1zM10 5h1v1h-1zM12 5h1v1h-1zM16 5h1v1h-1zM18 5h1v1h-1zM22 5h1v1h-1zM24 5h1v1h-1zM42 5h1v1h-1zM48 5h1v1h-1zM51 5h1v1h-1zM54 5h1v1h-1zM60 5h1v1h-1zM64 5h1v1h-1zM66 5h1v1h-1zM70 5h1v1h-1zM76 5h1v1h-1zM78 5h1v1h-1zM0 6h4v1h-4zM7 6h3v1h-3zM12 6h1v1h-1zM16 6h1v1h-1zM18 6h1v1h-1zM22 6h1v1h-1zM24 6h5v1h-5zM42 6h5v1h-5zM48 6h1v1h-1zM52 6h1v1h-1zM54 6h1v1h-1zM60 6h1v1h-1zM64 6h1v1h-1zM67 6h3v1h-3zM72 6h4v1h-4zM78 6h5v1h-5z"/><path fill="var(--wordmark-tt, #f89828)" d="M30 0h5v1h-5zM36 0h5v1h-5zM32 1h1v1h-1zM38 1h1v1h-1zM32 2h1v1h-1zM38 2h1v1h-1zM32 3h1v1h-1zM38 3h1v1h-1zM32 4h1v1h-1zM38 4h1v1h-1zM32 5h1v1h-1zM38 5h1v1h-1zM32 6h1v1h-1zM38 6h1v1h-1z"/></svg>
