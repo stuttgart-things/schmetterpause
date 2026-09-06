@@ -1,0 +1,37 @@
+# The other half of publishing per-PR artefacts.
+#
+# Issue #20 decided that permanent storage is for things meant to last, on the
+# grounds that pushing every branch build somewhere permanent turns a registry
+# into a landfill. CI publishes an image and a kustomize artefact for every
+# pull request anyway — and this is what keeps that from contradicting #20:
+# when the pull request closes, merged or not, both versions go.
+#
+# The shared workflow deletes exactly the versions whose tags start with
+# `pr-<this number>-`, which is the scheme ci.yml publishes under. Nothing
+# else in either package matches that prefix: releases are `v*` and snapshots
+# are a short sha.
+#
+# Runs on `closed`, which covers merge and abandonment alike — the preview
+# ApplicationSet drops the environment on the same event.
+---
+name: Cleanup PR Artifacts
+
+on:
+  pull_request:
+    types: [closed]
+    branches: [main]
+
+jobs:
+  cleanup:
+    # Declared here as well as in the called workflow: a reusable workflow can
+    # narrow the caller's token but never widen it, so leaving this to the
+    # repository default is how a delete quietly turns into a 403.
+    permissions:
+      contents: read
+      packages: write
+    uses: stuttgart-things/github-workflow-templates/.github/workflows/call-cleanup-pr-artifacts.yaml@abd54d1bec6ca733105ed782ce795f2d827ad040 # main
+    with:
+      runs-on: ubuntu-latest
+      packages: schmetterpause,schmetterpause-kustomize
+      dry-run: false
+    secrets: inherit
