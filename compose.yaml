@@ -41,7 +41,7 @@ services:
     # ran once does not need the network again.
     #
     # To run the working tree instead: task image:local, then task up:local.
-    image: ghcr.io/stuttgart-things/schmetterpause:v0.3.0
+    image: ghcr.io/stuttgart-things/schmetterpause:v0.4.0
     environment:
       SP_DATABASE_URL: postgres://schmetterpause:schmetterpause@db:5432/schmetterpause?sslmode=disable
       SP_LOG_LEVEL: ${SP_LOG_LEVEL:-debug}
