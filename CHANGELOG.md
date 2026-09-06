@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.4.0](https://github.com/stuttgart-things/schmetterpause/compare/v0.3.0...v0.4.0) (2026-09-06)
+
+
+### Features
+
+* preview environments — per-PR artefacts, a demo field, and the cleanup that pays for them ([#190](https://github.com/stuttgart-things/schmetterpause/issues/190)) ([c47a6de](https://github.com/stuttgart-things/schmetterpause/commit/c47a6de9b4a9cb25e673532e164eb518ebd64f4a))
+
+
+### Bug Fixes
+
+* **ci:** make the Trivy gate actually gate ([#186](https://github.com/stuttgart-things/schmetterpause/issues/186)) ([c29e187](https://github.com/stuttgart-things/schmetterpause/commit/c29e187674991b13284f081094e8a5e1a1f80907))
+
+
+### Refactoring
+
+* guard the database, publish the docs, lint the repo, ship one image ([#189](https://github.com/stuttgart-things/schmetterpause/issues/189)) ([9dcaed5](https://github.com/stuttgart-things/schmetterpause/commit/9dcaed5cbf9fb2a3df5c7bdc1d7f5472e9f33f7b))
+
 ## [0.3.0](https://github.com/stuttgart-things/schmetterpause/compare/v0.2.1...v0.3.0) (2026-09-05)
 
 
