@@ -66,3 +66,4 @@ nav:
       - ADR-0014 Kiosk benennt, wer einträgt: adr/0014-kiosk-benennt-wer-eintraegt.md
   - Betrieb:
       - Deployment ohne GitOps: deployment.md
+      - Preview-Umgebungen: preview-environments.md

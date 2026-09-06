@@ -23,6 +23,9 @@ Je nachdem, warum jemand hier gelandet ist:
 - **Das Ding soll irgendwo laufen.** [Deployment](deployment.md) beschreibt den
   Weg auf einen Cluster ohne GitOps dazwischen. Englisch, wie die übrige
   Betriebsdokumentation: sie liest, wer den Cluster bedient.
+- **Sieht das auf einem Handy richtig aus?** Jeder Pull Request kann eine
+  eigene laufende Instanz bekommen — [Preview-Umgebungen](preview-environments.md)
+  sagt, wie (ein Label) und was dahintersteckt.
 
 ## Ein paar Begriffe
 
