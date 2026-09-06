@@ -21,6 +21,7 @@ import (
 	"github.com/stuttgart-things/schmetterpause/internal/auth"
 	"github.com/stuttgart-things/schmetterpause/internal/config"
 	"github.com/stuttgart-things/schmetterpause/internal/repository/postgres"
+	"github.com/stuttgart-things/schmetterpause/internal/seed"
 	"github.com/stuttgart-things/schmetterpause/internal/server"
 )
 
@@ -52,6 +53,9 @@ Usage:
   schmetterpause migrate up       apply pending migrations
   schmetterpause migrate down     roll back the last migration (local only)
   schmetterpause migrate status   show the migration state
+  schmetterpause seed             fill an EMPTY database with a demo field
+                                  (preview environments and screenshots; it
+                                  refuses a database that has players)
   schmetterpause healthcheck      probe own readiness (for container health checks)
   schmetterpause version          print the version
 
@@ -96,6 +100,8 @@ func run(ctx context.Context, args []string) error {
 		return serve(ctx)
 	case "migrate":
 		return migrate(ctx, args[1:])
+	case "seed":
+		return seedDemo(ctx)
 	case "healthcheck":
 		return healthcheck(ctx)
 	case "version":
@@ -178,6 +184,59 @@ func migrate(ctx context.Context, args []string) error {
 	default:
 		return errors.New(`migrate expects "up", "down" or "status"`)
 	}
+}
+
+// seedDemo fills an empty database with a demo field.
+//
+// Its consumer is a preview environment (issue #82), which is otherwise a join
+// form and an empty ranking — nothing a reviewer can look at to judge a change
+// to the standings, the match list or a profile page.
+//
+// Like migrate, it does not call ValidateForServe: a fixture does not need the
+// cookie secret, and demanding one would mean the preview's seed Job carries a
+// secret it has no use for. Same reason the migration initContainer gets only
+// the database secret.
+//
+// The refusal to touch a database that already has players lives in the seed
+// package, so it holds wherever this is called from.
+func seedDemo(ctx context.Context) error {
+	cfg, err := config.Load()
+	if err != nil {
+		return err
+	}
+
+	log := newLogger(cfg.LogLevel)
+
+	store, err := postgres.Open(ctx, cfg.DatabaseURL)
+	if err != nil {
+		return err
+	}
+	defer store.Close()
+
+	// Same wait as serve. A seed Job in a preview namespace starts beside the
+	// database rather than after it, and "connection refused" two seconds in
+	// is the normal case there, not a fault.
+	if err := waitForDatabase(ctx, store, cfg.DatabaseConnectTimeout, log); err != nil {
+		return err
+	}
+
+	summary, err := seed.Run(ctx, store, time.Now())
+	if err != nil {
+		// An already-populated database is the expected answer on a re-run —
+		// a Job that restarts must not turn it into a failed pod.
+		if errors.Is(err, seed.ErrNotEmpty) {
+			log.InfoContext(ctx, "nothing seeded, the database is in use", "reason", err)
+			return nil
+		}
+		return err
+	}
+
+	log.InfoContext(ctx, "seeded a demo field",
+		"players", summary.Players,
+		"confirmed", summary.Confirmed,
+		"pending", summary.Pending,
+		"disputed", summary.Disputed)
+	return nil
 }
 
 // waitForDatabase waits until the database accepts connections.
