@@ -107,11 +107,31 @@ jobs:
       # main and report nothing about the change under review.
       branch-name: ${{ github.head_ref || github.ref_name }}
 
-  # Artefacts that are meant to last go to GHCR. Only on a push — a pull
-  # request from a fork must not be able to write to the package, and there is
-  # nothing to keep from a branch that may never merge. See issue #20.
+  # Artefacts that are meant to last go to GHCR.
+  #
+  # Pull requests now publish too, which reverses half of issue #20. Its rule
+  # was "pushing every branch build somewhere permanent turns a registry into a
+  # landfill", and the rule stands — what changed is that a PR artefact is not
+  # permanent. cleanup-pr-artifacts.yml deletes every `pr-<n>-*` version when
+  # the pull request closes, so the landfill is swept rather than tolerated.
+  # The two are one change: publishing here without that workflow is the thing
+  # #20 rejected. See issue #82.
+  #
+  # Still never from a fork. A fork's GITHUB_TOKEN is read-only, so the job
+  # would fail rather than leak, but failing every outside contribution on a
+  # step it cannot pass is its own kind of wrong.
+  #
+  # Not gated on the `preview` label. The label decides whether an environment
+  # is spun up — that is the ApplicationSet's business — and gating the build
+  # on it would mean labelling a pull request produces nothing until somebody
+  # also pushes to it. Building for every PR also means the Trivy scan below
+  # finally sees one, which is the gap its own comment complains about.
   release:
-    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    if: >-
+      github.event_name == 'push'
+      || github.event_name == 'workflow_dispatch'
+      || (github.event_name == 'pull_request'
+          && github.event.pull_request.head.repo.full_name == github.repository)
     needs: ci
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -125,6 +145,18 @@ jobs:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
+          # The head of the pull request, not the merge commit GitHub builds by
+          # default. The tag this publishes under is `pr-<n>-<head sha>`,
+          # because that is the string the preview ApplicationSet composes from
+          # its own `.head_sha` — so building anything else would put a name on
+          # an artefact that is not what the name says. Twice already
+          # (#177, #179) this repository shipped a tag that did not identify
+          # its artefact; both times it was invisible until digests were
+          # compared by hand.
+          #
+          # Empty on push and workflow_dispatch, where checkout takes its
+          # default.
+          ref: ${{ github.event.pull_request.head.sha }}
 
       - name: Install the Dagger CLI
         run: |
@@ -136,6 +168,8 @@ jobs:
         id: publish
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
           commit_time="$(git show -s --format=%cI HEAD)"
 
@@ -159,9 +193,27 @@ jobs:
           # Only a tag moves "latest". A push to main is a snapshot, and
           # pointing latest at one would make it mean "most recent build"
           # rather than "most recent release".
+          # A pull request is a third namespace beside the two above, and it
+          # has to be spelled exactly this way: the preview ApplicationSet
+          # composes `pr-{{ .number }}-{{ .head_sha }}` from the GitHub
+          # pullRequest generator, with the FULL head sha rather than the
+          # short one used for snapshots. A tag that is one character off is
+          # an ImagePullBackOff in every preview namespace.
           if [ "${GITHUB_REF_TYPE}" = "tag" ]; then
             version="${GITHUB_REF_NAME}"
             latest=true
+          elif [ -n "${PR_NUMBER:-}" ]; then
+            version="pr-${PR_NUMBER}-${PR_HEAD_SHA}"
+            latest=false
+
+            # The checkout above asked for the head sha; if it did not get it,
+            # the tag would name a build of the merge commit instead. Cheap to
+            # assert, and the failure is otherwise silent.
+            head="$(git rev-parse HEAD)"
+            if [ "${head}" != "${PR_HEAD_SHA}" ]; then
+              echo "checked out ${head}, but the tag says ${PR_HEAD_SHA}" >&2
+              exit 1
+            fi
           else
             version="$(git rev-parse --short HEAD)"
             latest=false
@@ -216,10 +268,12 @@ jobs:
   # job was blocking in name and reported success on exactly the case it
   # exists for.
   #
-  # Only on a push, because that is the only event that publishes an image —
-  # a pull request has nothing to scan. That is a real gap: a vulnerable
-  # dependency is caught on main rather than in review. Closing it needs a
-  # PR image build, which is issue #85's second stage.
+  # Runs wherever the release job publishes, which since #82 includes a pull
+  # request from this repository. The gap this comment used to describe — a
+  # vulnerable dependency caught on main rather than in review — is closed, and
+  # it was closed as a side effect: the preview environments needed a per-PR
+  # image, and a per-PR image is a thing that can be scanned. It did not need
+  # #85's ko stage after all.
   #
   # No secrets are passed: the package is public, so the scan pulls
   # anonymously and the called workflow gets nothing from us. That is also
@@ -308,6 +362,11 @@ jobs:
       packages: write
     steps:
       - uses: actions/checkout@v7
+        with:
+          # Same reason as the release job: the profile under kcl/ may itself
+          # be what the pull request changes, so the artefact has to be
+          # rendered from the commit its tag names.
+          ref: ${{ github.event.pull_request.head.sha }}
 
       - name: Install the Dagger CLI
         run: |
