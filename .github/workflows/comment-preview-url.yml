@@ -1,0 +1,38 @@
+# Posts the preview address on a pull request, so the review surface is a link
+# rather than something to assemble from a naming scheme.
+#
+# The whole argument for preview environments here is that Schmetterpause is a
+# browser app whose premise is a colleague opening it on their phone in a
+# break. "Does this look right on your phone?" is answered by a link and not by
+# a diff — but only if the link is in the pull request. A URL somebody has to
+# construct is a URL nobody opens.
+#
+# Runs on `labeled` too, because the label is what creates the environment: a
+# comment posted at open time would name an address that does not resolve until
+# somebody labels the pull request, and a dead link teaches people to stop
+# clicking. See issue #82.
+---
+name: Comment Preview URL
+
+on:
+  pull_request:
+    types: [labeled]
+    branches: [main]
+
+jobs:
+  comment:
+    if: github.event.label.name == 'preview'
+    permissions:
+      contents: read
+      pull-requests: write
+    uses: stuttgart-things/github-workflow-templates/.github/workflows/call-comment-preview-url.yaml@abd54d1bec6ca733105ed782ce795f2d827ad040 # main
+    with:
+      hostname-prefix: schmetterpause-pr
+      hostname-domain: homerun2-test1.sthings-vsphere.labul.sva.de
+      namespace-prefix: schmetterpause-pr
+      # /readyz, not the template's /health default: this application has no
+      # /health, and a link to a 404 is worse than no link. /readyz also
+      # answers the question a reviewer actually has — whether the preview has
+      # a database yet — which /healthz deliberately does not.
+      health-path: /readyz
+    secrets: inherit
