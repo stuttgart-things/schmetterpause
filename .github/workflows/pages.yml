@@ -1,0 +1,48 @@
+# Publishes docs/ as an MkDocs site on GitHub Pages. Issue #48, and the
+# cheapest form of it: the shared workflow already installs mkdocs-material,
+# generates a release-history page from CHANGELOG.md and hands the result to
+# actions/deploy-pages, so this file is a call and a set of triggers.
+#
+# It reads mkdocs.yml at the repository root — see the comments there for the
+# two things that file is not allowed to contain.
+#
+# Requires GitHub Pages to be set to "GitHub Actions" as its source in the
+# repository settings, once. Without it the deploy job fails at the very end,
+# after a successful build, with a permissions error that does not say so.
+name: Pages
+
+on:
+  push:
+    branches: [main]
+    # Docs move without a release and releases move without the docs, so this
+    # is not hung off the CI workflow. CHANGELOG.md is in the list because the
+    # shared workflow turns it into the site's release-history page: a release
+    # that only touches the changelog still changes the site.
+    paths:
+      - "docs/**"
+      - "mkdocs.yml"
+      - "CHANGELOG.md"
+      - ".github/workflows/pages.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  # Permissions are set here rather than left to the called workflow. A
+  # reusable workflow cannot grant itself more than its caller has, and this
+  # repository's default token is read-only, so without these three the Pages
+  # deployment is refused.
+  #
+  # No concurrency group on this job on purpose: the called workflow already
+  # declares one named "pages", and a caller holding the same group while
+  # waiting for the callee to take it would wait forever.
+  pages:
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    uses: stuttgart-things/github-workflow-templates/.github/workflows/call-deploy-pages.yaml@abd54d1bec6ca733105ed782ce795f2d827ad040 # main
+    with:
+      runs-on: ubuntu-latest
+      branch-name: ${{ github.ref_name }}

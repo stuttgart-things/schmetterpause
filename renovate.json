@@ -14,11 +14,21 @@
         "Image\\s*=\\s*\"(?<depName>[^\":\\s]+):(?<currentValue>[^\"\\s]+)\""
       ],
       "datasourceTemplate": "docker"
+    },
+    {
+      "customType": "regex",
+      "description": "The Go toolchain, pinned as a constant in the Dagger pipeline module. It used to be bumped through the Dockerfile's FROM line; that file is gone, and the Image-constant manager above cannot see this one because goImage is assembled from goVersion rather than written out. Without this the toolchain would silently stop moving, and the build and the govulncheck scan would drift apart again.",
+      "managerFilePatterns": [
+        "/^dagger/main\\.go$/"
+      ],
+      "matchStrings": [
+        "// renovate: datasource=(?<datasource>[a-z-]+) depName=(?<depName>\\S+)(?: versioning=(?<versioning>[a-z-]+))?\\n\\s*\\w+\\s*=\\s*\"(?<currentValue>[^\"]+)\""
+      ]
     }
   ],
   "packageRules": [
     {
-      "description": "A major Postgres bump refuses to start on any data directory an older major version created, so every existing development volume dies with it. Requiring approval on the dashboard turns that from a surprise into a decision \u2014 it does not block the upgrade, it just stops it arriving unannounced.",
+      "description": "A major Postgres bump refuses to start on any data directory an older major version created, so every existing development volume dies with it. Requiring approval on the dashboard turns that from a surprise into a decision — it does not block the upgrade, it just stops it arriving unannounced.",
       "matchDatasources": [
         "docker"
       ],

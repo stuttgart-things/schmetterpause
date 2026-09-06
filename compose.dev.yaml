@@ -1,0 +1,21 @@
+# The working tree instead of the released image.
+#
+#   task up:local     -- build it, load it, start Compose against it
+#   task image:local  -- only build and load it
+#
+# An overlay on compose.yaml the way compose.office.yaml is, and it changes
+# exactly one thing: which image the app service runs. Database, variables and
+# ports stay identical, so what this starts differs from a released run in the
+# binary and in nothing else.
+#
+# The image is still built by dagger/main.go — the same function the pipeline
+# publishes from. This file is how a local build gets *in*, not a second way
+# of building one, which is the mistake the Dockerfile had become.
+services:
+  app:
+    image: schmetterpause:dev
+    # Nothing pushes this tag anywhere, so a missing image means "task
+    # image:local was not run", not "the registry is slow". Without this,
+    # Compose would go looking for it on Docker Hub and fail with a
+    # pull error that says nothing about the actual cause.
+    pull_policy: never

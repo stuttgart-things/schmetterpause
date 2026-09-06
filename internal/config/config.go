@@ -25,7 +25,7 @@ const envPrefix = "SP_"
 const minSessionKeyLen = 32
 
 // DefaultHTTPAddr is the bind address used when SP_HTTP_ADDR is unset. It
-// lives here rather than in a config file or the Dockerfile (invariant 2),
+// lives here rather than in a config file or the image build (invariant 2),
 // and the healthcheck subcommand needs it too.
 const DefaultHTTPAddr = ":8080"
 

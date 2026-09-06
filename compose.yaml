@@ -1,7 +1,8 @@
 # Local development environment: application and Postgres, nothing else.
 #
 # No Redis — see docs/adr/0002. The application reads its entire configuration
-# from SP_* variables; the same image runs unchanged in K8s and ACA.
+# from SP_* variables; the same image runs unchanged in K8s and ACA — and now
+# literally the same one, see the app service below.
 
 services:
   db:
@@ -23,11 +24,24 @@ services:
       retries: 20
 
   app:
-    build:
-      context: .
-      args:
-        VERSION: ${VERSION:-dev}
-        COMMIT_TIME: ${COMMIT_TIME:-}
+    # The image CI built, scanned and published. Not one built here.
+    #
+    # Invariant 1 says one binary and one image everywhere, and this file used
+    # to be the place that quietly broke it: Compose built from a Dockerfile
+    # while the pipeline built the published image from dagger/main.go, and
+    # the two were held equal by a comment. An evening at the table therefore
+    # ran an image no pipeline had ever built and no scanner had ever seen.
+    # Pulling the released artefact is what turns "one image everywhere" from
+    # a claim into something a laptop demonstrates.
+    #
+    # Pinned rather than :latest, and deliberately. Renovate bumps this line,
+    # so which image the office runs is a reviewable fact in git instead of
+    # whatever the moving tag pointed at that evening. Compose's default pull
+    # policy fetches only what is missing, so a pin also means a laptop that
+    # ran once does not need the network again.
+    #
+    # To run the working tree instead: task image:local, then task up:local.
+    image: ghcr.io/stuttgart-things/schmetterpause:v0.3.0
     environment:
       SP_DATABASE_URL: postgres://schmetterpause:schmetterpause@db:5432/schmetterpause?sslmode=disable
       SP_LOG_LEVEL: ${SP_LOG_LEVEL:-debug}

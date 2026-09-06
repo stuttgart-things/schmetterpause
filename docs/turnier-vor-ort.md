@@ -5,7 +5,9 @@ betreibt die App und ist gleichzeitig das Gerät, an dem Ergebnisse eingetragen
 werden, wenn jemand sein Handy nicht dabeihat oder keine Lust hat, erst etwas
 einzurichten.
 
-Es ist dieselbe Anwendung und dasselbe Image wie überall sonst. Der Unterschied
+Es ist dieselbe Anwendung und dasselbe Image wie überall sonst — wörtlich
+dasselbe: der Laptop zieht das Image, das die Pipeline gebaut, gescannt und
+veröffentlicht hat, nicht eines, das er selbst baut. Der Unterschied zum Alltag
 sind drei Umgebungsvariablen und eine zweite Compose-Datei, die sie einfordert.
 
 ## Einmalig vorbereiten

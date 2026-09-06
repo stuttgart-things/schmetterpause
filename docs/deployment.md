@@ -141,8 +141,9 @@ The path in that example is a home directory on purpose. A profile is flat
 `key: value` with no `apiVersion` and no `kind`, so a GitOps engine that
 reconciles the directory it sits in will fail to decode it — and a failing root
 Kustomization applies nothing at all, not just the file it choked on. See
-"Where a profile must not live" in [`kcl/README.md`](../kcl/README.md); it
-happened, and it stalled a whole cluster.
+"Where a profile must not live" in
+[`kcl/README.md`](https://github.com/stuttgart-things/schmetterpause/blob/main/kcl/README.md);
+it happened, and it stalled a whole cluster.
 
 It creates the namespace, applies the application, waits for
 `schmetterpause-db` to appear, and only then applies the CloudNativePG Cluster.
@@ -215,8 +216,9 @@ Hence `task kcl:apply` rather than `kcl run`.
 
 `task kcl:render` shows the same thing without applying it. For more values
 than fit comfortably on a command line, `PROFILE` also takes a path to a file
-outside the repository — see [`examples/`](../examples/), which puts this
-against the other two ways of adapting an environment.
+outside the repository — see
+[`examples/`](https://github.com/stuttgart-things/schmetterpause/tree/main/examples),
+which puts this against the other two ways of adapting an environment.
 
 For variant A, check the secrets before anything else:
 
