@@ -34,6 +34,7 @@ import externalsecret
 import deploy
 import service
 import httproute
+import seed
 
 _resources = [
     serviceaccount.serviceAccount
@@ -44,6 +45,7 @@ _resources = [
     service.service
     httproute.httproute
     httproute.httprouteRedirect
+    seed.seedJob
 ]
 
 manifests = [r for r in _resources if r]

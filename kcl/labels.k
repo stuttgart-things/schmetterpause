@@ -38,6 +38,7 @@ _logLevel = option("config.logLevel")
 _kioskEnabled = option("config.kioskEnabled")
 _bootstrapAdmin = option("config.bootstrapAdmin")
 _migrateInitContainer = option("config.migrateInitContainer")
+_seedEnabled = option("config.seedEnabled")
 _dbClusterName = option("config.dbClusterName")
 _dbName = option("config.dbName")
 _dbPort = option("config.dbPort")
@@ -119,6 +120,8 @@ config: schema.Schmetterpause = schema.Schmetterpause {
         bootstrapAdmin = _bootstrapAdmin
     if _migrateInitContainer != Undefined and _migrateInitContainer != None:
         migrateInitContainer = _bool(_migrateInitContainer)
+    if _seedEnabled != Undefined and _seedEnabled != None:
+        seedEnabled = _bool(_seedEnabled)
     if _dbClusterName:
         dbClusterName = _dbClusterName
     if _dbName:

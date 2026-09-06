@@ -103,6 +103,26 @@ schema Schmetterpause:
     # Secret and nothing else.
     migrateInitContainer: bool = True
 
+    # ── Demo data ───────────────────────────────────────────────────────────
+    
+    # A Job that runs "schmetterpause seed" once the application is up, filling
+    # an EMPTY database with a demo field. For preview environments (issue #82)
+    # and for screenshots — a fresh instance is a join form and an empty
+    # ranking, so a preview of a change to the standings or the match list
+    # shows nothing a reviewer can judge.
+    #
+    # Off by default, and that default is the first of two guards. The second
+    # is in the binary: seed refuses a database that already has players, so
+    # switching this on against a real instance is a log line rather than
+    # fourteen strangers in the ranking.
+    #
+    # Rendered as an ArgoCD PostSync hook rather than a plain Job. A Job's
+    # pod template is immutable, so a plain one fails to sync the moment the
+    # image tag changes — which for a preview is every push. The hook is
+    # deleted before it is recreated, and PostSync is also what makes it run
+    # after the migration initContainer has been through.
+    seedEnabled: bool = False
+
     # ── Database ────────────────────────────────────────────────────────────
     
     # A CloudNativePG Cluster is NOT part of main.k. It outlives every app

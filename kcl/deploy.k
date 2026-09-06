@@ -21,7 +21,7 @@ _dbEnv = {
 # Applied to both containers. readOnlyRootFilesystem needs no emptyDir here:
 # templates, static assets and migrations are embedded in the binary and
 # nothing in the application writes to disk, so there is no /tmp to mount.
-_containerSecurity = {
+containerSecurity = {
     readOnlyRootFilesystem: True
     runAsNonRoot: True
     allowPrivilegeEscalation: False
@@ -81,7 +81,7 @@ deployment = {
                                     memory: config.memoryLimit
                                 }
                             }
-                            securityContext: _containerSecurity
+                            securityContext: containerSecurity
                         }
                     ]
                 containers: [
@@ -145,7 +145,7 @@ deployment = {
                             timeoutSeconds: 3
                             failureThreshold: 3
                         }
-                        securityContext: _containerSecurity
+                        securityContext: containerSecurity
                     }
                 ]
                 securityContext: {
