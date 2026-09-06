@@ -406,11 +406,29 @@ jobs:
           # --parameters wins over the profile, whose config.image is a
           # ":latest" placeholder that resolves to the wrong revision in any
           # registry that has one.
+          # A pull request's artefact carries the seed Job; a release artefact
+          # does not. It cannot be a patch in the consuming chart, because the
+          # chart patches what the artefact contains and nothing can patch in a
+          # resource that was never rendered — so the switch belongs here, at
+          # the one place that knows which kind of artefact this is.
+          #
+          # An empty preview is a useless preview (issue #82), and this is what
+          # keeps that fix out of every release: the Job exists in `pr-*` and
+          # nowhere else. Should a `pr-*` artefact ever be deployed somewhere
+          # real, the binary still refuses a database that has players.
+          #
+          # --parameters is one comma-separated string rather than a repeatable
+          # flag, so the two are joined rather than passed twice.
+          parameters="config.image=${image_repo}:${VERSION}"
+          case "${VERSION}" in
+            pr-*) parameters="${parameters},config.seedEnabled=true" ;;
+          esac
+
           publish() {
             dagger call -m "${module}" push-kustomize-base \
               --source kcl \
               --parameters-file kcl/profiles/base.yaml \
-              --parameters "config.image=${image_repo}:${VERSION}" \
+              --parameters "${parameters}" \
               --address "${repo}" \
               --tag "$1" \
               --user env:GITHUB_USER \
