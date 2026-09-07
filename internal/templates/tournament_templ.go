@@ -1509,7 +1509,7 @@ func tournamentRounds(v TournamentView) templ.Component {
 //
 // The boxes are the ordinary ones, from the ordinary form. This used to be a
 // row of six identical fields with two colons in it: no set numbers, no
-// heading saying whose column is whose, and no sliders — all three of which
+// heading saying whose column is whose, and no steps — all three of which
 // setRows has, and for reasons that apply at a tournament table more than
 // anywhere else.
 //

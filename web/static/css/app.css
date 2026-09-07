@@ -653,6 +653,13 @@ button.secondary:hover {
 	border: none;
 	padding: 0;
 	margin: 0.75rem 0 0;
+
+	/* One width for the box, the two steps under it and the heading over it,
+	   so a column is a column all the way down. It gives way on a narrow
+	   phone rather than pushing the row off the side: an indented pairing
+	   form on a 320-pixel screen is the tightest this gets, and the lower
+	   bound is what still fits there. */
+	--score-w: clamp(4.75rem, 25vw, 6rem);
 }
 
 .sets legend {
@@ -664,19 +671,47 @@ button.secondary:hover {
 	padding: 0;
 }
 
+/* Aligned at the top, not centred: a score is a box with two steps under it,
+   and centring would put the colon between the steps rather than between the
+   numbers it separates. */
 .set {
 	display: flex;
-	align-items: center;
+	align-items: flex-start;
 	gap: 0.4rem;
-	margin-bottom: 0.35rem;
+	margin-bottom: 0.75rem;
 }
 
-/* Tabular numerals so the score column does not jitter while typing. */
-.set input {
-	width: 4.5rem;
+/* Big enough to hit with a thumb without looking, which is the whole job:
+   this is filled in standing at a table, one-handed, holding a bat. Forty-
+   eight pixels tall, digits at 1.5rem, tabular so the column does not jitter
+   while typing. */
+.set input[type="number"] {
+	width: var(--score-w);
+	min-height: 3rem;
+	padding: 0.3rem 0.4rem;
 	text-align: center;
 	font-family: var(--font-mono);
+	font-size: 1.5rem;
 	font-variant-numeric: tabular-nums;
+
+	/* The native spinner is a pair of four-pixel arrows stacked inside the
+	   box — exactly the kind of target this form is getting rid of, and on a
+	   phone it is not drawn at all. The steps below are the replacement, at
+	   a size that can be hit. */
+	-moz-appearance: textfield;
+	appearance: textfield;
+}
+
+.set input[type="number"]::-webkit-outer-spin-button,
+.set input[type="number"]::-webkit-inner-spin-button {
+	-webkit-appearance: none;
+	margin: 0;
+}
+
+/* Lined up with the middle of the box rather than the top of the row. */
+.set:not(.set-head) .set-no,
+.set:not(.set-head) .colon {
+	line-height: 3rem;
 }
 
 .set-no {
@@ -695,43 +730,71 @@ button.secondary:hover {
 	margin-bottom: 0.5rem;
 }
 
-/* Box on top, slider directly under it and exactly as wide: the slider has to
-   look like it belongs to that box and to no other. Stacked rather than side
-   by side, because two boxes and two sliders in one row do not fit a phone. */
+/* Box on top, its two steps directly under it and exactly as wide: they have
+   to look like they belong to that box and to no other. Stacked rather than
+   side by side, because two boxes and four buttons in one row do not fit a
+   phone. */
 .score {
 	display: inline-flex;
 	flex-direction: column;
+	gap: 0.3rem;
+}
+
+.stepper {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
 	gap: 0.25rem;
+	width: var(--score-w);
 }
 
-/* Gone where there is a mouse. The slider is tabindex="-1" — it was never a
-   control for the keyboard, only a way to set a score with a thumb. Beside a
-   box that already takes the number, on a screen with a pointer, it is a
-   second thing to look at for nothing. */
-@media (hover: hover) and (pointer: fine) {
-	.score-slider { display: none; }
-}
+/* Forty-four pixels tall and half a box wide. This replaced a sixteen-pixel
+   slider rail that had to be aimed at, so the size is the point of it —
+   below this it would be the same mistake in a different shape.
 
-.score-slider {
-	width: 4.5rem;
-	height: 1rem;
+   Quiet by default and loud only while pressed: there are twelve of these on
+   an entry form and one button that submits it, and the accent belongs to
+   the one. */
+.step {
 	margin: 0;
-	accent-color: var(--accent);
-	cursor: pointer;
+	padding: 0;
+	min-height: 2.75rem;
+	background: var(--panel);
+	color: var(--fg);
+	border: 1px solid var(--field-line);
+	font-family: var(--font-mono);
+	font-size: 1.25rem;
+	line-height: 1;
+	/* A thumb sliding off a step must not take the page's selection with it,
+	   and a double tap on + must not zoom. */
+	touch-action: manipulation;
+	-webkit-user-select: none;
+	user-select: none;
+}
+
+.step:hover {
+	background: var(--card);
+	filter: none;
+}
+
+.step:active {
+	background: var(--accent);
+	color: var(--accent-ink);
+	border-color: var(--accent);
 }
 
 /* Every box comes up with a zero in it, so a row that still reads 0:0 was not
-   played — and its sliders say so by being dim. Per row rather than per box:
-   11:0 is a real set, and dimming the zero in it would call a result an
-   absence.
+   played — and it says so by keeping its digits quiet. Per row rather than
+   per box: 11:0 is a real set, and dimming the zero in it would call a result
+   an absence.
 
-   Dim is the default rather than the exception: a freshly swapped row starts
-   at 0:0, and this way it starts right without anything having to run. */
-.set .score-slider { opacity: 0.3; }
-.set.has-score .score-slider { opacity: 1; }
+   Quiet is the default rather than the exception: a freshly swapped row
+   starts at 0:0, and this way it starts right without anything having to
+   run. */
+.set input[type="number"] { color: var(--muted); }
+.set.has-score input[type="number"] { color: var(--fg); }
 
 .set-side {
-	width: 4.5rem;
+	width: var(--score-w);
 	text-align: center;
 	font-family: var(--font-mono);
 	font-size: 0.68rem;

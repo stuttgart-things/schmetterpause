@@ -162,16 +162,27 @@ templ setRows(prefix string, sets []SetInput, bestOf, pointsToWin int, homeLabel
 	</fieldset>
 }
 
-// scoreField is one score: the box that is submitted, and a slider under it
-// that sets the same value.
+// scoreField is one score: the box that is submitted, and the two steps
+// underneath it that set the same value.
 //
-// The box stays the input of record, and the slider carries no name, so it
-// submits nothing. That is what keeps an unplayed set empty — a slider always
-// has a position, and "leave unplayed sets empty" would stop working if the
-// position were the value.
+// It was a slider, and a slider is the wrong control for a thumb at a table.
+// It wants a drag along a rail, and a rail narrow enough to fit beside a
+// second one on a phone puts eleven and twelve about three pixels apart —
+// so the control built to save somebody from typing was the one thing on
+// the form that had to be aimed at. Two buttons ask for a tap, which is what
+// everything else here asks for.
 //
-// The slider only reaches its own box; the wiring is four lines in app.js,
-// because there is no HTML that links two inputs.
+// The box stays the input of record, and the buttons carry no name, so they
+// submit nothing. That is what keeps an unplayed set at 0:0 — a control that
+// always holds a position would make "leave unplayed sets empty" impossible
+// to say.
+//
+// The buttons need the target score, which is why it is still a parameter:
+// minus from zero comes out at eleven rather than staying at zero. Every set
+// has a winner and the winner has the target, so the first press on a side
+// far more often means "this one won it" than "one less than nothing" — and
+// pressing on counts down through 10, 9, 8, which is where the loser's
+// scores live.
 templ scoreField(prefix, name, value string, pointsToWin int, label string) {
 	<span class="score">
 		<input
@@ -184,18 +195,30 @@ templ scoreField(prefix, name, value string, pointsToWin int, label string) {
 			aria-label={ label }
 			aria-describedby={ "sets-rule-" + prefix }
 		/>
-		// Up to ten past the target, which covers a deuce nobody in an office
-		// has ever played out. Beyond that the box still takes anything.
-		<input
-			class="score-slider"
-			type="range"
-			min="0"
-			max={ strconv.Itoa(pointsToWin + 10) }
-			value={ scoreValue(value) }
-			data-score={ prefix + "-" + name }
-			aria-label={ label + ", Schieberegler" }
-			tabindex="-1"
-		/>
+		// Out of the tab order, as the slider was, and for the same reason:
+		// somebody on a keyboard has the box and the number keys. Twelve
+		// buttons between the mode and the submit button would be twelve
+		// stops on the way past a form they can already fill in.
+		<span class="stepper">
+			<button
+				type="button"
+				class="step"
+				data-score={ prefix + "-" + name }
+				data-step="-1"
+				data-target={ strconv.Itoa(pointsToWin) }
+				tabindex="-1"
+				aria-label={ label + ", weniger" }
+			>&minus;</button>
+			<button
+				type="button"
+				class="step"
+				data-score={ prefix + "-" + name }
+				data-step="1"
+				data-target={ strconv.Itoa(pointsToWin) }
+				tabindex="-1"
+				aria-label={ label + ", mehr" }
+			>+</button>
+		</span>
 	</span>
 }
 
