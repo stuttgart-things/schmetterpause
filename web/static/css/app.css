@@ -733,8 +733,15 @@ button.secondary:hover {
 /* Box on top, its two steps directly under it and exactly as wide: they have
    to look like they belong to that box and to no other. Stacked rather than
    side by side, because two boxes and four buttons in one row do not fit a
-   phone. */
-.score {
+   phone.
+
+   Named score-field, not score. The match list heads its set-count cell
+   <td class="num score">, so a bare .score reached it too and turned a table
+   cell into an inline-flex column: the cell then stopped filling its row, its
+   bottom border sat halfway up, and the badge beside the score dropped under
+   it. A class that sets display has no business being named after the thing
+   two templates happen to call the same. */
+.score-field {
 	display: inline-flex;
 	flex-direction: column;
 	gap: 0.3rem;
