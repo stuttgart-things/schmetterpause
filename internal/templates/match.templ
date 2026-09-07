@@ -184,7 +184,7 @@ templ setRows(prefix string, sets []SetInput, bestOf, pointsToWin int, homeLabel
 // pressing on counts down through 10, 9, 8, which is where the loser's
 // scores live.
 templ scoreField(prefix, name, value string, pointsToWin int, label string) {
-	<span class="score">
+	<span class="score-field">
 		<input
 			type="number"
 			id={ prefix + "-" + name }
