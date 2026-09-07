@@ -22,40 +22,56 @@ document.addEventListener('htmx:beforeSwap', function (event) {
 	}
 });
 
-// The sliders under the score boxes. There is no HTML that links two inputs,
-// so this is the second thing HTMX does not reach.
+// The steps under the score boxes. There is no HTML that puts a button in
+// charge of another input, so this is the second thing HTMX does not reach.
 //
-// One delegated listener rather than one per slider: the set rows are swapped
+// One delegated listener rather than one per button: the set rows are swapped
 // out whenever the mode or a player changes, and listeners bound to the old
 // elements would go with them.
-document.addEventListener('input', function (event) {
-	var el = event.target;
-
-	if (el.classList && el.classList.contains('score-slider')) {
-		var box = document.getElementById(el.dataset.score);
-		if (box) {
-			box.value = el.value;
-		}
-		// Marking before returning, not after: an early return here left a
-		// row dim after the slider had just put a number in it.
-		mark(el.closest && el.closest('.set'));
+document.addEventListener('click', function (event) {
+	var button = event.target.closest && event.target.closest('.step');
+	if (!button) {
 		return;
 	}
 
-	// Typing in the box moves the slider back under it. Without this the two
-	// disagree the moment somebody uses the keypad, and the slider then jumps
-	// from a stale position the next time it is touched.
-	if (el.id) {
-		var slider = document.querySelector('.score-slider[data-score="' + el.id + '"]');
-		if (slider && el.value !== '') {
-			slider.value = el.value;
-		}
+	var box = document.getElementById(button.dataset.score);
+	if (!box) {
+		return;
 	}
 
+	var next = (parseInt(box.value, 10) || 0) + parseInt(button.dataset.step, 10);
+	// Down from zero lands on the target score instead of stopping there. A
+	// set has a winner and the winner has eleven, so one press says the most
+	// common thing there is to say about a side — and the presses after it
+	// count down through the scores the other side gets.
+	if (next < 0) {
+		next = parseInt(button.dataset.target, 10) || 0;
+	}
+	// No ceiling, for the reason the box has no max: 12:10 and 13:11 are
+	// ordinary results, and a cap that allowed those would allow anything
+	// worth capping anyway.
+	box.value = String(next);
+	mark(box.closest('.set'));
+});
+
+// Typing replaces rather than appends. Every box comes up with a zero in it,
+// and on a phone that zero is behind the cursor when the keypad opens — so
+// tapping a box and typing eleven produced 011 until this line existed.
+document.addEventListener('focusin', function (event) {
+	var el = event.target;
+	if (el.type === 'number' && el.closest && el.closest('.set')) {
+		el.select();
+	}
+});
+
+// Whatever was typed, the row it was typed into gets marked. See below for
+// what the mark is for.
+document.addEventListener('input', function (event) {
+	var el = event.target;
 	mark(el.closest && el.closest('.set'));
 });
 
-// A row that still stands at 0:0 was not played, so its two sliders are dim.
+// A row that still stands at 0:0 was not played, so it keeps its digits quiet.
 // Marked per row rather than per box: 11:0 is a real set, and dimming the
 // zero in it would call a result an absence.
 function mark(row) {
@@ -90,7 +106,7 @@ document.addEventListener('DOMContentLoaded', markAll);
 // having the wrong code entirely — and that is the dead end this whole way
 // back was built to remove.
 //
-// Delegated, like the sliders above: the form is swapped in and out of the
+// Delegated, like the steps above: the form is swapped in and out of the
 // page by HTMX, and a listener bound to the button would go with it.
 document.addEventListener('click', function (event) {
 	var button = event.target.closest && event.target.closest('.secret-reveal');

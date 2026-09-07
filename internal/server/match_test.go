@@ -449,8 +449,8 @@ func TestTheDeuceRuleIsWrittenWhereTheScoresAreTyped(t *testing.T) {
 		if !strings.Contains(body, "je "+tc.serve+" Punkten") {
 			t.Errorf("points_to_win=%s: the rule does not say who serves: %s", tc.pointsToWin, body)
 		}
-		// The slider beside the box carries a max, and should. The box must
-		// not: a set to eleven can end 12:10 or 13:11.
+		// The box carries no maximum: a set to eleven can end 12:10 or 13:11,
+		// so any cap that would reject 15:8 would reject those too.
 		for _, field := range strings.Split(body, "<input")[1:] {
 			field = field[:strings.Index(field, ">")]
 			if strings.Contains(field, `type="number"`) && strings.Contains(field, `max="`) {
@@ -535,8 +535,8 @@ func TestTheScoreColumnsSayWhoseTheyAre(t *testing.T) {
 }
 
 func TestABoxComesUpWithAZeroInIt(t *testing.T) {
-	// The slider beside it needs something to point at, and nobody should
-	// have to type a zero for a set somebody lost to nil.
+	// Nobody should have to type a zero for a set somebody lost to nil, and
+	// an empty box has no number for the steps under it to count from.
 	h, _, cookie := twoPlayers(t)
 
 	body := setsFragment(t, h, cookie, url.Values{
@@ -547,9 +547,32 @@ func TestABoxComesUpWithAZeroInIt(t *testing.T) {
 	if strings.Contains(body, `value=""`) {
 		t.Errorf("a score box came up empty: %s", body)
 	}
-	if n := strings.Count(body, `value="0"`); n != 12 {
-		// Three sets, two boxes each, box and slider per box.
-		t.Errorf("counted %d zeroes, want 12: %s", n, body)
+	if n := strings.Count(body, `value="0"`); n != 6 {
+		// Three sets, two boxes each. The steps carry no value of their own —
+		// that is what keeps the box the input of record.
+		t.Errorf("counted %d zeroes, want 6: %s", n, body)
+	}
+}
+
+func TestTheStepsKnowWhatASetIsPlayedTo(t *testing.T) {
+	// Pressing minus on a box at zero puts the target score in it, because a
+	// set has a winner and the winner has that score. The button can only do
+	// that if the mode travelled with it — and the mode is a picker, so 21
+	// has to arrive as 21.
+	h, _, cookie := twoPlayers(t)
+
+	for _, want := range []string{"11", "21"} {
+		body := setsFragment(t, h, cookie, url.Values{
+			"sets_prefix":   {"entry"},
+			"best_of":       {"3"},
+			"points_to_win": {want},
+		})
+
+		if n := strings.Count(body, `data-target="`+want+`"`); n != 12 {
+			// Three sets, two boxes each, two steps per box.
+			t.Errorf("points_to_win=%s: counted %d steps carrying the target, want 12: %s",
+				want, n, body)
+		}
 	}
 }
 

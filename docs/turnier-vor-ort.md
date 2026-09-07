@@ -269,7 +269,7 @@ zweimal:
 
 **Eintragen** klappt sich pro Paarung auf: „Ergebnis eintragen" anklicken, und
 darunter stehen dieselben Kästchen wie im normalen Formular — mit Satznummern,
-den beiden Namen über den Spalten, einem Schieberegler unter jedem Feld und
+den beiden Namen über den Spalten, den Tasten − und + unter jedem Feld und
 dem Regeltext. Eingeklappt, weil ein Spielplan viel öfter gelesen als
 beschrieben wird und acht Leute achtundzwanzig davon sind.
 
