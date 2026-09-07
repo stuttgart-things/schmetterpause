@@ -58,11 +58,17 @@ tasks:
         # Docker media types rather than the OCI default: "docker load" reads
         # a docker-archive, not an OCI layout, and refuses the latter with an
         # error about a missing manifest.json that says nothing about why.
+        #
+        # Spelled DOCKER, not dockermediatypes. Dagger used to fold the enum
+        # down to bare letters and accept the long spelling; since v0.21.9
+        # the CLI matches the member name, and the engine behind it knows
+        # only DOCKER and OCI — the CLI still offers DOCKER_MEDIA_TYPES in
+        # its error message, and the engine then rejects it.
         dagger call image \
           --source=. \
           --version={{.VERSION}} \
           --commit-time="{{.COMMIT_TIME}}" \
-          export --path=build/schmetterpause-docker.tar --media-types=dockermediatypes
+          export --path=build/schmetterpause-docker.tar --media-types=DOCKER
 
         # The export carries no repository tag, so docker load prints an id
         # and nothing else. Both of its output forms are read, because which
