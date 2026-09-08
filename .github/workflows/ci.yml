@@ -424,6 +424,14 @@ jobs:
   # needed that the shared workflow could not express.
   kustomize:
     needs: [release, kcl-meta]
+    # The workflow-level default is `contents: read`, and a called workflow can
+    # only ever have the permissions of the job that calls it — so dropping
+    # this block when the inline job became a `uses:` made the whole run fail
+    # to start, with no log to say why. The called workflow needs
+    # `packages: write` to push to GHCR.
+    permissions:
+      contents: read
+      packages: write
     uses: stuttgart-things/github-workflow-templates/.github/workflows/call-push-kustomize.yaml@3e83fec801165405c80a9f4183629fb8e0be07e5 # main
     with:
       runs-on: ubuntu-latest
