@@ -1,5 +1,23 @@
 # Changelog
 
+## [0.5.0](https://github.com/stuttgart-things/schmetterpause/compare/v0.4.0...v0.5.0) (2026-09-08)
+
+
+### Features
+
+* **ui:** give the score boxes a thumb to aim at ([#196](https://github.com/stuttgart-things/schmetterpause/issues/196)) ([ba4622d](https://github.com/stuttgart-things/schmetterpause/commit/ba4622d1273cded552dcfc0a55efc109f5fd2864))
+
+
+### Bug Fixes
+
+* **deps:** update module github.com/jackc/pgx/v5 to v5.11.0 ([#199](https://github.com/stuttgart-things/schmetterpause/issues/199)) ([6637e6d](https://github.com/stuttgart-things/schmetterpause/commit/6637e6dee2f4bf811fbcd8d0b348496e13b0c6ef))
+* **ui:** keep the match list's row lines in one piece ([#198](https://github.com/stuttgart-things/schmetterpause/issues/198)) ([2037c58](https://github.com/stuttgart-things/schmetterpause/commit/2037c58f7e11aa4e1bfe23865bef407465a272cc))
+
+
+### Refactoring
+
+* **ci:** publish the kustomize base through the shared workflow ([#201](https://github.com/stuttgart-things/schmetterpause/issues/201)) ([30adbd2](https://github.com/stuttgart-things/schmetterpause/commit/30adbd216cf1b8687a70bdf23843070398864753))
+
 ## [0.4.0](https://github.com/stuttgart-things/schmetterpause/compare/v0.3.0...v0.4.0) (2026-09-06)
 
 
