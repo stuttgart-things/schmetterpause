@@ -353,40 +353,32 @@ jobs:
   # Deliberately not "publish the base, then the image": the base names an
   # image, so publishing it first opens a window in which the artefact points
   # at something the registry does not have. "needs: release" closes it.
-  kustomize:
+  # The two values a person publishing by hand uses, read out of the Taskfile
+  # rather than repeated here. An artefact that CI renders from a different
+  # module version than the one a developer can reproduce is the drift this
+  # exists to remove — the reusable workflow below takes them as inputs, and
+  # inputs cannot run shell, so they are resolved once here.
+  kcl-meta:
     needs: release
     runs-on: ubuntu-latest
-    timeout-minutes: 15
-    permissions:
-      contents: read
-      packages: write
+    timeout-minutes: 5
+    outputs:
+      kustomize-repo: ${{ steps.read.outputs.kustomize-repo }}
+      image-repo: ${{ steps.read.outputs.image-repo }}
+      kcl-module: ${{ steps.read.outputs.kcl-module }}
+      parameters: ${{ steps.read.outputs.parameters }}
     steps:
       - uses: actions/checkout@v7
         with:
-          # Same reason as the release job: the profile under kcl/ may itself
-          # be what the pull request changes, so the artefact has to be
-          # rendered from the commit its tag names.
           ref: ${{ github.event.pull_request.head.sha }}
 
-      - name: Install the Dagger CLI
-        run: |
-          curl -fsSL https://dl.dagger.io/dagger/install.sh \
-            | DAGGER_VERSION="${DAGGER_VERSION}" BIN_DIR=/usr/local/bin sudo -E sh
-          dagger version
-
-      - name: Publish the kustomize base
+      - name: Read them out of the Taskfile
+        id: read
         env:
-          GITHUB_USER: ${{ github.actor }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           VERSION: ${{ needs.release.outputs.version }}
         run: |
           set -euo pipefail
 
-          # The pinned module and the target repository are read out of the
-          # Taskfile rather than repeated here. They are the two values a
-          # person publishing by hand uses, and an artefact that CI renders
-          # from a different module version than the one a developer can
-          # reproduce is the drift this whole job exists to remove.
           module="$(sed -n 's/^  KCL_MODULE: *//p' Taskfile.yml)"
           repo="$(sed -n 's/^  KUSTOMIZE_OCI_REPO: *//p' Taskfile.yml)"
           image_repo="$(sed -n 's/^  IMAGE_REPO: *//p' Taskfile.yml)"
@@ -397,15 +389,12 @@ jobs:
               exit 1
             fi
           done
-
-          if [ -z "${VERSION}" ]; then
-            echo "the release job returned no version" >&2
-            exit 1
-          fi
+          [ -n "${VERSION}" ] || { echo "the release job returned no version" >&2; exit 1; }
 
           # --parameters wins over the profile, whose config.image is a
           # ":latest" placeholder that resolves to the wrong revision in any
           # registry that has one.
+          #
           # A pull request's artefact carries the seed Job; a release artefact
           # does not. It cannot be a patch in the consuming chart, because the
           # chart patches what the artefact contains and nothing can patch in a
@@ -416,62 +405,89 @@ jobs:
           # keeps that fix out of every release: the Job exists in `pr-*` and
           # nowhere else. Should a `pr-*` artefact ever be deployed somewhere
           # real, the binary still refuses a database that has players.
-          #
-          # --parameters is one comma-separated string rather than a repeatable
-          # flag, so the two are joined rather than passed twice.
           parameters="config.image=${image_repo}:${VERSION}"
           case "${VERSION}" in
             pr-*) parameters="${parameters},config.seedEnabled=true" ;;
           esac
 
-          publish() {
-            dagger call -m "${module}" push-kustomize-base \
-              --source kcl \
-              --parameters-file kcl/profiles/base.yaml \
-              --parameters "${parameters}" \
-              --address "${repo}" \
-              --tag "$1" \
-              --user env:GITHUB_USER \
-              --password env:GITHUB_TOKEN
+          {
+            echo "kustomize-repo=${repo}"
+            echo "image-repo=${image_repo}"
+            echo "kcl-module=${module}"
+            echo "parameters=${parameters}"
+          } >> "$GITHUB_OUTPUT"
+
+  # Renders the base, pushes it, moves "latest" with `oras tag` on the digest
+  # just pushed, and proves the tags agree. That was ~120 inline lines here
+  # until github-workflow-templates gained kcl-parameters (#169),
+  # additional-tags (#170) and ref (#173) — the three things this repository
+  # needed that the shared workflow could not express.
+  kustomize:
+    needs: [release, kcl-meta]
+    uses: stuttgart-things/github-workflow-templates/.github/workflows/call-push-kustomize.yaml@3e83fec801165405c80a9f4183629fb8e0be07e5 # main
+    with:
+      runs-on: ubuntu-latest
+      # The head of the pull request, not the merge commit GitHub builds by
+      # default. The tag published is `pr-<n>-<head sha>`, the string the
+      # preview ApplicationSet composes from its own `.head_sha`, so building
+      # anything else puts a name on an artefact that is not what the name
+      # says. Twice already (#177, #179) this repository shipped exactly that.
+      ref: ${{ github.event.pull_request.head.sha }}
+      kcl-source-dir: kcl
+      kcl-profile-file: kcl/profiles/base.yaml
+      kcl-parameters: ${{ needs.kcl-meta.outputs.parameters }}
+      kustomize-oci-repo: ${{ needs.kcl-meta.outputs.kustomize-repo }}
+      tag: ${{ needs.release.outputs.version }}
+      # Only a tag moves "latest". A push to main is a snapshot, and pointing
+      # latest at one would make it mean "most recent build" rather than "most
+      # recent release" — the rule the image already follows.
+      additional-tags: ${{ github.ref_type == 'tag' && 'latest' || '' }}
+      dagger-kcl-module: ${{ needs.kcl-meta.outputs.kcl-module }}
+    secrets: inherit # pragma: allowlist secret
+
+  # The kustomize side of this is now proved inside the shared workflow. The
+  # image side is not: its "latest" is moved by the release job, so somebody
+  # has to check that one too, and it stays here rather than disappearing with
+  # the inline job that used to do both.
+  #
+  # Both times this drifted it was invisible until digests were compared by
+  # hand, and both tags reported success while disagreeing (#177, #179).
+  verify-image-tags:
+    if: github.ref_type == 'tag'
+    needs: [release, kcl-meta]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      packages: read
+    steps:
+      - name: latest and the version must be one image
+        env:
+          # ORAS_VERSION is inherited from the workflow-level env above.
+          REPO: ${{ needs.kcl-meta.outputs.image-repo }}
+          VERSION: ${{ needs.release.outputs.version }}
+          GITHUB_USER: ${{ github.actor }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          mkdir -p "${RUNNER_TEMP}/bin"
+          curl -fsSL "https://github.com/oras-project/oras/releases/download/v${ORAS_VERSION}/oras_${ORAS_VERSION}_linux_amd64.tar.gz" \
+            | tar xz -C "${RUNNER_TEMP}/bin" oras
+          export PATH="${RUNNER_TEMP}/bin:${PATH}"
+
+          printenv GITHUB_TOKEN \
+            | oras login "${REPO%%/*}" --username "${GITHUB_USER}" --password-stdin
+
+          digest() {
+            oras manifest fetch --descriptor "$1" \
+              | sed 's/.*"digest":"\([^"]*\)".*/\1/'
           }
 
-          publish "${VERSION}"
-          echo "published ${repo}:${VERSION}"
-
-          # "latest" moves under exactly the rule the image follows: a tag is
-          # a release, a push to main is a snapshot. Letting the two repos
-          # disagree about what "latest" means is the one way this pair can
-          # still drift once the version tags line up.
-          #
-          # It is a TAG on what was just pushed, not a second publish. Calling
-          # publish again renders and pushes the base a second time, and oras
-          # stamps a created annotation, so the two tags end up on two
-          # digests. That is not theory: v0.2.0 and latest were fee3ca9c and
-          # ab10f222, from one run, minutes apart. #177 fixed the same class
-          # of defect for the image, where it took two runs to appear; here
-          # one run is enough.
-          if [ "${GITHUB_REF_TYPE:-}" = "tag" ]; then
-            mkdir -p "${RUNNER_TEMP}/bin"
-            curl -fsSL "https://github.com/oras-project/oras/releases/download/v${ORAS_VERSION}/oras_${ORAS_VERSION}_linux_amd64.tar.gz" \
-              | tar xz -C "${RUNNER_TEMP}/bin" oras
-            export PATH="${RUNNER_TEMP}/bin:${PATH}"
-
-            printenv GITHUB_TOKEN \
-              | oras login ghcr.io --username "${GITHUB_USER}" --password-stdin
-
-            oras tag "${repo}:${VERSION}" latest
-            echo "moved ${repo}:latest onto ${repo}:${VERSION}"
-
-            # Prove it rather than trust it. Both times this drifted it was
-            # invisible until somebody compared digests by hand, and both
-            # tags reported success while disagreeing.
-            for r in "${repo}" "${image_repo}"; do
-              v="$(oras manifest fetch --descriptor "${r}:${VERSION}" | sed 's/.*"digest":"\([^"]*\)".*/\1/')"
-              l="$(oras manifest fetch --descriptor "${r}:latest" | sed 's/.*"digest":"\([^"]*\)".*/\1/')"
-              if [ "${v}" != "${l}" ]; then
-                echo "${r}: latest is ${l}, ${VERSION} is ${v} — the release tag does not identify the artefact" >&2
-                exit 1
-              fi
-              echo "${r}: latest and ${VERSION} agree on ${v}"
-            done
+          v="$(digest "${REPO}:${VERSION}")"
+          l="$(digest "${REPO}:latest")"
+          if [ "${v}" != "${l}" ]; then
+            echo "${REPO}: latest is ${l}, ${VERSION} is ${v} — the release tag does not identify the artefact" >&2
+            exit 1
           fi
+          echo "${REPO}: latest and ${VERSION} agree on ${v}"
