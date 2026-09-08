@@ -64,6 +64,7 @@ nav:
       - ADR-0012 Turnier ohne Wertung: adr/0012-turnier-ohne-wertung.md
       - ADR-0013 Turnierseiten und erster Aufschlag: adr/0013-turnierseiten-und-erster-aufschlag.md
       - ADR-0014 Kiosk benennt, wer einträgt: adr/0014-kiosk-benennt-wer-eintraegt.md
+      - ADR-0015 Zählwerk trägt Ergebnisse ein: adr/0015-zaehlwerk-traegt-ergebnisse-ein.md
   - Betrieb:
       - Deployment ohne GitOps: deployment.md
       - Preview-Umgebungen: preview-environments.md

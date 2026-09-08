@@ -23,3 +23,4 @@ festlegt, steht hier mit den Alternativen, die dabei verworfen wurden. Eine
 | 0012 | [Ein Turnier kann ohne Wertung laufen](0012-turnier-ohne-wertung.md) | accepted | 2026-09-03 |
 | 0013 | [Im Turnier ist die Tischseite Teil der Paarung](0013-turnierseiten-und-erster-aufschlag.md) | accepted | 2026-09-03 |
 | 0014 | [Der Kiosk benennt, wer einträgt](0014-kiosk-benennt-wer-eintraegt.md) | accepted | 2026-09-04 |
+| 0015 | [Das Zählwerk trägt Ergebnisse ein](0015-zaehlwerk-traegt-ergebnisse-ein.md) | accepted | 2026-09-08 |
