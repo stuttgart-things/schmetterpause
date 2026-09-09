@@ -25,7 +25,7 @@ jobs:
     permissions:
       contents: read
       pull-requests: write
-    uses: stuttgart-things/github-workflow-templates/.github/workflows/call-comment-preview-url.yaml@3e83fec801165405c80a9f4183629fb8e0be07e5 # main
+    uses: stuttgart-things/github-workflow-templates/.github/workflows/call-comment-preview-url.yaml@83b51ae068e5348abdfd9026e4fe935d90f84956 # main
     with:
       hostname-prefix: schmetterpause-pr
       hostname-domain: homerun2-test1.sthings-vsphere.labul.sva.de
