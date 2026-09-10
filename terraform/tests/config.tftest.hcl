@@ -162,3 +162,24 @@ run "second_replica_is_refused" {
 
   expect_failures = [var.min_replicas]
 }
+
+run "invalid_resource_pair_is_refused" {
+  command = plan
+
+  variables {
+    cpu    = 0.25
+    memory = "1Gi"
+  }
+
+  expect_failures = [var.memory]
+}
+
+run "latest_image_is_refused" {
+  command = plan
+
+  variables {
+    image = "ghcr.io/stuttgart-things/schmetterpause:latest"
+  }
+
+  expect_failures = [var.image]
+}

@@ -27,12 +27,12 @@
     },
     {
       "customType": "regex",
-      "description": "The application image, pinned as a variable default in the Azure Terraform. Renovate's terraform manager moves providers and modules, not a string that happens to name an image, so without this Azure would stay on the release it was first applied with while compose.yaml moves on.",
+      "description": "The application image, pinned in the Azure Terraform's committed values file. Renovate's terraform manager moves providers and modules and does not read .tfvars at all, so without this Azure would stay on the release it was first applied with while compose.yaml moves on.",
       "managerFilePatterns": [
-        "/^terraform/variables\\.tf$/"
+        "/^terraform/schmetterpause\\.auto\\.tfvars$/"
       ],
       "matchStrings": [
-        "default\\s*=\\s*\"(?<depName>[a-z0-9.-]+\\.[a-z]+/[^\":\\s]+):(?<currentValue>[^\"\\s]+)\""
+        "image\\s*=\\s*\"(?<depName>[a-z0-9.-]+\\.[a-z]+/[^\":\\s]+):(?<currentValue>[^\"\\s]+)\""
       ],
       "datasourceTemplate": "docker"
     }

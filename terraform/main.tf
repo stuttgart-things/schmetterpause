@@ -11,6 +11,10 @@
 #   - The app: external HTTPS, one replica.
 #
 # No Redis (invariant 3, docs/adr/0002).
+#
+# Values come from schmetterpause.auto.tfvars and terraform.tfvars. What is
+# still written here belongs to the application's contract rather than to this
+# deployment: port 8080, the probe paths, the variable names, one replica.
 
 locals {
   app_name = "${var.name_prefix}-app"
@@ -62,7 +66,7 @@ resource "azurerm_log_analytics_workspace" "this" {
   location            = azurerm_resource_group.this.location
   resource_group_name = azurerm_resource_group.this.name
   sku                 = "PerGB2018"
-  retention_in_days   = 30
+  retention_in_days   = var.log_retention_days
 
   lifecycle {
     ignore_changes = [tags]
@@ -95,10 +99,10 @@ resource "azurerm_postgresql_flexible_server" "this" {
   administrator_login           = var.postgres_user
   administrator_password        = var.postgres_password
   sku_name                      = var.postgres_sku
-  storage_mb                    = 32768
+  storage_mb                    = var.postgres_storage_mb
   auto_grow_enabled             = true
   public_network_access_enabled = true
-  backup_retention_days         = 7
+  backup_retention_days         = var.postgres_backup_retention_days
   geo_redundant_backup_enabled  = false
 
   lifecycle {
@@ -189,14 +193,16 @@ resource "azurerm_container_app" "this" {
     # kcl/deploy.k. It gets SP_DATABASE_URL only: migrate never calls
     # ValidateForServe, so it has no use for the session key.
     #
-    # 0.25 vCPU and 0.5Gi each, so the app alone and both together are valid
-    # Consumption allocations either way Azure counts init containers.
+    # The same cpu/memory pair as the app, as kcl gives both the same
+    # resources. variables.tf keeps the pair valid, and the two together within
+    # what a Consumption app may have, whichever way Azure counts init
+    # containers.
     init_container {
       name   = "migrate"
       image  = var.image
       args   = ["migrate", "up"]
-      cpu    = 0.25
-      memory = "0.5Gi"
+      cpu    = var.cpu
+      memory = var.memory
 
       env {
         name        = "SP_DATABASE_URL"
@@ -208,8 +214,8 @@ resource "azurerm_container_app" "this" {
       name   = "schmetterpause"
       image  = var.image
       args   = ["serve"]
-      cpu    = 0.25
-      memory = "0.5Gi"
+      cpu    = var.cpu
+      memory = var.memory
 
       dynamic "env" {
         for_each = local.app_env
