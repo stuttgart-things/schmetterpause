@@ -338,47 +338,6 @@ jobs:
       # analysis is only as accurate as the standard library it analyses.
       go-version: "1.27"
 
-  # The Azure Container Apps configuration in terraform/ (issue #206): fmt,
-  # validate and tflint in one shared workflow, the mocked tests in the other —
-  # what "task tf:check" runs locally, plus tflint. Not in "dagger call ci",
-  # whose business is the Go application, for the same reason repository
-  # linting is not.
-  #
-  # Both workflows used to run at the repository root only, where there is no
-  # configuration, and validate ran fmt without -check, so both would have been
-  # green over nothing. github-workflow-templates#183 adds working-directory
-  # and fmt-check.
-  #
-  # TEMPORARILY pinned to that pull request's head instead of the revision
-  # every other call here shares. Once #183 is merged, move both to the same
-  # revision as the rest, so one Renovate bump moves all of them again.
-  #
-  # environment-name is required by both and creates the environment on first
-  # use. "linting" already exists, without protection rules, so borrowing it
-  # creates nothing new.
-  #
-  # Terraform 1.14.8: tests/ uses mock_provider, which needs 1.7, and it is the
-  # version "task tf:check" was verified with.
-  terraform-validate:
-    uses: stuttgart-things/github-workflow-templates/.github/workflows/call-validate-terraform.yaml@947c80da44a0d5acb084f45f39df64cffc1b2c7e # feat/terraform-working-directory
-    with:
-      runs-on: ubuntu-latest
-      environment-name: linting
-      terraform-version: "1.14.8"
-      tflint-version: v0.55.1
-      continue-error: false
-      working-directory: terraform
-      fmt-check: true
-
-  terraform-test:
-    uses: stuttgart-things/github-workflow-templates/.github/workflows/call-terraform-test.yaml@947c80da44a0d5acb084f45f39df64cffc1b2c7e # feat/terraform-working-directory
-    with:
-      runs-on: ubuntu-latest
-      environment-name: linting
-      terraform-version: "1.14.8"
-      continue-error: false
-      working-directory: terraform
-
   # The second half of what a release is: the image says how the application
   # runs, the kustomize base says how it is deployed. Issue #80 — until now
   # this existed only as "task kcl:publish" on somebody's laptop, which makes
