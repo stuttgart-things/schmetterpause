@@ -1,0 +1,21 @@
+# Copy to terraform.tfvars and fill in. terraform.tfvars is gitignored — it holds
+# the session key and the database password.
+
+subscription_id = "00000000-0000-0000-0000-000000000000"
+location        = "westeurope"
+
+# openssl rand -base64 32
+# Generate once and keep it. A new key logs every player out.
+session_key = ""
+
+# Letters and digits, all three classes present:
+#   openssl rand -base64 48 | tr -dc 'A-Za-z0-9' | cut -c1-40
+postgres_password = ""
+
+# Optional:
+# kiosk_token     = ""        # openssl rand -hex 32; empty means no kiosk
+# bootstrap_admin = ""        # a display name, once that player has joined
+# log_level       = "info"
+# min_replicas    = 1         # 0 scales to zero between games
+# public_base_url = ""        # once a custom domain is bound
+# image           = "ghcr.io/stuttgart-things/schmetterpause:v0.5.0"
