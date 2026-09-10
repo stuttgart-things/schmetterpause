@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.6.0](https://github.com/stuttgart-things/schmetterpause/compare/v0.5.0...v0.6.0) (2026-09-10)
+
+
+### Features
+
+* **deploy:** run on Azure Container Apps with Terraform ([#207](https://github.com/stuttgart-things/schmetterpause/issues/207)) ([e2ecc29](https://github.com/stuttgart-things/schmetterpause/commit/e2ecc29ae07bb21ba66f4099e3f0bcbdc7b4c460))
+
 ## [0.5.0](https://github.com/stuttgart-things/schmetterpause/compare/v0.4.0...v0.5.0) (2026-09-08)
 
 
