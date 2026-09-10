@@ -190,12 +190,22 @@ environments, and those live on the cluster.
 
 ## Tearing down
 
+This instance is only ever run temporarily — stood up for a test or an
+occasion, then removed (docs/adr/0016). Tearing down is the normal end of its
+life, not an exception.
+
+**Dump the database first.** `destroy` removes the resource group and with it
+the database, its data and Flexible Server's own backups — those cannot be
+taken along. The dump is what the next `apply` restores, into Azure or into
+another environment; the tasks for both are #213. Until they exist, a dump from
+Azure needs a firewall rule for the machine running `pg_dump`, because the
+only rule here admits Azure services and nothing else.
+
 ```sh
 task tf:destroy
 ```
 
-It removes the resource group and with it the database, its data and its
-backups. Changing `name_prefix` replaces the server and has the same effect.
+Changing `name_prefix` replaces the server and has the same effect.
 
 ## Not yet
 
