@@ -96,7 +96,7 @@ jobs:
   # Deliberately no "needs": lint findings do not depend on a build, and a
   # failing test should not hide them.
   lint:
-    uses: stuttgart-things/github-workflow-templates/.github/workflows/call-repository-linting.yaml@83b51ae068e5348abdfd9026e4fe935d90f84956 # main
+    uses: stuttgart-things/github-workflow-templates/.github/workflows/call-repository-linting.yaml@a5bed715fe1881039aff2667d92832e252d89ea3 # main
     with:
       runs-on: ubuntu-latest
       app-directory: "./"
@@ -282,7 +282,7 @@ jobs:
   # workflow that gates or publishes deserves a pinned revision; see #85.
   scan:
     needs: release
-    uses: stuttgart-things/github-workflow-templates/.github/workflows/call-dagger-trivy-image-scan.yaml@83b51ae068e5348abdfd9026e4fe935d90f84956 # main
+    uses: stuttgart-things/github-workflow-templates/.github/workflows/call-dagger-trivy-image-scan.yaml@a5bed715fe1881039aff2667d92832e252d89ea3 # main
     with:
       runs-on: ubuntu-latest
       image-ref: ${{ needs.release.outputs.image-ref }}
@@ -319,7 +319,7 @@ jobs:
   # Deliberately not "needs: ci": a dependency advisory is worth seeing even
   # when a lint run is failing, and nothing about the scan depends on a build.
   govulncheck:
-    uses: stuttgart-things/github-workflow-templates/.github/workflows/call-dagger-govulncheck.yaml@83b51ae068e5348abdfd9026e4fe935d90f84956 # main
+    uses: stuttgart-things/github-workflow-templates/.github/workflows/call-dagger-govulncheck.yaml@a5bed715fe1881039aff2667d92832e252d89ea3 # main
     with:
       runs-on: ubuntu-latest
       working-directory: "."
@@ -346,12 +346,9 @@ jobs:
   #
   # Both workflows used to run at the repository root only, where there is no
   # configuration, and validate ran fmt without -check, so both would have been
-  # green over nothing. github-workflow-templates#183 adds working-directory
-  # and fmt-check.
-  #
-  # TEMPORARILY pinned to that pull request's head instead of the revision
-  # every other call here shares. Once #183 is merged, move both to the same
-  # revision as the rest, so one Renovate bump moves all of them again.
+  # green over nothing. github-workflow-templates#183 added working-directory
+  # and fmt-check. Pinned at the same revision as every other call here, so one
+  # Renovate bump moves all of them.
   #
   # environment-name is required by both and creates the environment on first
   # use. "linting" already exists, without protection rules, so borrowing it
@@ -360,7 +357,7 @@ jobs:
   # Terraform 1.14.8: tests/ uses mock_provider, which needs 1.7, and it is the
   # version "task tf:check" was verified with.
   terraform-validate:
-    uses: stuttgart-things/github-workflow-templates/.github/workflows/call-validate-terraform.yaml@947c80da44a0d5acb084f45f39df64cffc1b2c7e # feat/terraform-working-directory
+    uses: stuttgart-things/github-workflow-templates/.github/workflows/call-validate-terraform.yaml@a5bed715fe1881039aff2667d92832e252d89ea3 # main
     with:
       runs-on: ubuntu-latest
       environment-name: linting
@@ -371,7 +368,7 @@ jobs:
       fmt-check: true
 
   terraform-test:
-    uses: stuttgart-things/github-workflow-templates/.github/workflows/call-terraform-test.yaml@947c80da44a0d5acb084f45f39df64cffc1b2c7e # feat/terraform-working-directory
+    uses: stuttgart-things/github-workflow-templates/.github/workflows/call-terraform-test.yaml@a5bed715fe1881039aff2667d92832e252d89ea3 # main
     with:
       runs-on: ubuntu-latest
       environment-name: linting
@@ -473,7 +470,7 @@ jobs:
     permissions:
       contents: read
       packages: write
-    uses: stuttgart-things/github-workflow-templates/.github/workflows/call-push-kustomize.yaml@83b51ae068e5348abdfd9026e4fe935d90f84956 # main
+    uses: stuttgart-things/github-workflow-templates/.github/workflows/call-push-kustomize.yaml@a5bed715fe1881039aff2667d92832e252d89ea3 # main
     with:
       runs-on: ubuntu-latest
       # The head of the pull request, not the merge commit GitHub builds by
