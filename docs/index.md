@@ -20,6 +20,10 @@ Je nachdem, warum jemand hier gelandet ist:
   Meilenstein gemessen wird.
 - **Warum ist das so gebaut?** Die [Entscheidungen](adr/index.md) — ein ADR je
   Festlegung, jeweils mit den Alternativen, die dabei verworfen wurden.
+- **Was muss der Cluster mitbringen?** [Plattform-Voraussetzungen](platform.md)
+  sagt, was vorher da sein muss — Kubernetes-Version, Gateway API,
+  StorageClass, Postgres — und was über das reine Laufen hinausgeht: Backups,
+  External Secrets, Velero. Ebenfalls englisch.
 - **Das Ding soll irgendwo laufen.** [Deployment](deployment.md) beschreibt den
   Weg auf einen Cluster ohne GitOps dazwischen. Englisch, wie die übrige
   Betriebsdokumentation: sie liest, wer den Cluster bedient.
