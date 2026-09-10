@@ -225,7 +225,7 @@ The full list, with reasoning, is in `schema.k`. What one actually sets:
 | `config.dbOwner` | *(empty)* | Empty means `name`; must equal `username` in the store |
 | `config.dbInstances` | `1` | `database.k` only |
 | `config.dbStorageSize` / `…Class` | `8Gi` / *(empty)* | `database.k` only; empty class = the cluster default |
-| `config.dbImage` | `…/postgresql:17` | `database.k` only |
+| `config.dbImage` | `…/postgresql:18` | `database.k` only; a higher major on an existing Cluster is an offline in-place upgrade |
 
 Every value that reaches the application's environment has a counterpart in
 `terraform/variables.tf`, the Azure Container Apps rendering of the same

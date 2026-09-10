@@ -169,7 +169,13 @@ schema Schmetterpause:
     # Named outright rather than derived from a version number: the CNPG Helm
     # chart maps `version.postgresql` onto an image, and reproducing that
     # mapping here would be a second place for it to be wrong.
-    dbImage: str = "ghcr.io/cloudnative-pg/postgresql:17"
+    #
+    # 18 because it is the major the application is built and tested against:
+    # compose.yaml and the Dagger pipeline both run postgres:18. On an EXISTING
+    # Cluster this default is not harmless -- CloudNativePG treats a higher
+    # major in imageName as an offline in-place upgrade (pg_upgrade). A
+    # database that has to stay on 17 pins dbImage in its profile.
+    dbImage: str = "ghcr.io/cloudnative-pg/postgresql:18"
 
     # Off by default: with it disabled the operator blanks the postgres
     # password, so the owner role is the only way in.

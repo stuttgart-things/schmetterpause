@@ -260,7 +260,7 @@ something a person did between two windows.
 The one value the module cannot check is `username` in the secret store. It has
 to equal `dbOwner`, because that Secret is where CNPG reads the credentials.
 
-Defaults: one instance, `ghcr.io/cloudnative-pg/postgresql:17`, 8Gi, the
+Defaults: one instance, `ghcr.io/cloudnative-pg/postgresql:18`, 8Gi, the
 cluster's default StorageClass, no superuser access. Why one instance: replicas
 and backups protect against different things, and the realistic danger on a test
 cluster is a deliberate rebuild, against which a replica does nothing. The
