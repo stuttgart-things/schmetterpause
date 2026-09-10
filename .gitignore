@@ -46,3 +46,11 @@ kcl/kcl.mod.lock
 
 # Pulled OCI artefacts, not source.
 examples/kustomize/base/
+
+# Terraform working files. The lock file is committed; state and inputs are
+# not — terraform.tfvars holds the session key and the database password, and
+# the state holds both again.
+.terraform/
+*.tfstate
+*.tfstate.*
+terraform.tfvars
