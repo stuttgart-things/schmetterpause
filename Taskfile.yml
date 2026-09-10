@@ -29,6 +29,8 @@ vars:
   KCL_MODULE: github.com/stuttgart-things/dagger/kcl@v0.82.0
   KUSTOMIZE_OCI_REPO: ghcr.io/stuttgart-things/schmetterpause-kustomize
   IMAGE_REPO: ghcr.io/stuttgart-things/schmetterpause
+  # The Azure Container Apps configuration (terraform/README.md).
+  TF_DIR: terraform
 
 tasks:
   default:
@@ -522,6 +524,102 @@ tasks:
           --user env:GITHUB_USER \
           --password env:GITHUB_TOKEN
     silent: true
+
+  # ---------------------------------------------------------- Azure (tf:*)
+  # Extra flags pass through after `--`, e.g. `task tf:apply -- -auto-approve`.
+
+  tf:init:
+    desc: "terraform init for the Azure Container Apps configuration"
+    cmds:
+      - terraform -chdir={{.TF_DIR}} init {{.CLI_ARGS}}
+
+  tf:login:
+    desc: "Log the Azure CLI in — Terraform authenticates through it (TENANT=<id> optional)"
+    interactive: true
+    preconditions:
+      - sh: command -v az >/dev/null
+        msg: |
+          The Azure CLI is missing. Terraform authenticates through its login
+          session: https://learn.microsoft.com/cli/azure/install-azure-cli
+    cmds:
+      # Extra flags after --, e.g. `task tf:login -- --use-device-code` on a
+      # machine without a browser.
+      - az login {{if .TENANT}}--tenant {{.TENANT}}{{end}} {{.CLI_ARGS}}
+      # The provider targets subscription_id from terraform.tfvars whatever the
+      # CLI default is. Setting it anyway keeps plain `az` commands — the
+      # provider registrations in the README — pointed at the same place.
+      - |
+        sub=$(sed -n 's/^subscription_id *= *"\(.*\)".*/\1/p' {{.TF_DIR}}/terraform.tfvars 2>/dev/null)
+        if [ -n "${sub}" ]; then
+          az account set --subscription "${sub}"
+          echo "CLI default subscription: ${sub}"
+        fi
+    silent: true
+
+  tf:plan:
+    desc: "terraform plan (needs terraform/terraform.tfvars and task tf:login)"
+    deps: [tf:azure:check]
+    cmds:
+      - terraform -chdir={{.TF_DIR}} plan {{.CLI_ARGS}}
+
+  tf:apply:
+    desc: "terraform apply — create or update the Azure stack"
+    deps: [tf:azure:check]
+    cmds:
+      - terraform -chdir={{.TF_DIR}} apply {{.CLI_ARGS}}
+
+  tf:output:
+    desc: "Show the Terraform outputs, among them the app URL"
+    cmds:
+      - terraform -chdir={{.TF_DIR}} output {{.CLI_ARGS}}
+
+  tf:destroy:
+    desc: "terraform destroy — removes the resource group, the database and its data"
+    deps: [tf:azure:check]
+    cmds:
+      - terraform -chdir={{.TF_DIR}} destroy {{.CLI_ARGS}}
+
+  # Everything plan, apply and destroy need before Terraform starts. Checked in
+  # order and stopping at the first failure, so the message names the actual
+  # problem — an expired login otherwise surfaces as a provider error after
+  # Terraform has already begun.
+  tf:azure:check:
+    internal: true
+    preconditions:
+      - sh: command -v az >/dev/null
+        msg: |
+          The Azure CLI is missing. Terraform authenticates through its login
+          session: https://learn.microsoft.com/cli/azure/install-azure-cli
+      - sh: '[ -f {{.TF_DIR}}/terraform.tfvars ]'
+        msg: |
+          {{.TF_DIR}}/terraform.tfvars is missing. Start from the example:
+            cp {{.TF_DIR}}/terraform.tfvars.example {{.TF_DIR}}/terraform.tfvars
+      # get-access-token rather than account show: account show succeeds from
+      # the local cache long after the session behind it has expired.
+      - sh: az account get-access-token --output none 2>/dev/null
+        msg: |
+          The Azure CLI is not logged in, or the session has expired:
+            task tf:login
+      - sh: |
+          sub=$(sed -n 's/^subscription_id *= *"\(.*\)".*/\1/p' {{.TF_DIR}}/terraform.tfvars)
+          [ -n "${sub}" ] && az account show --subscription "${sub}" --output none 2>/dev/null
+        msg: |
+          The logged-in account cannot see subscription_id from
+          {{.TF_DIR}}/terraform.tfvars — empty, mistyped, or a different tenant:
+            task tf:login TENANT=<tenant-id>
+
+  tf:check:
+    desc: "Formatting, validation and the mocked tests, without an Azure login — the tf analogue of kcl:check"
+    cmds:
+      # -backend=false: validating needs the provider schema, not the state.
+      - terraform -chdir={{.TF_DIR}} fmt -check -diff -recursive
+      - terraform -chdir={{.TF_DIR}} init -backend=false -input=false > /dev/null
+      - terraform -chdir={{.TF_DIR}} validate
+      # The provider is mocked in tests/, so this checks the variable rules and
+      # the environment handed to the app, not what Azure would accept.
+      - terraform -chdir={{.TF_DIR}} test
+    silent: true
+
   psql:
     desc: "psql session on the development database"
     interactive: true
