@@ -11,12 +11,6 @@ for fault-finding when it is unclear whether a problem comes from the
 application or from Argo. It is not meant for continuous operation: there is no
 drift detection and no prune.
 
-Without a cluster at all, the same image runs on Azure Container Apps with a
-managed Postgres. That path is Terraform and is described in
-[`terraform/README.md`](https://github.com/stuttgart-things/schmetterpause/blob/main/terraform/README.md).
-It mirrors the kcl module setting for setting, and a change to either lands in
-both.
-
 The examples use `cicd-test2` throughout. Replace the cluster domain, the
 gateway name and the store name with the target environment's.
 

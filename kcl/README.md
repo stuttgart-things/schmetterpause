@@ -227,12 +227,6 @@ The full list, with reasoning, is in `schema.k`. What one actually sets:
 | `config.dbStorageSize` / `…Class` | `8Gi` / *(empty)* | `database.k` only; empty class = the cluster default |
 | `config.dbImage` | `…/postgresql:17` | `database.k` only |
 
-Every value that reaches the application's environment has a counterpart in
-`terraform/variables.tf`, the Azure Container Apps rendering of the same
-contract, which names the kcl field it mirrors. Adding, renaming or removing one
-here means doing the same there, in the same pull request — see
-[`terraform/README.md`](../terraform/README.md).
-
 ### Why `replicas` is pinned at 1
 
 `internal/repository/postgres/migrate.go` calls `goose.UpContext` through the
@@ -440,7 +434,6 @@ dependencies would lose it.
 ## Related
 
 - `docs/deployment.md` — bringing up an environment, with and without ESO
-- `terraform/` — the same application on Azure Container Apps, kept in step with this module (issue #206)
 - `examples/` — the three ways to adapt an environment, side by side
 - `docs/adr/` — decisions on the data model, auth and deployment
 - Issue #78 — what was decided here and why
