@@ -22,7 +22,10 @@ gateway name and the store name with the target environment's.
 
 ## What the cluster has to bring
 
-Three things, plus one that depends on the secrets variant you pick.
+Three things, plus one that depends on the secrets variant you pick. This is the
+quick check before a bring-up; what each of them has to be -- versions,
+listeners, storage, and what backups need on top -- is in
+[Platform requirements](platform.md).
 
 ```sh
 # 1. CloudNativePG operator
@@ -154,12 +157,14 @@ it happened, and it stalled a whole cluster.
 It creates the namespace, applies the application, waits for
 `schmetterpause-db` to appear, and only then applies the CloudNativePG Cluster.
 
-The wait is what makes the single command honest rather than lucky. CNPG reads
-the owner credentials from that Secret at `initdb`; under variant A the Secret
-does not exist at apply time but a few seconds later, once the ExternalSecret
-has synced. Applying the Cluster into that gap would depend on the operator
-retrying — probable, but not something this has measured, and a deploy should
-not rest on it.
+The wait keeps the single command independent of timing. CNPG reads the owner
+credentials from that Secret at `initdb`; under variant A the Secret does not
+exist at apply time but a few seconds later, once the ExternalSecret has synced.
+Applying the Cluster into that gap turns out to be harmless as well: measured on
+CloudNativePG 1.30, a Cluster without its Secret waits in `Setting up primary`
+and bootstraps about 30 seconds after the Secret appears. The order is kept
+because it costs nothing and reads better in a log, not because anything
+depends on it.
 
 Everything else settles on its own, which is a property of Kubernetes rather
 than of this command: the pod reports `secret not found`, gets the Secret
