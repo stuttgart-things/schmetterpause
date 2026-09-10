@@ -84,7 +84,23 @@ nothing to run by hand.
 
 ## Values
 
-Three are required and have no default.
+Three files, and every value sits in exactly one of them:
+
+| File | Holds | In git |
+| --- | --- | --- |
+| `variables.tf` | declarations, types, validations, and which kcl field each mirrors — no values | yes |
+| `schmetterpause.auto.tfvars` | every value that is not a secret | yes |
+| `terraform.tfvars` | `subscription_id` and the secrets | no, gitignored |
+
+Terraform loads both `.tfvars` files on every plan, apply and destroy, so no
+`-var-file` is needed. They are meant not to overlap: a value set in both is
+taken from `schmetterpause.auto.tfvars`, which Terraform reads last.
+
+What stays in the code is what belongs to the application's contract rather
+than to one deployment: port 8080, the probe paths, the variable names, one
+replica.
+
+### In `terraform.tfvars`
 
 **`subscription_id`** — where it goes.
 
@@ -157,6 +173,8 @@ quietly drifts from the first. Every setting here mirrors one in
 | `dbOwner` / `dbName` / `dbSSLMode` | `postgres_user` / `postgres_db` / `sslmode=require` | |
 | `password` | `postgres_password` | alphanumeric rather than hex, see above |
 | `dbImage` | `postgres_version` | |
+| `dbStorageSize` | `postgres_storage_mb` | at least 32768 on Flexible Server |
+| `cpuRequest`/`cpuLimit`, `memoryRequest`/`memoryLimit` | `cpu`, `memory` | one fixed pair instead of request and limit, see below |
 | `extraEnvVars` | `extra_env_vars` | applied last, so they override |
 | `SP_COOKIE_SECURE` absent | absent | defaults to true in the code |
 
@@ -164,8 +182,10 @@ quietly drifts from the first. Every setting here mirrors one in
 removed `SP_*` variable in `internal/config/config.go`, a new secret, a changed
 default, probe path, port or migration rule — lands in `kcl/` and `terraform/`
 in the same pull request. For a new variable that means `schema.k` plus
-`configmap.k` or `externalsecret.k` on one side, `variables.tf` plus the
-`app_env` local or a `secret` block in `main.tf` on the other.
+`configmap.k` or `externalsecret.k` on one side; on the other, the declaration
+in `variables.tf`, its value in `schmetterpause.auto.tfvars` (or
+`terraform.tfvars.example` for a secret), and the `app_env` local or a `secret`
+block in `main.tf`.
 
 ### Where it cannot be the same
 
@@ -179,8 +199,10 @@ needs a separate step anyway, needs the app stopped first here — there is no
 `Recreate` to lean on.
 
 **Resources.** kcl sets requests and limits. Container Apps allows only fixed
-CPU/memory pairs, so the app and the init container get 0.25 vCPU and 0.5 GiB
-each, a valid allocation whether or not Azure counts the init container.
+CPU/memory pairs, memory in Gi twice the vCPU, so there is one `cpu`/`memory`
+pair and the app and the init container get it each. `variables.tf` refuses a
+pair Azure would refuse, and caps `cpu` at 2 so both together stay a valid
+allocation whether or not Azure counts the init container.
 
 **Database storage.** 32 GiB, the smallest Flexible Server offers, where
 `database.k` defaults to 8 Gi.
