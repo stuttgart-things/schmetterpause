@@ -29,7 +29,7 @@ jobs:
     permissions:
       contents: read
       packages: write
-    uses: stuttgart-things/github-workflow-templates/.github/workflows/call-cleanup-pr-artifacts.yaml@a5bed715fe1881039aff2667d92832e252d89ea3 # main
+    uses: stuttgart-things/github-workflow-templates/.github/workflows/call-cleanup-pr-artifacts.yaml@6c30aebec6599918de7ae33a83f4f54bbad5c2d4 # main
     with:
       runs-on: ubuntu-latest
       packages: schmetterpause,schmetterpause-kustomize
