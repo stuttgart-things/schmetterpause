@@ -135,8 +135,10 @@ it mounts no volume.
 **PostgreSQL 14–18, reachable over TLS.** The schema uses nothing beyond core
 PostgreSQL (`gen_random_uuid()` is built in). The range is what CloudNativePG
 1.30 supports. The application is built and tested against **PostgreSQL 18**
-(`compose.yaml`, the Dagger pipeline); `database.k` still defaults to
-`postgresql:17`, so set `dbImage` to follow the tested major.
+(`compose.yaml`, the Dagger pipeline), and `database.k` renders
+`postgresql:18` by default. A database still on 17 pins `dbImage` in its
+profile: CloudNativePG treats a higher major in `imageName` as an offline
+in-place upgrade (`pg_upgrade`).
 
 The DSN carries `sslmode=require`, so the server has to offer TLS.
 CloudNativePG does by default.
