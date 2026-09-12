@@ -54,6 +54,24 @@ templ Profile(v ProfileView) {
 		if v.IsSelf {
 			// Only on your own page, and low down: this is the drawer people
 			// open once, not what they came to look at. The rating is.
+			//
+			// Under one heading since the first week's feedback, which called
+			// the code and the PIN sitting next to each other confusing. Each
+			// card explains itself and neither said what the other was for,
+			// so what was missing is the sentence that tells them apart —
+			// nothing about the two cards themselves changed.
+			<div class="access-head">
+				<h2>Zugang</h2>
+				<p class="muted">
+					Dieses Gerät erkennt dich wieder, bis du dich abmeldest.
+					Für ein neues gibt es zwei Schlüssel, und beide führen
+					zum selben Ziel: die <strong>PIN</strong>, die du dir
+					selbst aussuchst und im Kopf behältst, und den
+					<strong>Wiederherstellungscode</strong> — den bekommst du
+					einmal, du speicherst ihn weg, und er hilft dir, wenn die
+					PIN weg ist. Eins von beidem reicht.
+				</p>
+			</div>
 			@RecoveryCard(RecoveryCardView{})
 			<section class="session pin-card">
 				<h2>PIN</h2>

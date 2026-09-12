@@ -542,6 +542,22 @@ h1 {
 
 .pin-card, .recovery-card { margin-top: 1.5rem; }
 
+/* The sentence that tells the code and the PIN apart, above both cards. It
+   sits outside them on purpose: it is about the pair, and inside either one it
+   would read as that card's own small print. */
+.access-head {
+	margin: 2rem 0 0.9rem;
+}
+
+.access-head h2 { margin: 0 0 0.4rem; }
+
+.access-head p {
+	margin: 0;
+	max-width: 48ch;
+}
+
+.access-head strong { color: var(--fg); }
+
 /* Heading and the refresh button on one line. The button sits at the end of
    the row rather than under the heading, so the card does not grow taller for
    a control most readers never press. */
