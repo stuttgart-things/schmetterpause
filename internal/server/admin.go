@@ -131,7 +131,100 @@ func (s *Server) adminView(ctx context.Context, note, refusal string) (templates
 	}
 	view.Matches = adminMatchRows(matches, names)
 
+	// Who could be removed, from the tally the ranking already computes
+	// rather than from a query of its own.
+	records, err := s.store.Players().Records(ctx)
+	if err != nil {
+		return templates.AdminView{}, fmt.Errorf("load the player records: %w", err)
+	}
+	view.Removable = adminPlayerRows(records, self)
+
 	return view, nil
+}
+
+// adminPlayerRows keeps the players with no confirmed result.
+//
+// Confirmed is what Records counts, and it is not the whole of what makes
+// somebody permanent: a pending result and a tournament they started do too,
+// through foreign keys with no cascade. So this is a shortlist and the
+// database is the authority — the refusal, when it comes, says which of the
+// three it was. Listing everybody instead would put a button on every row of
+// a roster that only grows.
+func adminPlayerRows(records []domain.PlayerRecord, self uuid.UUID) []templates.AdminPlayerRow {
+	rows := make([]templates.AdminPlayerRow, 0, len(records))
+	for _, r := range records {
+		if r.Played > 0 {
+			continue
+		}
+		rows = append(rows, templates.AdminPlayerRow{
+			ID:          r.Player.ID.String(),
+			DisplayName: r.Player.DisplayName,
+			Joined:      r.Player.CreatedAt.Local().Format("02.01.2006 15:04"),
+			IsSelf:      r.Player.ID == self,
+		})
+	}
+	return rows
+}
+
+// handleAdminRemovePlayer removes a player nothing points at.
+//
+// The small one of issue #105's four actions, and the schema does most of it:
+// matches and tournaments reference a player without a cascade, so anybody
+// who has played, reported a result or started a tournament comes back as
+// domain.ErrInUse rather than disappearing. What goes with them is what only
+// existed because they did — their sign-in proofs, their PIN and recovery
+// code, and their place in any tournament field.
+//
+// Removing yourself is refused before the store is asked. It would be a
+// legitimate delete — an admin who has never played is exactly the shape this
+// allows — and it would take the session with it, leaving somebody signed in
+// as a player who no longer exists. That is a footgun rather than a use case.
+func (s *Server) handleAdminRemovePlayer(w http.ResponseWriter, r *http.Request) {
+	self, _ := auth.PlayerID(r.Context())
+
+	id, err := uuid.Parse(strings.TrimSpace(r.PathValue("id")))
+	if err != nil {
+		s.rejectAdmin(w, r, "Diesen Spieler gibt es nicht.")
+		return
+	}
+	if id == self {
+		s.rejectAdmin(w, r, "Dich selbst kannst du hier nicht entfernen — "+
+			"du wärst danach als jemand angemeldet, den es nicht mehr gibt.")
+		return
+	}
+
+	// Read before the delete, so the log line can name somebody. Afterwards
+	// there is no row left to ask, and "player 7f3a… removed" names nobody.
+	player, err := s.store.Players().ByID(r.Context(), id)
+	if err != nil {
+		s.rejectAdmin(w, r, "Diesen Spieler gibt es nicht.")
+		return
+	}
+
+	switch err := s.store.Players().Delete(r.Context(), id); {
+	case err == nil:
+	case errors.Is(err, domain.ErrNotFound):
+		s.rejectAdmin(w, r, "Diesen Spieler gibt es nicht mehr.")
+		return
+	case errors.Is(err, domain.ErrInUse):
+		s.rejectAdmin(w, r, "Dieser Spieler lässt sich nicht entfernen: an ihm hängt "+
+			"schon etwas — ein Ergebnis, das er gespielt oder eingetragen hat, oder "+
+			"ein Turnier, das er gestartet hat. Wer einmal gespielt hat, bleibt.")
+		return
+	default:
+		s.log.ErrorContext(r.Context(), "removing a player failed",
+			"player_id", id, "error", err)
+		s.rejectAdmin(w, r, "Das hat gerade nicht geklappt.")
+		return
+	}
+
+	// Named, like every other admin action — and here it is the only place
+	// the name survives at all (docs/adr/0008, issue #105).
+	s.log.InfoContext(r.Context(), "player removed",
+		"player_id", id, "display_name", player.DisplayName, "by", self)
+
+	s.renderAdmin(w, r, "Entfernt: "+player.DisplayName+". Mit ihm sind seine "+
+		"Anmeldung, seine PIN und sein Wiederherstellungscode weg.")
 }
 
 // adminMatchRows keeps the settled results and puts them in the words the

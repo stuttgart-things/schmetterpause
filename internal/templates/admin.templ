@@ -171,6 +171,59 @@ templ Admin(v AdminView) {
 			}
 		</section>
 		<section class="session">
+			<h2>Spieler ohne Ergebnis</h2>
+			<p class="muted">
+				Ein Scherzeintrag oder eine Dublette, angelegt bevor jemand
+				gespielt hat. Wer einmal gespielt, ein Ergebnis eingetragen
+				oder ein Turnier gestartet hat, bleibt — das entscheidet die
+				Datenbank, nicht diese Liste.
+			</p>
+			if len(v.Removable) == 0 {
+				<p class="muted">Niemand — alle hier haben schon gespielt.</p>
+			} else {
+				<div class="table-scroll" tabindex="0" role="region" aria-label="Spieler ohne Ergebnis">
+					<table class="matches">
+						<thead>
+							<tr>
+								<th scope="col">Spieler</th>
+								<th scope="col">Dabei seit</th>
+								<th scope="col"></th>
+							</tr>
+						</thead>
+						<tbody>
+							for _, p := range v.Removable {
+								<tr>
+									<td class="name">
+										<a href={ templ.SafeURL("/players/" + p.ID) }>{ p.DisplayName }</a>
+										if p.IsSelf {
+											<span class="muted">(du)</span>
+										}
+									</td>
+									<td class="when">{ p.Joined }</td>
+									<td>
+										// Kein Knopf in der eigenen Zeile: wer sich
+										// selbst entfernt, ist danach als jemand
+										// angemeldet, den es nicht mehr gibt.
+										if !p.IsSelf {
+											<form method="post" action={ templ.SafeURL("/admin/players/" + p.ID + "/remove") }>
+												<button class="secondary" type="submit">Entfernen</button>
+											</form>
+										}
+									</td>
+								</tr>
+							}
+						</tbody>
+					</table>
+				</div>
+				<p class="muted">
+					Mit einem entfernten Spieler gehen seine Anmeldung, seine
+					PIN und sein Wiederherstellungscode. Ein Kiosk, der ihn als
+					Eintragenden genannt hat, bleibt freigeschaltet und weiß
+					danach nicht mehr, wer tippt.
+				</p>
+			}
+		</section>
+		<section class="session">
 			<h2>Die Grenze</h2>
 			<div class="table-scroll" tabindex="0" role="region" aria-label="Wer was darf">
 				<table class="matches">

@@ -758,6 +758,9 @@ type AdminView struct {
 	// still waiting for a plain yes or no, and a contested one has a path of
 	// its own that does not need the flag.
 	Matches []AdminMatchRow
+	// Removable is the players with no confirmed result, the other action
+	// issue #105 holds.
+	Removable []AdminPlayerRow
 	// Note is what just happened, shown once. The page renders it after a
 	// removal rather than redirecting, the way the kiosk answers its own
 	// undo — a refusal here is a sentence somebody has to read, and a
@@ -767,6 +770,26 @@ type AdminView struct {
 	// keeps them apart: "entfernt" and "geht nicht" are opposite outcomes and
 	// must not arrive in the same words. The handler answers 422 with it.
 	Error string
+}
+
+// AdminPlayerRow is one player who has no confirmed result to their name,
+// with the button that removes them (issue #105).
+//
+// A shortlist rather than the whole roster: those are the ones a removal is
+// for — a joke entry, or a duplicate created before anybody played. It is a
+// shortlist and not a guarantee, because a pending result or a tournament
+// somebody started also makes a player permanent and neither shows up as a
+// confirmed match. The schema decides; this only saves reading past everybody
+// who obviously cannot go.
+type AdminPlayerRow struct {
+	ID          string
+	DisplayName string
+	// Joined is when they were created, so two rows with almost the same
+	// name can be told apart — which is the duplicate case this exists for.
+	Joined string
+	// IsSelf marks the reader. Their own row carries no button: removing the
+	// player you are signed in as would take the session with it.
+	IsSelf bool
 }
 
 // AdminMatchRow is one counted result, with the button that takes it back.
