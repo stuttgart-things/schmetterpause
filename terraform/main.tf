@@ -74,9 +74,15 @@ resource "azurerm_log_analytics_workspace" "this" {
 }
 
 resource "azurerm_container_app_environment" "this" {
-  name                       = "${var.name_prefix}-env"
-  location                   = azurerm_resource_group.this.location
-  resource_group_name        = azurerm_resource_group.this.name
+  name                = "${var.name_prefix}-env"
+  location            = azurerm_resource_group.this.location
+  resource_group_name = azurerm_resource_group.this.name
+
+  # Both lines, not just the workspace id. Since azurerm 5.0 logs_destination is
+  # no longer computed: left out it defaults to streaming only, the workspace id
+  # has no effect, and the workspace above is created and billed while no log
+  # line ever reaches it. Nothing in a plan warns about that.
+  logs_destination           = "log-analytics"
   log_analytics_workspace_id = azurerm_log_analytics_workspace.this.id
 
   lifecycle {
