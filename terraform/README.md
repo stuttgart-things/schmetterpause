@@ -248,6 +248,15 @@ network, and a firewall rule for your address does nothing against that. Why it
 is built the way it is, and a round trip through it, are in
 [`docs/backup-restore.md`](../docs/backup-restore.md).
 
+**When `tf:destroy` stops with `polling after Delete: internal-error: polling
+support for the Content-Type "" was not implemented`, run it again.** azurerm
+5.5.0 sends the delete for the container app and the Container Apps
+environment, then fails to read Azure's answer. The resource is gone all the
+same — `az resource list -g schmetterpause-rg` no longer shows it — and the next
+run notices that, removes it from the state and deletes the rest. On 2026-09-12
+it took three runs: one stop at the app, one at the environment. The teardown
+the same morning under 4.81.0 went through in one.
+
 Changing `name_prefix` replaces the server and has the same effect.
 
 ## Not yet
