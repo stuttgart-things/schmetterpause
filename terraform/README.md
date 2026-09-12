@@ -225,21 +225,28 @@ This instance is only ever run temporarily — stood up for a test or an
 occasion, then removed (docs/adr/0016). Tearing down is the normal end of its
 life, not an exception.
 
-**Dump the database first**, following
-[`docs/backup-restore.md`](../docs/backup-restore.md). `destroy` removes the
-resource group and with it the database, its data and Flexible Server's own
-backups — those cannot be taken along. The dump is what the next `apply`
-restores, into Azure or into another environment.
-
-The dump runs **inside Azure**, not from your machine. Outbound port 5432 is
-blocked in the office network, and a firewall rule for your address does
-nothing against that; the first teardown found out the hard way. The page has
-the steps that worked, verified end to end on 2026-09-12. #213 turns them into
-tasks.
+**Dump the database first.** `destroy` removes the resource group and with it
+the database, its data and Flexible Server's own backups — those cannot be
+taken along. The dump is what the next `apply` restores, into Azure or into
+another environment.
 
 ```sh
+task db:dump ENV=azure     # schmetterpause-azure-<time>.sql and its .counts
 task tf:destroy
 ```
+
+And back:
+
+```sh
+task tf:apply
+task db:restore ENV=azure FILE=schmetterpause-azure-<time>.sql
+```
+
+Both run **inside Azure**, in a one-off Container Instance in its own resource
+group, not from your machine: outbound port 5432 is blocked in the office
+network, and a firewall rule for your address does nothing against that. Why it
+is built the way it is, and a round trip through it, are in
+[`docs/backup-restore.md`](../docs/backup-restore.md).
 
 Changing `name_prefix` replaces the server and has the same effect.
 
@@ -257,16 +264,11 @@ Changing `name_prefix` replaces the server and has the same effect.
   a managed certificate, then set `public_base_url`. The generated
   `*.azurecontainerapps.io` host already has valid TLS, so none of this blocks a
   test.
-- **Restoring into a new instance.** A dump comes out of Azure
-  ([`docs/backup-restore.md`](../docs/backup-restore.md)); putting one back has
-  not been done yet. It meets the same blocked port from an operator's machine,
-  so it has to run inside Azure too, and before the init container migrates the
-  empty database. #213.
 
 ## Related
 
 - Issue #206 — what was decided here and why
-- [`docs/backup-restore.md`](../docs/backup-restore.md) — the dump before a teardown, as it was done
+- [`docs/backup-restore.md`](../docs/backup-restore.md) — `task db:dump` and `task db:restore`, and the round trip that proved them (#213)
 - `docs/adr/0016` — why this instance is temporary and the data moves as a dump
 - [`docs/deployment.md`](../docs/deployment.md) — the cluster without GitOps
 - [`kcl/README.md`](../kcl/README.md) — the module this mirrors
