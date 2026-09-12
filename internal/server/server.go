@@ -141,6 +141,10 @@ func (s *Server) routes() http.Handler {
 	// Taking a kiosk machine back belongs to somebody, which is what
 	// docs/adr/0008 settled and what issue #77 was waiting for. POST, so a
 	// link nobody meant to follow cannot do it.
+	// Taking a counted result back, which is what a correction is: there is
+	// nothing left to edit in a settled match, so the wrong one goes and the
+	// right one is entered normally (issue #105).
+	page.Handle("POST /admin/matches/{id}/remove", admin(http.HandlerFunc(s.handleAdminRemoveMatch)))
 	page.Handle("POST /admin/kiosk/{id}/revoke", admin(http.HandlerFunc(s.handleRevokeKiosk)))
 	page.Handle("POST /admin/kiosk/revoke-all", admin(http.HandlerFunc(s.handleRevokeAllKiosks)))
 	// Unset token, no routes: the kiosk does not exist rather than existing

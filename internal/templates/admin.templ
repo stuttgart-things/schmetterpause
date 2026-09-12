@@ -1,5 +1,7 @@
 package templates
 
+import "strconv"
+
 // Admin is the page that answers "who may act for other people".
 //
 // The Definition of Done in issue #88 asks for exactly that, and until
@@ -22,6 +24,12 @@ templ Admin(v AdminView) {
 				</p>
 			</div>
 		</div>
+		if v.Note != "" {
+			<p class="note" role="status">{ v.Note }</p>
+		}
+		if v.Error != "" {
+			<p class="error" role="alert">{ v.Error }</p>
+		}
 		<section class="session">
 			<h2>Admins</h2>
 			if len(v.People) == 0 {
@@ -99,6 +107,66 @@ templ Admin(v AdminView) {
 					Ein zurückgenommenes Gerät ist sofort keins mehr. Um wieder
 					eines zu werden, muss es das Token erneut eingeben — das
 					gilt auch für den Laptop am Tisch.
+				</p>
+			}
+		</section>
+		<section class="session">
+			<h2>Gewertete Ergebnisse</h2>
+			<p class="muted">
+				Ein gewertetes Ergebnis lässt sich nicht ändern — es gibt
+				nichts mehr zu korrigieren, nachdem es zwei Wertungen bewegt
+				hat. Ein falsches wird entfernt, beide Wertungen stehen dann
+				wieder wie vorher, und das richtige wird normal eingetragen.
+			</p>
+			if len(v.Matches) == 0 {
+				<p class="muted">Noch nichts gewertet.</p>
+			} else {
+				<div class="table-scroll" tabindex="0" role="region" aria-label="Gewertete Ergebnisse">
+					<table class="matches">
+						<thead>
+							<tr>
+								<th scope="col">Wann</th>
+								<th scope="col">Sieger</th>
+								<th scope="col">Gegner</th>
+								<th scope="col" class="num">Sätze</th>
+								<th scope="col">Verlauf</th>
+								<th scope="col"></th>
+							</tr>
+						</thead>
+						<tbody>
+							for _, m := range v.Matches {
+								<tr>
+									<td class="when">{ m.PlayedAt }</td>
+									<td>{ m.WinnerName }</td>
+									<td>{ m.LoserName }</td>
+									<td class="num">
+										{ strconv.Itoa(m.WinnerSets) }:{ strconv.Itoa(m.LoserSets) }
+									</td>
+									<td class="sets">
+										for i, set := range m.Sets {
+											if i > 0 {
+												{ ", " }
+											}
+											{ strconv.Itoa(set.Own) }:{ strconv.Itoa(set.Opponent) }
+										}
+									</td>
+									<td>
+										<form method="post" action={ templ.SafeURL("/admin/matches/" + m.ID + "/remove") }>
+											<button class="secondary" type="submit">Entfernen</button>
+										</form>
+									</td>
+								</tr>
+							}
+						</tbody>
+					</table>
+				</div>
+				<p class="muted">
+					Entfernen geht nur, solange für beide Beteiligten seither
+					nichts Neues gewertet wurde. Sonst würde die spätere
+					Wertung stillschweigend mit zurückgenommen — dann erst das
+					neuere Ergebnis entfernen. Niemand bestätigt das hier:
+					es steht im Log, und es steht in <code>docs/adr/0008</code>,
+					warum die Stufe wenigen gehört.
 				</p>
 			}
 		</section>

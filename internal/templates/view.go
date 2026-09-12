@@ -745,6 +745,38 @@ type AdminView struct {
 	// exactly this question, and the old derived cookie could not answer it:
 	// it was the same value in every browser that had ever seen the token.
 	Kiosks []KioskGrantView
+	// Matches is the recent counted results, so a wrong one can be taken
+	// back without psql (issue #105). Only settled ones: a pending result is
+	// still waiting for a plain yes or no, and a contested one has a path of
+	// its own that does not need the flag.
+	Matches []AdminMatchRow
+	// Note is what just happened, shown once. The page renders it after a
+	// removal rather than redirecting, the way the kiosk answers its own
+	// undo — a refusal here is a sentence somebody has to read, and a
+	// redirect would drop it.
+	Note string
+	// Error is a refusal, kept apart from Note for the same reason the kiosk
+	// keeps them apart: "entfernt" and "geht nicht" are opposite outcomes and
+	// must not arrive in the same words. The handler answers 422 with it.
+	Error string
+}
+
+// AdminMatchRow is one counted result, with the button that takes it back.
+//
+// Read winner-first like every other match table, and built by the same
+// function, so the admin is looking at the rows in the words the rest of the
+// application uses them in.
+type AdminMatchRow struct {
+	ID         string
+	PlayedAt   string
+	WinnerName string
+	LoserName  string
+	WinnerSets int
+	LoserSets  int
+	// Sets are the individual scores, from the winner's side. A mistyped
+	// result is usually mistyped in the points, so the row has to show them
+	// or it cannot be told apart from the right one.
+	Sets []SetScore
 }
 
 // KioskGrantView is one unlocked machine.
