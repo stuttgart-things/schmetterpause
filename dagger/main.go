@@ -1072,14 +1072,14 @@ if grep -q "Zu best" "$own"; then
 fi
 
 echo "== refresh: one press catches up what somebody else did =="
-# The ranking, the results waiting on the reader and the badge all change
-# because somebody *else* acted, and none of them moved without a reload. The
-# badge polled and the list under it did not, so the bar could say one result
-# was waiting while the page below showed nothing.
+# The ranking, what is on at the table, the results waiting on the reader and
+# the badge all change because somebody *else* acted, and none of them moved
+# without a reload. The badge polled and the list under it did not, so the bar
+# could say one result was waiting while the page below showed nothing.
 refresh=$(mktemp)
 curl -fsS -b "$second" http://app.verify:8080/fragments/refresh > "$refresh"
 
-for region in "id=\"standings\"" "id=\"pending\"" "id=\"whoami\""; do
+for region in "id=\"standings\"" "id=\"running\"" "id=\"pending\"" "id=\"whoami\""; do
 	grep -q "$region" "$refresh" || {
 		echo "the refresh does not carry $region"
 		cat "$refresh"
@@ -1087,10 +1087,13 @@ for region in "id=\"standings\"" "id=\"pending\"" "id=\"whoami\""; do
 	}
 done
 
-# Three out-of-band swaps and nothing else: one press, the whole page current.
+# Those four out-of-band swaps and nothing else: one press, the whole page
+# current. The count is what makes the loop above more than a spot check — it
+# is how a swap that stopped being sent, or one nobody meant to add, shows up
+# here rather than on the start page.
 swaps=$(grep -o "hx-swap-oob" "$refresh" | wc -l)
-[ "$swaps" -eq 3 ] || {
-	echo "$swaps out-of-band swaps in the refresh, expected 3"
+[ "$swaps" -eq 4 ] || {
+	echo "$swaps out-of-band swaps in the refresh, expected 4"
 	cat "$refresh"
 	exit 1
 }
