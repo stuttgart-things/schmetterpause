@@ -395,7 +395,9 @@ func (m *Schmetterpause) Verify(
 		WithServiceBinding("db", db).
 		WithFile("/dod.sql", source.File("scripts/definition-of-done.sql")).
 		WithEnvVariable("PGPASSWORD", "schmetterpause").
-		// Forces re-evaluation when the version changes.
+		// Read by the script, which asserts /version answers this exact
+		// string — and, as it always did, forcing re-evaluation when the
+		// version changes.
 		WithEnvVariable("SP_VERIFY_VERSION", version).
 		WithExec([]string{"sh", "-c", verifyScript}).
 		Stdout(ctx)
@@ -646,6 +648,23 @@ while [ $i -lt 60 ]; do
 	sleep 1
 done
 curl -fsS http://app.verify:8080/healthz
+
+# The version the binary says it is, in one line a monitor can compare against
+# the newest release (issue #229). Asserted here because it is a contract with
+# something outside this repository: a probe that greps this body breaks
+# silently if the shape changes, and silence is the failure mode #194 opens
+# with.
+echo "== /version: one line, and it is the version that was built =="
+version=$(curl -fsS http://app.verify:8080/version)
+if [ "$(printf '%s' "${version}" | wc -l)" -ne 0 ]; then
+	echo "/version answered more than one line: ${version}"
+	exit 1
+fi
+if [ "${version}" != "${SP_VERIFY_VERSION}" ]; then
+	echo "/version says ${version}, the image was built as ${SP_VERIFY_VERSION}"
+	exit 1
+fi
+echo "${version}"
 
 echo "== /readyz: migrations applied, database reachable =="
 i=0
