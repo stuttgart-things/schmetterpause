@@ -44,6 +44,7 @@ markdown_extensions:
 
 nav:
   - Loslegen: index.md
+  - Bildschirme: bildschirme.md
   - Turnier vor Ort: turnier-vor-ort.md
   - Plan:
       - MVP-Plan: mvp-plan.md
