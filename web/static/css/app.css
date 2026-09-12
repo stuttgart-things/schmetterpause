@@ -324,6 +324,14 @@ h1 {
 	font-size: 0.9rem;
 }
 
+/* Under the sign-in card the second way in carries a button rather than an
+   underlined word, so the block holds a sentence and a control instead of one
+   line of prose. The button brings its own top margin; the sentence gives it
+   nothing to fight with. */
+.session-alt p { margin: 0; }
+
+.session-alt button.secondary { margin-top: 0.6rem; }
+
 /* The other keyboard, under the field rather than under the card. No rule
    above it: .session-alt separates two ways into the app, this separates two
    spellings of one answer, and a border would make them look equally far
