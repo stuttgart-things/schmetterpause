@@ -91,6 +91,45 @@ func TestReadyz(t *testing.T) {
 	}
 }
 
+// TestVersionAnswersOneLineOfPlainText is what issue #229 needs before any
+// drift comparison can exist: /info says the same thing, but it says it in
+// HTML, and something comparing "running" against "released" must not have to
+// parse a page to find out.
+func TestVersionAnswersOneLineOfPlainText(t *testing.T) {
+	// The database is gone on purpose. Which build is running is a fact about
+	// the process, and an outage must not make it unanswerable — that is what
+	// separates this from /readyz.
+	h := newHandler(&memStore{players: &memPlayers{}, pingErr: errors.New("database gone")})
+
+	rec := get(t, h, "/version")
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200", rec.Code)
+	}
+	if got := strings.TrimSpace(rec.Body.String()); got != "test" {
+		t.Errorf("body = %q, want the build version %q", got, "test")
+	}
+	if got := rec.Header().Get("Content-Type"); !strings.HasPrefix(got, "text/plain") {
+		t.Errorf("Content-Type = %q, want text/plain", got)
+	}
+	// One line and nothing else: a reader that takes the whole body as the
+	// version has to be right, or every comparison needs a parser.
+	if body := rec.Body.String(); strings.Count(body, "\n") != 1 {
+		t.Errorf("body = %q, want exactly one line", body)
+	}
+}
+
+// TestVersionNeedsNoCookie: a monitor holds none, and the same string is
+// already on /info for anybody who opens it.
+func TestVersionNeedsNoCookie(t *testing.T) {
+	store := newMemStore()
+	h := newHandlerWith(store, auth.NewCookieAuthenticator(store.Identities(), testSessionKey, false))
+
+	if rec := get(t, h, "/version"); rec.Code != http.StatusOK {
+		t.Errorf("status = %d, want 200: %s", rec.Code, rec.Body.String())
+	}
+}
+
 func TestIndexRendersLayout(t *testing.T) {
 	h := newHandler(newMemStore())
 
