@@ -162,10 +162,16 @@ image and creating the storage account.
 ## Versions
 
 A dump only ever goes into the **same or a newer** PostgreSQL major, and the
-same or a newer application version. The target is 18: Compose, the kcl default
-(#221) and Azure (#224) are on it. The CloudNativePG cluster on homerun2-test1
-still runs 17; a dump from it restores into any of the others, and nothing goes
-back into it.
+same or a newer application version. Everything is on 18: Compose, the kcl
+default (#221), Azure (#224), and the CloudNativePG cluster on homerun2-test1
+since its in-place upgrade on 2026-09-12 (see below).
+
+That cluster's major is pinned in `stuttgart-things/stuttgart-things`, as
+`database.imageName` in
+`clusters/labul/vsphere/platform-sthings/argocd/homerun2-test1/schmetterpause.yaml`,
+not in the argocd catalog. The catalog default in `stuttgart-things/argocd`
+`apps/schmetterpause/install/values.yaml` is still 17, and the PR previews,
+which set no image, get it.
 
 ## What travels, and what does not
 
@@ -183,7 +189,7 @@ back into it.
 
 ## The round trip on 2026-09-12
 
-The data was the tournament from 2026-09-11 — the office Kubernetes cluster has
+The data was the tournament from 2026-09-11 — the Kubernetes trial cluster has
 no PINs, so it could not show a sign-in. Every arrow is one `task db:dump` or
 `task db:restore`.
 
@@ -206,10 +212,37 @@ The sorted counts hash to the same value at every station: 7 players,
 Before it started, the office Compose database was dumped and probe-restored:
 15 players, 66 matches, counts matching. The round trip never touched it.
 
+## The Kubernetes trial cluster to 18, 2026-09-12
+
+A different kind of move: no dump and restore, but CloudNativePG 1.30's offline
+in-place major upgrade (`pg_upgrade --link`), triggered by changing the
+Cluster's `imageName` from `:17` to `:18` (stuttgart-things/stuttgart-things#2899).
+The prerequisites from the CNPG documentation held: both images on the same
+Debian base, the source at 17.11 (at least 17.6 is required), no extensions.
+
+The backup came first: `task db:dump ENV=kubernetes`, probe-restored into an
+isolated Compose project with matching counts. Then:
+
+| Time | What happened |
+| --- | --- |
+| 12:45 | Argo synced the new `imageName`; the Cluster went to `Upgrading Postgres major version` |
+| 12:46 | the `major-upgrade` job ran `pg_upgrade` on the 18 image |
+| 12:47 | the instance started on 18; `Cluster in healthy state` at 12:47:49 |
+
+About two minutes offline. The server reports 18.6, a dump taken right after
+has the same counts as the one taken before — 6 players, 12 matches, 20
+rating-history rows, migrations at `20260904120000` — and the app's `/readyz`
+answered 200.
+
+Had it failed, the way back was the same line set to `:17`: CNPG restarts on
+the old major, because the upgrade does not modify the old data.
+
 ## Not covered
 
 - **Emptying a database that has players.** There is no task for it, on
   purpose: a restore replaces everything, and the moment somebody wants that for
   the office is a decision to make by hand, after a verified backup.
-- **The Kubernetes cluster's major.** homerun2-test1 still runs 17. It holds no
-  office data, so whether it moves to 18 or goes away is open.
+- **The catalog default.** `apps/schmetterpause/install` in
+  `stuttgart-things/argocd` still defaults to PostgreSQL 17, so a new PR
+  preview starts on 17. Raising it moves every consumer without an override at
+  once, which makes it a change of its own.
