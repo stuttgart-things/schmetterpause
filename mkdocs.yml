@@ -70,3 +70,4 @@ nav:
       - Plattform-Voraussetzungen: platform.md
       - Deployment ohne GitOps: deployment.md
       - Preview-Umgebungen: preview-environments.md
+      - Spieldaten sichern und umziehen: backup-restore.md
