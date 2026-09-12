@@ -74,6 +74,11 @@ run "defaults_mirror_kcl" {
   }
 
   assert {
+    condition     = azurerm_container_app_environment.this.logs_destination == "log-analytics"
+    error_message = "Container logs must go to the Log Analytics workspace; without logs_destination azurerm 5 streams them only."
+  }
+
+  assert {
     condition = { for e in azurerm_container_app.this.template[0].container[0].env : e.name => e.secret_name if e.secret_name != null } == {
       SP_DATABASE_URL = "database-url"
       SP_SESSION_KEY  = "session-key"
