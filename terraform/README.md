@@ -17,7 +17,7 @@ Everything lives in one resource group, `<name_prefix>-rg`.
 | --- | --- |
 | Log Analytics workspace | container logs, 30 days |
 | Container Apps environment | |
-| PostgreSQL Flexible Server | Burstable B1ms, version 17, TLS required, 7 days of backups, public access through the "allow Azure services" rule |
+| PostgreSQL Flexible Server | Burstable B1ms, TLS required, public access through the "allow Azure services" rule; major version and backup retention as set in `schmetterpause.auto.tfvars` |
 | Container app `<name_prefix>-app` | external HTTPS, exactly one replica, `migrate up` as init container, liveness on `/healthz`, readiness on `/readyz` |
 
 No Redis (invariant 3).
