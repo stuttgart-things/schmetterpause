@@ -76,6 +76,11 @@ func (s *Server) routes() http.Handler {
 	// nothing else.
 	mux.HandleFunc("GET /healthz", s.handleHealthz)
 	mux.HandleFunc("GET /readyz", s.handleReadyz)
+	// Which build is answering, in one line. Beside the probes because it is
+	// the same kind of thing — a question about the process rather than about
+	// the office — and outside the auth middleware for the same reason they
+	// are: whatever asks is a monitor, not a player (issue #229).
+	mux.HandleFunc("GET /version", s.handleVersion)
 
 	mux.Handle("GET /static/", staticHandler())
 

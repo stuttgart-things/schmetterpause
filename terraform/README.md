@@ -18,7 +18,7 @@ Everything lives in one resource group, `<name_prefix>-rg`.
 | Log Analytics workspace | container logs, 30 days |
 | Container Apps environment | |
 | PostgreSQL Flexible Server | Burstable B1ms, TLS required, public access through the "allow Azure services" rule; major version and backup retention as set in `schmetterpause.auto.tfvars` |
-| Container app `<name_prefix>-app` | external HTTPS, exactly one replica, `migrate up` as init container, liveness on `/healthz`, readiness on `/readyz` |
+| Container app `<name_prefix>-app` | external HTTPS, exactly one replica, `migrate up` as init container, liveness on `/healthz`, readiness on `/readyz`, the running release on `/version` |
 
 No Redis (invariant 3).
 
@@ -71,6 +71,7 @@ Checking:
 url=$(terraform -chdir=terraform output -raw app_url)
 curl -sSI "${url}/healthz"   # 200
 curl -sSI "${url}/readyz"    # 200 once the database answers
+curl -sS  "${url}/version"   # which release this revision is
 ```
 
 `task tf:check` runs `terraform fmt`, `terraform validate` and the tests in

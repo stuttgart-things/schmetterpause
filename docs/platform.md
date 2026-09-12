@@ -71,8 +71,11 @@ there is no external identity provider and no outbound API.
 
 **Operational surface.** Logs are JSON on stdout. `SIGTERM` drains in-flight
 requests for `SP_SHUTDOWN_TIMEOUT` (15s by default). The liveness probe is
-`/healthz` and the readiness probe `/readyz`, which checks the database. There
-is no metrics endpoint.
+`/healthz` and the readiness probe `/readyz`, which checks the database.
+`/version` answers the version this binary was built as, one line of plain
+text and nothing else, so "is this environment running the newest release" can
+be asked without parsing the `/info` page (issue #229). None of the three needs
+a session. There is no metrics endpoint.
 
 ## Exposure: Gateway API
 

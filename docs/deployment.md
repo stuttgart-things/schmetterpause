@@ -306,6 +306,7 @@ kubectl -n schmetterpause get po
 kubectl -n schmetterpause get httproute schmetterpause -o yaml | sed -n '/^status:/,$p'
 
 curl -sSI https://schmetterpause.cicd-test2.4sthings.tiab.ssc.sva.de/healthz   # 200
+curl -sS  https://schmetterpause.cicd-test2.4sthings.tiab.ssc.sva.de/version   # the release running here
 curl -sSI http://schmetterpause.cicd-test2.4sthings.tiab.ssc.sva.de/           # 301
 ```
 
