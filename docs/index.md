@@ -7,10 +7,18 @@ Ligen, Turniere und Buchungen an der Platte.
 Diese Seiten sind die Dokumentation zum Projekt. Der Code liegt auf
 [GitHub](https://github.com/stuttgart-things/schmetterpause).
 
+![Die Startseite: was gerade läuft, was auf eine Bestätigung wartet, und das
+Formular für ein Ergebnis](images/start.png)
+
+Die übrigen Seiten stehen unter [Bildschirme](bildschirme.md).
+
 ## Wo anfangen
 
 Je nachdem, warum jemand hier gelandet ist:
 
+- **Wie sieht das aus?** [Bildschirme](bildschirme.md) zeigt jede Seite der
+  App an einem Demo-Datenbestand — Startseite, Turnier, Rangliste, Profil,
+  Kiosk, Aushang, und dasselbe auf dem Handy.
 - **Ein Abend an der Platte steht an.** [Turnier vor Ort](turnier-vor-ort.md)
   ist die Anleitung dafür: ein Laptop für alle, ein QR-Code an der Wand, alle
   tragen vom eigenen Handy ein. Lesbar auch im Stehen, während die ersten

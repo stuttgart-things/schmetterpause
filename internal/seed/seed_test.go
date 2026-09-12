@@ -10,6 +10,7 @@ import (
 	"github.com/stuttgart-things/schmetterpause/internal/domain"
 	"github.com/stuttgart-things/schmetterpause/internal/repository/postgres"
 	"github.com/stuttgart-things/schmetterpause/internal/seed"
+	"github.com/stuttgart-things/schmetterpause/internal/tournament"
 )
 
 // Like the repository suite, these need a real database and run only when
@@ -151,6 +152,68 @@ func TestTheUnsettledScreensAreNotEmpty(t *testing.T) {
 		}
 		if count == 0 {
 			t.Error("the opponent is not asked to confirm the pending match")
+		}
+	}
+}
+
+// TestTheTournamentScreensAreNotEmpty is the reason the fixture opens a
+// bracket. The notice at the top of the start page, the tournament list and
+// the draw are all empty without one — and a table of zeroes says as little
+// about a table as an empty ranking does about a ranking.
+func TestTheTournamentScreensAreNotEmpty(t *testing.T) {
+	store, ctx := newStore(t)
+
+	summary, err := seed.Run(ctx, store, reference)
+	if err != nil {
+		t.Fatalf("Run(): %v", err)
+	}
+	if summary.Tournaments == 0 {
+		t.Fatal("the fixture opened no tournament")
+	}
+	if summary.TournamentPlayed == 0 {
+		t.Error("the tournament has no results, so its table is all zeroes")
+	}
+
+	tours, err := store.Tournaments().List(ctx, 10)
+	if err != nil {
+		t.Fatalf("List(): %v", err)
+	}
+	if len(tours) != summary.Tournaments {
+		t.Fatalf("%d tournaments in the database, Run() reported %d", len(tours), summary.Tournaments)
+	}
+
+	tour := tours[0]
+	if !tour.Open() {
+		t.Error("the tournament is closed, so nothing is 'running' anywhere")
+	}
+
+	booked, err := store.Tournaments().Matches(ctx, tour.ID)
+	if err != nil {
+		t.Fatalf("Matches(): %v", err)
+	}
+	if len(booked) != summary.TournamentPlayed {
+		t.Errorf("%d matches are booked to it, Run() reported %d", len(booked), summary.TournamentPlayed)
+	}
+
+	// Not everything: a draw with every pairing played offers no entry form,
+	// which is half of what the schedule is for.
+	if len(booked) >= tournament.Matches(len(tour.Players), tour.Format.Legs(), tour.WithFinal) {
+		t.Error("every pairing is played, so the schedule offers nothing to enter")
+	}
+
+	for _, m := range booked {
+		switch {
+		case m.Status != domain.MatchConfirmed:
+			t.Errorf("a tournament match is %q — the kiosk settles at once", m.Status)
+		case m.EnteredVia != domain.EnteredViaKiosk:
+			t.Errorf("entered_via = %q, want kiosk: somebody stood at the table", m.EnteredVia)
+		case m.TournamentRound == nil:
+			t.Error("a tournament match knows no round, so the schedule cannot place it")
+		}
+		// And whoever wrote it down is not playing in it, which is the rule
+		// the kiosk enforces and a fixture must not quietly break.
+		if m.ReportedBy == m.HomeID || m.ReportedBy == m.AwayID {
+			t.Error("the result was credited to somebody playing in it")
 		}
 	}
 }

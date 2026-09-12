@@ -235,7 +235,9 @@ func seedDemo(ctx context.Context) error {
 		"players", summary.Players,
 		"confirmed", summary.Confirmed,
 		"pending", summary.Pending,
-		"disputed", summary.Disputed)
+		"disputed", summary.Disputed,
+		"tournaments", summary.Tournaments,
+		"tournament_played", summary.TournamentPlayed)
 	return nil
 }
 

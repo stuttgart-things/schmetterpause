@@ -82,6 +82,8 @@ Die Ausgabe nennt vier Adressen:
   für zwölf Stunden. Das Token steht in keiner Antwort mehr, es wird nur gegen
   ein signiertes Cookie getauscht.
 
+![Der Aushang mit QR-Code und den drei Schritten](images/qr.png)
+
 Der Aushang ist zum Drucken gemacht: schwarz auf weiß, der Code groß genug, um
 aus Armlänge gescannt zu werden. Menü → Drucken reicht, es gibt bewusst keinen
 Knopf dafür.
@@ -154,6 +156,9 @@ Ab da trägt ein Cookie die Freischaltung, **zwölf Stunden lang** — das Token
 selbst steht in keiner Antwort mehr. Neu laden, Tab schließen, Seite wechseln:
 alles unproblematisch. Ein anderes Gerät bekommt auf `/kiosk` eine **403**,
 solange es den Link mit Token nicht selbst geöffnet hat.
+
+![Die Kioskseite: wer eintippt, die offenen Turniere, das Eingabeformular und
+die Rangliste](images/kiosk.png)
 
 **Danach fragt der Kiosk: wer trägt ein?** Eine Auswahl aus der Spielerliste,
 und erst danach zeigt die Seite überhaupt Felder zum Tippen. Der Grund steht
