@@ -732,6 +732,17 @@ tasks:
         vars: { SERVICES: db }
       - go run ./cmd/schmetterpause migrate up
 
+  seed:
+    desc: "Fill the local database with the demo field (previews and screenshots)"
+    env:
+      SP_DATABASE_URL: '{{.DSN}}'
+    cmds:
+      - task: compose:up
+        vars: { SERVICES: db }
+      # Refuses a database that already has players, so this cannot be run
+      # over an evening's results by accident — see internal/seed.
+      - go run ./cmd/schmetterpause seed
+
   migrate:status:
     desc: "Show the migration state"
     env:
@@ -752,10 +763,14 @@ tasks:
       SP_TEST_DATABASE_URL: '{{.DSN_TEST}}'
     cmds:
       - task: test:database
-      # -p 1: both suites talk to the same database and empty it between
+      # -p 1: the suites talk to the same database and empty it between
       # tests, so running the packages concurrently has them migrating and
       # truncating over each other.
-      - go test -race -count=1 -p 1 ./internal/repository/... ./internal/scoring/...
+      #
+      # internal/seed is in the list because it is one of them: its tests skip
+      # themselves without the DSN, so leaving it out meant they ran nowhere —
+      # not in the unit stage, which has no database, and not here.
+      - go test -race -count=1 -p 1 ./internal/repository/... ./internal/scoring/... ./internal/seed/...
 
   test:database:
     desc: "Create the database the integration tests empty, if it is not there"
