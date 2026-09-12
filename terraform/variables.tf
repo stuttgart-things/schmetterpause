@@ -198,10 +198,12 @@ variable "postgres_password" {
 }
 
 # kcl: dbImage (ghcr.io/cloudnative-pg/postgresql:18)
-# NOT the same major yet: schmetterpause.auto.tfvars still sets 17. Moving an
-# existing Flexible Server is a major-version upgrade of its data and needs the
-# region to offer 18, so it is a decision of its own, not a side effect of the
-# kcl default (#213).
+#
+# Moved from 17 to 18 on 2026-09-12, while no Azure instance existed, so the
+# next apply creates the server on 18 instead of upgrading data in place.
+# Changing this while a server runs is a major-version upgrade of that server
+# and a decision of its own — dump first (docs/backup-restore.md), then
+# destroy and apply, rather than letting Terraform try it (#213).
 variable "postgres_version" {
   description = "PostgreSQL major version. One major across Compose, Kubernetes and Azure is what lets a dump move between them (docs/adr/0016, #213)."
   type        = string
