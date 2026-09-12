@@ -37,8 +37,10 @@ go.work.sum
 # Task state files
 /.task/
 
-# Database dumps from an evening at the table
+# Database dumps from an evening at the table, and the row counts task db:dump
+# writes next to each one. Both hold player data.
 /schmetterpause-*.sql
+/schmetterpause-*.sql.counts
 
 # kcl regenerates this on every render and it stays empty while the module has
 # no dependencies. Nothing to pin, nothing to review.

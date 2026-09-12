@@ -525,6 +525,37 @@ tasks:
           --password env:GITHUB_TOKEN
     silent: true
 
+  # ------------------------------------------------------------ Data (db:*)
+  # One dump format for Compose, Kubernetes and Azure, and one way back in
+  # (docs/adr/0016, docs/backup-restore.md). The logic lives in scripts/db.sh,
+  # so the three environments share one implementation instead of drifting
+  # apart as three blocks of YAML.
+
+  db:dump:
+    desc: "Dump the game database into schmetterpause-<env>-<time>.sql (ENV=compose|kubernetes|azure)"
+    requires:
+      vars: [ENV]
+    env:
+      NAMESPACE: '{{.NAMESPACE | default "schmetterpause"}}'
+      DB_CLUSTER: '{{.DB_CLUSTER | default "schmetterpause-db"}}'
+      TF_DIR: '{{.TF_DIR}}'
+    cmds:
+      - sh scripts/db.sh dump "{{.ENV}}"
+    silent: true
+
+  db:restore:
+    desc: "Restore FILE into a database without players (ENV=compose|kubernetes|azure)"
+    requires:
+      vars: [ENV, FILE]
+    env:
+      NAMESPACE: '{{.NAMESPACE | default "schmetterpause"}}'
+      DB_CLUSTER: '{{.DB_CLUSTER | default "schmetterpause-db"}}'
+      APP_DEPLOYMENT: '{{.APP_DEPLOYMENT | default "schmetterpause"}}'
+      TF_DIR: '{{.TF_DIR}}'
+    cmds:
+      - sh scripts/db.sh restore "{{.ENV}}" "{{.FILE}}"
+    silent: true
+
   # ---------------------------------------------------------- Azure (tf:*)
   # Extra flags pass through after `--`, e.g. `task tf:apply -- -auto-approve`.
 
