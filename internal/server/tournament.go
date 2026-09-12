@@ -664,6 +664,74 @@ func (s *Server) openTournaments(ctx context.Context) ([]templates.TournamentLis
 	return rows, nil
 }
 
+// handleRunningFragment serves the start page's tournament notice on its own,
+// for the poll that makes it turn up without a reload.
+func (s *Server) handleRunningFragment(w http.ResponseWriter, r *http.Request) {
+	view, err := s.runningTournamentsView(r.Context())
+	if err != nil {
+		s.log.ErrorContext(r.Context(), "loading the running tournaments failed", "error", err)
+		// User-facing text stays German; see CLAUDE.md. HTMX leaves what is
+		// on the page alone on a 5xx, so a failed poll shows the previous
+		// notice rather than blanking it.
+		http.Error(w, "Turniere nicht verfügbar", http.StatusInternalServerError)
+		return
+	}
+	s.render(w, r, templates.RunningTournamentsBody(view))
+}
+
+// runningTournamentsView is what the start page says about tournaments: the
+// open ones, and whether the reader is in them.
+//
+// It reads the same list the tournaments page reads and decides "am I in it"
+// here, rather than asking the store a question of its own. The field is
+// already on the tournament the repository returns, and an office has a
+// handful of open tournaments at most — a query per reader would buy nothing
+// and would put a second definition of the same answer in the database.
+func (s *Server) runningTournamentsView(ctx context.Context) (templates.RunningTournamentsView, error) {
+	tours, err := s.store.Tournaments().List(ctx, tournamentListLimit)
+	if err != nil {
+		return templates.RunningTournamentsView{}, fmt.Errorf("list tournaments: %w", err)
+	}
+
+	self, _ := auth.PlayerID(ctx)
+
+	var view templates.RunningTournamentsView
+	for _, t := range tours {
+		if !t.Open() {
+			continue
+		}
+		row, err := s.tournamentRowWithProgress(ctx, t)
+		if err != nil {
+			return templates.RunningTournamentsView{}, err
+		}
+		view.Rows = append(view.Rows, templates.RunningTournamentRow{
+			ID:      row.ID,
+			Name:    row.Name,
+			Mine:    self != uuid.Nil && slices.Contains(t.Players, self),
+			Players: row.Players,
+			Matches: row.Matches,
+			Played:  row.Played,
+			Mode:    row.Mode,
+			Rated:   row.Rated,
+		})
+	}
+
+	// The reader's own first. Stable, so the store's order — newest first —
+	// still decides within each group, and a reader in none of them sees the
+	// list exactly as the tournaments page has it.
+	slices.SortStableFunc(view.Rows, func(a, b templates.RunningTournamentRow) int {
+		switch {
+		case a.Mine == b.Mine:
+			return 0
+		case a.Mine:
+			return -1
+		default:
+			return 1
+		}
+	})
+	return view, nil
+}
+
 // slot identifies one place in the draw: which round, and which pair. Two
 // legs put the same pair in two rounds, and a final puts a pair that already
 // met into a round of its own — the pair alone stopped being a key with

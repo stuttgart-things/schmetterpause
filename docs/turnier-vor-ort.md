@@ -74,7 +74,8 @@ task office:up
 
 Die Ausgabe nennt vier Adressen:
 
-- die Startseite mit Rangliste und Ergebniseingabe,
+- die Startseite mit Rangliste, Ergebniseingabe und dem Hinweis, welches
+  Turnier gerade läuft und wer darin steht,
 - `/qr` — der Aushang zum Ausdrucken und Ankleben,
 - `/rules` — die Hausregeln, derselbe Aushang in Worten,
 - `/kiosk?token=…` — einmal am Laptop öffnen, danach merkt sich der Browser das

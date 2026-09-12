@@ -59,15 +59,15 @@ func (s *Server) handleStandingsFragment(w http.ResponseWriter, r *http.Request)
 // handleRefresh brings the start page up to date in one request.
 //
 // Everything it returns is swapped out of band, so the caller needs no target:
-// the ranking, the results waiting on the reader, and the badge in the top
-// bar. Those are exactly the three things that change because somebody *else*
-// did something, and until this existed none of them moved without a reload —
-// the badge polls, but the list under it did not, so the bar could say one
-// result was waiting while the page below showed nothing.
+// the ranking, what is on at the table, the results waiting on the reader, and
+// the badge in the top bar. Those are exactly the things that change because
+// somebody *else* did something, and until this existed none of them moved
+// without a reload — the badge polls, but the list under it did not, so the
+// bar could say one result was waiting while the page below showed nothing.
 //
-// Signed out, only the ranking is refreshed. There is nothing waiting on a
-// reader nobody is recognised as, and asking for it would need a player id
-// that does not exist.
+// Signed out, the ranking and the tournament notice are refreshed and nothing
+// else. There is nothing waiting on a reader nobody is recognised as, and
+// asking for it would need a player id that does not exist.
 func (s *Server) handleRefresh(w http.ResponseWriter, r *http.Request) {
 	table, err := s.standingsView(r.Context())
 	if err != nil {
@@ -77,6 +77,20 @@ func (s *Server) handleRefresh(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.render(w, r, templates.StandingsOOB(table))
+
+	// What is on at the table, refreshed along with the rest and before the
+	// signed-out return: an open tournament is public, and somebody who is
+	// not recognised is exactly who is standing in front of the machine
+	// wondering whether the evening has started.
+	//
+	// Logged rather than fatal, for the same reason as on the start page: the
+	// ranking is already on its way, and a notice that did not load must not
+	// turn a refresh that worked into a failure.
+	if running, err := s.runningTournamentsView(r.Context()); err != nil {
+		s.log.ErrorContext(r.Context(), "loading the running tournaments failed", "error", err)
+	} else {
+		s.render(w, r, templates.RunningTournamentsOOB(running))
+	}
 
 	self, ok := auth.PlayerID(r.Context())
 	if !ok {

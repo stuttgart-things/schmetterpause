@@ -302,7 +302,7 @@ h1 {
 
 /* --- Karten ------------------------------------------------------------ */
 
-.session, .match, .pending, .standings, .stat, .status {
+.session, .match, .pending, .running, .standings, .stat, .status {
 	margin: 0 0 1rem;
 	padding: 1.1rem 1.25rem;
 	background: var(--card);
@@ -1503,6 +1503,32 @@ tr.self td { background: color-mix(in srgb, var(--accent) 8%, transparent); }
 /* Two ends, two short words. Wide enough for "Fenster" and no wider — the
    row is a setting, not a sentence. */
 .side-name { width: 7rem; }
+
+/* --- Was gerade läuft ---------------------------------------------------- */
+
+/* The start page's notice that something is on. A card like the others, with
+   one difference: when the reader is in the draw it takes the accent edge the
+   recovery code has, because both are things the page is telling somebody
+   rather than things somebody came to read. */
+.running h2 {
+	margin: 0 0 0.6rem;
+}
+
+.running-mine { border-left: 3px solid var(--accent); }
+
+/* Inside a card the list has nothing above it to keep its distance from. */
+.running .tournament-list { margin: 0; }
+
+/* The mark on the reader's own row. Mono and small, like .side and .unrated:
+   it is a label on a name, not a second name. Coloured, unlike those two,
+   because it is the one word the section exists to show. */
+.you {
+	font-family: var(--font-mono);
+	font-size: 0.72rem;
+	letter-spacing: 0.06em;
+	text-transform: uppercase;
+	color: var(--accent-text);
+}
 
 .tournament-list { list-style: none; padding: 0; }
 .tournament-list li { display: flex; flex-wrap: wrap; gap: 0.6rem; align-items: baseline; padding: 0.3rem 0; }
