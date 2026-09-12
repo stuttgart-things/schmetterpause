@@ -334,7 +334,7 @@ azure_upload() {
 	AZURE_STORAGE_ACCOUNT=$storage AZURE_STORAGE_KEY=$storage_key \
 		az storage share create --name dump -o none
 	AZURE_STORAGE_ACCOUNT=$storage AZURE_STORAGE_KEY=$storage_key \
-		az storage file upload --share-name dump --source "$1" --path dump.sql -o none
+		az storage file upload --share-name dump --source "$1" --path dump.sql --no-progress -o none
 }
 
 azure_restore_from() {
