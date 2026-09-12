@@ -31,8 +31,10 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/stuttgart-things/schmetterpause/internal/domain"
+	"github.com/stuttgart-things/schmetterpause/internal/match"
 	"github.com/stuttgart-things/schmetterpause/internal/repository"
 	"github.com/stuttgart-things/schmetterpause/internal/scoring"
+	"github.com/stuttgart-things/schmetterpause/internal/tournament"
 )
 
 // ErrNotEmpty is the refusal to seed a database that already holds players.
@@ -50,6 +52,10 @@ type Summary struct {
 	Confirmed int
 	Pending   int
 	Disputed  int
+	// Tournaments is how many brackets the fixture left open, and
+	// TournamentMatches how many of their pairings are already played.
+	Tournaments      int
+	TournamentPlayed int
 }
 
 // player is one entry of the field.
@@ -105,6 +111,44 @@ var results = []result{
 	// Contested, which is the only state where both participants are offered
 	// a correction.
 	{home: 5, away: 2, sets: [][2]int{{11, 8}, {11, 6}}, daysAgo: 1, state: domain.MatchDisputed},
+}
+
+// The evening: an open tournament with its first round played and the rest
+// still to come.
+//
+// It is here for the same reason two of the twelve results are left
+// unsettled. Without a tournament a preview shows an empty notice on the start
+// page — the card at the top of it — an empty tournament list and no draw at
+// all, so a change to any of the three is invisible in exactly the place it
+// is reviewed. And a tournament with nothing played shows a table of zeroes,
+// which says as little about the table as an empty ranking does.
+const tournamentName = "Mittwochsturnier"
+
+// tournamentField is who plays it, by index into field. Four of the six, so
+// the list also shows what a player outside the draw sees — and so there is
+// somebody left to write the results down.
+var tournamentField = []int{2, 0, 4, 1}
+
+// tournamentScorer is who types at the table, by index into field. Somebody
+// outside the draw, which is what the kiosk insists on: you may not enter a
+// match you are playing in yourself.
+const tournamentScorer = 5
+
+// tournamentSides are the ends of the table for this one (docs/adr/0013).
+// Named rather than "A" and "B", because the pair that is worth showing is
+// the one somebody actually types.
+const (
+	tournamentSideA = "Fenster"
+	tournamentSideB = "Tür"
+)
+
+// tournamentPlayed are the results of the first round, in the order the draw
+// produces its pairings. The rounds they are booked into are not written down
+// here: they come from tournament.Draw, the same function the page draws the
+// schedule with, so a result cannot end up in a slot it was not played in.
+var tournamentPlayed = [][][2]int{
+	{{11, 8}, {9, 11}, {11, 7}},
+	{{11, 6}, {11, 9}},
 }
 
 // Run writes the fixture. now is the reference the match dates count back
@@ -178,5 +222,81 @@ func Run(ctx context.Context, store repository.Store, now time.Time) (Summary, e
 		}
 	}
 
+	played, err := runTournament(ctx, store, ids, now)
+	if err != nil {
+		return Summary{}, err
+	}
+	summary.Tournaments, summary.TournamentPlayed = 1, played
+
 	return summary, nil
+}
+
+// runTournament opens the bracket and plays its first round, and reports how
+// many of its pairings that was.
+//
+// The results go through scoring.Record — the kiosk's path — rather than
+// through a confirmation. That is what happened at the table: somebody stood
+// there and wrote it down, so there is nobody left to ask, and the row says
+// so in entered_via. A fixture that recorded them as self-reported would put
+// a tournament evening back inside the measurement issue #71 took it out of.
+func runTournament(
+	ctx context.Context, store repository.Store, ids []uuid.UUID, now time.Time,
+) (int, error) {
+	field := make([]uuid.UUID, 0, len(tournamentField))
+	for _, i := range tournamentField {
+		field = append(field, ids[i])
+	}
+
+	mode := match.Mode{BestOf: 3, PointsToWin: match.PointsToEleven}
+
+	created, err := store.Tournaments().Create(ctx, domain.Tournament{
+		Name:        tournamentName,
+		Format:      domain.TournamentRoundRobin,
+		Status:      domain.TournamentOpen,
+		CreatedBy:   field[0],
+		BestOf:      mode.BestOf,
+		PointsToWin: mode.PointsToWin,
+		Rated:       true,
+		SideA:       tournamentSideA,
+		SideB:       tournamentSideB,
+		Players:     field,
+	})
+	if err != nil {
+		return 0, fmt.Errorf("creating the tournament: %w", err)
+	}
+
+	// The draw is a function of the stored order, so the schedule is asked
+	// for rather than assumed. The first round is what gets played.
+	rounds := tournament.Draw(created.Players, created.Format.Legs())
+	if len(rounds) == 0 {
+		return 0, fmt.Errorf("the tournament field of %d produced no draw", len(field))
+	}
+	first := rounds[0]
+
+	// Yesterday, so the evening reads as one that is still running rather
+	// than as one somebody forgot to close months ago.
+	playedAt := now.AddDate(0, 0, -1)
+
+	played := 0
+	for i, sets := range tournamentPlayed {
+		if i >= len(first.Pairings) {
+			return 0, fmt.Errorf("result %d has no pairing in round 1", i+1)
+		}
+		pairing := first.Pairings[i]
+
+		result := match.Result{Mode: mode, Sets: make([]match.Set, 0, len(sets))}
+		for _, s := range sets {
+			result.Sets = append(result.Sets, match.Set{Home: s[0], Away: s[1]})
+		}
+
+		round := first.No
+		if _, err := scoring.Record(ctx, store, pairing.Home, pairing.Away, result,
+			domain.EnteredViaKiosk, &created.ID, &round, ids[tournamentScorer], playedAt,
+		); err != nil {
+			return 0, fmt.Errorf("recording tournament match %d: %w", i+1, err)
+		}
+		played++
+	}
+
+	return played, nil
 }
