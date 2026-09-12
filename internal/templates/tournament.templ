@@ -70,6 +70,84 @@ templ tournamentRows(rows []TournamentListRow) {
 	</ul>
 }
 
+// RunningTournaments is the start page's notice that something is on, and
+// that the reader is in it.
+//
+// It is here rather than only under /tournaments because of how somebody
+// joins a draw: another player ticks their name, and nothing on the page they
+// actually open says so. A list one navigation step away is not a notice.
+//
+// The container polls, like the badge in the top bar and for the same reason:
+// a phone lying on the table beside the plate should show the tournament that
+// was just started on it, not on the next reload nobody had a reason to make.
+templ RunningTournaments(v RunningTournamentsView) {
+	<section
+		id="running"
+		hx-get="/fragments/running"
+		hx-trigger="every 60s"
+		hx-target="this"
+		hx-swap="innerHTML"
+	>
+		@runningBody(v)
+	</section>
+}
+
+// RunningTournamentsOOB refreshes the section from a response that did
+// something else — the same one that brings the ranking and the waiting
+// results up to date.
+//
+// innerHTML rather than a whole-element swap, so the polling attributes on
+// the container survive it. Same reason as WhoamiOOB.
+templ RunningTournamentsOOB(v RunningTournamentsView) {
+	<section id="running" hx-swap-oob="innerHTML">
+		@runningBody(v)
+	</section>
+}
+
+// RunningTournamentsBody is what the poll swaps in: the contents, without the
+// element carrying the polling attributes.
+templ RunningTournamentsBody(v RunningTournamentsView) {
+	@runningBody(v)
+}
+
+// runningBody renders nothing at all when nothing is open, which leaves the
+// empty section in the document for the swaps above to aim at — the same
+// shape the waiting results use.
+templ runningBody(v RunningTournamentsView) {
+	if v.Any() {
+		<div class={ "running", templ.KV("running-mine", v.Mine()) }>
+			<h2>
+				if v.Mine() {
+					Du bist dabei
+				} else {
+					Läuft gerade
+				}
+			</h2>
+			<ul class="tournament-list">
+				for _, t := range v.Rows {
+					<li>
+						<a href={ templ.SafeURL("/tournaments/" + t.ID) }>{ t.Name }</a>
+						if t.Mine {
+							// The one word this section exists for. It reads
+							// as a mark on the row rather than as a second
+							// name, which is what the mono styling is for.
+							<span class="you">du spielst mit</span>
+						}
+						<span class="muted">
+							{ strconv.Itoa(t.Players) } Spieler,
+							{ strconv.Itoa(t.Played) } von { strconv.Itoa(t.Matches) } Spielen
+							&middot; { t.Mode }
+						</span>
+						if !t.Rated {
+							<span class="unrated">ohne Wertung</span>
+						}
+					</li>
+				}
+			</ul>
+		</div>
+	}
+}
+
 // tournamentForm starts a tournament: a name and a set of ticks.
 //
 // Checkboxes rather than a multi-select, because this is read and operated on

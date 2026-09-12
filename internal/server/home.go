@@ -97,6 +97,17 @@ func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// What is being played right now, whoever is reading. A failure here is
+	// logged and leaves the section empty rather than taking the page down:
+	// the start page's job is entering a result, and a tournament notice
+	// that could not be loaded must not stand in the way of it.
+	running, err := s.runningTournamentsView(r.Context())
+	if err != nil {
+		s.log.ErrorContext(r.Context(), "loading the running tournaments failed", "error", err)
+	} else {
+		view.Tournaments = running
+	}
+
 	// Result entry needs somebody to attribute the report to, so it appears
 	// only once the browser is recognised.
 	if self, ok := auth.PlayerID(r.Context()); ok {

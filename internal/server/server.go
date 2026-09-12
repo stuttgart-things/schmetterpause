@@ -91,6 +91,11 @@ func (s *Server) routes() http.Handler {
 	page.HandleFunc("GET /standings", s.handleStandings)
 	page.HandleFunc("GET /fragments/standings", s.handleStandingsFragment)
 	page.HandleFunc("GET /fragments/refresh", s.handleRefresh)
+	// What is on at the table, for the start page's own slow poll. Not
+	// behind a player check: an open tournament is public on /tournaments,
+	// and a reader nobody is recognised as simply sees no row marked as
+	// theirs.
+	page.HandleFunc("GET /fragments/running", s.handleRunningFragment)
 	page.HandleFunc("GET /players/{id}", s.handleProfile)
 	page.HandleFunc("POST /players", s.handleJoin)
 	// The way back for a browser that lost its cookie (issue #70). Both

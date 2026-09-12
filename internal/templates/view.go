@@ -210,6 +210,14 @@ type IndexView struct {
 	// form that still works.
 	SignIn     SignInView
 	ShowSignIn bool
+	// Tournaments is what is being played right now.
+	//
+	// It belongs here because of what it answers. Being put into a draw is
+	// something that happens *to* somebody, and until this existed the only
+	// way to find out was to open /tournaments and read the list — so the
+	// one person who never learned that a tournament had started was the
+	// player somebody had just added to it.
+	Tournaments RunningTournamentsView
 }
 
 // SessionView drives the join form and the signed-in notice. Both render into
@@ -961,6 +969,55 @@ type TournamentListRow struct {
 	// Empty marks a tournament nobody has played in. Only those can be
 	// deleted, so only those offer it.
 	Empty bool
+}
+
+// RunningTournamentsView is the start page's answer to "is anything on right
+// now, and am I in it".
+//
+// A type of its own rather than the list page's, because what belongs on the
+// start page is a different subset: the open ones and the reader's place in
+// them, without the form, the finished evenings or the delete buttons.
+type RunningTournamentsView struct {
+	// Rows are the open tournaments, the reader's own first.
+	Rows []RunningTournamentRow
+}
+
+// Any reports whether there is anything to show. Nothing renders no card at
+// all: a line saying "kein Turnier" would be one to read past every day of
+// the year on which there is none, which is most of them.
+func (v RunningTournamentsView) Any() bool { return len(v.Rows) > 0 }
+
+// Mine reports whether the reader is in any of them, which decides how the
+// section introduces itself. "Läuft gerade" is news about the office; "Du
+// bist dabei" is news about the reader, and only the second one is what the
+// section was added for.
+func (v RunningTournamentsView) Mine() bool {
+	for _, row := range v.Rows {
+		if row.Mine {
+			return true
+		}
+	}
+	return false
+}
+
+// RunningTournamentRow is one open tournament as the start page shows it.
+type RunningTournamentRow struct {
+	ID   string
+	Name string
+	// Mine marks a tournament the reader is in.
+	Mine bool
+	// Players, Matches and Played are the size of the thing and how far it
+	// got — enough to tell somebody walking past whether it is about to
+	// start or nearly over.
+	Players int
+	Matches int
+	Played  int
+	// Mode is how it is played, ready to read: "Best of 3, bis 11".
+	Mode string
+	// Rated is whether it moves ratings (docs/adr/0012). On the start page
+	// for the same reason as in the list: it is the difference between two
+	// tournaments that otherwise look alike.
+	Rated bool
 }
 
 // TournamentFormView drives the form that starts a tournament. What was

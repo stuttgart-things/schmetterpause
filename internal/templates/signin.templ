@@ -16,6 +16,14 @@ package templates
 templ SignIn(v SignInView) {
 	<section id="session" class="session">
 		<h2>Anmelden</h2>
+		// Who this card is for, said before the picker rather than left to be
+		// worked out from it. A stranger reading a list of names they are not
+		// on has no way to tell whether they are looking at the wrong card or
+		// at a list they are supposed to add themselves to.
+		<p class="muted">
+			Du stehst schon in der Rangliste, aber dieses Gerät kennt dich
+			nicht: Namen wählen, PIN oder Wiederherstellungscode eintippen.
+		</p>
 		<form hx-post="/signin" hx-target="#session" hx-swap="outerHTML">
 			// Each label sits in its own row. Labels are inline-block by
 			// default, which is what the join form wants — one label, one
@@ -37,18 +45,27 @@ templ SignIn(v SignInView) {
 				<p class="fail" role="alert">{ v.Error }</p>
 			}
 		</form>
-		<p class="session-alt">
-			Noch nicht dabei?
+		// The other door, and the one the first week's feedback said nobody
+		// found: somebody with no player at all arrives at a card asking them
+		// to pick a name that is not there, and the way out of it was a
+		// single underlined word at the bottom.
+		//
+		// So it is a button now, with the sentence above it saying what it
+		// costs. Not two equal choices even so — this one is the outlined
+		// kind and "Anmelden" is the filled one, which is the same order of
+		// weight the underlined word had, at a size somebody can see.
+		<div class="session-alt">
+			<p>Noch gar kein Spieler? Ein Name genügt, mehr wird nicht gefragt.</p>
 			<button
 				type="button"
-				class="linklike"
+				class="secondary"
 				hx-get="/fragments/join"
 				hx-target="#session"
 				hx-swap="outerHTML"
 			>
 				Neu eintragen
 			</button>
-		</p>
+		</div>
 	</section>
 }
 
