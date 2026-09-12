@@ -397,3 +397,121 @@ func TestTheAdminRemovalHasNoClockOnIt(t *testing.T) {
 		t.Errorf("Anna is on %d, want %d", got, domain.DefaultTTR)
 	}
 }
+
+// TestAnAdminRemovesAPlayerWhoNeverPlayed is the small action of issue #105:
+// the joke entry and the duplicate created before anybody played.
+func TestAnAdminRemovesAPlayerWhoNeverPlayed(t *testing.T) {
+	h, store, anna, _ := twoPlayersAndAnAdmin(t)
+
+	// A third browser, so the player being removed is the one holding the
+	// session — their sign-in proof has to go with them.
+	ella := sessionCookie(t, join(t, h, "Ella"))
+	id := opponentID(t, store, "Ella")
+
+	page := getWith(t, h, "/admin", anna).Body.String()
+	for _, want := range []string{"Spieler ohne Ergebnis", "Ella", "/admin/players/" + id + "/remove"} {
+		if !strings.Contains(page, want) {
+			t.Errorf("the page does not offer %q", want)
+		}
+	}
+
+	rec := post(t, h, "/admin/players/"+id+"/remove", anna)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("removing: status %d: %s", rec.Code, rec.Body.String())
+	}
+	if !strings.Contains(rec.Body.String(), "Entfernt: Ella") {
+		t.Errorf("the page does not name who went: %s", rec.Body.String())
+	}
+
+	players, err := store.Players().List(t.Context())
+	if err != nil {
+		t.Fatalf("List(): %v", err)
+	}
+	for _, p := range players {
+		if p.DisplayName == "Ella" {
+			t.Fatal("Ella is still in the roster")
+		}
+	}
+
+	// The cascade: their cookie stops being recognised, because the identity
+	// behind it went with the row. Anything else would leave a browser signed
+	// in as somebody who no longer exists.
+	if body := getWith(t, h, "/", ella).Body.String(); strings.Contains(body, "Hallo, Ella") {
+		t.Errorf("the removed player's browser is still recognised: %s", body)
+	}
+}
+
+// TestRemovingAPlayerWhoPlayedIsRefused: the schema is the authority here,
+// and the refusal has to be a sentence rather than a 500.
+func TestRemovingAPlayerWhoPlayedIsRefused(t *testing.T) {
+	h, store, anna, bodo := twoPlayersAndAnAdmin(t)
+
+	countedMatch(t, h, store, anna, bodo)
+	id := opponentID(t, store, "Bodo")
+
+	// Somebody with a result is not even offered.
+	if page := getWith(t, h, "/admin", anna).Body.String(); strings.Contains(page, "/admin/players/"+id+"/remove") {
+		t.Error("a player who has played is offered for removal")
+	}
+
+	// And asking anyway is refused rather than obeyed: the button is a
+	// shortlist, the foreign keys are the rule.
+	rec := post(t, h, "/admin/players/"+id+"/remove", anna)
+	if rec.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("status %d, want %d: %s", rec.Code, http.StatusUnprocessableEntity, rec.Body.String())
+	}
+	if !strings.Contains(rec.Body.String(), "Wer einmal gespielt hat, bleibt") {
+		t.Errorf("the refusal does not say why: %s", rec.Body.String())
+	}
+	if ttrOfPlayer(t, store, "Bodo") == 0 {
+		t.Error("Bodo lost his rating to a refused removal")
+	}
+}
+
+// TestAnAdminCannotRemoveThemselves: a legitimate delete by the schema's
+// rules — an admin who never played — and a footgun, because the session
+// would outlive the player it names.
+func TestAnAdminCannotRemoveThemselves(t *testing.T) {
+	h, store, anna, _ := twoPlayersAndAnAdmin(t)
+	id := opponentID(t, store, "Anna")
+
+	if page := getWith(t, h, "/admin", anna).Body.String(); strings.Contains(page, "/admin/players/"+id+"/remove") {
+		t.Error("the admin's own row carries a remove button")
+	}
+
+	rec := post(t, h, "/admin/players/"+id+"/remove", anna)
+	if rec.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("status %d, want %d", rec.Code, http.StatusUnprocessableEntity)
+	}
+	players, _ := store.Players().List(t.Context())
+	if len(players) != 2 {
+		t.Errorf("%d players left, want 2", len(players))
+	}
+}
+
+// TestRemovingAPlayerIsBehindTheFlag: nobody confirms this either.
+func TestRemovingAPlayerIsBehindTheFlag(t *testing.T) {
+	h, store, anna, bodo := twoPlayersAndAnAdmin(t)
+	join(t, h, "Ella")
+	id := opponentID(t, store, "Ella")
+
+	for name, tc := range map[string]struct {
+		cookie *http.Cookie
+		want   int
+	}{
+		"a stranger":     {nil, http.StatusUnauthorized},
+		"a plain player": {bodo, http.StatusForbidden},
+	} {
+		if got := post(t, h, "/admin/players/"+id+"/remove", tc.cookie).Code; got != tc.want {
+			t.Errorf("%s gets %d, want %d", name, got, tc.want)
+		}
+	}
+
+	players, _ := store.Players().List(t.Context())
+	if len(players) != 3 {
+		t.Errorf("a refused caller removed somebody: %d players left, want 3", len(players))
+	}
+	if got := post(t, h, "/admin/players/"+id+"/remove", anna).Code; got != http.StatusOK {
+		t.Errorf("the admin gets %d, want 200", got)
+	}
+}

@@ -152,6 +152,9 @@ func (s *Server) routes() http.Handler {
 	// nothing left to edit in a settled match, so the wrong one goes and the
 	// right one is entered normally (issue #105).
 	page.Handle("POST /admin/matches/{id}/remove", admin(http.HandlerFunc(s.handleAdminRemoveMatch)))
+	// The joke entry and the duplicate created before anybody played. The
+	// schema refuses everybody else, which is what keeps this small (#105).
+	page.Handle("POST /admin/players/{id}/remove", admin(http.HandlerFunc(s.handleAdminRemovePlayer)))
 	// Taking a kiosk machine back belongs to somebody, which is what
 	// docs/adr/0008 settled and what issue #77 was waiting for. POST, so a
 	// link nobody meant to follow cannot do it.

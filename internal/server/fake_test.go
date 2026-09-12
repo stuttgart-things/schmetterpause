@@ -2,6 +2,7 @@ package server_test
 
 import (
 	"context"
+	"fmt"
 	"slices"
 	"strings"
 	"sync"
@@ -35,7 +36,7 @@ func newMemStore() *memStore {
 	history := &memHistory{}
 	matches := &memMatches{history: history}
 	players := &memPlayers{matches: matches}
-	return &memStore{
+	store := &memStore{
 		players:     players,
 		identities:  &memIdentities{players: players},
 		credentials: &memCredentials{},
@@ -44,6 +45,14 @@ func newMemStore() *memStore {
 		history:     history,
 		tournaments: &memTournaments{matches: matches},
 	}
+	// What a delete reaches, wired after construction because these point
+	// back at each other. See memPlayers.Delete.
+	players.identities = store.identities
+	players.credentials = store.credentials
+	players.history = history
+	players.tournaments = store.tournaments
+	players.kiosks = store.kiosks
+	return store
 }
 
 func (m *memStore) Ping(context.Context) error                { return m.pingErr }
@@ -65,10 +74,106 @@ func (m *memStore) InTx(_ context.Context, fn func(repository.Store) error) erro
 type memPlayers struct {
 	repository.PlayerRepository
 	// matches lets Records count confirmed results, the same join the
-	// Postgres implementation does in one statement.
+	// Postgres implementation does in one statement — and lets Delete refuse
+	// somebody a match still points at, which is a restriction in the schema
+	// rather than a rule this fake invents.
 	matches *memMatches
-	mu      sync.Mutex
-	rows    []domain.Player
+	// The rest of what a delete touches. Postgres does this with "on delete
+	// cascade" and with foreign keys that have none; here it is by hand, and
+	// it has to stay in step with db/migrations or the fake answers a
+	// question the database would answer differently.
+	identities  *memIdentities
+	credentials *memCredentials
+	history     *memHistory
+	tournaments *memTournaments
+	kiosks      *memKioskGrants
+	mu          sync.Mutex
+	rows        []domain.Player
+}
+
+// Delete mirrors "delete from players where id = $1" under the schema in
+// db/migrations: matches (played or reported) and tournaments (created)
+// reference a player with no cascade and therefore refuse, while identities,
+// credentials, rating history and a place in a tournament field go with them.
+// A kiosk that named them as its operator keeps its row and forgets who was
+// typing — "on delete set null".
+func (p *memPlayers) Delete(_ context.Context, id uuid.UUID) error {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
+	idx := -1
+	for i := range p.rows {
+		if p.rows[i].ID == id {
+			idx = i
+			break
+		}
+	}
+	if idx < 0 {
+		return fmt.Errorf("player %s: %w", id, domain.ErrNotFound)
+	}
+
+	if p.matches != nil {
+		for _, m := range p.matches.all() {
+			if m.HomeID == id || m.AwayID == id || m.ReportedBy == id {
+				return fmt.Errorf("player %s is referenced: %w", id, domain.ErrInUse)
+			}
+		}
+	}
+	if p.tournaments != nil {
+		p.tournaments.mu.Lock()
+		for _, t := range p.tournaments.rows {
+			if t.CreatedBy == id {
+				p.tournaments.mu.Unlock()
+				return fmt.Errorf("player %s is referenced: %w", id, domain.ErrInUse)
+			}
+		}
+		// The field is a cascade, so they simply leave it.
+		for i := range p.tournaments.rows {
+			p.tournaments.rows[i].Players = slices.DeleteFunc(
+				slices.Clone(p.tournaments.rows[i].Players),
+				func(pid uuid.UUID) bool { return pid == id },
+			)
+		}
+		p.tournaments.mu.Unlock()
+	}
+
+	if p.identities != nil {
+		p.identities.mu.Lock()
+		for k, pid := range p.identities.rows {
+			if pid == id {
+				delete(p.identities.rows, k)
+			}
+		}
+		p.identities.mu.Unlock()
+	}
+	if p.credentials != nil {
+		p.credentials.mu.Lock()
+		for k, c := range p.credentials.rows {
+			if c.PlayerID == id {
+				delete(p.credentials.rows, k)
+			}
+		}
+		p.credentials.mu.Unlock()
+	}
+	if p.history != nil {
+		p.history.mu.Lock()
+		p.history.rows = slices.DeleteFunc(p.history.rows, func(c domain.TTRChange) bool {
+			return c.PlayerID == id
+		})
+		p.history.mu.Unlock()
+	}
+	if p.kiosks != nil {
+		p.kiosks.mu.Lock()
+		for i := range p.kiosks.rows {
+			if p.kiosks.rows[i].OperatorID != nil && *p.kiosks.rows[i].OperatorID == id {
+				p.kiosks.rows[i].OperatorID = nil
+			}
+		}
+		p.kiosks.mu.Unlock()
+	}
+
+	p.rows = append(p.rows[:idx], p.rows[idx+1:]...)
+	return nil
 }
 
 // Records mirrors the Postgres aggregate: confirmed matches only, and the
