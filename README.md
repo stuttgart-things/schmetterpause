@@ -5,6 +5,23 @@ Matchmaking-, Liga- und Turnier-App für Büro-Tischtennis.
 Go + templ + HTMX, Postgres, ein Container. Läuft in Docker Compose, Kubernetes
 und Azure Container Apps aus demselben Image.
 
+## Was man sieht
+
+| Startseite | Turnier | Profil |
+|---|---|---|
+| ![Startseite](docs/images/start.png) | ![Turnier](docs/images/turnier.png) | ![Profil](docs/images/profil.png) |
+
+- **Startseite** — was gerade läuft und dich betrifft, was auf deine
+  Bestätigung wartet, und das Formular für ein Ergebnis. In dieser
+  Reihenfolge.
+- **Turnier** — Tabelle und Spielplan auf einer Seite, mit Tischseite und
+  Eintragen-Knopf für die eigenen Paarungen.
+- **Profil** — TTR, wie sie zustande kam, und die Matches dahinter.
+
+Jede Seite einzeln, samt Kiosk, Aushang und Handy-Ansicht:
+[docs/bildschirme.md](docs/bildschirme.md). Die Bilder stammen aus dem
+Demo-Datenbestand, den `task seed` anlegt.
+
 ## Status
 
 Im Aufbau. Aktueller Meilenstein ist der MVP nach `docs/mvp-plan.md`: Ergebnisse
@@ -20,6 +37,7 @@ generierten Teile des Pipeline-Moduls.
 
 ```sh
 task up        # Compose-Umgebung starten (App + Postgres)
+task seed      # Demo-Spieler und -Ergebnisse, damit die Seiten nicht leer sind
 task run       # App lokal gegen die Compose-Datenbank, ohne Container
 task ci        # lint, test, build, verify — identisch zur Pipeline
 task office:setup # .env für einen Abend an der Platte
@@ -45,6 +63,8 @@ Suche, und damit die bessere Adresse für alles, was jemand im Stehen oder auf
 dem Handy liest. Diese Datei bleibt der Einstieg für alle, die das Repository
 ohnehin ausgecheckt haben.
 
+- `docs/bildschirme.md` — jede Seite der App in einem Bild, am
+  Demo-Datenbestand.
 - `CLAUDE.md` — Invarianten, fachliche Begriffe, Konventionen. Vor Änderungen lesen.
 - `docs/mvp-plan.md` — Scope, Datenmodell, Arbeitspakete, Definition of Done.
 - `docs/adr/` — Architekturentscheidungen samt verworfener Alternativen. Der
