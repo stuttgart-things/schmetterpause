@@ -265,5 +265,35 @@ func TestTheAccessSectionIsOnlyOnYourOwnProfile(t *testing.T) {
 		if strings.Contains(body, `hx-post="/credentials/recovery"`) {
 			t.Errorf("%s is offered a recovery code on anna's page", name)
 		}
+		// Nor the heading that introduces the two of them.
+		if strings.Contains(body, "zwei Schlüssel") {
+			t.Errorf("%s is told how anna gets back in", name)
+		}
+	}
+}
+
+// The other half of the feedback: the recovery code and the PIN sat next to
+// each other on the profile with nothing saying which was which. Both cards
+// explain themselves; what was missing is the sentence that tells them apart.
+func TestTheProfileSaysHowTheTwoKeysDiffer(t *testing.T) {
+	h, store, cookie := twoPlayers(t)
+	anna, _ := playerIDs(t, store, "Anna", "Bodo")
+
+	body := fragment(t, h, "/players/"+anna.String(), cookie).Body.String()
+
+	for _, want := range []string{
+		"Zugang", "zwei Schlüssel", "<strong>PIN</strong>",
+		"<strong>Wiederherstellungscode</strong>",
+	} {
+		if !strings.Contains(body, want) {
+			t.Errorf("the access section does not carry %q: %s", want, body)
+		}
+	}
+	// The cards themselves are untouched, and both are still there.
+	if !strings.Contains(body, `hx-post="/credentials/pin"`) {
+		t.Errorf("the PIN form is gone: %s", body)
+	}
+	if !strings.Contains(body, `hx-post="/credentials/recovery"`) {
+		t.Errorf("the way to a fresh recovery code is gone: %s", body)
 	}
 }

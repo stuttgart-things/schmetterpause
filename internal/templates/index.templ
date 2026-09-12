@@ -16,6 +16,10 @@ templ Index(v IndexView) {
 		} else {
 			@Session(v.Session)
 		}
+		// Above the waiting results, because it is news rather than work:
+		// somebody who has just been put into a draw has to see that before
+		// they scroll, and it is gone again the moment the evening is over.
+		@RunningTournaments(v.Tournaments)
 		// Both sections stay in the document for a reader nobody is signed
 		// in as, empty and unstyled. Joining fills them from the same
 		// response that creates the player, and an out-of-band swap can only

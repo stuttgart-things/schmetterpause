@@ -302,7 +302,7 @@ h1 {
 
 /* --- Karten ------------------------------------------------------------ */
 
-.session, .match, .pending, .standings, .stat, .status {
+.session, .match, .pending, .running, .standings, .stat, .status {
 	margin: 0 0 1rem;
 	padding: 1.1rem 1.25rem;
 	background: var(--card);
@@ -323,6 +323,14 @@ h1 {
 	color: var(--muted);
 	font-size: 0.9rem;
 }
+
+/* Under the sign-in card the second way in carries a button rather than an
+   underlined word, so the block holds a sentence and a control instead of one
+   line of prose. The button brings its own top margin; the sentence gives it
+   nothing to fight with. */
+.session-alt p { margin: 0; }
+
+.session-alt button.secondary { margin-top: 0.6rem; }
 
 /* The other keyboard, under the field rather than under the card. No rule
    above it: .session-alt separates two ways into the app, this separates two
@@ -533,6 +541,22 @@ h1 {
 }
 
 .pin-card, .recovery-card { margin-top: 1.5rem; }
+
+/* The sentence that tells the code and the PIN apart, above both cards. It
+   sits outside them on purpose: it is about the pair, and inside either one it
+   would read as that card's own small print. */
+.access-head {
+	margin: 2rem 0 0.9rem;
+}
+
+.access-head h2 { margin: 0 0 0.4rem; }
+
+.access-head p {
+	margin: 0;
+	max-width: 48ch;
+}
+
+.access-head strong { color: var(--fg); }
 
 /* Heading and the refresh button on one line. The button sits at the end of
    the row rather than under the heading, so the card does not grow taller for
@@ -1503,6 +1527,32 @@ tr.self td { background: color-mix(in srgb, var(--accent) 8%, transparent); }
 /* Two ends, two short words. Wide enough for "Fenster" and no wider — the
    row is a setting, not a sentence. */
 .side-name { width: 7rem; }
+
+/* --- Was gerade läuft ---------------------------------------------------- */
+
+/* The start page's notice that something is on. A card like the others, with
+   one difference: when the reader is in the draw it takes the accent edge the
+   recovery code has, because both are things the page is telling somebody
+   rather than things somebody came to read. */
+.running h2 {
+	margin: 0 0 0.6rem;
+}
+
+.running-mine { border-left: 3px solid var(--accent); }
+
+/* Inside a card the list has nothing above it to keep its distance from. */
+.running .tournament-list { margin: 0; }
+
+/* The mark on the reader's own row. Mono and small, like .side and .unrated:
+   it is a label on a name, not a second name. Coloured, unlike those two,
+   because it is the one word the section exists to show. */
+.you {
+	font-family: var(--font-mono);
+	font-size: 0.72rem;
+	letter-spacing: 0.06em;
+	text-transform: uppercase;
+	color: var(--accent-text);
+}
 
 .tournament-list { list-style: none; padding: 0; }
 .tournament-list li { display: flex; flex-wrap: wrap; gap: 0.6rem; align-items: baseline; padding: 0.3rem 0; }

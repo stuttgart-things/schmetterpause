@@ -401,6 +401,16 @@ func (s *Server) renderSession(w http.ResponseWriter, r *http.Request, player do
 		s.render(w, r, templates.PendingListOOB(pending))
 	}
 
+	// And so does the tournament notice: it was rendered for a reader nobody
+	// was recognised as, so a draw this player is in was on the page without
+	// a word saying it was theirs. Same trade as the two above — logged, and
+	// a reload would fix it anyway.
+	if running, err := s.runningTournamentsView(signedIn); err != nil {
+		s.log.ErrorContext(r.Context(), "loading the running tournaments failed", "error", err)
+	} else {
+		s.render(w, r, templates.RunningTournamentsOOB(running))
+	}
+
 	opponents, err := s.opponentOptions(signedIn, player.ID, uuid.Nil)
 	if err != nil {
 		// Same trade as the standings above. A reload brings the form;

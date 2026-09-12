@@ -7,6 +7,18 @@ package templates
 templ Session(v SessionView) {
 	<section id="session" class={ templ.KV("session", !v.SignedIn()) }>
 		if !v.SignedIn() {
+			// What this card is, before the field. Somebody who has never
+			// been here does not know that a name is the whole of it — the
+			// feedback after the first week was that "erst einen Nutzer
+			// anlegen" felt like the beginning of a registration, and a lone
+			// input with a button says nothing to correct that.
+			<h2>Zum ersten Mal hier?</h2>
+			<p class="muted">
+				Trag deinen Namen ein, das ist alles. Kein Passwort, keine
+				E-Mail. Nimm den Namen, unter dem dich die anderen suchen —
+				sie wählen ihn aus einer Liste, wenn sie ein Ergebnis gegen
+				dich eintragen.
+			</p>
 			<form hx-post="/players" hx-target="#session" hx-swap="outerHTML">
 				<label for="display-name">Dein Name</label>
 				<input
@@ -27,6 +39,10 @@ templ Session(v SessionView) {
 			// card is now the second door rather than the first: it shows
 			// on an empty roster, and behind the link under the sign-in
 			// form the rest of the time.
+			//
+			// A link rather than a button, unlike the other direction: a
+			// reader who ended up here already knows which of the two they
+			// are, because they got here by saying so.
 			<p class="session-alt">
 				Schon dabei, aber dieses Gerät kennt dich nicht?
 				<button
