@@ -22,6 +22,13 @@ var ErrNotFound = errors.New("not found")
 // learning anything about SQL error codes.
 var ErrConflict = errors.New("already exists")
 
+// ErrInUse reports a record something else still points at: a player who has
+// played, reported or run something. The schema refuses those deletions, and
+// this is that refusal in words a handler can use — it is not a failure but
+// the answer, and the difference matters because the caller has to explain it
+// rather than apologise for it.
+var ErrInUse = errors.New("still referenced")
+
 // DefaultTTR is the starting rating for newly created players.
 //
 // 1000 stays, decided on the first week of real results (issue #17). Across 54

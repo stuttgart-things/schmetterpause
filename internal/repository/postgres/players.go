@@ -191,6 +191,24 @@ func (r playerRepo) SetAdmin(ctx context.Context, id uuid.UUID, isAdmin bool) er
 	return nil
 }
 
+// Delete removes a player the schema still lets go of. The cascades in the
+// migrations do the rest, and the restrictions are what refuse: matches and
+// tournaments reference a player without one, so a history is what makes
+// somebody permanent.
+func (r playerRepo) Delete(ctx context.Context, id uuid.UUID) error {
+	tag, err := r.q.Exec(ctx, `delete from players where id = $1`, id)
+	switch {
+	case isForeignKeyViolation(err):
+		return fmt.Errorf("player %s is referenced: %w", id, domain.ErrInUse)
+	case err != nil:
+		return fmt.Errorf("delete player %s: %w", id, err)
+	}
+	if tag.RowsAffected() == 0 {
+		return fmt.Errorf("player %s: %w", id, domain.ErrNotFound)
+	}
+	return nil
+}
+
 func (r playerRepo) Count(ctx context.Context) (int, error) {
 	var n int
 	if err := r.q.QueryRow(ctx, `select count(*) from players`).Scan(&n); err != nil {

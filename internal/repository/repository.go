@@ -58,6 +58,22 @@ type PlayerRepository interface {
 	// property of the person rather than of a browser — which is what makes
 	// it revocable and lets a log line name somebody (docs/adr/0008).
 	SetAdmin(ctx context.Context, id uuid.UUID, isAdmin bool) error
+	// Delete removes a player nothing points at, for the joke entry and the
+	// duplicate created before anybody played (issue #105).
+	//
+	// What "nothing points at" means is the schema's answer, not this
+	// package's: matches and tournaments reference a player without a
+	// cascade, so somebody who has played, reported a result or created a
+	// tournament cannot be removed, and the attempt comes back as
+	// domain.ErrInUse. What does go with them is what only exists because
+	// they do — their sign-in proofs, their PIN and recovery code, their
+	// rating history, and their place in any tournament field. A kiosk that
+	// named them as its operator keeps working and forgets who was typing.
+	//
+	// Deliberately not a soft delete. A player who never played leaves no
+	// hole in anything, and a row marked "gone" that still turns up in the
+	// name picker would be the bug this exists to remove.
+	Delete(ctx context.Context, id uuid.UUID) error
 }
 
 // IdentityRepository links provider proofs to players. Outside this interface

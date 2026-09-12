@@ -123,3 +123,16 @@ func isUniqueViolation(err error) bool {
 	var pgErr *pgconn.PgError
 	return errors.As(err, &pgErr) && pgErr.Code == uniqueViolation
 }
+
+// foreignKeyViolation is the SQLSTATE Postgres reports for a row another
+// table still references. Kept here for the same reason as the one above.
+const foreignKeyViolation = "23503"
+
+// isForeignKeyViolation reports whether err came from a foreign key. It is
+// what makes "this player has played" an answer rather than a 500: the
+// schema is the authority on who may be removed, and this is how that
+// authority reaches a handler.
+func isForeignKeyViolation(err error) bool {
+	var pgErr *pgconn.PgError
+	return errors.As(err, &pgErr) && pgErr.Code == foreignKeyViolation
+}
