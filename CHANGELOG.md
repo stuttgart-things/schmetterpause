@@ -1,5 +1,27 @@
 # Changelog
 
+## [0.7.0](https://github.com/stuttgart-things/schmetterpause/compare/v0.6.0...v0.7.0) (2026-09-12)
+
+
+### Features
+
+* **admin:** remove a player who never played ([#234](https://github.com/stuttgart-things/schmetterpause/issues/234)) ([5e3ead3](https://github.com/stuttgart-things/schmetterpause/commit/5e3ead3c192407f55a7f7bceb505248460619678))
+* **admin:** take a wrong result back without psql ([#231](https://github.com/stuttgart-things/schmetterpause/issues/231)) ([fb24943](https://github.com/stuttgart-things/schmetterpause/commit/fb24943294b17dce8bf1fd1613e3028f083e9b96))
+* **db:** dump and restore the game database across Compose, Kubernetes and Azure ([#226](https://github.com/stuttgart-things/schmetterpause/issues/226)) ([17f31d7](https://github.com/stuttgart-things/schmetterpause/commit/17f31d70cf506be6630e6c0e389b420716a6dc89))
+* **server:** answer the running version in one line of plain text ([#233](https://github.com/stuttgart-things/schmetterpause/issues/233)) ([f50c993](https://github.com/stuttgart-things/schmetterpause/commit/f50c993afd7e3ac1d7788786246da3a43b1bab25))
+* **ui:** announce running tournaments and clear up the way in ([#228](https://github.com/stuttgart-things/schmetterpause/issues/228)) ([f9eabd0](https://github.com/stuttgart-things/schmetterpause/commit/f9eabd0b7eed52c456c3c67b428e88c944f0e07d))
+
+
+### Bug Fixes
+
+* **deps:** update module golang.org/x/crypto to v0.57.0 ([#204](https://github.com/stuttgart-things/schmetterpause/issues/204)) ([9097518](https://github.com/stuttgart-things/schmetterpause/commit/90975181213859af0221ea2b2e1b6a8828ece7a7))
+* **kcl:** render PostgreSQL 18 by default, the major the app is tested on ([#221](https://github.com/stuttgart-things/schmetterpause/issues/221)) ([0208a21](https://github.com/stuttgart-things/schmetterpause/commit/0208a21674fa214be3e09d3428ba92930728d88a))
+
+
+### Refactoring
+
+* **deploy:** keep every Terraform value in a vars file, none in the code ([#216](https://github.com/stuttgart-things/schmetterpause/issues/216)) ([3c75a8c](https://github.com/stuttgart-things/schmetterpause/commit/3c75a8c47b62b7b04830e422e271f14db1e6d29a)), closes [#206](https://github.com/stuttgart-things/schmetterpause/issues/206)
+
 ## [0.6.0](https://github.com/stuttgart-things/schmetterpause/compare/v0.5.0...v0.6.0) (2026-09-10)
 
 
