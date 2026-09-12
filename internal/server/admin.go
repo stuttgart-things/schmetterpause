@@ -5,12 +5,15 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
 
 	"github.com/stuttgart-things/schmetterpause/internal/auth"
 	"github.com/stuttgart-things/schmetterpause/internal/domain"
+	"github.com/stuttgart-things/schmetterpause/internal/scoring"
 	"github.com/stuttgart-things/schmetterpause/internal/templates"
 )
 
@@ -39,17 +42,58 @@ func (s *Server) isAdmin(ctx context.Context, id uuid.UUID) (bool, error) {
 // because the person who wonders whether the kiosk may delete a result is
 // standing in front of the application, not in front of the repository.
 func (s *Server) handleAdmin(w http.ResponseWriter, r *http.Request) {
-	admins, err := s.store.Players().Admins(r.Context())
+	s.renderAdmin(w, r, "")
+}
+
+// adminRecentMatches is how far back the removable results go.
+//
+// Long enough to hold the evening somebody is asking about, short enough that
+// the page stays a list rather than a history — /matches is the history. The
+// guard in scoring.Remove refuses everything but the newest result per player
+// anyway, so a longer list would mostly be rows whose button says no.
+const adminRecentMatches = 20
+
+// renderAdmin draws the page, with note as what just happened.
+func (s *Server) renderAdmin(w http.ResponseWriter, r *http.Request, note string) {
+	s.renderAdminWith(w, r, note, "", http.StatusOK)
+}
+
+// rejectAdmin draws it with a refusal instead, and says so in the status. The
+// same split the kiosk makes: "entfernt" and "geht nicht" are opposite
+// outcomes, and a page that answers 200 to both tells a script they are one.
+func (s *Server) rejectAdmin(w http.ResponseWriter, r *http.Request, msg string) {
+	s.renderAdminWith(w, r, "", msg, http.StatusUnprocessableEntity)
+}
+
+func (s *Server) renderAdminWith(
+	w http.ResponseWriter, r *http.Request, note, refusal string, status int,
+) {
+	view, err := s.adminView(r.Context(), note, refusal)
 	if err != nil {
-		s.log.ErrorContext(r.Context(), "loading the admins failed", "error", err)
+		s.log.ErrorContext(r.Context(), "building the admin page failed", "error", err)
 		http.Error(w, "Liste nicht verfügbar", http.StatusInternalServerError)
 		return
 	}
+	if status != http.StatusOK {
+		w.WriteHeader(status)
+	}
+	s.render(w, r, templates.Admin(view))
+}
 
-	self, _ := auth.PlayerID(r.Context())
+// adminView is everything the page says, in one place because two handlers
+// draw it: opening it, and coming back from a removal with something to say.
+func (s *Server) adminView(ctx context.Context, note, refusal string) (templates.AdminView, error) {
+	admins, err := s.store.Players().Admins(ctx)
+	if err != nil {
+		return templates.AdminView{}, fmt.Errorf("load the admins: %w", err)
+	}
+
+	self, _ := auth.PlayerID(ctx)
 
 	view := templates.AdminView{
-		Header: s.headerView(r.Context()),
+		Header: s.headerView(ctx),
+		Note:   note,
+		Error:  refusal,
 		People: make([]templates.AdminPerson, 0, len(admins)),
 	}
 	for _, p := range admins {
@@ -63,20 +107,16 @@ func (s *Server) handleAdmin(w http.ResponseWriter, r *http.Request) {
 	// The second question this page answers, and the one issue #77 filed:
 	// which machines are kiosks right now. A derived cookie could not answer
 	// it, because it was the same value everywhere.
-	grants, err := s.store.KioskGrants().Active(r.Context(), time.Now())
+	grants, err := s.store.KioskGrants().Active(ctx, time.Now())
 	if err != nil {
-		s.log.ErrorContext(r.Context(), "loading the kiosk grants failed", "error", err)
-		http.Error(w, "Liste nicht verfügbar", http.StatusInternalServerError)
-		return
+		return templates.AdminView{}, fmt.Errorf("load the kiosk grants: %w", err)
 	}
 	// Names for the operators the grants point at. One list rather than a
 	// lookup per row: the page already holds every player for the flag list
 	// above, and a kiosk evening has a handful of machines at most.
-	players, err := s.store.Players().List(r.Context())
+	players, err := s.store.Players().List(ctx)
 	if err != nil {
-		s.log.ErrorContext(r.Context(), "loading the players failed", "error", err)
-		http.Error(w, "Liste nicht verfügbar", http.StatusInternalServerError)
-		return
+		return templates.AdminView{}, fmt.Errorf("load the players: %w", err)
 	}
 	names := make(map[uuid.UUID]string, len(players))
 	for _, p := range players {
@@ -85,7 +125,92 @@ func (s *Server) handleAdmin(w http.ResponseWriter, r *http.Request) {
 
 	view.Kiosks = kioskGrantViews(grants, names)
 
-	s.render(w, r, templates.Admin(view))
+	matches, err := s.store.Matches().Recent(ctx, adminRecentMatches)
+	if err != nil {
+		return templates.AdminView{}, fmt.Errorf("load the recent matches: %w", err)
+	}
+	view.Matches = adminMatchRows(matches, names)
+
+	return view, nil
+}
+
+// adminMatchRows keeps the settled results and puts them in the words the
+// match list already uses.
+//
+// Pending and contested ones are dropped rather than shown greyed out: the
+// flag is for results nobody can fix any other way, and those two have a
+// path that does not need it — which is the boundary docs/adr/0008 draws.
+func adminMatchRows(matches []domain.Match, names map[uuid.UUID]string) []templates.AdminMatchRow {
+	rows := make([]templates.AdminMatchRow, 0, len(matches))
+	for _, m := range matches {
+		if m.Status != domain.MatchConfirmed {
+			continue
+		}
+		// Built by matchListRow rather than beside it: which side won is
+		// read off the set scores, and one copy of that is enough.
+		row := matchListRow(m, names, nil, uuid.Nil)
+		rows = append(rows, templates.AdminMatchRow{
+			ID:         m.ID.String(),
+			PlayedAt:   row.PlayedAt,
+			WinnerName: row.WinnerName,
+			LoserName:  row.LoserName,
+			WinnerSets: row.WinnerSets,
+			LoserSets:  row.LoserSets,
+			Sets:       row.Sets,
+		})
+	}
+	return rows
+}
+
+// handleAdminRemoveMatch takes a counted result back, with both ratings.
+//
+// The one thing issue #105 puts first, and the reason it does: the office
+// week put real results in the database, and until now the only way to fix a
+// wrong one was SQL against the database the office plays on — which issue
+// #163 showed is easy to point at the wrong target.
+//
+// It renders rather than redirects, the way the kiosk answers its own undo.
+// Two of the three outcomes are a sentence somebody has to read — above all
+// ErrNotLast, which is not a failure but an instruction — and a redirect
+// would drop them. Re-posting after a reload is harmless: the match is gone,
+// and the second attempt says so.
+func (s *Server) handleAdminRemoveMatch(w http.ResponseWriter, r *http.Request) {
+	self, _ := auth.PlayerID(r.Context())
+
+	id, err := uuid.Parse(strings.TrimSpace(r.PathValue("id")))
+	if err != nil {
+		s.rejectAdmin(w, r, "Dieses Ergebnis gibt es nicht.")
+		return
+	}
+
+	undone, err := scoring.Remove(r.Context(), s.store, id)
+	switch {
+	case err == nil:
+	case errors.Is(err, domain.ErrNotFound), errors.Is(err, scoring.ErrNotUndoable):
+		s.rejectAdmin(w, r, "Dieses Ergebnis lässt sich nicht entfernen — es ist schon weg, "+
+			"oder es wurde nie gewertet.")
+		return
+	case errors.Is(err, scoring.ErrNotLast):
+		s.rejectAdmin(w, r, "Seit diesem Ergebnis wurde für einen der beiden schon ein "+
+			"weiteres gewertet. Erst das neuere entfernen, dann dieses — sonst würde die "+
+			"Wertung des neueren stillschweigend mit zurückgenommen.")
+		return
+	default:
+		s.log.ErrorContext(r.Context(), "removing a counted match failed",
+			"match_id", id, "error", err)
+		s.rejectAdmin(w, r, "Das hat gerade nicht geklappt.")
+		return
+	}
+
+	// Named, like every other admin action: without the line the flag is the
+	// kiosk's mistake under a new name (docs/adr/0008, issue #105).
+	s.log.InfoContext(r.Context(), "counted match removed",
+		"match_id", id, "home_id", undone.Home.ID, "away_id", undone.Away.ID, "by", self)
+
+	s.renderAdmin(w, r, "Entfernt: "+undone.Home.DisplayName+" gegen "+
+		undone.Away.DisplayName+" "+strconv.Itoa(undone.HomeSets)+":"+
+		strconv.Itoa(undone.AwaySets)+". Beide Wertungen stehen wieder wie vorher. "+
+		"Das richtige Ergebnis wird jetzt normal eingetragen.")
 }
 
 // kioskGrantViews puts the grants into the words the page uses.

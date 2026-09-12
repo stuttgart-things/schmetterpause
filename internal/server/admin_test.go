@@ -7,8 +7,12 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
+
+	"github.com/google/uuid"
 
 	"github.com/stuttgart-things/schmetterpause/internal/auth"
+	"github.com/stuttgart-things/schmetterpause/internal/domain"
 	"github.com/stuttgart-things/schmetterpause/internal/server"
 )
 
@@ -223,5 +227,173 @@ func TestJoiningDoesNotMakeAnAdmin(t *testing.T) {
 	}
 	if players[0].IsAdmin {
 		t.Error("joining handed out the admin flag")
+	}
+}
+
+// countedMatch puts one settled result in the store: Anna reports, Bodo
+// confirms, both ratings move. The state a wrong result is actually in when
+// somebody asks for it to be fixed.
+func countedMatch(t *testing.T, h http.Handler, store *memStore, anna, bodo *http.Cookie) string {
+	t.Helper()
+
+	rec := recordMatch(t, h, anna, opponentID(t, store, "Bodo"), 3, 11, "11:9", "12:10")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("recording: status %d: %s", rec.Code, rec.Body.String())
+	}
+	stored := store.matches.all()
+	id := stored[len(stored)-1].ID.String()
+
+	if rec := post(t, h, "/matches/"+id+"/confirm", bodo); rec.Code != http.StatusOK {
+		t.Fatalf("confirming: status %d: %s", rec.Code, rec.Body.String())
+	}
+	return id
+}
+
+// twoPlayersAndAnAdmin is Anna with the flag, Bodo without, and a browser
+// each.
+func twoPlayersAndAnAdmin(t *testing.T) (http.Handler, *memStore, *http.Cookie, *http.Cookie) {
+	t.Helper()
+
+	srv, store := adminHandler(t, "Anna")
+	h := srv.Handler()
+
+	anna := sessionCookie(t, join(t, h, "Anna"))
+	bodo := sessionCookie(t, join(t, h, "Bodo"))
+	srv.GrantBootstrapAdmin(t.Context())
+
+	return h, store, anna, bodo
+}
+
+// TestAnAdminTakesBackACountedResult is issue #105's first action and the
+// phase's Definition of Done point 6: until this existed, the only way to fix
+// a wrong result was SQL against the database the office plays on.
+func TestAnAdminTakesBackACountedResult(t *testing.T) {
+	h, store, anna, bodo := twoPlayersAndAnAdmin(t)
+
+	id := countedMatch(t, h, store, anna, bodo)
+	if ttrOfPlayer(t, store, "Anna") == domain.DefaultTTR {
+		t.Fatal("the rating did not move, so there is nothing to take back")
+	}
+
+	// The page offers it, with the result readable enough to tell it from
+	// the right one: a mistyped match is usually mistyped in the points.
+	page := getWith(t, h, "/admin", anna).Body.String()
+	for _, want := range []string{"Gewertete Ergebnisse", "11:9", "/admin/matches/" + id + "/remove"} {
+		if !strings.Contains(page, want) {
+			t.Errorf("the page does not offer %q: %s", want, page)
+		}
+	}
+
+	rec := post(t, h, "/admin/matches/"+id+"/remove", anna)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("removing: status %d: %s", rec.Code, rec.Body.String())
+	}
+	if !strings.Contains(rec.Body.String(), "Entfernt") {
+		t.Errorf("the page does not say what happened: %s", rec.Body.String())
+	}
+
+	if got := ttrOfPlayer(t, store, "Anna"); got != domain.DefaultTTR {
+		t.Errorf("Anna is on %d, want %d", got, domain.DefaultTTR)
+	}
+	if got := ttrOfPlayer(t, store, "Bodo"); got != domain.DefaultTTR {
+		t.Errorf("Bodo is on %d, want %d", got, domain.DefaultTTR)
+	}
+	if len(store.matches.all()) != 0 {
+		t.Errorf("the match survived the removal: %+v", store.matches.all())
+	}
+}
+
+// TestTakingBackIsRefusedOnceSomethingElseHasCounted: the guard that stays
+// after the clock is dropped. Restoring the ratings writes ttr_before back,
+// which is only right while nothing has counted since — and the refusal has
+// to say what to do rather than only that it will not.
+func TestTakingBackIsRefusedOnceSomethingElseHasCounted(t *testing.T) {
+	h, store, anna, bodo := twoPlayersAndAnAdmin(t)
+
+	first := countedMatch(t, h, store, anna, bodo)
+	countedMatch(t, h, store, anna, bodo)
+
+	before := ttrOfPlayer(t, store, "Anna")
+
+	rec := post(t, h, "/admin/matches/"+first+"/remove", anna)
+	if rec.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("removing an overtaken result: status %d, want %d",
+			rec.Code, http.StatusUnprocessableEntity)
+	}
+	if !strings.Contains(rec.Body.String(), "Erst das neuere entfernen") {
+		t.Errorf("the refusal does not say what to do instead: %s", rec.Body.String())
+	}
+	if got := ttrOfPlayer(t, store, "Anna"); got != before {
+		t.Errorf("the refused removal moved the rating anyway: %d, want %d", got, before)
+	}
+	if len(store.matches.all()) != 2 {
+		t.Errorf("the refused removal deleted something: %+v", store.matches.all())
+	}
+}
+
+// TestTakingBackACountedResultIsBehindTheFlag: nobody confirms this action,
+// which is the price docs/adr/0008 pays for it — so the flag is the whole
+// guard and it has to hold on the route, not only on the page that links it.
+func TestTakingBackACountedResultIsBehindTheFlag(t *testing.T) {
+	h, store, anna, bodo := twoPlayersAndAnAdmin(t)
+
+	id := countedMatch(t, h, store, anna, bodo)
+	before := ttrOfPlayer(t, store, "Anna")
+
+	for name, tc := range map[string]struct {
+		cookie *http.Cookie
+		want   int
+	}{
+		"a stranger":     {nil, http.StatusUnauthorized},
+		"a plain player": {bodo, http.StatusForbidden},
+	} {
+		if got := post(t, h, "/admin/matches/"+id+"/remove", tc.cookie).Code; got != tc.want {
+			t.Errorf("%s gets %d, want %d", name, got, tc.want)
+		}
+	}
+
+	if len(store.matches.all()) != 1 {
+		t.Errorf("a refused caller removed the match anyway: %+v", store.matches.all())
+	}
+	if got := ttrOfPlayer(t, store, "Anna"); got != before {
+		t.Errorf("a refused caller moved the rating: %d, want %d", got, before)
+	}
+	// And the one who may, still may — the guard is the flag and not the
+	// route being unreachable.
+	if got := post(t, h, "/admin/matches/"+id+"/remove", anna).Code; got != http.StatusOK {
+		t.Errorf("the admin gets %d, want %d", got, http.StatusOK)
+	}
+}
+
+// TestTheAdminRemovalHasNoClockOnIt is the one thing that separates this from
+// the kiosk's undo (issue #49), and therefore the thing worth a test of its
+// own: the kiosk may take back what it is still looking at, an admin may take
+// back an evening later. Everything else about the two is the same act.
+func TestTheAdminRemovalHasNoClockOnIt(t *testing.T) {
+	h, store, anna, bodo := twoPlayersAndAnAdmin(t)
+
+	id := countedMatch(t, h, store, anna, bodo)
+
+	// Backdate the confirmation past the ten-minute window the kiosk undo
+	// refuses beyond. Reaching into the store rather than waiting: the clock
+	// is what is under test, and a test that sleeps ten minutes is not one.
+	anHourAgo := time.Now().Add(-time.Hour)
+	matchID, err := uuid.Parse(id)
+	if err != nil {
+		t.Fatalf("Parse(): %v", err)
+	}
+	if err := store.Matches().SetStatus(
+		t.Context(), matchID, domain.MatchConfirmed, &anHourAgo,
+	); err != nil {
+		t.Fatalf("SetStatus(): %v", err)
+	}
+
+	rec := post(t, h, "/admin/matches/"+id+"/remove", anna)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("removing an hour-old result: status %d, want %d: %s",
+			rec.Code, http.StatusOK, rec.Body.String())
+	}
+	if got := ttrOfPlayer(t, store, "Anna"); got != domain.DefaultTTR {
+		t.Errorf("Anna is on %d, want %d", got, domain.DefaultTTR)
 	}
 }

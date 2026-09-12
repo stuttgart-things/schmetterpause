@@ -462,6 +462,37 @@ type Undone struct {
 // ttr_before back, which is right only while nothing has counted since. A
 // match played in between would be undone along with it, silently.
 func Undo(ctx context.Context, store repository.Store, matchID uuid.UUID, at time.Time) (Undone, error) {
+	return undo(ctx, store, matchID, at, true)
+}
+
+// Remove is the same act without the clock, for an admin acting deliberately
+// rather than a kiosk fixing a typo it is still looking at.
+//
+// Exactly one of the two conditions above is dropped, and it is the one that
+// was a question of manners. Everything that keeps the arithmetic honest
+// stays: a result that was never rated cannot be removed, and one that is no
+// longer the newest for both players is refused with ErrNotLast rather than
+// silently taking a later match down with it. Correcting a wrong result is
+// therefore this plus entering the right one — the same shape as the kiosk
+// undo in issue #49, because there is nothing in a settled match left to edit.
+//
+// The price is written down in docs/adr/0008 and in issue #105: nobody
+// confirms this. It moves two ratings on one person's say-so, which is why
+// the flag belongs to very few people and why the caller logs who used it.
+func Remove(ctx context.Context, store repository.Store, matchID uuid.UUID) (Undone, error) {
+	// The zero time never gets compared: withinWindow is what decides that,
+	// and passing a clock that is not consulted would suggest it is.
+	return undo(ctx, store, matchID, time.Time{}, false)
+}
+
+// undo is both of the above. withinWindow is what separates them.
+func undo(
+	ctx context.Context,
+	store repository.Store,
+	matchID uuid.UUID,
+	at time.Time,
+	withinWindow bool,
+) (Undone, error) {
 	var undone Undone
 
 	err := store.InTx(ctx, func(tx repository.Store) error {
@@ -472,7 +503,7 @@ func Undo(ctx context.Context, store repository.Store, matchID uuid.UUID, at tim
 		if m.Status != domain.MatchConfirmed || m.ConfirmedAt == nil {
 			return fmt.Errorf("match %s is %s: %w", m.ID, m.Status, ErrNotUndoable)
 		}
-		if at.Sub(*m.ConfirmedAt) > UndoWindow {
+		if withinWindow && at.Sub(*m.ConfirmedAt) > UndoWindow {
 			return fmt.Errorf("match %s was confirmed at %s: %w", m.ID, m.ConfirmedAt, ErrTooLate)
 		}
 
