@@ -18,8 +18,10 @@ tasks; both are [#213](https://github.com/stuttgart-things/schmetterpause/issues
 - Restored into an **empty** database with `psql -v ON_ERROR_STOP=1`. The
   application migrates forward from there on its next start.
 - Only ever into the **same or a newer** PostgreSQL major, and the same or a
-  newer application version. Azure runs 17 today; Compose and the kcl default
-  run 18 (#221), so a dump from Azure goes into either, and nothing goes back.
+  newer application version. The target is 18 everywhere: Compose, the kcl
+  default (#221) and Azure are on it. The office cluster still runs 17 until its
+  data moves to an 18 cluster (#213); a dump from it goes into any of the
+  others, and nothing goes back into it.
 - **Sensitive.** It holds display names, PIN hashes and recovery-code hashes.
   Name it `schmetterpause-*.sql` in the repository root, which is gitignored,
   keep it at mode `600`, and never let it become a CI artefact.
@@ -80,7 +82,7 @@ properties:
   containers:
     - name: dump
       properties:
-        image: ghcr.io/cloudnative-pg/postgresql:17
+        image: ghcr.io/cloudnative-pg/postgresql:18
         resources:
           requests:
             cpu: 1.0
@@ -175,7 +177,7 @@ of the same major:
 ```sh
 docker run -d --name sp-restore-probe \
   -e POSTGRES_USER=schmetterpause -e POSTGRES_PASSWORD=probe -e POSTGRES_DB=schmetterpause \
-  postgres:17-alpine
+  postgres:18-alpine
 until docker exec sp-restore-probe pg_isready -U schmetterpause >/dev/null 2>&1; do sleep 1; done
 
 docker exec -i sp-restore-probe psql -U schmetterpause -d schmetterpause -X -q -v ON_ERROR_STOP=1 < "$f" \
@@ -253,5 +255,7 @@ The first teardown of the Azure instance, after a tournament on 2026-09-11.
   schema collides. #213.
 - **Kubernetes.** A dump from CloudNativePG, and a restore into it, are #213 as
   well. `task office:backup` covers Compose and writes the same kind of file.
-- **Aligning the majors.** Azure on 17 while the rest moved to 18 is the one
-  thing that keeps a Kubernetes dump from going into Azure. #213.
+- **The office cluster's major.** Compose, the kcl default and Azure are on 18;
+  the office cluster still runs 17. Its data moves to a new 18 cluster with the
+  dump and restore tasks, which is what makes the majors equal everywhere.
+  #213.

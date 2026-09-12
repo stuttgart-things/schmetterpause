@@ -39,7 +39,7 @@ log_retention_days = 30
 
 postgres_user    = "schmetterpause"
 postgres_db      = "schmetterpause"
-postgres_version = "17"
+postgres_version = "18"
 postgres_sku     = "B_Standard_B1ms"
 
 postgres_storage_mb            = 32768
