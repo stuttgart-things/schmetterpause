@@ -127,21 +127,30 @@ satisfies. Flexible Server additionally insists on three of four character
 classes, which lowercase hex does not. Mixed-case alphanumerics satisfy both,
 and the variable's validation says so before Azure does.
 
-The rest are optional:
+**`kiosk_token`** — optional, `SP_KIOSK_TOKEN`. Left out, there is no kiosk.
+`openssl rand -hex 32`.
 
-| Variable | Default | Meaning |
-| --- | --- | --- |
-| `kiosk_token` | *(empty)* | `SP_KIOSK_TOKEN`; empty means there is no kiosk. `openssl rand -hex 32` |
-| `bootstrap_admin` | *(empty)* | `SP_BOOTSTRAP_ADMIN`; the player has to have joined, so this is a second apply |
-| `log_level` | `info` | `SP_LOG_LEVEL` |
-| `public_base_url` | *(generated address)* | `SP_PUBLIC_BASE_URL`; set it once a custom domain is bound |
-| `extra_env_vars` | `{}` | plain variables with no dedicated setting yet; never secrets |
-| `image` | pinned release | Renovate moves the default |
-| `min_replicas` | `1` | `0` scales to zero between games, see below |
-| `location` | `westeurope` | has to be allowed by the subscription's policy |
-| `name_prefix` | `schmetterpause` | changing it replaces every resource, the database included |
-| `postgres_user` / `postgres_db` | `schmetterpause` | |
-| `postgres_version` / `postgres_sku` | `17` / `B_Standard_B1ms` | |
+### In `schmetterpause.auto.tfvars`
+
+What each value means. The values themselves are in the file and nowhere else,
+this table included.
+
+| Variable | Meaning |
+| --- | --- |
+| `location` | has to be allowed by the subscription's policy |
+| `name_prefix` | changing it replaces every resource, the database included |
+| `image` | pinned to a release, never `latest`; Renovate moves it |
+| `min_replicas` | `0` scales to zero between games, see below |
+| `log_level` | `SP_LOG_LEVEL` |
+| `public_base_url` | `SP_PUBLIC_BASE_URL`; empty means the generated address, set it once a custom domain is bound |
+| `bootstrap_admin` | `SP_BOOTSTRAP_ADMIN`; the player has to have joined, so a name is a second apply |
+| `extra_env_vars` | plain variables with no dedicated setting yet; never secrets |
+| `cpu` / `memory` | per container, for the app and the init container each; memory in Gi twice the vCPU |
+| `log_retention_days` | how long Log Analytics keeps the container logs |
+| `postgres_user` / `postgres_db` | the role the app connects as, and its database |
+| `postgres_version` / `postgres_sku` | the major has to allow the dumps to move, see docs/adr/0016 |
+| `postgres_storage_mb` | 32768 is the smallest Flexible Server offers |
+| `postgres_backup_retention_days` | Flexible Server's own backups, deleted with the server |
 
 ### `min_replicas`
 
@@ -216,12 +225,17 @@ This instance is only ever run temporarily — stood up for a test or an
 occasion, then removed (docs/adr/0016). Tearing down is the normal end of its
 life, not an exception.
 
-**Dump the database first.** `destroy` removes the resource group and with it
-the database, its data and Flexible Server's own backups — those cannot be
-taken along. The dump is what the next `apply` restores, into Azure or into
-another environment; the tasks for both are #213. Until they exist, a dump from
-Azure needs a firewall rule for the machine running `pg_dump`, because the
-only rule here admits Azure services and nothing else.
+**Dump the database first**, following
+[`docs/backup-restore.md`](../docs/backup-restore.md). `destroy` removes the
+resource group and with it the database, its data and Flexible Server's own
+backups — those cannot be taken along. The dump is what the next `apply`
+restores, into Azure or into another environment.
+
+The dump runs **inside Azure**, not from your machine. Outbound port 5432 is
+blocked in the office network, and a firewall rule for your address does
+nothing against that; the first teardown found out the hard way. The page has
+the steps that worked, verified end to end on 2026-09-12. #213 turns them into
+tasks.
 
 ```sh
 task tf:destroy
@@ -243,13 +257,17 @@ Changing `name_prefix` replaces the server and has the same effect.
   a managed certificate, then set `public_base_url`. The generated
   `*.azurecontainerapps.io` host already has valid TLS, so none of this blocks a
   test.
-- **Moving data across.** `pg_restore --no-owner --no-acl` against
-  `terraform output -raw postgres_fqdn`. The administrator on Flexible Server is
-  not a superuser, which is why ownership and grants are left out.
+- **Restoring into a new instance.** A dump comes out of Azure
+  ([`docs/backup-restore.md`](../docs/backup-restore.md)); putting one back has
+  not been done yet. It meets the same blocked port from an operator's machine,
+  so it has to run inside Azure too, and before the init container migrates the
+  empty database. #213.
 
 ## Related
 
 - Issue #206 — what was decided here and why
+- [`docs/backup-restore.md`](../docs/backup-restore.md) — the dump before a teardown, as it was done
+- `docs/adr/0016` — why this instance is temporary and the data moves as a dump
 - [`docs/deployment.md`](../docs/deployment.md) — the cluster without GitOps
 - [`kcl/README.md`](../kcl/README.md) — the module this mirrors
 - `docs/adr/0001` — Postgres, and the managed option on Azure
