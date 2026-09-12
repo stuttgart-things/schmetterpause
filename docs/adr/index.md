@@ -25,3 +25,4 @@ festlegt, steht hier mit den Alternativen, die dabei verworfen wurden. Eine
 | 0014 | [Der Kiosk benennt, wer einträgt](0014-kiosk-benennt-wer-eintraegt.md) | accepted | 2026-09-04 |
 | 0015 | [Das Zählwerk trägt Ergebnisse ein](0015-zaehlwerk-traegt-ergebnisse-ein.md) | accepted | 2026-09-08 |
 | 0016 | [Azure läuft auf Zeit, die Spieldaten ziehen um](0016-azure-auf-zeit-daten-ziehen-um.md) | accepted | 2026-09-10 |
+| 0017 | [Zwei Spieler zusammenführen heißt neu rechnen](0017-spieler-zusammenfuehren.md) | proposed — Entwurf, nicht entschieden | 2026-09-12 |
