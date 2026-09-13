@@ -24,10 +24,11 @@ Drei Dinge untereinander, in der Reihenfolge, in der sie jemanden angehen:
 
 ![Die Anmeldekarte mit Namensauswahl und dem Weg zum neuen Spieler](images/anmelden.png)
 
-Wer schon in der Rangliste steht, wählt seinen Namen und tippt PIN oder
-Wiederherstellungscode. Wer noch gar nicht dabei ist, geht darunter weiter:
-ein Name genügt, kein Passwort, keine E-Mail. Was gerade läuft, steht auch
-hier — dafür muss niemand angemeldet sein.
+Wer noch gar nicht dabei ist, findet ganz oben „Neu hier?": ein Name und eine
+PIN, keine E-Mail. Danach zeigt die App einmal den Wiederherstellungscode und
+bietet ihn als Textdatei an. Wer schon in der Rangliste steht, wählt seinen
+Namen; erst dann erscheint das Feld für PIN oder Wiederherstellungscode. Was
+gerade läuft, steht auch hier — dafür muss niemand angemeldet sein.
 
 ## Turnier
 

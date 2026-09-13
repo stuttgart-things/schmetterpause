@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -107,6 +108,11 @@ func TestAPINTakesOnlyDigits(t *testing.T) {
 	players, _ := store.Players().List(t.Context())
 	anna := players[0]
 
+	before, err := store.Credentials().ForPlayer(t.Context(), anna.ID, domain.CredentialPIN)
+	if err != nil {
+		t.Fatalf("joining left no PIN: %v", err)
+	}
+
 	tests := []struct{ name, pin string }{
 		{"empty", ""},
 		{"too short", "12345"},
@@ -126,7 +132,8 @@ func TestAPINTakesOnlyDigits(t *testing.T) {
 		})
 	}
 
-	if _, err := store.Credentials().ForPlayer(t.Context(), anna.ID, domain.CredentialPIN); err == nil {
+	after, err := store.Credentials().ForPlayer(t.Context(), anna.ID, domain.CredentialPIN)
+	if err != nil || after.Hash != before.Hash {
 		t.Error("a refused PIN was stored anyway")
 	}
 }
@@ -212,20 +219,112 @@ func TestOnlyASignedInPlayerCanIssueACode(t *testing.T) {
 	}
 }
 
-// The offer has to be where somebody lands, or nobody sets one. Issue #88 is
-// explicit that it must not end up buried behind the code.
-func TestJoiningOffersAPIN(t *testing.T) {
+// The PIN is part of joining, not an offer after it (docs/adr/0018). Issue #88
+// said the PIN carries the daily load because few people save a code; an
+// offer somebody could scroll past left most players with the code alone.
+func TestJoiningSetsThePIN(t *testing.T) {
 	store := newMemStore()
 	h := newHandlerWith(store, auth.NewCookieAuthenticator(store.Identities(), testSessionKey, false))
 
-	body := join(t, h, "Anna").Body.String()
-
-	if !strings.Contains(body, `hx-post="/credentials/pin"`) {
-		t.Errorf("joining does not offer a PIN: %s", body)
+	rec := join(t, h, "Anna")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("joining = %d, want %d: %s", rec.Code, http.StatusOK, rec.Body.String())
 	}
-	// And it must not take the code with it when it swaps.
-	if !strings.Contains(body, `hx-target="#pin-offer"`) {
-		t.Error("the PIN form does not swap itself, so setting one would remove the code")
+	players, _ := store.Players().List(t.Context())
+	anna := players[0]
+
+	stored, err := store.Credentials().ForPlayer(t.Context(), anna.ID, domain.CredentialPIN)
+	if err != nil {
+		t.Fatalf("joining stored no PIN: %v", err)
+	}
+	if ok, err := credential.Verify(stored.Hash, testPIN); err != nil || !ok {
+		t.Errorf("the stored PIN does not verify: %v, %v", ok, err)
+	}
+
+	body := rec.Body.String()
+	if strings.Contains(body, testPIN) {
+		t.Errorf("the response echoes the PIN: %s", body)
+	}
+	// Chosen already, so the card after joining does not ask again.
+	if strings.Contains(body, `hx-post="/credentials/pin"`) {
+		t.Errorf("joining still offers a PIN after one was chosen: %s", body)
+	}
+
+	if got := signIn(t, h, anna.ID.String(), testPIN).Code; got != http.StatusOK {
+		t.Errorf("the PIN chosen at joining does not sign in: %d", got)
+	}
+}
+
+// No PIN, no player. A player created first and asked afterwards is one closed
+// tab away from having none.
+func TestJoiningNeedsAPIN(t *testing.T) {
+	store := newMemStore()
+	h := newHandlerWith(store, auth.NewCookieAuthenticator(store.Identities(), testSessionKey, false))
+
+	for _, pin := range []string{"", "12345", "Sommer2026!"} {
+		rec := postForm(t, h, "/players", url.Values{"display_name": {"Anna"}, "pin": {pin}})
+		if rec.Code != http.StatusUnprocessableEntity {
+			t.Errorf("joining with PIN %q = %d, want %d", pin, rec.Code, http.StatusUnprocessableEntity)
+		}
+		body := rec.Body.String()
+		// The name survives, so only the PIN has to be typed again.
+		if !strings.Contains(body, `value="Anna"`) {
+			t.Errorf("a refused PIN lost the name: %s", body)
+		}
+		if pin != "" && strings.Contains(body, pin) {
+			t.Errorf("the refusal echoes the PIN %q: %s", pin, body)
+		}
+		for _, c := range rec.Result().Cookies() {
+			if c.Name == auth.SessionCookieName {
+				t.Errorf("a refused join with PIN %q started a session", pin)
+			}
+		}
+	}
+
+	if players, _ := store.Players().List(t.Context()); len(players) != 0 {
+		t.Errorf("a join without a usable PIN created %d players", len(players))
+	}
+}
+
+// The code as a file, beside the code on the screen (docs/adr/0018). Made from
+// the page itself, so there is nothing on the server that could hand it out
+// again — and it has to hold the same code the screen shows, or the file is a
+// way back that opens nothing.
+func TestTheRecoveryCodeCanBeSavedAsAFile(t *testing.T) {
+	store := newMemStore()
+	h := newHandlerWith(store, auth.NewCookieAuthenticator(store.Identities(), testSessionKey, false))
+
+	fileIn := func(t *testing.T, body string) string {
+		t.Helper()
+		if !strings.Contains(body, `download="schmetterpause-wiederherstellungscode.txt"`) {
+			t.Fatalf("no download is offered: %s", body)
+		}
+		href := regexp.MustCompile(`href="data:text/plain;charset=utf-8,([^"]*)"`).FindStringSubmatch(body)
+		if href == nil {
+			t.Fatalf("the download is not a data: URL made from the page: %s", body)
+		}
+		text, err := url.PathUnescape(href[1])
+		if err != nil {
+			t.Fatalf("the file does not decode: %v", err)
+		}
+		return text
+	}
+
+	joined := join(t, h, "Anna")
+	shown := codeInPage.FindStringSubmatch(joined.Body.String())
+	file := fileIn(t, joined.Body.String())
+	if !strings.Contains(file, shown[1]) || !strings.Contains(file, "Anna") {
+		t.Errorf("the file does not hold Anna's code %q: %q", shown[1], file)
+	}
+
+	// And the same for a code issued later from the profile.
+	reissued := postForm(t, h, "/credentials/recovery", nil, sessionCookie(t, joined))
+	fresh := codeInPage.FindStringSubmatch(reissued.Body.String())
+	if fresh == nil {
+		t.Fatalf("no code came back: %s", reissued.Body.String())
+	}
+	if file := fileIn(t, reissued.Body.String()); !strings.Contains(file, fresh[1]) {
+		t.Errorf("the file does not hold the fresh code %q: %q", fresh[1], file)
 	}
 }
 

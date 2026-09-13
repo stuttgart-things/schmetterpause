@@ -1,6 +1,6 @@
 # ADR-0006: Wiederherstellungscode statt Login
 
-- **Status:** accepted
+- **Status:** accepted — „keine Datei" ersetzt durch ADR-0018
 - **Datum:** 2026-08-25
 - **Betrifft:** Authentifizierung, Betrieb
 - **Bezug:** schreibt `0003-identitaeten-eigene-tabelle` und

@@ -310,88 +310,64 @@ func TestAnEmptyRosterOpensOnJoining(t *testing.T) {
 	}
 }
 
-// TestTheSecretFieldOpensOnTheNumberPad is issue #117: docs/adr/0007 asked for
-// a strictly numeric field and the attribute only ever reached the form that
-// sets a PIN, not the one that asks for it every time.
-func TestTheSecretFieldOpensOnTheNumberPad(t *testing.T) {
+// One field takes both kinds, on a keyboard that can type both
+// (docs/adr/0018). The number pad from issue #117 cannot type a recovery code,
+// and the switch that made up for it was one more thing to understand before
+// signing in.
+func TestTheSecretFieldTakesBothKinds(t *testing.T) {
 	store := newMemStore()
 	h := newHandlerWith(store, auth.NewCookieAuthenticator(store.Identities(), testSessionKey, false))
 
 	body := get(t, h, "/fragments/signin").Body.String()
 
-	if !strings.Contains(body, `inputmode="numeric"`) {
-		t.Errorf("the sign-in field does not ask for the number pad: %s", body)
+	if got := strings.Count(body, `name="secret"`); got != 1 {
+		t.Errorf("the form has %d secret fields, want 1: %s", got, body)
 	}
-	// The code needs letters, so the way to it has to be on the page.
-	if !strings.Contains(body, "Wiederherstellungscode") {
-		t.Errorf("no way to switch to the recovery code: %s", body)
-	}
-}
-
-// TestTheRecoveryCodeGetsALetterKeyboard is the other half: sixteen characters
-// of Crockford base32 cannot be typed on a number pad at all.
-func TestTheRecoveryCodeGetsALetterKeyboard(t *testing.T) {
-	store := newMemStore()
-	h := newHandlerWith(store, auth.NewCookieAuthenticator(store.Identities(), testSessionKey, false))
-
-	body := get(t, h, "/fragments/signin-secret?mode=recovery").Body.String()
-
 	if strings.Contains(body, `inputmode="numeric"`) {
-		t.Errorf("the recovery code is stuck on the number pad: %s", body)
+		t.Errorf("the sign-in field is stuck on the number pad, which cannot type a code: %s", body)
 	}
-	if !strings.Contains(body, `autocapitalize="characters"`) {
-		t.Errorf("the code field does not expect upper case: %s", body)
+	if !strings.Contains(body, "PIN oder Wiederherstellungscode") {
+		t.Errorf("the field does not say it takes either: %s", body)
 	}
-	// Both fields post the same name to the same endpoint; only the keyboard
-	// differs (docs/adr/0007: one form for both kinds).
-	if !strings.Contains(body, `name="secret"`) {
-		t.Errorf("the switched field posts under another name: %s", body)
+	if strings.Contains(body, "secret_mode") || strings.Contains(body, "signin-secret?mode") {
+		t.Errorf("the keyboard switch is still there: %s", body)
 	}
 }
 
-// TestAnUnknownKeyboardModeFallsBackToThePIN keeps a mangled query string from
-// landing somewhere that is neither.
-func TestAnUnknownKeyboardModeFallsBackToThePIN(t *testing.T) {
-	store := newMemStore()
-	h := newHandlerWith(store, auth.NewCookieAuthenticator(store.Identities(), testSessionKey, false))
-
-	body := get(t, h, "/fragments/signin-secret?mode=nonsense").Body.String()
-
-	if !strings.Contains(body, `inputmode="numeric"`) {
-		t.Errorf("an unknown mode does not land on the PIN: %s", body)
-	}
-}
-
-// TestARefusedCodeComesBackOnTheSameKeyboard is what the hidden field is for.
-// Without it, mistyping one character of a sixteen-character code would drop
-// somebody back onto the number pad — which is the dead end from issue #70
-// rebuilt one step further along.
-func TestARefusedCodeComesBackOnTheSameKeyboard(t *testing.T) {
+// The field waits for the name. app.css hides the block while the picker
+// stands on its placeholder, so what the page has to get right is the block,
+// the required picker, and the name still being chosen after a refusal —
+// otherwise a mistyped PIN would take the field away again.
+func TestTheSecretWaitsForTheName(t *testing.T) {
 	store := newMemStore()
 	h := newHandlerWith(store, auth.NewCookieAuthenticator(store.Identities(), testSessionKey, false))
 
 	join(t, h, "Anna")
 	players, _ := store.Players().List(t.Context())
+	anna := players[0]
 
-	form := url.Values{
-		"player_id":   {players[0].ID.String()},
-		"secret":      {"WRONG-CODE-HERE-XXXX"},
-		"secret_mode": {"recovery"},
+	fresh := get(t, h, "/fragments/signin").Body.String()
+	for _, want := range []string{
+		`class="signin"`,
+		`class="signin-secret"`,
+		`name="player_id" required`,
+		`<option value="" disabled selected>`,
+	} {
+		if !strings.Contains(fresh, want) {
+			t.Errorf("the sign-in form lacks %s: %s", want, fresh)
+		}
 	}
-	r := httptest.NewRequest(http.MethodPost, "/signin", strings.NewReader(form.Encode()))
-	r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	rec := httptest.NewRecorder()
-	h.ServeHTTP(rec, r)
 
-	if rec.Code != http.StatusUnprocessableEntity {
-		t.Fatalf("status = %d, want 422", rec.Code)
+	refused := signIn(t, h, anna.ID.String(), "000000")
+	if refused.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("a wrong PIN = %d, want 422", refused.Code)
 	}
-	body := rec.Body.String()
-	if strings.Contains(body, `inputmode="numeric"`) {
-		t.Errorf("a refused code came back on the number pad: %s", body)
+	body := refused.Body.String()
+	if !strings.Contains(body, `value="`+anna.ID.String()+`" selected>`) {
+		t.Errorf("a refusal forgot the chosen name, which hides the field again: %s", body)
 	}
-	if !strings.Contains(body, `value="recovery"`) {
-		t.Errorf("the keyboard was not carried back into the form: %s", body)
+	if strings.Contains(body, `<option value="" disabled selected>`) {
+		t.Errorf("the placeholder took the selection back: %s", body)
 	}
 }
 

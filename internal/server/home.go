@@ -132,17 +132,18 @@ func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 	s.render(w, r, templates.Index(view))
 }
 
-// handleJoin creates a player, starts a session for them and issues their
-// recovery code.
+// handleJoin creates a player with their PIN, starts a session for them and
+// issues their recovery code.
 //
-// AP2 has no password and no verification: a display name is all it takes.
-// The realistic abuse case for this app is a colleague entering a joke result,
-// and the answer to that is the opponent confirming the match (AP5), not a
-// login wall — see the threat-model note in docs/adr/0004.
+// A display name and a PIN, and no verification of either. The realistic
+// abuse case for this app is a colleague entering a joke result, and the
+// answer to that is the opponent confirming the match (AP5), not a login wall
+// — see the threat-model note in docs/adr/0004. The PIN keeps nobody out; it
+// is this player's way back from the next device (docs/adr/0018).
 //
 // The code costs no interaction — it is generated, not chosen, and only
-// displayed — so the interaction budget AP7 measures is unchanged
-// (docs/adr/0006).
+// displayed (docs/adr/0006). The PIN costs one field in the same form, which
+// is the price docs/adr/0018 decided to pay.
 func (s *Server) handleJoin(w http.ResponseWriter, r *http.Request) {
 	name := strings.TrimSpace(r.FormValue("display_name"))
 
@@ -151,16 +152,25 @@ func (s *Server) handleJoin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// The player, the identity that points at them and the way back have to
-	// appear together. A player nobody can be recognised as is unreachable,
-	// an identity pointing at nothing breaks the next lookup, and a player
-	// with no recovery code is one browser away from issue #70.
+	// Checked before anything exists. A player created first and asked for
+	// a PIN afterwards is a player one closed tab away from having none.
+	pin := strings.TrimSpace(r.FormValue("pin"))
+	if msg, ok := validatePIN(pin); !ok {
+		s.rejectJoin(w, r, name, msg)
+		return
+	}
+
+	// The player, the identity that points at them and both ways back have
+	// to appear together. A player nobody can be recognised as is
+	// unreachable, an identity pointing at nothing breaks the next lookup,
+	// and a player with neither credential is one browser away from #70.
 	subject := auth.NewSubject()
 
 	// Hashed out here rather than inside the transaction: Argon2id is
-	// deliberately slow, and holding a write transaction open for a tenth of
-	// a second of it buys nothing.
+	// deliberately slow, and holding a write transaction open for two runs of
+	// it buys nothing.
 	code, codeHash := credential.NewRecoveryCode()
+	pinHash := credential.Hash(pin)
 
 	var created domain.Player
 
@@ -173,6 +183,9 @@ func (s *Server) handleJoin(w http.ResponseWriter, r *http.Request) {
 			return err
 		}
 		if err := tx.Credentials().Put(r.Context(), player.ID, domain.CredentialRecovery, codeHash); err != nil {
+			return err
+		}
+		if err := tx.Credentials().Put(r.Context(), player.ID, domain.CredentialPIN, pinHash); err != nil {
 			return err
 		}
 		created = player
@@ -202,7 +215,9 @@ func (s *Server) handleJoin(w http.ResponseWriter, r *http.Request) {
 	}))
 }
 
-// rejectJoin re-renders the form with the reason, keeping what was typed.
+// rejectJoin re-renders the form with the reason, keeping the name. The PIN
+// is not handed back, for the reason rejectPIN gives: it is a secret, and
+// echoing it would put it in the response.
 func (s *Server) rejectJoin(w http.ResponseWriter, r *http.Request, name, msg string) {
 	// 422 rather than 400: the request was well formed, its content was not.
 	// HTMX swaps 4xx responses only when told to, so the form asks for it.

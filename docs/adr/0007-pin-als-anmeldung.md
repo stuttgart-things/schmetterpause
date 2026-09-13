@@ -1,6 +1,6 @@
 # ADR-0007: PIN als Anmeldung, Name zuerst
 
-- **Status:** accepted
+- **Status:** accepted — „Optional" ersetzt durch ADR-0018
 - **Datum:** 2026-08-28
 - **Betrifft:** Authentifizierung, Datenmodell
 - **Bezug:** schreibt `0006-wiederherstellungscode` fort und beantwortet dessen

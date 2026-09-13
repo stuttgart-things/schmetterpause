@@ -14,8 +14,8 @@ festlegt, steht hier mit den Alternativen, die dabei verworfen wurden. Eine
 | 0003 | [Identitäten in eigener Tabelle, getrennt vom Spieler](0003-identitaeten-eigene-tabelle.md) | accepted | 2026-08-21 |
 | 0004 | [WebAuthn/Passkey als zweiter Faktor — keine serverseitige Biometrie](0004-webauthn-keine-serverseitige-biometrie.md) | accepted | 2026-08-21 |
 | 0005 | [Kubernetes Custom Resources als Datenspeicher](0005-kubernetes-crds-als-datenspeicher.md) | proposed — Kandidat, nicht entschieden | 2026-08-22 |
-| 0006 | [Wiederherstellungscode statt Login](0006-wiederherstellungscode.md) | accepted | 2026-08-25 |
-| 0007 | [PIN als Anmeldung, Name zuerst](0007-pin-als-anmeldung.md) | accepted | 2026-08-28 |
+| 0006 | [Wiederherstellungscode statt Login](0006-wiederherstellungscode.md) | accepted — „keine Datei" ersetzt durch ADR-0018 | 2026-08-25 |
+| 0007 | [PIN als Anmeldung, Name zuerst](0007-pin-als-anmeldung.md) | accepted — „Optional" ersetzt durch ADR-0018 | 2026-08-28 |
 | 0008 | [Wer für andere handeln darf](0008-wer-fuer-andere-handeln-darf.md) | accepted | 2026-08-28 |
 | 0009 | [Das schnelle Turnier wertet pro Match](0009-schnelles-turnier-wertet-pro-match.md) | accepted | 2026-08-31 |
 | 0010 | [Turnierergebnisse dürfen vom eigenen Handy kommen](0010-turnierergebnisse-vom-eigenen-handy.md) | accepted | 2026-09-01 |
@@ -26,3 +26,4 @@ festlegt, steht hier mit den Alternativen, die dabei verworfen wurden. Eine
 | 0015 | [Das Zählwerk trägt Ergebnisse ein](0015-zaehlwerk-traegt-ergebnisse-ein.md) | accepted | 2026-09-08 |
 | 0016 | [Azure läuft auf Zeit, die Spieldaten ziehen um](0016-azure-auf-zeit-daten-ziehen-um.md) | accepted | 2026-09-10 |
 | 0017 | [Zwei Spieler zusammenführen heißt neu rechnen](0017-spieler-zusammenfuehren.md) | proposed — Entwurf, nicht entschieden | 2026-09-12 |
+| 0018 | [PIN beim Beitritt, der Code auch als Datei](0018-pin-beim-beitritt.md) | accepted | 2026-09-13 |

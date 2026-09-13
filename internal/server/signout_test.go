@@ -128,13 +128,25 @@ func TestSigningOutNeedsASession(t *testing.T) {
 // The button names the price rather than asking "are you sure", and somebody
 // without a PIN is told what it costs them — they are the one person who
 // should think twice.
+//
+// Joining sets a PIN now (docs/adr/0018), so the player without one is the
+// kind that still exists: joined before that, or created at the kiosk.
 func TestTheSignOutCardNamesThePrice(t *testing.T) {
 	store := newMemStore()
-	h := newHandlerWith(store, auth.NewCookieAuthenticator(store.Identities(), testSessionKey, false))
+	authn := auth.NewCookieAuthenticator(store.Identities(), testSessionKey, false)
+	h := newHandlerWith(store, authn)
 
-	cookie := sessionCookie(t, join(t, h, "Anna"))
-	players, _ := store.Players().List(t.Context())
-	anna := players[0]
+	anna, err := store.Players().Create(t.Context(), "Anna", domain.DefaultTTR)
+	if err != nil {
+		t.Fatalf("Create(): %v", err)
+	}
+	subject := auth.NewSubject()
+	if err := store.Identities().Link(t.Context(), domain.ProviderLocal, subject, anna.ID); err != nil {
+		t.Fatalf("Link(): %v", err)
+	}
+	issued := httptest.NewRecorder()
+	authn.SetCookie(issued, subject)
+	cookie := sessionCookie(t, issued)
 
 	page := func() string {
 		r := httptest.NewRequest(http.MethodGet, "/players/"+anna.ID.String(), nil)
@@ -151,6 +163,11 @@ func TestTheSignOutCardNamesThePrice(t *testing.T) {
 	if !strings.Contains(withoutPIN, "Du hast keine PIN") {
 		t.Error("somebody without a PIN is not warned")
 	}
+	// Under the name, where somebody looking for the way out looks — not
+	// below two cards and a heading.
+	if strings.Index(withoutPIN, `action="/signout"`) > strings.Index(withoutPIN, `class="stat"`) {
+		t.Error("signing out is not at the top of the profile")
+	}
 
 	postForm(t, h, "/credentials/pin", url.Values{"pin": {"246813"}}, cookie)
 
@@ -158,7 +175,7 @@ func TestTheSignOutCardNamesThePrice(t *testing.T) {
 	if strings.Contains(withPIN, "Du hast keine PIN") {
 		t.Error("the warning survives setting a PIN")
 	}
-	if !strings.Contains(withPIN, "deine PIN oder deinen") {
+	if !strings.Contains(withPIN, "mit deiner PIN oder deinem") {
 		t.Errorf("somebody with a PIN is not told the way back: %s", withPIN)
 	}
 }
