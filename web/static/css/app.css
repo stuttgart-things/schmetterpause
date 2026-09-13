@@ -780,12 +780,38 @@ button.secondary:hover, .secret-reveal:hover {
 	filter: none;
 }
 
+/* Label over the field, not beside it.
+
+   Beside it, the label column was 5.5rem of a 340px phone and the control got
+   what was left: "Namen wählen …" sat truncated in a picker that could not
+   grow, on the one card every arrival meets. The field below it now has the
+   width of the card, and the form reads the way the secret field two rules
+   down already did — that inconsistency is what gave this away.
+
+   The label claims the line by flex-basis rather than by a break, so the
+   controls under it stay a row: "Best of 3" and "bis 11" are one setting and
+   still sit side by side. .pick is out of it — those labels are checkboxes
+   with their own text, not the name of the row. */
 .row {
 	display: flex;
 	align-items: center;
-	gap: 0.5rem;
-	margin-bottom: 0.6rem;
+	gap: 0.3rem 0.5rem;
+	margin-bottom: 0.85rem;
 	flex-wrap: wrap;
+}
+
+.row > label:not(.pick) { flex: 0 0 100%; }
+
+/* Grow to the line, but from a basis small enough that two of them still fit
+   one: at 8rem the mode pair stays on a single row at 390px, where a basis
+   the width of a comfortable field would have stacked them. min-width: 0
+   because a select refuses to go below its longest option without it, and the
+   longest option is a name nobody has typed yet. */
+.row > select,
+.row > input,
+.row > .row-group {
+	flex: 1 1 8rem;
+	min-width: 0;
 }
 
 .sets {
