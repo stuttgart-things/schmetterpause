@@ -115,6 +115,13 @@
 
 	--radius: 0.875rem;
 	--radius-sm: 0.5rem;
+
+	/* One timing for every state change, so the second person to add a hover
+	   does not invent a second one. Short enough to read as the control
+	   answering rather than as an animation playing: at 120ms a pointer crossing
+	   three navigation links leaves no trail behind it. */
+	--dur: 120ms;
+	--ease: ease-out;
 }
 
 * { box-sizing: border-box; }
@@ -643,6 +650,65 @@ h1 {
 	font-variant-numeric: tabular-nums;
 }
 
+/* --- Zustände ----------------------------------------------------------- */
+
+/* Two readings in a status list and the sentence a refused form comes back
+   with, wearing the same two names. Until now neither name had a rule, so
+   "Das passt nicht. Prüf die PIN oder den Wiederherstellungscode." arrived in
+   the body colour — the same colour as the sentence explaining the field above
+   it. role="alert" is already on those paragraphs, so a screen reader was
+   served all along; this is the half of the message the eye gets.
+
+   Colour is not the only carrier either way: every one of these messages says
+   in words what happened, which is what somebody who cannot tell the two
+   colours apart reads. */
+.ok { color: var(--ok); }
+.fail { color: var(--bad); }
+
+/* A caution is not a failure. "Du hast keine PIN" describes what would happen
+   on a new phone; nothing has gone wrong, and --bad is reserved for the thing
+   that has. That is the distinction .state-pending already makes for a result
+   nobody has confirmed yet, and --warn is the colour .age.stale already makes
+   it in. */
+.warn { color: var(--warn); }
+
+/* A whole sentence rather than a word in a list: it needs the room to be found
+   under a form and the weight to be read before the form is tried again. The
+   <dd> readings in the status list keep the tighter setting of the list around
+   them. */
+p.ok, p.fail, p.warn {
+	margin: 0.9rem 0 0;
+	font-weight: 600;
+}
+
+/* --- Bewegung ----------------------------------------------------------- */
+
+/* Every state change in the interface runs on one timing. Written as a single
+   rule rather than a property on each control, so a new control joins a list
+   instead of inventing a duration, and so switching it off has one place to
+   happen.
+
+   Only properties that paint. No layout property is in the list, so nothing
+   here can animate a reflow, and outline is deliberately absent: a focus ring
+   that fades in is a focus ring that arrives after the key was pressed. */
+a, button, input, select, summary, .whoami-name {
+	transition:
+		color var(--dur) var(--ease),
+		background-color var(--dur) var(--ease),
+		border-color var(--dur) var(--ease),
+		filter var(--dur) var(--ease);
+}
+
+/* Somebody who asked their system for less motion gets none. These transitions
+   are the only motion in the stylesheet — there is no @keyframes in the
+   file — so switching them off here is the whole answer. Anything added later
+   that moves rather than fades has to be added here as well. */
+@media (prefers-reduced-motion: reduce) {
+	a, button, input, select, summary, .whoami-name {
+		transition: none;
+	}
+}
+
 /* --- Formulare --------------------------------------------------------- */
 
 form { margin: 0; }
@@ -698,13 +764,18 @@ button:disabled {
 
 button:disabled:hover { filter: none; }
 
-button.secondary {
+/* .secret-reveal is in the list rather than carrying the class in the markup:
+   it is a reveal button everywhere it appears and there is no call site where
+   it should be the filled one. Without this it inherited the accent fill from
+   `button` and stood beside "Anmelden" in the same violet at the same weight,
+   which presented a way of looking at the field as an equal to signing in. */
+button.secondary, .secret-reveal {
 	background: transparent;
 	color: var(--fg);
 	border-color: var(--line);
 }
 
-button.secondary:hover {
+button.secondary:hover, .secret-reveal:hover {
 	background: var(--panel);
 	filter: none;
 }

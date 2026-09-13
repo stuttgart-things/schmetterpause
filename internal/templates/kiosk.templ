@@ -26,7 +26,7 @@ templ Kiosk(v KioskView) {
 			// laptop on. Visible rather than buried, because the machine
 			// keeps the name for twelve hours and the person holding it
 			// changes rather more often than that (issue #90).
-			<p class="muted kiosk-operator">
+			<p class="muted">
 				Es trägt ein: <strong>{ v.Operator }</strong>
 				<a href="/kiosk?operator=1">Übernehmen</a>
 			</p>
@@ -210,10 +210,10 @@ templ KioskUnlock(v KioskUnlockView) {
 		<section class="session">
 			<h2>Zugangscode</h2>
 			if v.Error != "" {
-				<p class="error" role="alert">{ v.Error }</p>
+				<p class="fail" role="alert">{ v.Error }</p>
 			}
 			<form method="post" action="/kiosk/unlock">
-				<div class="secret-row">
+				<div class="secret-field">
 					<label class="sr-only" for="kiosk-code">Zugangscode</label>
 					<input
 						id="kiosk-code"
@@ -241,7 +241,7 @@ templ KioskUnlock(v KioskUnlockView) {
 				</div>
 				<button type="submit">Freischalten</button>
 			</form>
-			<p class="field-alt">
+			<p class="muted">
 				Einmal pro Gerät. Danach bleibt es rund zwölf Stunden
 				freigeschaltet, und ein Admin kann es jederzeit zurücknehmen.
 			</p>
@@ -281,7 +281,7 @@ templ KioskOperator(v KioskOperatorView) {
 				</p>
 			}
 			if v.Error != "" {
-				<p class="error" role="alert">{ v.Error }</p>
+				<p class="fail" role="alert">{ v.Error }</p>
 			}
 			<form method="post" action="/kiosk/operator">
 				// A plain select and not playerPicker: that one carries the
