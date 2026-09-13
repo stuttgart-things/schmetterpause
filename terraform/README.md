@@ -145,6 +145,7 @@ this table included.
 | `log_level` | `SP_LOG_LEVEL` |
 | `public_base_url` | `SP_PUBLIC_BASE_URL`; empty means the generated address, set it once a custom domain is bound |
 | `bootstrap_admin` | `SP_BOOTSTRAP_ADMIN`; the player has to have joined, so a name is a second apply |
+| `metrics_port` | port of `SP_METRICS_ADDR`; `0` serves no `/metrics`, and nothing on Azure scrapes one |
 | `extra_env_vars` | plain variables with no dedicated setting yet; never secrets |
 | `cpu` / `memory` | per container, for the app and the init container each; memory in Gi twice the vCPU |
 | `log_retention_days` | how long Log Analytics keeps the container logs |
@@ -179,6 +180,7 @@ quietly drifts from the first. Every setting here mirrors one in
 | `publicBaseURL` | `public_base_url` | derived when empty; TLS terminates in front of the app |
 | `kioskEnabled` + `kiosk-token` | `kiosk_token` | |
 | `bootstrapAdmin` | `bootstrap_admin` | |
+| `metricsEnabled` + `metricsPort` | `metrics_port` | `0` is off; on in the kcl base, off on Azure |
 | `session-key` | `session_key` | |
 | `dbOwner` / `dbName` / `dbSSLMode` | `postgres_user` / `postgres_db` / `sslmode=require` | |
 | `password` | `postgres_password` | alphanumeric rather than hex, see above |

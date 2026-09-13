@@ -86,6 +86,17 @@ variable "bootstrap_admin" {
   type        = string
 }
 
+# kcl: metricsEnabled/metricsPort
+variable "metrics_port" {
+  description = "The port of SP_METRICS_ADDR, /metrics on a listener of its own. 0 serves none. Container Apps exposes only the ingress target port, so nothing outside the app would reach it — and nothing on Azure scrapes it yet."
+  type        = number
+
+  validation {
+    condition     = var.metrics_port == 0 || (var.metrics_port >= 1 && var.metrics_port <= 65535 && var.metrics_port != 8080)
+    error_message = "metrics_port must be 0, or a port other than 8080, which the app itself listens on."
+  }
+}
+
 # kcl: extraEnvVars
 variable "extra_env_vars" {
   description = "Plain environment variables for the app container, for settings this configuration has no variable for yet. Applied last, so they override. Not for secrets."
