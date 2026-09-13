@@ -80,6 +80,12 @@ danebenstand. Außerdem legt er Spieler an und gibt einen neuen
 Wiederherstellungscode aus, wenn jemand nicht mehr an seinen Spieler kommt.
 Die ganze Geschichte dazu steht unter [Turnier vor Ort](turnier-vor-ort.md).
 
+Auf der Büro-Instanz im Cluster gibt es diese Seite nicht: dort wäre `/kiosk`
+von jedem Telefon im Netz erreichbar, und das Vertrauen aus dem Raum, auf dem
+ein sofort zählendes Ergebnis beruht, trüge nicht mehr
+([ADR-0014](adr/0014-kiosk-benennt-wer-eintraegt.md)). Der Kiosk gehört zum
+Abend mit eigenem Laptop an der Platte.
+
 ## QR-Aushang
 
 ![Der Aushang zum Ausdrucken mit QR-Code](images/qr.png)
