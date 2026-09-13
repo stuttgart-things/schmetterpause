@@ -858,6 +858,11 @@ button.secondary:hover, .secret-reveal:hover {
 
 .row > label:not(.pick) { flex: 0 0 100%; }
 
+/* The bottom of the card is not the next field. Without this the sign-in card
+   carried a row's worth of empty space under its only control, which is most
+   of what made it look unfinished. */
+.row:last-child { margin-bottom: 0; }
+
 /* Grow to the line, but from a basis small enough that two of them still fit
    one: at 8rem the mode pair stays on a single row at 390px, where a basis
    the width of a comfortable field would have stacked them. min-width: 0
