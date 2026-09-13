@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.8.0](https://github.com/stuttgart-things/schmetterpause/compare/v0.7.0...v0.8.0) (2026-09-13)
+
+
+### Features
+
+* **server:** serve /metrics on a port of its own ([#238](https://github.com/stuttgart-things/schmetterpause/issues/238)) ([0f23b26](https://github.com/stuttgart-things/schmetterpause/commit/0f23b26170c01381c6eed8242c737f647d5de2ee))
+
+
+### Bug Fixes
+
+* **ui:** give every page exactly one h1, and write down how to see the app ([#246](https://github.com/stuttgart-things/schmetterpause/issues/246)) ([9cf7656](https://github.com/stuttgart-things/schmetterpause/commit/9cf7656ca32615dab92159e3f04c23648d61e8e0))
+* **ui:** give the state messages a colour ([#242](https://github.com/stuttgart-things/schmetterpause/issues/242)) ([66f3154](https://github.com/stuttgart-things/schmetterpause/commit/66f3154f4c425ffabd4c0a51d2491292f27a7806))
+* **ui:** put field labels over their fields, give /statistics its cards, and set the heading scale ([#244](https://github.com/stuttgart-things/schmetterpause/issues/244)) ([5b66803](https://github.com/stuttgart-things/schmetterpause/commit/5b6680352ebc86621d9ad2e51553db953225d01a))
+
 ## [0.7.0](https://github.com/stuttgart-things/schmetterpause/compare/v0.6.0...v0.7.0) (2026-09-13)
 
 
