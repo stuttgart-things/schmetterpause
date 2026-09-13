@@ -1,6 +1,6 @@
 # ADR-0016: Azure läuft auf Zeit, die Spieldaten ziehen um
 
-- **Status:** accepted
+- **Status:** accepted — Punkt 6 für den Büro-Umzug nach Kubernetes ersetzt durch ADR-0019
 - **Datum:** 2026-09-10
 - **Betrifft:** Deployment, Betrieb, Daten
 - **Bezug:** schreibt `0001-postgres-als-datenbank` fort und stützt sich auf
