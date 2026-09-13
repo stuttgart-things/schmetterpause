@@ -258,6 +258,33 @@ main {
 	padding: 1.5rem 1.25rem 3rem;
 }
 
+/* The heading of a card, set once. It had never been set at all: every h2 in
+   the application was the browser's — 24px bold, with the UA's own margins —
+   and h1 at 390px measures 25.6px. A card heading 1.6px below the page
+   heading is not a hierarchy, it is two headings, and three rules in this file
+   had already been written to patch the UA margin in three different places.
+
+   1.25rem is a step down and not a demotion, and the difference matters:
+   /statistics and /tournaments carry no h1 at all, so their h2 is the page
+   title and has to still read as one. That missing h1 is a structural problem
+   of its own, and not one a font-size can fix. */
+h2 {
+	margin: 0 0 0.7rem;
+	font-size: 1.25rem;
+	font-weight: 700;
+	letter-spacing: -0.01em;
+}
+
+/* The one level below it, which only the tournament schedule uses ("Runde 1").
+   Defining h2 without it would have moved the collision down a level rather
+   than removed it: the browser's h3 is 18.7px, which is 1.3px under the h2
+   above. */
+h3 {
+	margin: 1.1rem 0 0.5rem;
+	font-size: 1rem;
+	font-weight: 700;
+}
+
 h1 {
 	font-size: clamp(2rem, 7vw, 2.75rem);
 	font-weight: 700;
@@ -397,21 +424,22 @@ h1 {
 /* --- Wiederherstellungscode -------------------------------------------- */
 
 /* The one card on the page that breaks the house pattern, on purpose.
-   ADR-0006 asks for a display that cannot be read past, and the house style
-   for a card heading — muted, uppercase, mono, the size of a label — is a
-   fair description of what gets read past. So this heading is full size and
-   in the foreground colour, and the card carries the accent along its left
-   edge instead of the usual even outline. */
+   ADR-0006 asks for a display that cannot be read past, and a heading the size
+   of every other heading on the page is a fair description of what gets read
+   past. So this one is larger than the house card heading, and the card
+   carries the accent along its left edge instead of the usual even outline.
+
+   It used to spell out font-family, weight, letter-spacing, text-transform and
+   colour to reach that, because there was no house card heading to differ
+   from — the comment described one the stylesheet never had, and the size it
+   landed on, 1.15rem, was in fact *smaller* than the 24px every other card
+   heading got from the browser. Now there is a house heading, this one is
+   larger than it, and the difference is a single line. */
 .recovery { border-left: 3px solid var(--accent); }
 
 .recovery h2 {
-	font-family: var(--font-ui);
-	font-size: 1.15rem;
-	font-weight: 700;
-	letter-spacing: -0.01em;
-	text-transform: none;
-	color: var(--fg);
-	margin: 0 0 0.75rem;
+	font-size: 1.5rem;
+	margin-bottom: 0.75rem;
 }
 
 .recovery-code {
