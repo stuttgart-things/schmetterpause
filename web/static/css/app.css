@@ -732,6 +732,25 @@ input, select {
 	border-radius: var(--radius-sm);
 }
 
+/* The native control chrome was the one thing on the card that belonged to
+   the browser rather than to this stylesheet — a grey double arrow on a panel
+   that is trying to look built. The arrow is drawn here instead, in the muted
+   colour every other quiet mark on the page uses.
+
+   The colour is written out rather than taken from var(--muted): a data URI is
+   not a stylesheet and cannot see a custom property. If --muted moves, this
+   moves with it by hand — which is why it is the only place in the file that
+   repeats a palette value. */
+select {
+	-webkit-appearance: none;
+	appearance: none;
+	padding-right: 2.1rem;
+	background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'%3E%3Cpath fill='none' stroke='%238f8fb8' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round' d='M1 1.75 6 6.25 11 1.75'/%3E%3C/svg%3E");
+	background-repeat: no-repeat;
+	background-position: right 0.75rem center;
+	background-size: 0.7rem;
+}
+
 input:focus-visible, select:focus-visible, button:focus-visible {
 	outline: 2px solid var(--accent);
 	outline-offset: 2px;
