@@ -729,13 +729,18 @@ button:disabled {
 
 button:disabled:hover { filter: none; }
 
-button.secondary {
+/* .secret-reveal is in the list rather than carrying the class in the markup:
+   it is a reveal button everywhere it appears and there is no call site where
+   it should be the filled one. Without this it inherited the accent fill from
+   `button` and stood beside "Anmelden" in the same violet at the same weight,
+   which presented a way of looking at the field as an equal to signing in. */
+button.secondary, .secret-reveal {
 	background: transparent;
 	color: var(--fg);
 	border-color: var(--line);
 }
 
-button.secondary:hover {
+button.secondary:hover, .secret-reveal:hover {
 	background: var(--panel);
 	filter: none;
 }
