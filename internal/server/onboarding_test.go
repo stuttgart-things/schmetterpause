@@ -48,10 +48,16 @@ func TestTheJoinFormSaysWhatItAsksFor(t *testing.T) {
 	if !strings.Contains(body, "Zum ersten Mal hier?") {
 		t.Errorf("the join card does not say what it is: %s", body)
 	}
-	if !strings.Contains(body, "Kein Passwort") {
-		t.Errorf("the join card does not say that a name is the whole of it: %s", body)
+	if !strings.Contains(body, "keine E-Mail") {
+		t.Errorf("the join card does not say how little it asks: %s", body)
 	}
-	if !strings.Contains(body, `name="display_name"`) {
-		t.Errorf("the join card lost its field: %s", body)
+	for _, field := range []string{`name="display_name"`, `name="pin"`} {
+		if !strings.Contains(body, field) {
+			t.Errorf("the join card lacks %s: %s", field, body)
+		}
+	}
+	// A PIN field with nothing beside it is a field somebody stares at.
+	if !strings.Contains(body, `class="pin-example"`) {
+		t.Errorf("the PIN field comes without an example: %s", body)
 	}
 }

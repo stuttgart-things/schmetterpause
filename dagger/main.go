@@ -775,7 +775,8 @@ echo "== session: a browser is recognised again =="
 cookies=$(mktemp)
 
 curl -fsS -c "$cookies" -X POST http://app.verify:8080/players \
-	--data-urlencode "display_name=Verify Anna" | grep -q "Verify Anna" || {
+	--data-urlencode "display_name=Verify Anna" \
+	--data-urlencode "pin=135790" | grep -q "Verify Anna" || {
 	echo "joining did not name the player back"
 	exit 1
 }
@@ -859,7 +860,8 @@ grep -q "<h1>Hallo, Verify Anna</h1>" "$top" || {
 # page is reloaded, which is the one moment nobody does.
 fresh=$(mktemp)
 curl -fsS -c "$fresh" -X POST http://app.verify:8080/players \
-	--data-urlencode "display_name=Verify Ella" > "$top"
+	--data-urlencode "display_name=Verify Ella" \
+	--data-urlencode "pin=135790" > "$top"
 grep -q "id=\"page-head\"" "$top" || {
 	echo "joining does not send the greeting back"
 	cat "$top"
@@ -1026,7 +1028,8 @@ curl -fsS http://app.verify:8080/standings | grep -q "class=\"table-scroll\" tab
 echo "== match entry: an impossible result is refused, a real one is stored =="
 second=$(mktemp)
 curl -fsS -c "$second" -X POST http://app.verify:8080/players \
-	--data-urlencode "display_name=Verify Bodo" >/dev/null
+	--data-urlencode "display_name=Verify Bodo" \
+	--data-urlencode "pin=135790" >/dev/null
 
 # The opponent id is only reachable through the rendered picker, which is
 # also the point: it checks that the form offers a usable opponent at all.

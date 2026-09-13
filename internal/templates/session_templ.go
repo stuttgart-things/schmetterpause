@@ -56,48 +56,68 @@ func Session(v SessionView) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		if !v.SignedIn() {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "     <h2>Zum ersten Mal hier?</h2><p class=\"muted\">Trag deinen Namen ein, das ist alles. Kein Passwort, keine E-Mail. Nimm den Namen, unter dem dich die anderen suchen — sie wählen ihn aus einer Liste, wenn sie ein Ergebnis gegen dich eintragen.</p><form hx-post=\"/players\" hx-target=\"#session\" hx-swap=\"outerHTML\"><label for=\"display-name\">Dein Name</label> <input id=\"display-name\" name=\"display_name\" value=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "    <h2>Zum ersten Mal hier?</h2><p class=\"muted\">Dein Name und eine PIN, keine E-Mail. Nimm den Namen, unter dem dich die anderen in der Liste suchen.</p><form hx-post=\"/players\" hx-target=\"#session\" hx-swap=\"outerHTML\"><div class=\"row\"><label for=\"display-name\">Dein Name</label> <input id=\"display-name\" name=\"display_name\" value=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var4 string
 			templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.ResolveAttributeValue(v.Name)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `session.templ`, Line: 27, Col: 19}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `session.templ`, Line: 25, Col: 20}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var4)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "\" maxlength=\"40\" autocomplete=\"nickname\" autocapitalize=\"words\" required> <button type=\"submit\">Mitspielen</button> ")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "\" maxlength=\"40\" autocomplete=\"nickname\" autocapitalize=\"words\" required></div><div class=\"pin-field\"><label for=\"join-pin\">Deine PIN</label><p class=\"muted\">")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = pinRule().Render(ctx, templ_7745c5c3_Buffer)
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "Damit meldest du dich auf jedem anderen Gerät an.</p><div class=\"secret-field\">")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = pinInput("join-pin").Render(ctx, templ_7745c5c3_Buffer)
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = revealButton("join-pin").Render(ctx, templ_7745c5c3_Buffer)
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "</div></div><button type=\"submit\">Mitspielen</button> ")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			if v.Error != "" {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "<p class=\"fail\" role=\"alert\">")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "<p class=\"fail\" role=\"alert\">")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var5 string
 				templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(v.Error)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `session.templ`, Line: 35, Col: 43}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `session.templ`, Line: 53, Col: 43}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "</p>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "</p>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "</form>        <p class=\"session-alt\">Schon dabei, aber dieses Gerät kennt dich nicht? <button type=\"button\" class=\"linklike\" hx-get=\"/fragments/signin\" hx-target=\"#session\" hx-swap=\"outerHTML\">Anmelden</button></p>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "</form>        <p class=\"session-alt\">Schon dabei, aber dieses Gerät kennt dich nicht? <button type=\"button\" class=\"linklike\" hx-get=\"/fragments/signin\" hx-target=\"#session\" hx-swap=\"outerHTML\">Anmelden</button></p>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "</section>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "</section>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -114,13 +134,14 @@ func Session(v SessionView) templ.Component {
 // what "read past" looks like, so this one card breaks the pattern on
 // purpose — see the .recovery block in app.css.
 //
-// The order is deliberate. The code comes before the instruction because it
-// is the thing on the screen; the instruction says where to put it rather
-// than that it exists; and the reassurance about this device comes last,
+// The PIN was chosen a step earlier, in the join form, so this card has one
+// thing on it rather than two (docs/adr/0018). The order is deliberate: the
+// code, what it is for and where to put it, the file for whoever has no
+// password manager at hand, and last the reassurance about this device,
 // because it is true whether or not anybody reads it.
 //
 // No copy button. navigator.clipboard is undefined outside a secure context,
-// and during the measurement this is served over http:// on an IP address
+// and at the table this is served over http:// on an IP address
 // (docs/adr/0007) — the button would be dead in exactly the place it is
 // needed. Selectable text instead, which every password manager can take.
 func Joined(v SessionView) templ.Component {
@@ -144,28 +165,28 @@ func Joined(v SessionView) templ.Component {
 			templ_7745c5c3_Var6 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "<section id=\"session\" class=\"session recovery\"><h2>Heb diesen Code auf</h2><p class=\"recovery-code\"><code>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "<section id=\"session\" class=\"session recovery\"><h2>Heb diesen Code auf</h2><p class=\"recovery-code\"><code>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var7 string
 		templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(v.RecoveryCode)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `session.templ`, Line: 83, Col: 49}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `session.templ`, Line: 102, Col: 49}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "</code></p><p class=\"recovery-lead\">Speicher ihn da, wo deine Passwörter liegen. Er wird <strong>nur dieses eine Mal</strong> angezeigt.</p><p class=\"muted\">Dieses Gerät erkennt dich wieder, auch nach einem Neustart. Den Code brauchst du erst, wenn es dich vergisst oder du auf ein neues wechselst.</p><hr class=\"hairline\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "</code></p><p class=\"recovery-lead\">Er bringt dich zurück, wenn du deine PIN vergessen hast. Speicher ihn da, wo deine Passwörter liegen, oder als Datei — angezeigt wird er <strong>nur dieses eine Mal</strong>.</p>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = PINForm(PINFormView{}).Render(ctx, templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = recoveryDownload(v.DisplayName, v.RecoveryCode).Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "</section>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 13, "<p class=\"muted\">Dieses Gerät erkennt dich wieder, auch nach einem Neustart. Auf einem neuen meldest du dich mit deinem Namen und deiner PIN an.</p></section>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

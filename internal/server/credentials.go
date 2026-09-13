@@ -79,7 +79,17 @@ func (s *Server) handleNewRecoveryCode(w http.ResponseWriter, r *http.Request) {
 	s.signInByPlayer.Succeeded(self.String())
 	s.log.InfoContext(r.Context(), "recovery code reissued", "player_id", self)
 
-	s.render(w, r, templates.RecoveryCard(templates.RecoveryCardView{Code: code}))
+	view := templates.RecoveryCardView{Code: code}
+	// The name only labels the file the code can be saved as. A lookup that
+	// fails costs that label, not the code that was just issued.
+	if player, err := s.store.Players().ByID(r.Context(), self); err != nil {
+		s.log.WarnContext(r.Context(), "loading the name for the code file failed",
+			"player_id", self, "error", err)
+	} else {
+		view.DisplayName = player.DisplayName
+	}
+
+	s.render(w, r, templates.RecoveryCard(view))
 }
 
 // handleSignOut makes this browser a stranger again.
@@ -158,7 +168,7 @@ func (s *Server) hasPIN(ctx context.Context, id uuid.UUID) bool {
 func validatePIN(pin string) (string, bool) {
 	switch {
 	case pin == "":
-		return "Ohne Ziffern geht es nicht.", false
+		return "Ohne PIN geht es nicht.", false
 	case !isDigits(pin):
 		return "Nur Ziffern. Kein Passwort, keine Buchstaben.", false
 	case len(pin) < credential.MinPINLength:

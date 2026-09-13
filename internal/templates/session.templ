@@ -7,29 +7,47 @@ package templates
 templ Session(v SessionView) {
 	<section id="session" class={ templ.KV("session", !v.SignedIn()) }>
 		if !v.SignedIn() {
-			// What this card is, before the field. Somebody who has never
-			// been here does not know that a name is the whole of it — the
-			// feedback after the first week was that "erst einen Nutzer
-			// anlegen" felt like the beginning of a registration, and a lone
-			// input with a button says nothing to correct that.
+			// What this card is, before the fields. Somebody who has never
+			// been here does not know how little it asks — the feedback after
+			// the first week was that "erst einen Nutzer anlegen" felt like
+			// the beginning of a registration.
 			<h2>Zum ersten Mal hier?</h2>
 			<p class="muted">
-				Trag deinen Namen ein, das ist alles. Kein Passwort, keine
-				E-Mail. Nimm den Namen, unter dem dich die anderen suchen —
-				sie wählen ihn aus einer Liste, wenn sie ein Ergebnis gegen
-				dich eintragen.
+				Dein Name und eine PIN, keine E-Mail. Nimm den Namen, unter dem
+				dich die anderen in der Liste suchen.
 			</p>
 			<form hx-post="/players" hx-target="#session" hx-swap="outerHTML">
-				<label for="display-name">Dein Name</label>
-				<input
-					id="display-name"
-					name="display_name"
-					value={ v.Name }
-					maxlength="40"
-					autocomplete="nickname"
-					autocapitalize="words"
-					required
-				/>
+				<div class="row">
+					<label for="display-name">Dein Name</label>
+					<input
+						id="display-name"
+						name="display_name"
+						value={ v.Name }
+						maxlength="40"
+						autocomplete="nickname"
+						autocapitalize="words"
+						required
+					/>
+				</div>
+				// The PIN in the same form, before the player exists
+				// (docs/adr/0018). Asked for afterwards it was an offer under a
+				// code, and an offer somebody can scroll past is how most
+				// players ended up with no way back but a code they had not
+				// saved.
+				//
+				// What was typed is never put back after a refusal (see
+				// rejectJoin), so a rejected name costs retyping the PIN.
+				<div class="pin-field">
+					<label for="join-pin">Deine PIN</label>
+					<p class="muted">
+						@pinRule()
+						Damit meldest du dich auf jedem anderen Gerät an.
+					</p>
+					<div class="secret-field">
+						@pinInput("join-pin")
+						@revealButton("join-pin")
+					</div>
+				</div>
 				<button type="submit">Mitspielen</button>
 				if v.Error != "" {
 					<p class="fail" role="alert">{ v.Error }</p>
@@ -37,12 +55,12 @@ templ Session(v SessionView) {
 			</form>
 			// The way on for somebody the picker has nothing to offer. This
 			// card is now the second door rather than the first: it shows
-			// on an empty roster, and behind the link under the sign-in
-			// form the rest of the time.
+			// on an empty roster, and behind the link at the top of the
+			// sign-in card the rest of the time.
 			//
-			// A link rather than a button, unlike the other direction: a
-			// reader who ended up here already knows which of the two they
-			// are, because they got here by saying so.
+			// A link rather than a button: a reader who ended up here already
+			// knows which of the two they are, because they got here by saying
+			// so.
 			<p class="session-alt">
 				Schon dabei, aber dieses Gerät kennt dich nicht?
 				<button
@@ -68,13 +86,14 @@ templ Session(v SessionView) {
 // what "read past" looks like, so this one card breaks the pattern on
 // purpose — see the .recovery block in app.css.
 //
-// The order is deliberate. The code comes before the instruction because it
-// is the thing on the screen; the instruction says where to put it rather
-// than that it exists; and the reassurance about this device comes last,
+// The PIN was chosen a step earlier, in the join form, so this card has one
+// thing on it rather than two (docs/adr/0018). The order is deliberate: the
+// code, what it is for and where to put it, the file for whoever has no
+// password manager at hand, and last the reassurance about this device,
 // because it is true whether or not anybody reads it.
 //
 // No copy button. navigator.clipboard is undefined outside a secure context,
-// and during the measurement this is served over http:// on an IP address
+// and at the table this is served over http:// on an IP address
 // (docs/adr/0007) — the button would be dead in exactly the place it is
 // needed. Selectable text instead, which every password manager can take.
 templ Joined(v SessionView) {
@@ -82,22 +101,14 @@ templ Joined(v SessionView) {
 		<h2>Heb diesen Code auf</h2>
 		<p class="recovery-code"><code>{ v.RecoveryCode }</code></p>
 		<p class="recovery-lead">
-			Speicher ihn da, wo deine Passwörter liegen. Er wird
-			<strong>nur dieses eine Mal</strong> angezeigt.
+			Er bringt dich zurück, wenn du deine PIN vergessen hast. Speicher
+			ihn da, wo deine Passwörter liegen, oder als Datei — angezeigt wird
+			er <strong>nur dieses eine Mal</strong>.
 		</p>
+		@recoveryDownload(v.DisplayName, v.RecoveryCode)
 		<p class="muted">
-			Dieses Gerät erkennt dich wieder, auch nach einem
-			Neustart. Den Code brauchst du erst, wenn es dich vergisst oder
-			du auf ein neues wechselst.
+			Dieses Gerät erkennt dich wieder, auch nach einem Neustart. Auf
+			einem neuen meldest du dich mit deinem Namen und deiner PIN an.
 		</p>
-		// On the same card and under a rule, not behind a link. The code is
-		// the perishable half and goes first, but issue #88 is explicit that
-		// the PIN must not end up buried behind it: realistically few people
-		// save a code, and then the PIN is what carries the daily load.
-		//
-		// It swaps itself and nothing else, so setting a PIN here leaves the
-		// code on the screen.
-		<hr class="hairline"/>
-		@PINForm(PINFormView{})
 	</section>
 }

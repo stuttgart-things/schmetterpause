@@ -257,7 +257,7 @@ func (v PINFormView) Heading() string {
 	if v.Set {
 		return "Neue PIN"
 	}
-	return "PIN, wenn du magst"
+	return "Deine PIN"
 }
 
 // Action labels the button.
@@ -290,6 +290,9 @@ type RecoveryCardView struct {
 	// one rather than showing the one that exists — the server holds only a
 	// hash and could not show it if it wanted to.
 	Code string
+	// DisplayName labels the file the code can be saved as, so it says
+	// whose code it is. Empty leaves the line out, never the code.
+	DisplayName string
 	// Error explains a refusal.
 	Error string
 }

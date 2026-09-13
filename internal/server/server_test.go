@@ -286,11 +286,15 @@ func storeWithPlayers(t *testing.T, n int) *memStore {
 	return store
 }
 
+// testPIN is the PIN join chooses. Joining needs one (docs/adr/0018), and a
+// value no test sets or guesses on its own keeps it from passing by accident.
+const testPIN = "135790"
+
 // join posts the form and returns the response.
 func join(t *testing.T, h http.Handler, name string, cookies ...*http.Cookie) *httptest.ResponseRecorder {
 	t.Helper()
 
-	form := url.Values{"display_name": {name}}
+	form := url.Values{"display_name": {name}, "pin": {testPIN}}
 	r := httptest.NewRequest(http.MethodPost, "/players", strings.NewReader(form.Encode()))
 	r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	for _, c := range cookies {
