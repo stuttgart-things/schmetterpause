@@ -68,6 +68,7 @@ nav:
       - ADR-0015 Zählwerk trägt Ergebnisse ein: adr/0015-zaehlwerk-traegt-ergebnisse-ein.md
       - ADR-0016 Azure auf Zeit, Daten ziehen um: adr/0016-azure-auf-zeit-daten-ziehen-um.md
       - ADR-0017 Spieler zusammenführen: adr/0017-spieler-zusammenfuehren.md
+      - ADR-0018 PIN beim Beitritt: adr/0018-pin-beim-beitritt.md
   - Betrieb:
       - Plattform-Voraussetzungen: platform.md
       - Deployment ohne GitOps: deployment.md
