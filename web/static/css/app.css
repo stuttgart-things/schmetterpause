@@ -542,6 +542,24 @@ h1 {
 
 .pin-card, .recovery-card { margin-top: 1.5rem; }
 
+/* The way out, under your own name. One row where it fits: the button and the
+   sentence naming its price belong together, and on a phone the sentence
+   wraps under the button rather than squeezing it. */
+.signout {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 0.4rem 0.8rem;
+	margin: 0 0 1rem;
+	font-size: 0.85rem;
+}
+
+.signout button {
+	margin-top: 0;
+	padding: 0.4rem 0.9rem;
+	font-size: 0.9rem;
+}
+
 /* The sentence that tells the code and the PIN apart, above both cards. It
    sits outside them on purpose: it is about the pair, and inside either one it
    would read as that card's own small print. */
