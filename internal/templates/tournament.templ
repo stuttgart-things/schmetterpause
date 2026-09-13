@@ -171,7 +171,7 @@ templ tournamentForm(v TournamentFormView, maxPlayers int) {
 // and what the button says differ.
 templ tournamentFields(v TournamentFormView, maxPlayers int, action, mode string) {
 	if v.Error != "" {
-		<p class="error" role="alert">{ v.Error }</p>
+		<p class="fail" role="alert">{ v.Error }</p>
 	}
 	<form method="post" action={ templ.SafeURL(action) }>
 		<div class="row">
@@ -410,7 +410,7 @@ templ TournamentPage(v TournamentView) {
 		</section>
 		if v.Error != "" {
 			<section class="card">
-				<p class="error" role="alert">{ v.Error }</p>
+				<p class="fail" role="alert">{ v.Error }</p>
 			</section>
 		}
 		if v.Edit != nil {
@@ -618,10 +618,10 @@ templ tournamentRounds(v TournamentView) {
 						if p.Played() {
 							<span class="pairing-result">{ p.Result }</span>
 							if p.Pending {
-								<span class="tag">wartet auf Bestätigung</span>
+								<span class="state state-pending">wartet auf Bestätigung</span>
 							}
 							if p.Disputed {
-								<span class="tag">bestritten</span>
+								<span class="state state-disputed">bestritten</span>
 							}
 						} else if v.CanEnter {
 							@pairingEntry("/kiosk/tournaments/"+v.ID+"/matches", v.ID, v.BestOf, v.PointsToWin, p)

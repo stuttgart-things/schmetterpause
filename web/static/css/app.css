@@ -643,6 +643,37 @@ h1 {
 	font-variant-numeric: tabular-nums;
 }
 
+/* --- Zustände ----------------------------------------------------------- */
+
+/* Two readings in a status list and the sentence a refused form comes back
+   with, wearing the same two names. Until now neither name had a rule, so
+   "Das passt nicht. Prüf die PIN oder den Wiederherstellungscode." arrived in
+   the body colour — the same colour as the sentence explaining the field above
+   it. role="alert" is already on those paragraphs, so a screen reader was
+   served all along; this is the half of the message the eye gets.
+
+   Colour is not the only carrier either way: every one of these messages says
+   in words what happened, which is what somebody who cannot tell the two
+   colours apart reads. */
+.ok { color: var(--ok); }
+.fail { color: var(--bad); }
+
+/* A caution is not a failure. "Du hast keine PIN" describes what would happen
+   on a new phone; nothing has gone wrong, and --bad is reserved for the thing
+   that has. That is the distinction .state-pending already makes for a result
+   nobody has confirmed yet, and --warn is the colour .age.stale already makes
+   it in. */
+.warn { color: var(--warn); }
+
+/* A whole sentence rather than a word in a list: it needs the room to be found
+   under a form and the weight to be read before the form is tried again. The
+   <dd> readings in the status list keep the tighter setting of the list around
+   them. */
+p.ok, p.fail, p.warn {
+	margin: 0.9rem 0 0;
+	font-weight: 600;
+}
+
 /* --- Formulare --------------------------------------------------------- */
 
 form { margin: 0; }

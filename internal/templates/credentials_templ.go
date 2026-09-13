@@ -532,7 +532,7 @@ func SignOut(v SignOutView) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		} else {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 34, "<span class=\"fail\">Du hast keine PIN — zurück kämst du nur mit deinem Wiederherstellungscode. <a href=\"#pin-card\">Erst eine PIN setzen</a></span>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 34, "<span class=\"warn\">Du hast keine PIN — zurück kämst du nur mit deinem Wiederherstellungscode. <a href=\"#pin-card\">Erst eine PIN setzen</a></span>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

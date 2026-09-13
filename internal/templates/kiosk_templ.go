@@ -63,7 +63,7 @@ func Kiosk(v KioskView) templ.Component {
 				return templ_7745c5c3_Err
 			}
 			if v.Operator != "" {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "    <p class=\"muted kiosk-operator\">Es trägt ein: <strong>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "    <p class=\"muted\">Es trägt ein: <strong>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -605,14 +605,14 @@ func KioskUnlock(v KioskUnlockView) templ.Component {
 				return templ_7745c5c3_Err
 			}
 			if v.Error != "" {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 54, "<p class=\"error\" role=\"alert\">")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 54, "<p class=\"fail\" role=\"alert\">")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var26 string
 				templ_7745c5c3_Var26, templ_7745c5c3_Err = templ.JoinStringErrs(v.Error)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `kiosk.templ`, Line: 213, Col: 43}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `kiosk.templ`, Line: 213, Col: 42}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var26))
 				if templ_7745c5c3_Err != nil {
@@ -623,7 +623,7 @@ func KioskUnlock(v KioskUnlockView) templ.Component {
 					return templ_7745c5c3_Err
 				}
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 56, "<form method=\"post\" action=\"/kiosk/unlock\"><div class=\"secret-row\"><label class=\"sr-only\" for=\"kiosk-code\">Zugangscode</label> <input id=\"kiosk-code\" name=\"code\" type=\"password\" autocapitalize=\"none\" autocorrect=\"off\" autocomplete=\"off\" spellcheck=\"false\" required><button type=\"button\" class=\"secret-reveal\" data-reveal=\"kiosk-code\" aria-controls=\"kiosk-code\" aria-pressed=\"false\">Zeigen</button></div><button type=\"submit\">Freischalten</button></form><p class=\"field-alt\">Einmal pro Gerät. Danach bleibt es rund zwölf Stunden freigeschaltet, und ein Admin kann es jederzeit zurücknehmen.</p></section>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 56, "<form method=\"post\" action=\"/kiosk/unlock\"><div class=\"secret-field\"><label class=\"sr-only\" for=\"kiosk-code\">Zugangscode</label> <input id=\"kiosk-code\" name=\"code\" type=\"password\" autocapitalize=\"none\" autocorrect=\"off\" autocomplete=\"off\" spellcheck=\"false\" required><button type=\"button\" class=\"secret-reveal\" data-reveal=\"kiosk-code\" aria-controls=\"kiosk-code\" aria-pressed=\"false\">Zeigen</button></div><button type=\"submit\">Freischalten</button></form><p class=\"muted\">Einmal pro Gerät. Danach bleibt es rund zwölf Stunden freigeschaltet, und ein Admin kann es jederzeit zurücknehmen.</p></section>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -714,14 +714,14 @@ func KioskOperator(v KioskOperatorView) templ.Component {
 				}
 			}
 			if v.Error != "" {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 61, "<p class=\"error\" role=\"alert\">")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 61, "<p class=\"fail\" role=\"alert\">")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var30 string
 				templ_7745c5c3_Var30, templ_7745c5c3_Err = templ.JoinStringErrs(v.Error)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `kiosk.templ`, Line: 284, Col: 43}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `kiosk.templ`, Line: 284, Col: 42}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var30))
 				if templ_7745c5c3_Err != nil {
