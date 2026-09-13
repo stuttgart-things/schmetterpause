@@ -115,6 +115,13 @@
 
 	--radius: 0.875rem;
 	--radius-sm: 0.5rem;
+
+	/* One timing for every state change, so the second person to add a hover
+	   does not invent a second one. Short enough to read as the control
+	   answering rather than as an animation playing: at 120ms a pointer crossing
+	   three navigation links leaves no trail behind it. */
+	--dur: 120ms;
+	--ease: ease-out;
 }
 
 * { box-sizing: border-box; }
@@ -672,6 +679,34 @@ h1 {
 p.ok, p.fail, p.warn {
 	margin: 0.9rem 0 0;
 	font-weight: 600;
+}
+
+/* --- Bewegung ----------------------------------------------------------- */
+
+/* Every state change in the interface runs on one timing. Written as a single
+   rule rather than a property on each control, so a new control joins a list
+   instead of inventing a duration, and so switching it off has one place to
+   happen.
+
+   Only properties that paint. No layout property is in the list, so nothing
+   here can animate a reflow, and outline is deliberately absent: a focus ring
+   that fades in is a focus ring that arrives after the key was pressed. */
+a, button, input, select, summary, .whoami-name {
+	transition:
+		color var(--dur) var(--ease),
+		background-color var(--dur) var(--ease),
+		border-color var(--dur) var(--ease),
+		filter var(--dur) var(--ease);
+}
+
+/* Somebody who asked their system for less motion gets none. These transitions
+   are the only motion in the stylesheet — there is no @keyframes in the
+   file — so switching them off here is the whole answer. Anything added later
+   that moves rather than fades has to be added here as well. */
+@media (prefers-reduced-motion: reduce) {
+	a, button, input, select, summary, .whoami-name {
+		transition: none;
+	}
 }
 
 /* --- Formulare --------------------------------------------------------- */
