@@ -5,8 +5,19 @@ import "strconv"
 // Statistics is what the results already know.
 templ Statistics(v StatisticsView) {
 	@Layout("Statistik", v.Header) {
+		// The page said its name in an h2 and had no h1 at all, so its outline
+		// began one level down and had no top to jump to (issue #245). The
+		// words were already here — Layout has been given them all along.
+		<div class="page-head">
+			<div class="page-greeting">
+				<h1>Statistik</h1>
+				<p class="muted">Was die Ergebnisse schon wissen.</p>
+			</div>
+		</div>
+		// No heading of its own any more: the card opens the page directly
+		// under the title that names it, and a second "Statistik" a line
+		// below the first says nothing the first did not.
 		<section class="card">
-			<h2>Statistik</h2>
 			if !v.Any() {
 				<p class="muted">
 					Noch keine gewerteten Matches. Sobald das erste bestätigt

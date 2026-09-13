@@ -9,6 +9,15 @@ import (
 // TournamentList is the page that lists tournaments and starts one.
 templ TournamentList(v TournamentListView) {
 	@Layout("Turniere", v.Header) {
+		// Issue #245: the page began its outline at "Läuft gerade", which is
+		// the name of a card and not of the page. Layout has always been told
+		// the page's own name; now the page shows it.
+		<div class="page-head">
+			<div class="page-greeting">
+				<h1>Turniere</h1>
+				<p class="muted">Ein Abend, ein Spielplan. Was gerade läuft, und was schon gelaufen ist.</p>
+			</div>
+		</div>
 		<section class="card">
 			<h2>Läuft gerade</h2>
 			if len(v.Running) == 0 {
@@ -350,22 +359,32 @@ templ tournamentFields(v TournamentFormView, maxPlayers int, action, mode string
 // TournamentPage is one tournament: the draw, and the table so far.
 templ TournamentPage(v TournamentView) {
 	@Layout(v.Name, v.Header) {
+		// The name was an h2 inside the first card, which left the page
+		// without an h1 (issue #245). It moves up with the sentence that
+		// describes it — format, mode, how far along, and whether it still
+		// counts — which is exactly the muted line this pattern asks for. The
+		// card keeps what is left: the things there are to do with a
+		// tournament.
+		<div class="page-head">
+			<div class="page-greeting">
+				<h1>{ v.Name }</h1>
+				<p class="muted">
+					{ TournamentFormatLabel(v.Format, v.WithFinal) } &middot;
+					{ TournamentModeLabel(v.BestOf, v.PointsToWin) } &middot;
+					{ strconv.Itoa(v.Played) } von { strconv.Itoa(v.Total) } Spielen gewertet.
+					if !v.Rated {
+						// Where somebody would otherwise find out afterwards.
+						<strong class="unrated">Zählt nicht für die Rangliste.</strong>
+					}
+					if !v.Open {
+						Das Turnier ist beendet.
+					} else if v.Done() {
+						Alle Spiele sind drin.
+					}
+				</p>
+			</div>
+		</div>
 		<section class="card">
-			<h2>{ v.Name }</h2>
-			<p class="muted">
-				{ TournamentFormatLabel(v.Format, v.WithFinal) } &middot;
-				{ TournamentModeLabel(v.BestOf, v.PointsToWin) } &middot;
-				{ strconv.Itoa(v.Played) } von { strconv.Itoa(v.Total) } Spielen gewertet.
-				if !v.Rated {
-					// Where somebody would otherwise find out afterwards.
-					<strong class="unrated">Zählt nicht für die Rangliste.</strong>
-				}
-				if !v.Open {
-					Das Turnier ist beendet.
-				} else if v.Done() {
-					Alle Spiele sind drin.
-				}
-			</p>
 			if v.Open {
 				// Not only when every match is in. A tournament nobody ever
 				// finishes is the one that most needs taking off the list,
