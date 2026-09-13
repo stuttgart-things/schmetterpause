@@ -10,6 +10,23 @@ dasselbe: der Laptop zieht das Image, das die Pipeline gebaut, gescannt und
 veröffentlicht hat, nicht eines, das er selbst baut. Der Unterschied zum Alltag
 sind drei Umgebungsvariablen und eine zweite Compose-Datei, die sie einfordert.
 
+> **Das Büro spielt seit dem 13.09.2026 nicht mehr auf einem Laptop**, sondern
+> auf der Instanz im Cluster:
+> <https://schmetterpause.homerun2-test1.sthings-vsphere.labul.sva.de>. Dort
+> ist der Kiosk abgeschaltet: Ein Kiosk-Ergebnis zählt sofort, weil jemand an
+> der Platte steht, und dieser Ort trägt nicht mehr, sobald `/kiosk` von jedem
+> Telefon im Netz erreichbar ist
+> ([ADR-0014](adr/0014-kiosk-benennt-wer-eintraegt.md)). Ergebnisse trägt dort
+> jeder über sein eigenes Handy ein, und der Aushang kommt von dort, von `/qr`.
+>
+> Diese Seite beschreibt den Abend mit eigenem Laptop, etwa ein Turnier an
+> einem Ort ohne Weg zum Cluster. **Das ist eine zweite, eigene Rangliste.**
+> `task office:up` startet mit dem Stand, den der Laptop zuletzt hatte, und
+> nichts von diesem Abend kommt von allein in die Büro-Rangliste. Übernehmen
+> geht nur als Dump ([Spieldaten sichern und umziehen](backup-restore.md)), und
+> der ersetzt alles, was im Cluster steht — auch die Ergebnisse, die dort
+> inzwischen eingetragen wurden.
+
 ## Einmalig vorbereiten
 
 ```sh

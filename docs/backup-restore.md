@@ -3,11 +3,16 @@
 The rules are in [ADR-0016](adr/0016-azure-auf-zeit-daten-ziehen-um.md): the
 Azure instance only ever runs temporarily, and the game data moves between
 Compose, Kubernetes and Azure as a logical dump, one writer at a time.
+[ADR-0019](adr/0019-backup-auf-kubernetes.md) adds backups on Kubernetes
+through the Barman Cloud plugin, and made the office's move there wait for a
+timed restore.
 
 This page is the how. Everything on it has been run: a full round trip
-Kubernetes → Azure → Kubernetes → Compose on 2026-09-12, through the two tasks
-below, with row counts compared at every station and a PIN sign-in on Azure and
-on Compose. The record is at the end.
+Kubernetes → Azure → Kubernetes → Compose on 2026-09-12, with row counts
+compared at every station and a PIN sign-in on Azure and on Compose; backups
+switched on, a backup taken and restored into an empty namespace on
+2026-09-13; and the office moved from Compose to Kubernetes the same day. The
+records are at the end.
 
 ## The two tasks
 
@@ -37,18 +42,27 @@ chooses — once the server is gone, it is the only copy.
 
 ## First: back up the office
 
-The office plays on the local Compose stack — project `schmetterpause`, volume
-`schmetterpause_pgdata`, shared by `task up` and `task office:up`. That volume
-is the ranking; the Kubernetes cluster was only ever a trial. `task down`
-deletes it.
+**Since 2026-09-13 the office plays on Kubernetes**: the CloudNativePG cluster
+`schmetterpause-db` in namespace `schmetterpause` on homerun2-test1, served at
+<https://schmetterpause.homerun2-test1.sthings-vsphere.labul.sva.de>. It
+archives its WAL and takes a base backup every night (see
+[Scheduled backups on Kubernetes](#scheduled-backups-on-kubernetes)).
+
+The local Compose project `schmetterpause` is stopped. Its volume
+`schmetterpause_pgdata` still holds the office as it was at 14:25Z that day,
+and it stays as the fallback. **Do not start it with `task office:up` while the
+cluster is in use**: that is a second ranking, and nothing merges the two back
+together. The only way between them is a dump, and a dump replaces everything
+on the other side. `task down` still deletes that volume.
 
 Before any work that moves or could touch game data, dump it and prove the dump
-restores — a backup nobody restored is not a backup:
+restores — a backup nobody restored is not a backup. The nightly backup does
+not replace this: it is recovery in place, a dump is what you can hold.
 
 ```sh
-task db:dump ENV=compose        # reads only; the app keeps running
+KUBECONFIG=~/.kube/homerun2-test1 task db:dump ENV=kubernetes   # reads only; the app keeps running
 
-# Probe-restore into a throwaway project with its own volume and no ports.
+# Probe-restore into a throwaway Compose project with its own volume and no ports.
 cat > /tmp/compose.probe.yaml <<'EOF'
 services:
   db:
@@ -59,16 +73,16 @@ EOF
 COMPOSE_PROJECT_NAME=sp-probe COMPOSE_FILE=compose.yaml:/tmp/compose.probe.yaml \
   docker compose up --detach --wait db
 COMPOSE_PROJECT_NAME=sp-probe COMPOSE_FILE=compose.yaml:/tmp/compose.probe.yaml \
-  task db:restore ENV=compose FILE=schmetterpause-compose-….sql     # "counts match"
+  task db:restore ENV=compose FILE=schmetterpause-kubernetes-….sql     # "counts match"
 COMPOSE_PROJECT_NAME=sp-probe COMPOSE_FILE=compose.yaml:/tmp/compose.probe.yaml \
   docker compose down --volumes
 ```
 
 `down --volumes` only ever with the probe project named. Without the variables
-it is the office.
+it is the office's fallback volume.
 
-`task office:backup` still writes a plain dump of the same database; `db:dump`
-adds the counts that make a restore checkable.
+`task office:backup` writes a plain dump of the Compose database only; it does
+not reach the cluster.
 
 ## Compose
 
@@ -105,6 +119,40 @@ kubectl -n <namespace> scale deployment/schmetterpause --replicas=0
 kubectl -n <namespace> scale deployment/schmetterpause --replicas=1
 ```
 
+**Under ArgoCD a plain scale does not hold.** On homerun2-test1 the Application
+`schmetterpause-test1` syncs with `selfHeal`, and `argocd-controller` owns
+`spec.replicas` through server-side apply, so the Deployment is back at 1 within
+seconds. Stop Argo reconciling that one Application first, and check that it
+holds before anything else stops:
+
+```sh
+argo() { KUBECONFIG=~/.kube/platform-sthings kubectl -n argocd "$@"; }
+
+argo annotate application schmetterpause-test1 argocd.argoproj.io/skip-reconcile=true
+kubectl -n schmetterpause scale deployment/schmetterpause --replicas=0
+sleep 60; kubectl -n schmetterpause get deployment schmetterpause   # still 0/0?
+# restore
+argo annotate application schmetterpause-test1 argocd.argoproj.io/skip-reconcile-
+```
+
+Removing the annotation is the scale back up: Argo syncs within a second and
+restores the replica count from Git. Nothing in Git changes, and the parent
+Application and Flux leave the annotation alone.
+
+A restore also refuses a database that has players, and there is no task to
+empty one — see [Not covered](#not-covered). When that is the decision, after a
+verified dump of what is there, it is the same reset the restore does, as the
+owner role:
+
+```sh
+printf '%s\n' 'SET ROLE "schmetterpause";' 'SET client_min_messages = warning;' \
+  'DROP SCHEMA public CASCADE;' 'CREATE SCHEMA public;' |
+  kubectl -n schmetterpause exec -i schmetterpause-db-1 -c postgres -- \
+    psql -d schmetterpause -X -q -1 -v ON_ERROR_STOP=1
+```
+
+Only with the app at 0, and with the restore right after it.
+
 A throwaway cluster to restore into, the way the round trip made one:
 
 ```sh
@@ -116,6 +164,107 @@ task kcl:database PROFILE=existing-secrets -- -D config.namespace=schmetterpause
 
 It came up healthy in under a minute. Delete the namespace afterwards; the
 volume goes with it.
+
+## Scheduled backups on Kubernetes
+
+Switched on for homerun2-test1 on 2026-09-13
+(stuttgart-things/stuttgart-things#2957), from `database.backup` in
+`apps/schmetterpause/database` in `stuttgart-things/argocd`:
+
+- **WAL archiving**, continuously, and a **base backup every night at 03:00
+  UTC**, kept for 30 days
+- into `s3://schmetterpause-cnpg/` on the platform MinIO
+  (`artifacts.platform.sthings-vsphere.labul.sva.de`), as a MinIO user of the
+  same name whose policy covers only that bucket
+- with the key pair from its own Vault entry, `schmetterpause-backup` under the
+  `schmetterpause` mount (stuttgart-things/stuttgart-things#2956) — not the
+  app's entry, whose whole-entry write could reset the session key
+- the endpoint's certificate checked against `cluster-trust-bundle`, never
+  skipped
+- through `plugin-barman-cloud` in the operator's namespace `postgres`
+
+Everything above stays the way to *move* data. The plugin is recovery in place.
+
+**A green sync proves nothing, and neither does the condition.** The Cluster
+reported `ContinuousArchiving=True` before the plugin was even installed. What
+proves archiving is `pg_stat_archiver`, and what proves a backup is its phase:
+
+```sh
+kubectl -n schmetterpause exec schmetterpause-db-1 -c postgres -- psql -tAc \
+  "select archived_count, failed_count, last_archived_wal, last_archived_time from pg_stat_archiver"
+kubectl -n schmetterpause get backup     # phase completed
+```
+
+A backup by hand, before anything risky:
+
+```sh
+kubectl apply -f - <<EOF
+apiVersion: postgresql.cnpg.io/v1
+kind: Backup
+metadata:
+  name: schmetterpause-db-manual-$(date -u +%Y%m%d%H%M)
+  namespace: schmetterpause
+spec:
+  cluster:
+    name: schmetterpause-db
+  method: plugin
+  pluginConfiguration:
+    name: barman-cloud.cloudnative-pg.io
+EOF
+```
+
+**Restoring it** goes into a new Cluster in an empty namespace, never over the
+running one. The namespace needs three things: a copy of the chart's
+`ExternalSecret` `schmetterpause-db-backup` (key pair plus trust bundle), an
+`ObjectStore` pointing at the bucket, and the Cluster.
+
+```yaml
+apiVersion: barmancloud.cnpg.io/v1
+kind: ObjectStore
+metadata:
+  name: restore-origin
+  namespace: schmetterpause-restore-probe
+spec:
+  # No retentionPolicy: this store only reads.
+  configuration:
+    destinationPath: s3://schmetterpause-cnpg/
+    endpointURL: https://artifacts.platform.sthings-vsphere.labul.sva.de
+    endpointCA: { name: restore-origin-backup, key: trust-bundle.pem }
+    s3Credentials:
+      accessKeyId: { name: restore-origin-backup, key: ACCESS_KEY_ID }
+      secretAccessKey: { name: restore-origin-backup, key: ACCESS_SECRET_KEY }
+    wal: { compression: gzip }
+    data: { compression: gzip }
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: restore-probe
+  namespace: schmetterpause-restore-probe
+spec:
+  instances: 1
+  imageName: ghcr.io/cloudnative-pg/postgresql:18
+  storage: { size: 2Gi, storageClass: openebs-hostpath }
+  bootstrap:
+    recovery:
+      source: origin
+  externalClusters:
+    - name: origin
+      plugin:
+        name: barman-cloud.cloudnative-pg.io
+        parameters:
+          barmanObjectName: restore-origin
+          serverName: schmetterpause-db
+```
+
+Two things about that Cluster matter more than they look. It has **no
+`spec.plugins`**: a restored cluster that archived would write into the
+origin's archive. And it names the **StorageClass**: homerun2-test1 has two
+default ones, so without it nobody knows which a PVC gets.
+
+It replays to the end of the archive and promotes itself. Compare the counts
+with the origin, then delete the namespace; `openebs-hostpath` removes the
+volume with it.
 
 ## Azure
 
@@ -168,19 +317,25 @@ since its in-place upgrade on 2026-09-12 (see below).
 
 That cluster's major is pinned in `stuttgart-things/stuttgart-things`, as
 `database.imageName` in
-`clusters/labul/vsphere/platform-sthings/argocd/homerun2-test1/schmetterpause.yaml`,
-not in the argocd catalog. The catalog default in `stuttgart-things/argocd`
-`apps/schmetterpause/install/values.yaml` is still 17, and the PR previews,
-which set no image, get it.
+`clusters/labul/vsphere/platform-sthings/argocd/homerun2-test1/schmetterpause.yaml`.
+The catalog default in `stuttgart-things/argocd`
+`apps/schmetterpause/install/values.yaml` is 18 as well
+(stuttgart-things/argocd#398), and the PR previews, which set no image, get it.
+The homerun2-test1 pin stays anyway, so a later catalog change cannot move the
+office's Cluster to another major.
 
 ## What travels, and what does not
 
 - **Players sign in once.** A new environment is a new host, so no browser is
   recognised. PINs and recovery codes come along in the dump, and signing in
-  with them works — checked on Azure and on Compose. `SP_SESSION_KEY` only
-  matters behind an address that stays the same.
+  with them works — checked on Azure and on Compose, and on Kubernetes after the
+  office move. `SP_SESSION_KEY` only matters behind an address that stays the
+  same.
 - **Pending and disputed matches travel as they are.** Somebody still has to
   confirm them on the other side.
+- **Kiosk grants travel, the kiosk does not.** The office's Compose stack had
+  one; on homerun2-test1 it is off (ADR-0014), so the grants sit in the table
+  with no route that reads them.
 - **Flexible Server's own backups do not.** They are deleted with the server.
 - **Row order can differ.** The Alpine images sort text bytewise even though
   they report `en_US.utf8` — musl has no collation — while Flexible Server
@@ -237,19 +392,64 @@ answered 200.
 Had it failed, the way back was the same line set to `:17`: CNPG restarts on
 the old major, because the upgrade does not modify the old data.
 
+## Backups on, and a timed restore, 2026-09-13
+
+Still the trial data — 6 players, 12 matches — because ADR-0019 wanted the
+restore proven before the office's data went anywhere near it. Times are UTC.
+
+| Time | What happened |
+| --- | --- |
+| 13:57:53 | Argo applied `database.backup`: `spec.plugins` on the Cluster, the `ExternalSecret` synced, the `ObjectStore` created |
+| 13:59:25 | the Postgres pod restarted with the plugin sidecar, about 90 s after the change; the app pod was not restarted |
+| 13:59:49 | `pg_switch_wal()`, the segment archived within 10 s |
+| 14:00:00 | manual Backup `20260913T140000`, `completed` after 7 s; 2 base and 5 WAL objects, 4.3 MB |
+| 14:00:39 | restore into the empty namespace `schmetterpause-restore-probe` started |
+| 14:01:40 | restored primary ready — **61 s** — with the same counts as the origin, promoted on timeline 2 |
+
+`pg_stat_archiver` counted 27 failed attempts, all in the old pod between the
+Cluster change and its restart, when archiving already pointed at a sidecar that
+pod did not have. None since; that count is harmless on a switch-on and worth
+recognising rather than chasing.
+
+## The office move to Kubernetes, 2026-09-13
+
+Compose → homerun2-test1, a Sunday afternoon, one writer throughout. Times are
+UTC.
+
+| Time | What happened | Result |
+| --- | --- | --- |
+| 14:24:42 | `skip-reconcile` on `schmetterpause-test1`, Kubernetes app scaled to 0 | still 0 after 60 s |
+| 14:25:47 | office Compose app stopped, database left running | |
+| 14:25:49 | final `task db:dump ENV=compose` | 70,007 bytes |
+| 14:25:57 | that dump probe-restored into `sp-probe` | counts match, probe removed |
+| 14:26:00 | Kubernetes trial data dumped, schema reset as the owner role | |
+| ~14:26:02 | `task db:restore ENV=kubernetes` | counts match |
+| 14:26:02 | annotation removed; Argo scaled the app up, its `migrate` init found nothing to run | `/readyz` 200 |
+| 14:26:08 | counts again, with the app running | unchanged |
+| 14:26:35 | manual Backup `20260913T142609` | `completed`: the office is in the bucket |
+| 14:26:36 | office Compose stack stopped, volume kept | |
+| 14:27:36 | first `player signed in` on Kubernetes | |
+
+About 50 seconds without an office instance, from the Compose app stopping to
+the Kubernetes app ready.
+
+Counts on both sides: 16 players, 27 identities, 27 credentials, 66 matches
+(65 confirmed, 1 pending), 113 sets, 130 rating-history rows, 1 tournament with
+5 entries, 11 kiosk grants, migrations at `20260904120000`. The final Compose
+dump and the trial data from Kubernetes are both in the repository root of the
+machine that ran it.
+
 ## Not covered
 
-- **Scheduled backups on Kubernetes — decided, not live.** docs/adr/0019 takes
-  them through the Barman Cloud plugin: WAL archiving and a daily base backup
-  from `apps/schmetterpause/database` in `stuttgart-things/argocd`, switched on
-  once the bucket and store entry from stuttgart-things/stuttgart-things#2799
-  exist. Everything above stays the way to *move* data; the plugin is disaster
-  recovery in place. The office moves onto the cluster only after a timed
-  restore from it into an empty namespace has matched the counts.
+- **A restore of the office's own backup.** The timed restore above was of the
+  trial data. The first backup holding the office is `20260913T142609`; nobody
+  has restored that one yet. It is the same mechanism, but it is not the same
+  proof.
+- **Point-in-time recovery.** The restore replayed to the end of the archive.
+  Recovering to a moment before a mistake needs a `recoveryTarget` and has not
+  been tried.
 - **Emptying a database that has players.** There is no task for it, on
   purpose: a restore replaces everything, and the moment somebody wants that for
-  the office is a decision to make by hand, after a verified backup.
-- **The catalog default.** `apps/schmetterpause/install` in
-  `stuttgart-things/argocd` still defaults to PostgreSQL 17, so a new PR
-  preview starts on 17. Raising it moves every consumer without an override at
-  once, which makes it a change of its own.
+  the office is a decision to make by hand, after a verified backup. The
+  commands are under [Kubernetes](#kubernetes); the office move is the one time
+  they were used.
