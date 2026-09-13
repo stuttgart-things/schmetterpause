@@ -117,12 +117,13 @@ Ergebnisse. **Der Gegner bestätigt** — erst dann zählt das Match für die
 Wertung. Bis dahin steht es unter „Eingetragen", der Gegner sieht es in seiner
 Liste, und in der Rangliste ändert sich nichts.
 
-**Sag dem Raum, was der Code ist.** Wer beitritt, bekommt einen
-Wiederherstellungscode **einmal** angezeigt — Screenshot machen oder in den
-Passwortmanager. Ohne diesen Satz verpufft die Anzeige an genau den Leuten,
-für die sie da ist. Wer mag, setzt gleich darunter eine PIN; die merkt man
-sich, den Code nicht. Beides zusammen ist der Weg zurück, wenn ein Handy
-seinen Spieler vergisst — und das passiert.
+**Sag dem Raum, was der Code ist.** Wer beitritt, wählt zum Namen eine PIN
+und bekommt danach einen Wiederherstellungscode **einmal** angezeigt — in den
+Passwortmanager, als Textdatei speichern oder Screenshot machen. Ohne diesen
+Satz verpufft die Anzeige an genau den Leuten, für die sie da ist. Die PIN
+merkt man sich, den Code nicht; er ist für den Tag, an dem die PIN weg ist.
+Beides zusammen ist der Weg zurück, wenn ein Handy seinen Spieler vergisst —
+und das passiert.
 
 Das ist Absicht: ohne Bestätigung könnte jeder beliebige Ergebnisse eintragen,
 und die Tabelle wäre wertlos.
@@ -443,8 +444,8 @@ gekippt: Wer sein Cookie verlor, wurde beim Beitritt unter demselben Namen
 abgewiesen und kam nie wieder an seinen Spieler. Jetzt gibt es drei Wege
 zurück, in dieser Reihenfolge auszuprobieren:
 
-1. **Anmelden** auf der Startseite — „Schon dabei, aber dieses Gerät kennt dich
-   nicht?". Namen wählen, PIN oder Wiederherstellungscode eingeben.
+1. **Anmelden** auf der Startseite: Namen wählen, dann PIN oder
+   Wiederherstellungscode eingeben.
 2. **Ein anderer Browser** auf demselben Gerät hat die Sitzung oft noch, denn
    das Cookie hängt am Browser.
 3. **Der Kiosk** stellt einen neuen Code aus, wenn die Person danebensteht.
