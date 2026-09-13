@@ -324,23 +324,21 @@ h1 {
 	font-size: 0.9rem;
 }
 
-/* Under the sign-in card the second way in carries a button rather than an
-   underlined word, so the block holds a sentence and a control instead of one
-   line of prose. The button brings its own top margin; the sentence gives it
-   nothing to fight with. */
-.session-alt p { margin: 0; }
-
-.session-alt button.secondary { margin-top: 0.6rem; }
-
-/* The other keyboard, under the field rather than under the card. No rule
-   above it: .session-alt separates two ways into the app, this separates two
-   spellings of one answer, and a border would make them look equally far
-   apart. */
-.field-alt {
-	margin: 0.45rem 0 0;
+/* The way in for somebody new, at the top of the sign-in card rather than
+   under it (docs/adr/0018): it is what a stranger needs to read before a list
+   of names they are not on. A sentence and a link, not a second filled
+   button — the card is still the sign-in card. */
+.session-new {
+	margin: 0 0 0.9rem;
 	color: var(--muted);
-	font-size: 0.85rem;
 }
+
+.session-new .linklike { font-weight: 600; }
+
+/* Everything under the name waits for the name. The placeholder leaves the
+   required select :invalid until somebody is chosen; a browser without :has
+   ignores the rule and shows the whole form, which is how it looked before. */
+.signin:has(select:invalid) .signin-secret { display: none; }
 
 /* A button, because it does something rather than going somewhere — but it
    reads as a link, because a second full-width button beside "Anmelden" would
