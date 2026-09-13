@@ -258,6 +258,33 @@ main {
 	padding: 1.5rem 1.25rem 3rem;
 }
 
+/* The heading of a card, set once. It had never been set at all: every h2 in
+   the application was the browser's — 24px bold, with the UA's own margins —
+   and h1 at 390px measures 25.6px. A card heading 1.6px below the page
+   heading is not a hierarchy, it is two headings, and three rules in this file
+   had already been written to patch the UA margin in three different places.
+
+   1.25rem is a step down and not a demotion, and the difference matters:
+   /statistics and /tournaments carry no h1 at all, so their h2 is the page
+   title and has to still read as one. That missing h1 is a structural problem
+   of its own, and not one a font-size can fix. */
+h2 {
+	margin: 0 0 0.7rem;
+	font-size: 1.25rem;
+	font-weight: 700;
+	letter-spacing: -0.01em;
+}
+
+/* The one level below it, which only the tournament schedule uses ("Runde 1").
+   Defining h2 without it would have moved the collision down a level rather
+   than removed it: the browser's h3 is 18.7px, which is 1.3px under the h2
+   above. */
+h3 {
+	margin: 1.1rem 0 0.5rem;
+	font-size: 1rem;
+	font-weight: 700;
+}
+
 h1 {
 	font-size: clamp(2rem, 7vw, 2.75rem);
 	font-weight: 700;
@@ -309,7 +336,12 @@ h1 {
 
 /* --- Karten ------------------------------------------------------------ */
 
-.session, .match, .pending, .running, .standings, .stat, .status {
+/* .card is in the list because fourteen sections across /statistics,
+   /tournaments and /info have been asking for it and getting nothing: the
+   look lives in a hand-kept list of names, and that one was never added. Those
+   two pages have been running without surfaces — flat text where every other
+   page has objects. */
+.card, .session, .match, .pending, .running, .standings, .stat {
 	margin: 0 0 1rem;
 	padding: 1.1rem 1.25rem;
 	background: var(--card);
@@ -392,21 +424,22 @@ h1 {
 /* --- Wiederherstellungscode -------------------------------------------- */
 
 /* The one card on the page that breaks the house pattern, on purpose.
-   ADR-0006 asks for a display that cannot be read past, and the house style
-   for a card heading — muted, uppercase, mono, the size of a label — is a
-   fair description of what gets read past. So this heading is full size and
-   in the foreground colour, and the card carries the accent along its left
-   edge instead of the usual even outline. */
+   ADR-0006 asks for a display that cannot be read past, and a heading the size
+   of every other heading on the page is a fair description of what gets read
+   past. So this one is larger than the house card heading, and the card
+   carries the accent along its left edge instead of the usual even outline.
+
+   It used to spell out font-family, weight, letter-spacing, text-transform and
+   colour to reach that, because there was no house card heading to differ
+   from — the comment described one the stylesheet never had, and the size it
+   landed on, 1.15rem, was in fact *smaller* than the 24px every other card
+   heading got from the browser. Now there is a house heading, this one is
+   larger than it, and the difference is a single line. */
 .recovery { border-left: 3px solid var(--accent); }
 
 .recovery h2 {
-	font-family: var(--font-ui);
-	font-size: 1.15rem;
-	font-weight: 700;
-	letter-spacing: -0.01em;
-	text-transform: none;
-	color: var(--fg);
-	margin: 0 0 0.75rem;
+	font-size: 1.5rem;
+	margin-bottom: 0.75rem;
 }
 
 .recovery-code {
@@ -631,7 +664,11 @@ h1 {
 
 /* --- Statuskästchen ---------------------------------------------------- */
 
+/* Not a card, though it was one until .card started working: the <dl> sits
+   inside the section on /info, and once that section became the surface the
+   list was painting a second one inside the first. */
 .status {
+	margin: 0;
 	display: grid;
 	grid-template-columns: auto 1fr;
 	gap: 0.4rem 1.25rem;
@@ -732,6 +769,25 @@ input, select {
 	border-radius: var(--radius-sm);
 }
 
+/* The native control chrome was the one thing on the card that belonged to
+   the browser rather than to this stylesheet — a grey double arrow on a panel
+   that is trying to look built. The arrow is drawn here instead, in the muted
+   colour every other quiet mark on the page uses.
+
+   The colour is written out rather than taken from var(--muted): a data URI is
+   not a stylesheet and cannot see a custom property. If --muted moves, this
+   moves with it by hand — which is why it is the only place in the file that
+   repeats a palette value. */
+select {
+	-webkit-appearance: none;
+	appearance: none;
+	padding-right: 2.1rem;
+	background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'%3E%3Cpath fill='none' stroke='%238f8fb8' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round' d='M1 1.75 6 6.25 11 1.75'/%3E%3C/svg%3E");
+	background-repeat: no-repeat;
+	background-position: right 0.75rem center;
+	background-size: 0.7rem;
+}
+
 input:focus-visible, select:focus-visible, button:focus-visible {
 	outline: 2px solid var(--accent);
 	outline-offset: 2px;
@@ -780,12 +836,43 @@ button.secondary:hover, .secret-reveal:hover {
 	filter: none;
 }
 
+/* Label over the field, not beside it.
+
+   Beside it, the label column was 5.5rem of a 340px phone and the control got
+   what was left: "Namen wählen …" sat truncated in a picker that could not
+   grow, on the one card every arrival meets. The field below it now has the
+   width of the card, and the form reads the way the secret field two rules
+   down already did — that inconsistency is what gave this away.
+
+   The label claims the line by flex-basis rather than by a break, so the
+   controls under it stay a row: "Best of 3" and "bis 11" are one setting and
+   still sit side by side. .pick is out of it — those labels are checkboxes
+   with their own text, not the name of the row. */
 .row {
 	display: flex;
 	align-items: center;
-	gap: 0.5rem;
-	margin-bottom: 0.6rem;
+	gap: 0.3rem 0.5rem;
+	margin-bottom: 0.85rem;
 	flex-wrap: wrap;
+}
+
+.row > label:not(.pick) { flex: 0 0 100%; }
+
+/* The bottom of the card is not the next field. Without this the sign-in card
+   carried a row's worth of empty space under its only control, which is most
+   of what made it look unfinished. */
+.row:last-child { margin-bottom: 0; }
+
+/* Grow to the line, but from a basis small enough that two of them still fit
+   one: at 8rem the mode pair stays on a single row at 390px, where a basis
+   the width of a comfortable field would have stacked them. min-width: 0
+   because a select refuses to go below its longest option without it, and the
+   longest option is a name nobody has typed yet. */
+.row > select,
+.row > input,
+.row > .row-group {
+	flex: 1 1 8rem;
+	min-width: 0;
 }
 
 .sets {
