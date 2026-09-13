@@ -239,6 +239,13 @@ the old major, because the upgrade does not modify the old data.
 
 ## Not covered
 
+- **Scheduled backups on Kubernetes — decided, not live.** docs/adr/0019 takes
+  them through the Barman Cloud plugin: WAL archiving and a daily base backup
+  from `apps/schmetterpause/database` in `stuttgart-things/argocd`, switched on
+  once the bucket and store entry from stuttgart-things/stuttgart-things#2799
+  exist. Everything above stays the way to *move* data; the plugin is disaster
+  recovery in place. The office moves onto the cluster only after a timed
+  restore from it into an empty namespace has matched the counts.
 - **Emptying a database that has players.** There is no task for it, on
   purpose: a restore replaces everything, and the moment somebody wants that for
   the office is a decision to make by hand, after a verified backup.

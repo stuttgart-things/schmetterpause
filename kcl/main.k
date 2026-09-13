@@ -24,7 +24,7 @@ instead. Learned from stuttgart-things/homerun2-omni-pitcher#132.
 No CloudNativePG Cluster either, for a related reason with worse consequences:
 the database outlives every revision of the application, and a base that
 carries it is a base whose removal can prune the data. It is its own Argo
-Application from infra/cloudnative-pg/cluster, into this same namespace, at a
+Application from apps/schmetterpause/database, into this same namespace, at a
 lower sync-wave so it exists before the migration initContainer runs.
 """
 
