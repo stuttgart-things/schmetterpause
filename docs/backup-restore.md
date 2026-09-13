@@ -11,8 +11,8 @@ This page is the how. Everything on it has been run: a full round trip
 Kubernetes → Azure → Kubernetes → Compose on 2026-09-12, with row counts
 compared at every station and a PIN sign-in on Azure and on Compose; backups
 switched on, a backup taken and restored into an empty namespace on
-2026-09-13; and the office moved from Compose to Kubernetes the same day. The
-records are at the end.
+2026-09-13; and the office moved from Compose to Kubernetes the same day, and
+its first backup was restored. The records are at the end.
 
 ## The two tasks
 
@@ -266,6 +266,11 @@ It replays to the end of the archive and promotes itself. Compare the counts
 with the origin, then delete the namespace; `openebs-hostpath` removes the
 volume with it.
 
+To prove one particular backup rather than "whatever the archive ends with",
+stop at it — `recoveryTarget: {backupID: <id>, targetImmediate: true}` under
+`bootstrap.recovery` — and compare with a dump taken just before it. A running
+origin keeps changing, so its counts only match by luck.
+
 ## Azure
 
 Needs an applied instance (`task tf:apply`) and a live login (`task tf:login`).
@@ -439,15 +444,43 @@ Counts on both sides: 16 players, 27 identities, 27 credentials, 66 matches
 dump and the trial data from Kubernetes are both in the repository root of the
 machine that ran it.
 
+## The office's own backup restored, 2026-09-13
+
+The restore at 14:01 proved the mechanism on trial data. This one proves it on
+the office: backup `20260913T142609`, taken right after the move, restored into
+the empty namespace `schmetterpause-restore-office` at 15:13 UTC.
+
+It did not replay to the end of the archive. The live database had moved on by
+then — sign-ins, and whatever gets entered on a Sunday — so its counts were no
+fixed reference. The Cluster stopped at the end of that one backup instead:
+
+```yaml
+bootstrap:
+  recovery:
+    source: origin
+    recoveryTarget:
+      backupID: 20260913T142609
+      targetImmediate: true
+```
+
+and was compared with the counts of the move dump it was taken after,
+`schmetterpause-compose-2026-09-13-1425.sql.counts`, sorted, table by table.
+
+| | |
+| --- | --- |
+| Empty namespace → ready primary | 58 s |
+| Counts against the move dump | identical: 16 players, 27 identities, 27 credentials, 66 matches (65 confirmed, 1 pending), 113 sets, 130 rating-history rows, 1 tournament with 5 entries, 11 kiosk grants, migrations at `20260904120000` |
+| PIN hashes | 27, so signing in would work |
+| Restored Cluster | promoted on timeline 2; no archiver, the origin's archive gained no failures |
+
+The namespace was deleted afterwards.
+
 ## Not covered
 
-- **A restore of the office's own backup.** The timed restore above was of the
-  trial data. The first backup holding the office is `20260913T142609`; nobody
-  has restored that one yet. It is the same mechanism, but it is not the same
-  proof.
-- **Point-in-time recovery.** The restore replayed to the end of the archive.
-  Recovering to a moment before a mistake needs a `recoveryTarget` and has not
-  been tried.
+- **Point-in-time recovery to a moment.** Both restores either replayed to the
+  end of the archive or stopped at the end of a named backup. Recovering to a
+  time just before a mistake needs `recoveryTarget.targetTime` and WAL from
+  after the base backup; that has not been tried.
 - **Emptying a database that has players.** There is no task for it, on
   purpose: a restore replaces everything, and the moment somebody wants that for
   the office is a decision to make by hand, after a verified backup. The
