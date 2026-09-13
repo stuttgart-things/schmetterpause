@@ -36,6 +36,11 @@ config.gatewayNamespace: default
 # kiosk-token property to its Vault entry.
 config.kioskEnabled: false
 
+# /metrics on a port of its own. On in the base because nothing outside the pod
+# can reach it — the Service does not name the port, so no route does — and a
+# scraper that arrives later should find something to read (issue #175).
+config.metricsEnabled: true
+
 # PATCH: the store is named per cluster, pattern vault-<cluster>, created by
 # the Backstage template. `kubectl get clustersecretstore` is the reliable
 # source — it is never plain "vault".

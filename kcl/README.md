@@ -222,6 +222,7 @@ The full list, with reasoning, is in `schema.k`. What one actually sets:
 | `config.vaultPath` | *(empty)* | A path, never a value |
 | `config.replicas` | `1` | A `check:` holds it there, see below |
 | `config.bootstrapAdmin` | *(empty)* | Display name, takes effect at startup |
+| `config.metricsEnabled` / `…Port` | `false` / `9090` | `SP_METRICS_ADDR`; a container port only, never on the Service, so no route reaches it. On in `profiles/base.yaml` |
 | `config.dbOwner` | *(empty)* | Empty means `name`; must equal `username` in the store |
 | `config.dbInstances` | `1` | `database.k` only |
 | `config.dbStorageSize` / `…Class` | `8Gi` / *(empty)* | `database.k` only; empty class = the cluster default |

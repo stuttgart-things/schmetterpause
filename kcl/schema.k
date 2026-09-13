@@ -44,6 +44,16 @@ schema Schmetterpause:
     servicePort: int = 80
     containerPort: int = 8080
 
+    # /metrics on a listener of its own (SP_METRICS_ADDR), off by default.
+    # Rendered as a container port and nowhere else: the Service does not name
+    # it, so the HTTPRoute — one rule forwarding everything under "/" — cannot
+    # reach it, while a scraper inside the cluster goes to the pod directly
+    # (issue #175). No PodMonitor either: the cluster this runs on has no
+    # monitoring.coreos.com CRDs, and an object of a kind nothing serves fails
+    # the whole sync rather than being ignored.
+    metricsEnabled: bool = False
+    metricsPort: int = 9090
+
     # ── Exposure ────────────────────────────────────────────────────────────
     httpRouteEnabled: bool = False
     gatewayName: str = ""
@@ -217,6 +227,8 @@ schema Schmetterpause:
         replicas == 1, "replicas must be 1: goose takes no session lock, so a second pod migrating concurrently is unsafe"
         servicePort >= 1 and servicePort <= 65535, "servicePort must be a valid port"
         containerPort >= 1 and containerPort <= 65535, "containerPort must be a valid port"
+        metricsPort >= 1 and metricsPort <= 65535, "metricsPort must be a valid port"
+        not metricsEnabled or metricsPort != containerPort, "metricsPort must differ from containerPort: /metrics needs a port the Service does not name"
         dbPort >= 1 and dbPort <= 65535, "dbPort must be a valid port"
         dbInstances >= 1, "dbInstances must be at least 1"
         logLevel in ["debug", "info", "warn", "error"], "logLevel must be one of debug, info, warn, error"

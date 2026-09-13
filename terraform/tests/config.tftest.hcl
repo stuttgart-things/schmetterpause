@@ -68,7 +68,7 @@ run "defaults_mirror_kcl" {
   assert {
     condition = length(setintersection(
       [for e in azurerm_container_app.this.template[0].container[0].env : e.name],
-      ["SP_COOKIE_SECURE", "SP_KIOSK_TOKEN", "SP_BOOTSTRAP_ADMIN"],
+      ["SP_COOKIE_SECURE", "SP_KIOSK_TOKEN", "SP_BOOTSTRAP_ADMIN", "SP_METRICS_ADDR"],
     )) == 0
     error_message = "Unset options must stay absent, and SP_COOKIE_SECURE always."
   }
@@ -94,12 +94,18 @@ run "options_are_wired" {
     kiosk_token     = "0123456789abcdef"
     bootstrap_admin = "Kim"
     public_base_url = "https://pause.example.com/"
+    metrics_port    = 9090
     extra_env_vars  = { SP_LOG_LEVEL = "debug" }
   }
 
   assert {
     condition     = { for e in azurerm_container_app.this.template[0].container[0].env : e.name => e.secret_name if e.secret_name != null }["SP_KIOSK_TOKEN"] == "kiosk-token"
     error_message = "A kiosk token must reach the app as a secret."
+  }
+
+  assert {
+    condition     = { for e in azurerm_container_app.this.template[0].container[0].env : e.name => e.value }["SP_METRICS_ADDR"] == ":9090"
+    error_message = "metrics_port must reach SP_METRICS_ADDR, as metricsPort does in kcl."
   }
 
   assert {
@@ -116,6 +122,16 @@ run "options_are_wired" {
     condition     = { for e in azurerm_container_app.this.template[0].container[0].env : e.name => e.value }["SP_LOG_LEVEL"] == "debug"
     error_message = "extra_env_vars must override, as extraEnvVars does in kcl."
   }
+}
+
+run "metrics_on_the_app_port_is_refused" {
+  command = plan
+
+  variables {
+    metrics_port = 8080
+  }
+
+  expect_failures = [var.metrics_port]
 }
 
 run "hex_password_is_refused" {

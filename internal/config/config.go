@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"net"
 	"net/url"
 	"os"
 	"strconv"
@@ -33,6 +34,16 @@ const DefaultHTTPAddr = ":8080"
 type Config struct {
 	// HTTPAddr is the server's bind address, for example ":8080".
 	HTTPAddr string
+	// MetricsAddr is where /metrics is served, on a listener of its own, for
+	// example ":9090". Empty by default, and then nothing is measured and no
+	// second port is opened.
+	//
+	// A port of its own rather than a path on HTTPAddr, because the HTTPRoute
+	// in front of the application forwards everything under "/"
+	// (kcl/httproute.k): a path there would be public the moment it existed.
+	// A port the Service does not name is one no gateway can reach, while a
+	// scraper inside the cluster goes to the pod directly (issue #175).
+	MetricsAddr string
 	// DatabaseURL is the Postgres DSN. Without it the application refuses to
 	// start; a default would mean a hardcoded host and break invariant 2.
 	DatabaseURL string
@@ -169,6 +180,13 @@ func Load() (Config, error) {
 		errs = append(errs, fmt.Errorf("%sDATABASE_URL is required", envPrefix))
 	}
 
+	if raw := env("METRICS_ADDR", ""); raw != "" {
+		if err := checkMetricsAddr(raw, cfg.HTTPAddr); err != nil {
+			errs = append(errs, err)
+		}
+		cfg.MetricsAddr = raw
+	}
+
 	cfg.SessionKey = []byte(env("SESSION_KEY", ""))
 
 	cfg.KioskToken = env("KIOSK_TOKEN", "")
@@ -226,6 +244,22 @@ func parseBaseURL(raw string) (string, error) {
 			envPrefix, raw)
 	}
 	return u.Scheme + "://" + u.Host, nil
+}
+
+// checkMetricsAddr accepts a host:port that does not collide with the
+// application's own port. Sharing it would fail at startup with "address
+// already in use", which names neither variable.
+func checkMetricsAddr(metricsAddr, httpAddr string) error {
+	_, port, err := net.SplitHostPort(metricsAddr)
+	if err != nil {
+		return fmt.Errorf("%sMETRICS_ADDR=%q is not host:port, for example \":9090\": %w",
+			envPrefix, metricsAddr, err)
+	}
+	if _, httpPort, err := net.SplitHostPort(httpAddr); err == nil && port == httpPort && port != "0" {
+		return fmt.Errorf("%sMETRICS_ADDR=%q uses the port of %sHTTP_ADDR=%q; /metrics needs a port of its own",
+			envPrefix, metricsAddr, envPrefix, httpAddr)
+	}
+	return nil
 }
 
 func parseLevel(raw string) (slog.Level, error) {

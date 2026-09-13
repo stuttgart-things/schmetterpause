@@ -16,6 +16,7 @@ import (
 
 	"github.com/stuttgart-things/schmetterpause/internal/auth"
 	"github.com/stuttgart-things/schmetterpause/internal/config"
+	"github.com/stuttgart-things/schmetterpause/internal/metrics"
 	"github.com/stuttgart-things/schmetterpause/internal/ratelimit"
 	"github.com/stuttgart-things/schmetterpause/internal/repository"
 )
@@ -28,6 +29,9 @@ type Server struct {
 	auth    auth.SessionAuthenticator
 	build   Build
 	handler http.Handler
+	// metrics is nil unless SP_METRICS_ADDR is set, and then nothing is
+	// measured and no second port is opened.
+	metrics *metrics.Metrics
 
 	// The two halves of the brake on guessing at a credential. One alone is
 	// not a limit: per player, somebody walks the roster; per address,
@@ -61,12 +65,24 @@ func New(cfg config.Config, store repository.Store, log *slog.Logger, a auth.Ses
 		signInByAddress: ratelimit.New(signInAddressPolicy),
 		kioskByAddress:  ratelimit.New(kioskPolicy),
 	}
+	if cfg.MetricsAddr != "" {
+		s.metrics = metrics.New(build.Version)
+	}
 	s.handler = s.routes()
 	return s
 }
 
 // Handler returns the fully wired HTTP handler.
 func (s *Server) Handler() http.Handler { return s.handler }
+
+// MetricsHandler is what the metrics listener serves, or nil when
+// SP_METRICS_ADDR is unset.
+func (s *Server) MetricsHandler() http.Handler {
+	if s.metrics == nil {
+		return nil
+	}
+	return s.metrics.Handler()
+}
 
 func (s *Server) routes() http.Handler {
 	mux := http.NewServeMux()
@@ -188,43 +204,86 @@ func (s *Server) routes() http.Handler {
 
 	mux.Handle("/", auth.Middleware(s.auth, s.log)(page))
 
-	return recoverer(s.log)(requestLogger(s.log)(mux))
+	handler := recoverer(s.log)(requestLogger(s.log)(http.Handler(mux)))
+	// Outside the recoverer, so a panic is counted as the 500 it becomes.
+	if s.metrics != nil {
+		handler = s.metrics.Middleware(routeOf(mux, page))(handler)
+	}
+	return handler
 }
 
-// Run starts the server and stops it gracefully once ctx is cancelled.
-func (s *Server) Run(ctx context.Context) error {
-	srv := &http.Server{
-		Addr:              s.cfg.HTTPAddr,
-		Handler:           s.handler,
-		ReadHeaderTimeout: 10 * time.Second,
-		IdleTimeout:       60 * time.Second,
-		BaseContext:       func(_ net.Listener) context.Context { return ctx },
-	}
-
-	errCh := make(chan error, 1)
-	go func() {
-		s.log.Info("server started", "addr", s.cfg.HTTPAddr,
-			"version", s.build.Version, "commit_time", s.build.CommitTime)
-		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			errCh <- fmt.Errorf("http server: %w", err)
-			return
+// routeOf names the pattern a request is served under, asking the muxes
+// rather than letting them set it: the auth middleware hands the page mux a
+// copy of the request, so the pattern it records never reaches a middleware
+// wrapped around the outer one.
+func routeOf(outer, page *http.ServeMux) func(*http.Request) string {
+	return func(r *http.Request) string {
+		_, pattern := outer.Handler(r)
+		if pattern == "/" {
+			_, pattern = page.Handler(r)
 		}
-		errCh <- nil
-	}()
+		return pattern
+	}
+}
 
-	select {
-	case err := <-errCh:
-		return err
-	case <-ctx.Done():
+// Run starts the server — and the metrics listener, when there is one — and
+// stops both gracefully once ctx is cancelled.
+func (s *Server) Run(ctx context.Context) error {
+	servers := []*http.Server{newHTTPServer(ctx, s.cfg.HTTPAddr, s.handler)}
+	if s.metrics != nil {
+		servers = append(servers, newHTTPServer(ctx, s.cfg.MetricsAddr, s.metrics.Handler()))
 	}
 
-	s.log.Info("shutting down", "grace", s.cfg.ShutdownTimeout)
+	errCh := make(chan error, len(servers))
+	for _, srv := range servers {
+		go func() {
+			if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+				errCh <- fmt.Errorf("http server on %s: %w", srv.Addr, err)
+				return
+			}
+			errCh <- nil
+		}()
+	}
+
+	s.log.Info("server started", "addr", s.cfg.HTTPAddr,
+		"version", s.build.Version, "commit_time", s.build.CommitTime)
+	if s.metrics != nil {
+		s.log.Info("metrics listener started", "addr", s.cfg.MetricsAddr)
+	}
+
+	// Either listener failing stops both. A process that answers players but
+	// cannot be measured is not running the way it was deployed, and a
+	// crash-loop says so where a log line would be read past.
+	received := 0
+	var failed error
+	select {
+	case failed = <-errCh:
+		received = 1
+	case <-ctx.Done():
+		s.log.Info("shutting down", "grace", s.cfg.ShutdownTimeout)
+	}
 
 	shutdownCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), s.cfg.ShutdownTimeout)
 	defer cancel()
 
-	if err := srv.Shutdown(shutdownCtx); err != nil {
-		return fmt.Errorf("shut down server: %w", err)
+	errs := []error{failed}
+	for _, srv := range servers {
+		if err := srv.Shutdown(shutdownCtx); err != nil {
+			errs = append(errs, fmt.Errorf("shut down server on %s: %w", srv.Addr, err))
+		}
 	}
-	return <-errCh
+	for ; received < len(servers); received++ {
+		errs = append(errs, <-errCh)
+	}
+	return errors.Join(errs...)
+}
+
+func newHTTPServer(ctx context.Context, addr string, h http.Handler) *http.Server {
+	return &http.Server{
+		Addr:              addr,
+		Handler:           h,
+		ReadHeaderTimeout: 10 * time.Second,
+		IdleTimeout:       60 * time.Second,
+		BaseContext:       func(_ net.Listener) context.Context { return ctx },
+	}
 }

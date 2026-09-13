@@ -59,6 +59,9 @@ services:
       # SP_BOOTSTRAP_ADMIN="Anna" task up to give that player the flag; the
       # name is the one on the ranking (docs/adr/0008).
       SP_BOOTSTRAP_ADMIN: ${SP_BOOTSTRAP_ADMIN:-}
+      # Empty by default, and then there is no /metrics listener. Not published
+      # under ports: whatever scrapes it would run beside the container.
+      SP_METRICS_ADDR: ${SP_METRICS_ADDR:-}
       # SP_PUBLIC_BASE_URL is deliberately unset: the QR sheet reads the
       # address off the request, which is right wherever the application is
       # reached directly. Set it where a proxy terminates TLS or rewrites the

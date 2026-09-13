@@ -25,6 +25,8 @@ _memoryRequest = option("config.memoryRequest")
 _memoryLimit = option("config.memoryLimit")
 _servicePort = option("config.servicePort")
 _containerPort = option("config.containerPort")
+_metricsEnabled = option("config.metricsEnabled")
+_metricsPort = option("config.metricsPort")
 _httpRouteEnabled = option("config.httpRouteEnabled")
 _gatewayName = option("config.gatewayName")
 _gatewayNamespace = option("config.gatewayNamespace")
@@ -94,6 +96,10 @@ config: schema.Schmetterpause = schema.Schmetterpause {
         servicePort = int(_servicePort)
     if _containerPort:
         containerPort = int(_containerPort)
+    if _metricsEnabled != Undefined and _metricsEnabled != None:
+        metricsEnabled = _bool(_metricsEnabled)
+    if _metricsPort:
+        metricsPort = int(_metricsPort)
     if _httpRouteEnabled != Undefined and _httpRouteEnabled != None:
         httpRouteEnabled = _bool(_httpRouteEnabled)
     if _gatewayName:

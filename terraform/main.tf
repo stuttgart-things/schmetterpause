@@ -45,6 +45,7 @@ locals {
       SP_PUBLIC_BASE_URL = var.public_base_url != "" ? trimsuffix(var.public_base_url, "/") : local.generated_url
     },
     { for k, v in { SP_BOOTSTRAP_ADMIN = var.bootstrap_admin } : k => v if v != "" },
+    { for k, v in { SP_METRICS_ADDR = var.metrics_port > 0 ? ":${var.metrics_port}" : "" } : k => v if v != "" },
     var.extra_env_vars,
   )
 }

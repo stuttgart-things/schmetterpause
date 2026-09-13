@@ -26,6 +26,10 @@ public_base_url = ""
 # Empty grants nothing. A display name, once that player has joined.
 bootstrap_admin = ""
 
+# 0: no /metrics listener. Nothing on Azure would scrape it, and the kcl base
+# turns it on only because a cluster scraper can reach the pod directly.
+metrics_port = 0
+
 extra_env_vars = {}
 
 # Per container, for the app and its migrate init container each. Consumption
