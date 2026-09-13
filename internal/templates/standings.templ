@@ -35,8 +35,14 @@ templ StandingsOOB(v StandingsView) {
 // is nothing to put where the button is. hx-disabled-elt stops an impatient
 // second press from queueing a second round trip.
 templ standingsHead() {
+	// No heading in here. The page above it is already called Rangliste, in an
+	// h1 forty pixels up, and this section is only ever rendered into that
+	// page: #standings exists nowhere else, and the out-of-band swaps from
+	// signin, pending and profile can only land where it already is. Saying it
+	// twice was the older arrangement, from before the page had a head of its
+	// own. The table keeps its own aria-label, so the region stays named for a
+	// screen reader (issue #245).
 	<div class="standings-head">
-		<h2>Rangliste</h2>
 		<button
 			class="secondary refresh"
 			hx-get="/fragments/refresh"
