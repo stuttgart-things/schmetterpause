@@ -128,7 +128,7 @@ schema Schmetterpause:
     # A CloudNativePG Cluster is NOT part of main.k. It outlives every app
     # revision, and a base that carries it is a base whose removal can prune
     # the database. Under ArgoCD it is its own Application from the catalog
-    # entry infra/cloudnative-pg/cluster, into this same namespace.
+    # entry apps/schmetterpause/database, into this same namespace.
     #
     # database.k renders one for the path without Argo, where nothing prunes.
     # It is a separate entry point rather than a flag on purpose: kcl:publish

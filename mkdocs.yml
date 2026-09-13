@@ -69,6 +69,7 @@ nav:
       - ADR-0016 Azure auf Zeit, Daten ziehen um: adr/0016-azure-auf-zeit-daten-ziehen-um.md
       - ADR-0017 Spieler zusammenführen: adr/0017-spieler-zusammenfuehren.md
       - ADR-0018 PIN beim Beitritt: adr/0018-pin-beim-beitritt.md
+      - ADR-0019 Backup auf Kubernetes: adr/0019-backup-auf-kubernetes.md
   - Betrieb:
       - Plattform-Voraussetzungen: platform.md
       - Deployment ohne GitOps: deployment.md

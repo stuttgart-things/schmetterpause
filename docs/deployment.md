@@ -273,8 +273,15 @@ trigger for changing this is backups, not replicas.
 
 ### Through the catalogue instead
 
-Under ArgoCD the Cluster is its own Application from
-`infra/cloudnative-pg/cluster`, and the same thing by helmfile is:
+Under ArgoCD the Cluster is its own Application from `apps/schmetterpause/database`
+in `stuttgart-things/argocd`, rendered by `apps/schmetterpause/install` at
+sync-wave -10 so it exists before the migration init container runs. Backups are
+switched on there as well — `database.backup`, through the Barman Cloud plugin,
+see docs/adr/0019 — and not in `database.k`: an object-store target is
+environment configuration, and this module holds none.
+
+For a cluster where the database is managed with everything else's databases
+rather than with this application, the generic chart does the same by helmfile:
 
 ```sh
 helmfile apply \
@@ -287,10 +294,9 @@ helmfile apply \
   --state-values-set appSecretName=schmetterpause-db
 ```
 
-That is the route for a cluster where the database is managed with everything
-else's databases rather than with this application. It also adds backups, which
-`database.k` does not render: an object-store target is environment
-configuration, and this module holds none.
+Its `backups.*` values configure the in-tree `barmanObjectStore`, which
+CloudNativePG 1.30 deprecates and 1.31.0 removes. Take backups through the
+plugin instead, as `apps/schmetterpause/database` does.
 
 The PVC appears only with the pod when the StorageClass is
 `WaitForFirstConsumer`.

@@ -79,7 +79,7 @@ instead.
 worse consequences: the database outlives every revision of the application. A
 base that carries the `Cluster` is a base whose removal can take the data with
 it. Under ArgoCD the `Cluster` is its own Application from
-`infra/cloudnative-pg/cluster` in the catalogue, into the same namespace, at a
+`apps/schmetterpause/database` in the catalogue, into the same namespace, at a
 lower sync-wave — so it exists before the migration initContainer runs.
 
 `database.k` renders one for the path where nothing prunes: a test cluster, a
