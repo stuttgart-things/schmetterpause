@@ -11,16 +11,12 @@ import (
 // classWithoutARule names a class the templates wear that the stylesheet has
 // never heard of, and says why it is allowed to stay that way for now. An
 // entry here is a promise that somebody looked, not a way to quieten the test.
-var classWithoutARule = map[string]string{
-	// Fourteen sections on /statistics, /tournaments and /info ask for the
-	// card look and do not get it: the house rule at the top of the card
-	// section is a hand-kept list of names (.session, .match, .pending, …)
-	// and .card was never added to it. Adding it is one line, and it changes
-	// how three pages look — including a tournament table that is not inside
-	// a .table-scroll, so the side padding a card brings has to be seen on a
-	// phone before it is committed. Issue #241, part (b).
-	"card": "the card look is a hand-kept selector list; adding .card to it is a visual change that wants eyes on it first",
-}
+// classWithoutARule names a class the templates wear that the stylesheet has
+// never heard of, and says why it is allowed to stay that way. An entry here
+// is a promise that somebody looked, not a way to quieten the test.
+//
+// Empty, and worth keeping empty.
+var classWithoutARule = map[string]string{}
 
 // TestEveryClassInAMarkupFileHasARule is the guard against a class name that
 // does nothing.

@@ -309,7 +309,12 @@ h1 {
 
 /* --- Karten ------------------------------------------------------------ */
 
-.session, .match, .pending, .running, .standings, .stat, .status {
+/* .card is in the list because fourteen sections across /statistics,
+   /tournaments and /info have been asking for it and getting nothing: the
+   look lives in a hand-kept list of names, and that one was never added. Those
+   two pages have been running without surfaces — flat text where every other
+   page has objects. */
+.card, .session, .match, .pending, .running, .standings, .stat {
 	margin: 0 0 1rem;
 	padding: 1.1rem 1.25rem;
 	background: var(--card);
@@ -631,7 +636,11 @@ h1 {
 
 /* --- Statuskästchen ---------------------------------------------------- */
 
+/* Not a card, though it was one until .card started working: the <dl> sits
+   inside the section on /info, and once that section became the surface the
+   list was painting a second one inside the first. */
 .status {
+	margin: 0;
 	display: grid;
 	grid-template-columns: auto 1fr;
 	gap: 0.4rem 1.25rem;
