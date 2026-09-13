@@ -96,6 +96,15 @@ deployment = {
                                 containerPort: config.containerPort
                                 protocol: "TCP"
                             }
+                            # Named, so a PodMonitor can select it by name once
+                            # something on the cluster reads one. service.k
+                            # leaves it out on purpose.
+                            if config.metricsEnabled:
+                                {
+                                    name: "metrics"
+                                    containerPort: config.metricsPort
+                                    protocol: "TCP"
+                                }
                         ]
                         env: [_dbEnv]
                         envFrom: [

@@ -33,6 +33,8 @@ configMap = {
             SP_PUBLIC_BASE_URL: labels.publicBaseURL
         if config.bootstrapAdmin:
             SP_BOOTSTRAP_ADMIN: config.bootstrapAdmin
+        if config.metricsEnabled:
+            SP_METRICS_ADDR: ":{}".format(config.metricsPort)
         **config.extraEnvVars
     }
 }
