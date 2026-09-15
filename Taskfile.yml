@@ -29,6 +29,20 @@ vars:
   KCL_MODULE: github.com/stuttgart-things/dagger/kcl@v0.82.0
   KUSTOMIZE_OCI_REPO: ghcr.io/stuttgart-things/schmetterpause-kustomize
   IMAGE_REPO: ghcr.io/stuttgart-things/schmetterpause
+  # The shared supply-chain modules the pipeline calls (ADR-0021), pinned for
+  # the reason KCL_MODULE is. One tag for all four: stuttgart-things/dagger
+  # releases its modules together, and a signature made with one release and
+  # verified with another is two answers to one question. The kcl-meta and
+  # policy-test jobs read these lines, so CI and the tasks below call the same
+  # code.
+  COSIGN_MODULE: github.com/stuttgart-things/dagger/cosign@v0.131.0
+  CRANE_MODULE: github.com/stuttgart-things/dagger/crane@v0.131.0
+  TRIVY_MODULE: github.com/stuttgart-things/dagger/trivy@v0.131.0
+  KYVERNO_MODULE: github.com/stuttgart-things/dagger/kyverno@v0.131.0
+  # The Kyverno release homerun2-test1 runs (checked 2026-09-15). policy:test
+  # and the policy-test job test against this rather than the module's
+  # default, because a policy test is a claim about the cluster enforcing it.
+  KYVERNO_VERSION: "1.19.1"
   # Who is allowed to have signed what this project publishes (ADR-0020).
   # Both halves are needed: anybody can get a certificate from that issuer,
   # and the identity is what says which workflow file in which repository
