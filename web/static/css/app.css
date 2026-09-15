@@ -1780,6 +1780,68 @@ tr.self td { background: color-mix(in srgb, var(--accent) 8%, transparent); }
 
 .matrix-self { background: color-mix(in srgb, currentColor 8%, transparent); }
 
+/* Both label bands stay put while the grid moves under them. Without that the
+   matrix is unreadable the moment it is scrolled: sideways the names go off
+   the left edge and every cell becomes an anonymous 3:1, and on a phone the
+   header row leaves the top before the third player is reached.
+
+   The cap on the height is what makes the header row possible at all. A box
+   with overflow-x and no height of its own is a scrollport sideways and the
+   page vertically, and `top: 0` measured against a scrollport that never
+   scrolls does nothing — which is why the sideways half of this would have
+   worked on its own and the vertical half would not. Giving the region a
+   height makes it answer for both axes, so one set of rules covers both.
+
+   Smaller of a screenful and a comfortable reading height: sixteen players
+   are taller than any phone, and a matrix stretched down a tall desktop
+   window is not easier to read for it. dvh rather than vh because the mobile
+   address bar is exactly the thing that would otherwise cut the last row off,
+   with rem alone for anything that has not heard of dvh. */
+.matrix-scroll {
+	max-height: 30rem;
+	max-height: min(30rem, 70dvh);
+	overflow-y: auto;
+}
+
+/* The one table in the application that does not collapse its borders. A
+   collapsed border belongs to the table's grid rather than to the cell, so it
+   stays behind when the cell sticks — and worse, Chromium then declines to
+   honour the z-index that says which of two sticky cells is on top: the name
+   passing underneath was painted over the frozen corner, so the header read
+   "SSPIELER" while the matrix was scrolled sideways. Spacing of zero, so the
+   grid looks exactly as it did when it collapsed. */
+.matrix {
+	border-collapse: separate;
+	border-spacing: 0;
+}
+
+/* A sticky cell is painted over the cells passing beneath it, so it needs a
+   background of its own — transparent is how the rows show through the header.
+   --card is what the section behind the table is painted with, so the band
+   looks like it always did while nothing is scrolled. */
+.matrix thead th {
+	position: sticky;
+	top: 0;
+	z-index: 2;
+	background: var(--card);
+}
+
+.matrix tbody th {
+	position: sticky;
+	left: 0;
+	z-index: 1;
+	background: var(--card);
+	border-right: 1px solid var(--line);
+}
+
+/* The corner is in both bands at once, so it is painted over both and carries
+   the column's edge as well as the row's. */
+.matrix thead th:first-child {
+	left: 0;
+	z-index: 3;
+	border-right: 1px solid var(--line);
+}
+
 /* A link that starts something, so it carries a button's weight — but the
    secondary one, because the primary action on a finished tournament is
    reading the table, not immediately playing again. */

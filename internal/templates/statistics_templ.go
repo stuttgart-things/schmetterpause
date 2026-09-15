@@ -236,6 +236,11 @@ func statisticsTotals(t StatisticsTotals) templ.Component {
 // headToHead is the matrix. It scrolls inside its own region rather than
 // pushing the page sideways — with a dozen players it is wider than a phone,
 // and the same arrangement the match list uses.
+//
+// The extra class is what freezes the two label bands. A cell here means
+// nothing without both of them: 3:1 in the middle of a scrolled grid says
+// somebody beat somebody three times and names neither. See .matrix-scroll in
+// app.css for why the region has to answer for both axes to manage that.
 func headToHead(v StatisticsView) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
@@ -263,7 +268,7 @@ func headToHead(v StatisticsView) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		} else {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 20, "<div class=\"table-scroll\" tabindex=\"0\" role=\"region\" aria-label=\"Direktvergleich\"><table class=\"standings matrix\"><thead><tr><th scope=\"col\">Spieler</th>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 20, "<div class=\"table-scroll matrix-scroll\" tabindex=\"0\" role=\"region\" aria-label=\"Direktvergleich\"><table class=\"standings matrix\"><thead><tr><th scope=\"col\">Spieler</th>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -275,7 +280,7 @@ func headToHead(v StatisticsView) templ.Component {
 				var templ_7745c5c3_Var12 string
 				templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.JoinStringErrs(name)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `statistics.templ`, Line: 112, Col: 49}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `statistics.templ`, Line: 117, Col: 49}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var12))
 				if templ_7745c5c3_Err != nil {
@@ -298,7 +303,7 @@ func headToHead(v StatisticsView) templ.Component {
 				var templ_7745c5c3_Var13 templ.SafeURL
 				templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL("/players/" + row.ID))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `statistics.templ`, Line: 121, Col: 53}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `statistics.templ`, Line: 126, Col: 53}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var13))
 				if templ_7745c5c3_Err != nil {
@@ -311,7 +316,7 @@ func headToHead(v StatisticsView) templ.Component {
 				var templ_7745c5c3_Var14 string
 				templ_7745c5c3_Var14, templ_7745c5c3_Err = templ.JoinStringErrs(row.DisplayName)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `statistics.templ`, Line: 121, Col: 73}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `statistics.templ`, Line: 126, Col: 73}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var14))
 				if templ_7745c5c3_Err != nil {
@@ -335,7 +340,7 @@ func headToHead(v StatisticsView) templ.Component {
 						var templ_7745c5c3_Var15 string
 						templ_7745c5c3_Var15, templ_7745c5c3_Err = templ.JoinStringErrs(cell.Opponent)
 						if templ_7745c5c3_Err != nil {
-							return templ.Error{Err: templ_7745c5c3_Err, FileName: `statistics.templ`, Line: 129, Col: 32}
+							return templ.Error{Err: templ_7745c5c3_Err, FileName: `statistics.templ`, Line: 134, Col: 32}
 						}
 						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var15))
 						if templ_7745c5c3_Err != nil {
@@ -353,7 +358,7 @@ func headToHead(v StatisticsView) templ.Component {
 						var templ_7745c5c3_Var16 string
 						templ_7745c5c3_Var16, templ_7745c5c3_Err = templ.JoinStringErrs(cell.Spoken())
 						if templ_7745c5c3_Err != nil {
-							return templ.Error{Err: templ_7745c5c3_Err, FileName: `statistics.templ`, Line: 139, Col: 47}
+							return templ.Error{Err: templ_7745c5c3_Err, FileName: `statistics.templ`, Line: 144, Col: 47}
 						}
 						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var16))
 						if templ_7745c5c3_Err != nil {
@@ -366,7 +371,7 @@ func headToHead(v StatisticsView) templ.Component {
 						var templ_7745c5c3_Var17 string
 						templ_7745c5c3_Var17, templ_7745c5c3_Err = templ.JoinStringErrs(cell.Record)
 						if templ_7745c5c3_Err != nil {
-							return templ.Error{Err: templ_7745c5c3_Err, FileName: `statistics.templ`, Line: 140, Col: 48}
+							return templ.Error{Err: templ_7745c5c3_Err, FileName: `statistics.templ`, Line: 145, Col: 48}
 						}
 						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var17))
 						if templ_7745c5c3_Err != nil {
@@ -385,7 +390,7 @@ func headToHead(v StatisticsView) templ.Component {
 				var templ_7745c5c3_Var18 string
 				templ_7745c5c3_Var18, templ_7745c5c3_Err = templ.JoinStringErrs(row.Spoken())
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `statistics.templ`, Line: 145, Col: 44}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `statistics.templ`, Line: 150, Col: 44}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var18))
 				if templ_7745c5c3_Err != nil {
@@ -398,7 +403,7 @@ func headToHead(v StatisticsView) templ.Component {
 				var templ_7745c5c3_Var19 string
 				templ_7745c5c3_Var19, templ_7745c5c3_Err = templ.JoinStringErrs(row.Record())
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `statistics.templ`, Line: 146, Col: 47}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `statistics.templ`, Line: 151, Col: 47}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var19))
 				if templ_7745c5c3_Err != nil {
