@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.9.0](https://github.com/stuttgart-things/schmetterpause/compare/v0.8.0...v0.9.0) (2026-09-15)
+
+
+### Features
+
+* **sign:** sign both artefacts, attach an SBOM, verify at admission ([#252](https://github.com/stuttgart-things/schmetterpause/issues/252)) ([3c7f3c7](https://github.com/stuttgart-things/schmetterpause/commit/3c7f3c7b2ad6dc12357a4d1c2ca857b4939432f4))
+
 ## [0.8.0](https://github.com/stuttgart-things/schmetterpause/compare/v0.7.0...v0.8.0) (2026-09-13)
 
 
