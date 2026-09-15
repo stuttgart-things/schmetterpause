@@ -15,7 +15,7 @@ name_prefix = "schmetterpause"
 # ── Application ───────────────────────────────────────────────────────────────
 
 # Renovate moves this tag.
-image = "ghcr.io/stuttgart-things/schmetterpause:v0.7.0"
+image = "ghcr.io/stuttgart-things/schmetterpause:v0.8.0"
 
 min_replicas = 1
 log_level    = "info"
