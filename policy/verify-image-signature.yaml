@@ -1,0 +1,112 @@
+# The half of issue #230 that runs on the cluster: before the kubelet starts a
+# schmetterpause container, something other than a human checks that the image
+# is the one CI built and signed.
+#
+# Why this lives here and not in a platform request. Decision 3 in #230
+# assumed Kyverno would have to be asked for. Checked on homerun2-test1 on
+# 2026-09-13: it is already installed from the argocd catalog
+# (infra/kyverno/install) and the cluster already carries ClusterPolicy
+# objects of its own. A namespaced verifyImages rule is therefore something
+# this project writes and ships itself.
+#
+# What it does NOT cover, so that nobody reads more into it than it says:
+#
+#   * The kustomize OCI artefact. Argo CD pulls that; the kubelet never does,
+#     so admission cannot see it. It is verified in the delivery path instead
+#     (the verify-artefacts job in .github/workflows/ci.yml).
+#   * Azure Container Apps. It has no admission control at all (#206), and the
+#     environment is temporary (ADR-0016). What runs there is verified in CI
+#     and nowhere else.
+#   * Any image that is not ours. imageReferences below scopes the rule to the
+#     application image; the Postgres image beside it in the same namespace is
+#     not checked by this rule and is not claimed to be.
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: schmetterpause-verify-image-signature
+  annotations:
+    policies.kyverno.io/title: Verify the schmetterpause image signature
+    policies.kyverno.io/category: Supply Chain Security
+    policies.kyverno.io/severity: high
+    policies.kyverno.io/subject: Pod
+    policies.kyverno.io/description: >-
+      The application image must carry a keyless cosign signature made by
+      this repository's CI workflow. See ADR-0020 and docs/supply-chain.md.
+spec:
+  # Audit first, Enforce once it has seen three clean releases — the posture
+  # Trivy took in this repository for the same reason: a rule that has never
+  # run over a real release is a measurement, not a verdict.
+  #
+  # THE FLIP HAS TO BE WRITTEN DOWN. A gate that cannot fail is a
+  # measurement, and #230 asks for the day it stops being one to be recorded
+  # rather than noticed. docs/supply-chain.md has the running count and the
+  # line to change.
+  #
+  # Spec-level rather than per-rule. Kyverno deprecated this field in favour
+  # of a failureAction inside the rule; the deprecated spelling is still
+  # honoured and works on every version between the one installed here and
+  # the one that will be installed next. Move it into the rule when the
+  # cluster no longer accepts it, not before.
+  validationFailureAction: Audit
+  # Verification talks to a registry and to Rekor, so it is not free. A
+  # cluster that cannot reach either should not be a cluster on which no pod
+  # starts; under Enforce this becomes the interesting question, and the
+  # answer is in docs/supply-chain.md.
+  failurePolicy: Ignore
+  webhookTimeoutSeconds: 30
+  # Admission only. A background scan would re-verify every existing pod on
+  # every policy change, which costs registry traffic and tells us nothing
+  # admission has not already said.
+  background: false
+  rules:
+    - name: verify-application-image
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+              namespaces:
+                # The office instance, and every preview namespace. Both are
+                # covered by one rule on purpose: a preview image is built by
+                # the same workflow and signed by the same identity, so a
+                # preview that fails this check is a preview that would fail
+                # it in production too. See docs/preview-environments.md for
+                # where the pr-<n> namespaces come from.
+                - schmetterpause
+                - schmetterpause-pr-*
+      verifyImages:
+        - imageReferences:
+            - ghcr.io/stuttgart-things/schmetterpause:*
+          # Rewrite the tag to the digest that was verified. This is the
+          # "what runs is verifiably what CI built" half: without it the
+          # signature is checked against whatever the tag resolved to at
+          # admission time, and the kubelet is then free to pull something
+          # else. verifyDigest defaults to true and the Deployment names a
+          # tag, so the two settings go together — mutateDigest is what
+          # makes verifyDigest satisfiable here.
+          mutateDigest: true
+          verifyDigest: true
+          # An image with no signature at all is refused, not ignored. This
+          # is the whole point; required: false would make the rule pass on
+          # exactly the artefact it exists to catch.
+          required: true
+          attestors:
+            - count: 1
+              entries:
+                # Keyless (ADR-0020, decision 1). Both fields are load
+                # bearing and neither is sufficient alone: the issuer says
+                # the certificate came from GitHub's OIDC provider, which
+                # anybody can get one from; the subject says which workflow
+                # file in which repository asked for it.
+                #
+                # The wildcard covers the ref, which differs by event —
+                # refs/heads/main, refs/tags/v0.8.0, refs/pull/<n>/merge.
+                # Kyverno matches this as a glob, not a regexp; the equivalent
+                # anchored regexp is in ci.yml and docs/supply-chain.md, and
+                # all three have to be changed together.
+                - keyless:
+                    subject: >-
+                      https://github.com/stuttgart-things/schmetterpause/.github/workflows/ci.yml@refs/*
+                    issuer: https://token.actions.githubusercontent.com
+                    rekor:
+                      url: https://rekor.sigstore.dev
