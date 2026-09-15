@@ -28,4 +28,5 @@ festlegt, steht hier mit den Alternativen, die dabei verworfen wurden. Eine
 | 0017 | [Zwei Spieler zusammenführen heißt neu rechnen](0017-spieler-zusammenfuehren.md) | proposed — Entwurf, nicht entschieden | 2026-09-12 |
 | 0018 | [PIN beim Beitritt, der Code auch als Datei](0018-pin-beim-beitritt.md) | accepted | 2026-09-13 |
 | 0019 | [Backup auf Kubernetes mit dem Barman-Cloud-Plugin, Umzug erst nach gemessenem Restore](0019-backup-auf-kubernetes.md) | accepted | 2026-09-13 |
-| 0020 | [Schlüsselloses Signieren, SBOM am Digest — und Kyverno prüft, nicht ein Mensch](0020-signieren-und-pruefen.md) | accepted | 2026-09-15 |
+| 0020 | [Schlüsselloses Signieren, SBOM am Digest — und Kyverno prüft, nicht ein Mensch](0020-signieren-und-pruefen.md) | accepted — Entscheidung 3 ersetzt durch ADR-0021 | 2026-09-15 |
+| 0021 | [Signieren und Prüfen über die geteilten Dagger-Module, das Token holt der Workflow](0021-signieren-ueber-dagger-module.md) | accepted | 2026-09-15 |
