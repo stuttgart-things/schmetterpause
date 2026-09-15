@@ -628,6 +628,18 @@ tasks:
         echo "context: $(kubectl config current-context)"
         kubectl apply -f policy/
 
+  policy:test:
+    desc: "The admission policy still refuses and admits what policy/tests says"
+    cmds:
+      # The call the policy-test job makes in CI. Needs the network: the policy
+      # verifies signatures against ghcr.io and Rekor while it is tested.
+      - |
+        dagger call -m {{.KYVERNO_MODULE}} test \
+          --src=policy \
+          --kyverno-version={{.KYVERNO_VERSION}} \
+          --warnings-as-errors
+    silent: true
+
   policy:status:
     desc: "Is the signature policy ready, and what has it reported?"
     cmds:

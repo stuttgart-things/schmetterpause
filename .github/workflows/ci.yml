@@ -906,3 +906,53 @@ jobs:
             --certificate-identity-regexp="${foreign}" \
             --registry-username="${GITHUB_ACTOR}" \
             --registry-password=env:GITHUB_TOKEN
+
+  # The admission policy, tested against pods it must refuse and pods it must
+  # admit (policy/tests, issue #254). Until now every check of the policy was
+  # run by hand — and the first version of it was refused by the cluster's
+  # Kyverno and missed digest references, neither of which anything here would
+  # have shown.
+  #
+  # Not "needs: release": the policy does not depend on this build. Its
+  # fixtures are published images that stay: v0.8.0, released before anything
+  # was signed, and the snapshot 3c7f3c7, the first commit main signed.
+  # Deleting either turns this red.
+  #
+  # The Kyverno release comes from the Taskfile, pinned to what homerun2-test1
+  # runs rather than left to the module's default, because a policy test is a
+  # claim about the cluster that enforces the policy. --warnings-as-errors turns
+  # a deprecated kind into a failure before that cluster stops accepting it.
+  #
+  # Runs on every event, forks included: it needs no credentials, pushes
+  # nothing, and a policy change from outside is exactly what should be tested.
+  policy-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Install the Dagger CLI
+        run: |
+          curl -fsSL https://dl.dagger.io/dagger/install.sh \
+            | DAGGER_VERSION="${DAGGER_VERSION}" BIN_DIR=/usr/local/bin sudo -E sh
+          dagger version
+
+      - name: The policy refuses and admits what it must
+        run: |
+          set -euo pipefail
+
+          module="$(sed -n 's/^  KYVERNO_MODULE: *//p' Taskfile.yml)"
+          kyverno_version="$(sed -n 's/^  KYVERNO_VERSION: *//p' Taskfile.yml | tr -d '"')"
+          for name in module kyverno_version; do
+            if [ -z "${!name}" ]; then
+              echo "could not read ${name} from Taskfile.yml — has a var been renamed?" >&2
+              exit 1
+            fi
+          done
+
+          dagger call -m "${module}" test \
+            --src=policy \
+            --kyverno-version="${kyverno_version}" \
+            --warnings-as-errors

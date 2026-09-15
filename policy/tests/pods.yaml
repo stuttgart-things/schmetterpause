@@ -1,0 +1,96 @@
+# Fixtures for kyverno-test.yaml. Only the image references matter; the pods
+# are never created.
+#
+# Two published images, and both have to stay in the registry:
+#
+#   v0.8.0   released before this project signed anything, so unsigned for
+#            good. 4346c686… is its index digest.
+#   3c7f3c7  the first commit main signed (#252), by
+#            https://github.com/stuttgart-things/schmetterpause/.github/workflows/ci.yml@refs/heads/main.
+#            3fdba068… is its index digest.
+#
+# Once a release is signed, point the signed fixtures at it: a release tag is
+# kept on purpose, a snapshot only by default.
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: unsigned-by-tag
+  namespace: schmetterpause
+spec:
+  containers:
+    - name: app
+      image: ghcr.io/stuttgart-things/schmetterpause:v0.8.0
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: unsigned-by-digest
+  namespace: schmetterpause
+spec:
+  containers:
+    - name: app
+      image: ghcr.io/stuttgart-things/schmetterpause@sha256:4346c6865e5d3b7c0def05ff5d9cb866c4ae26612d608c2eeed455810216244c
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: unsigned-tag-and-digest
+  namespace: schmetterpause
+spec:
+  containers:
+    - name: app
+      image: ghcr.io/stuttgart-things/schmetterpause:v0.8.0@sha256:4346c6865e5d3b7c0def05ff5d9cb866c4ae26612d608c2eeed455810216244c
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: unsigned-init-container
+  namespace: schmetterpause
+spec:
+  initContainers:
+    - name: init
+      image: ghcr.io/stuttgart-things/schmetterpause:v0.8.0
+  containers:
+    - name: db
+      image: ghcr.io/cloudnative-pg/postgresql:18
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: unsigned-in-preview
+  namespace: schmetterpause-pr-1
+spec:
+  containers:
+    - name: app
+      image: ghcr.io/stuttgart-things/schmetterpause:v0.8.0
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: signed-by-tag
+  namespace: schmetterpause
+spec:
+  containers:
+    - name: app
+      image: ghcr.io/stuttgart-things/schmetterpause:3c7f3c7
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: signed-by-digest
+  namespace: schmetterpause
+spec:
+  containers:
+    - name: app
+      image: ghcr.io/stuttgart-things/schmetterpause@sha256:3fdba06826bff633ca3a9599c6d1ab1cbae8fffe39e84d403c632c81755d05e8
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: postgres-only
+  namespace: schmetterpause
+spec:
+  containers:
+    - name: db
+      image: ghcr.io/cloudnative-pg/postgresql:18
