@@ -32,6 +32,7 @@ comes from.
 | External Secrets Operator and a store | recommended | the two Secrets | ESO 2.10.0 against OpenBao |
 | Barman Cloud plugin and object storage | recommended | database backups and point-in-time restore | plugin v0.15.0, MinIO |
 | Velero | optional | backups of the Kubernetes objects | 1.18.1 |
+| Kyverno | optional | refusing an image that CI did not sign | not on the reference cluster; running on `homerun2-test1`, version not recorded |
 | trust-manager | optional | a CA bundle for a privately signed object store | 0.24.0 |
 | GitOps (Argo CD or Flux) | optional | keeping the cluster at what Git says | Flux |
 
@@ -246,6 +247,35 @@ only: the Deployment, the ExternalSecrets, the Cluster *definition* — not the
 rows. Under GitOps those come back from Git anyway. Velero earns its place for
 state applied by hand, and for bringing a whole namespace back in one step.
 
+## Image verification: Kyverno
+
+**Optional**, and the only item on this page whose absence costs nothing at
+runtime: without it the application starts exactly as it would with it. What is
+lost is the assurance that the image the kubelet pulls is the one CI built and
+signed.
+
+`policy/verify-image-signature.yaml` is a `ClusterPolicy` with a `verifyImages`
+rule. It wants:
+
+- **Kyverno installed and its admission webhook serving.** On the reference
+  workload cluster it comes from the argocd catalog, `infra/kyverno/install`.
+- **Egress from the Kyverno pods to `ghcr.io` and to `rekor.sigstore.dev`.**
+  Verification is a network call at admission time, not a local computation.
+  The policy ships with `failurePolicy: Ignore`, so a cluster that cannot
+  reach either admits the pod rather than blocking every deployment — which is
+  the safe default and also the one that makes the check silently stop being a
+  check. [Signatures, SBOM and what checks them](supply-chain.md) says what to
+  weigh before changing it.
+- **cluster-admin to apply it**, once. A `ClusterPolicy` is cluster-scoped.
+
+```sh
+task policy:apply
+task policy:status
+```
+
+Nothing else on this page depends on it, and the application has no opinion
+about whether it is there. The decision is [ADR-0020](adr/0020-signieren-und-pruefen.md).
+
 ## Reference platform
 
 `labda-dev-a`, a single-node LabDA cluster built by the
@@ -293,6 +323,10 @@ kubectl get clustersecretstore
 
 # Velero, if used
 kubectl -n velero get backupstoragelocations.velero.io
+
+# Kyverno, if the image signature is to be verified at admission
+kubectl get crd clusterpolicies.kyverno.io
+kubectl -n kyverno get deploy kyverno-admission-controller
 ```
 
 After it, for backups: `ContinuousArchiving=True` on the Cluster and one backup

@@ -38,6 +38,11 @@ Je nachdem, warum jemand hier gelandet ist:
 - **Sieht das auf einem Handy richtig aus?** Jeder Pull Request kann eine
   eigene laufende Instanz bekommen — [Preview-Umgebungen](preview-environments.md)
   sagt, wie (ein Label) und was dahintersteckt.
+- **Ist das, was läuft, auch das, was gebaut wurde?**
+  [Signaturen, SBOM und Prüfung](supply-chain.md) sagt, was signiert wird, wie
+  man es von Hand nachprüft und was am Cluster ein unsigniertes Image ablehnt —
+  und wo diese Prüfung nicht hinreicht. Englisch, wie die übrige
+  Betriebsdokumentation.
 
 ## Ein paar Begriffe
 
