@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.9.1](https://github.com/stuttgart-things/schmetterpause/compare/v0.9.0...v0.9.1) (2026-09-15)
+
+
+### Bug Fixes
+
+* **statistics:** keep both name bands in view while the matrix scrolls ([#260](https://github.com/stuttgart-things/schmetterpause/issues/260)) ([5001299](https://github.com/stuttgart-things/schmetterpause/commit/500129995744b9aae8b46c4f3fdf89f5cc0d54d8))
+
 ## [0.9.0](https://github.com/stuttgart-things/schmetterpause/compare/v0.8.0...v0.9.0) (2026-09-15)
 
 
