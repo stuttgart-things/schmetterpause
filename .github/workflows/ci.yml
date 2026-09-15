@@ -14,6 +14,14 @@
 # See issue #85 for what else moves here and what does not: the container
 # build via ko is a real decision rather than an adoption, and call-go-release
 # is ruled out because it brings semantic-release with it (issue #39).
+#
+# The signing and verification jobs (sign-image, sign-kustomize,
+# verify-artefacts — issue #230, ADR-0020) do not bend the rule above either,
+# and the ADR says why at length. In short: they run after the push, about
+# artefacts that already exist, which is the same class as the scan and
+# verify-image-tags. The one thing they add that could not live in Dagger is
+# an identity — the keyless signature is made with the runner's own OIDC
+# token, which "task release" has no way to obtain and should not pretend to.
 name: CI
 
 on:
@@ -44,6 +52,18 @@ env:
   # Same version the kcl module installs, so a tag written here and an
   # artefact pushed there cannot come from two different oras.
   ORAS_VERSION: "1.2.2"
+  # Signing and SBOM (issue #230, ADR-0020). Downloaded rather than installed
+  # by an action, for the same reason oras above is: one pinned version string
+  # in this file beats a second supply chain of actions to keep pinned, and
+  # the tool that vouches for our artefacts is a poor place to take a
+  # dependency on somebody else's release tooling.
+  # renovate: datasource=github-releases depName=sigstore/cosign
+  COSIGN_VERSION: "2.5.0"
+  # The same scanner the scan job below runs, used here for a different
+  # purpose: it already pulls the exact digest, so it can write the inventory
+  # instead of a second tool pulling the image again.
+  # renovate: datasource=github-releases depName=aquasecurity/trivy
+  TRIVY_VERSION: "0.61.0"
 
 jobs:
   ci:
@@ -251,6 +271,120 @@ jobs:
           # on two checkouts is two sources of truth for the one value that
           # ties the artefact to the image it names.
           echo "version=${version}" >> "$GITHUB_OUTPUT"
+
+  # Signs the image that was just published, and attaches its inventory to the
+  # same digest. Issue #230, decided in ADR-0020.
+  #
+  # Three things about the shape of this job are decisions rather than
+  # convenience, and all three are written up in the ADR:
+  #
+  # 1. **Keyless.** The job asks Actions for an OIDC token, Fulcio exchanges it
+  #    for a certificate valid for ten minutes, and the certificate names this
+  #    workflow file at this ref as the signer. Nothing is stored, so nothing
+  #    has to be rotated and nothing can leak. The cost is a public record in
+  #    the transparency log, which for a public package is not a cost.
+  # 2. **In the workflow rather than in Dagger**, despite what this file says
+  #    about holding no build logic. Signing is not build logic: it happens
+  #    after the push, about an artefact that already exists, which is the same
+  #    class as the scan and verify-image-tags jobs that already live here. The
+  #    OIDC token is also the runner's, and handing it to Dagger would make
+  #    `task release` look like it could do this when it cannot.
+  # 3. **By digest, never by tag.** A tag is a name somebody can move; the
+  #    signature has to be about one artefact. The release job already returns
+  #    the digest for exactly this reason — the scan gets it so it reads what
+  #    was pushed rather than whatever the tag points at by now.
+  #
+  # Blocking from the first run, unlike Trivy. The difference is not nerve: a
+  # scan's verdict depends on what the world discovered overnight, so a first
+  # run is a measurement. This job verifies nothing — it only asserts. If it
+  # goes red, signing is broken, not the world.
+  sign-image:
+    needs: release
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      # Writing the signature and the attestation means pushing two more
+      # objects into the same package.
+      packages: write
+      # The whole of decision 1. Without it cosign has no identity to sign as.
+      id-token: write
+    outputs:
+      # The digest reference everything downstream verifies, resolved once
+      # here rather than re-derived by every job that needs it.
+      target: ${{ steps.sign.outputs.target }}
+    steps:
+      - name: Install cosign and trivy
+        run: |
+          set -euo pipefail
+          mkdir -p "${RUNNER_TEMP}/bin"
+          curl -fsSL \
+            "https://github.com/sigstore/cosign/releases/download/v${COSIGN_VERSION}/cosign-linux-amd64" \
+            -o "${RUNNER_TEMP}/bin/cosign"
+          chmod +x "${RUNNER_TEMP}/bin/cosign"
+          curl -fsSL \
+            "https://github.com/aquasecurity/trivy/releases/download/v${TRIVY_VERSION}/trivy_${TRIVY_VERSION}_Linux-64bit.tar.gz" \
+            | tar xz -C "${RUNNER_TEMP}/bin" trivy
+          echo "${RUNNER_TEMP}/bin" >> "$GITHUB_PATH"
+          "${RUNNER_TEMP}/bin/cosign" version
+          "${RUNNER_TEMP}/bin/trivy" --version
+
+      - name: Sign the digest, attach the SBOM
+        id: sign
+        env:
+          REF: ${{ needs.release.outputs.image-ref }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Trivy pulls the image itself. The package is public, so this is
+          # not strictly needed — but an anonymous pull is rate-limited and a
+          # signing job that fails on somebody else's traffic is noise.
+          TRIVY_USERNAME: ${{ github.actor }}
+          TRIVY_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          # dagger returns "<repo>:<tag>@sha256:<digest>". Drop the tag: what
+          # is signed is the digest, and leaving the tag in the reference
+          # would put a mutable name into a record meant to be immutable.
+          case "${REF}" in
+            *@sha256:*) ;;
+            *)
+              echo "the release job returned ${REF}, which carries no digest" >&2
+              exit 1
+              ;;
+          esac
+          digest="${REF##*@}"
+          repo="${REF%@*}"
+          repo="${repo%:*}"
+          target="${repo}@${digest}"
+          echo "signing ${target}"
+
+          printenv GITHUB_TOKEN \
+            | cosign login ghcr.io --username "${GITHUB_ACTOR}" --password-stdin
+
+          cosign sign --yes "${target}"
+
+          # The inventory, as a CycloneDX predicate on the same digest.
+          #
+          # --platform is not a detail to skip: the release is one manifest
+          # covering amd64 and arm64, and trivy resolves an index to the
+          # platform it is running on. Naming it means the SBOM says which
+          # half it describes instead of depending on what the runner was.
+          # The arm64 image is the same source and the same base, so the two
+          # inventories differ only in the architecture of their packages —
+          # but that is a claim, and this file should not make it silently.
+          trivy image \
+            --quiet \
+            --platform linux/amd64 \
+            --format cyclonedx \
+            --output "${RUNNER_TEMP}/sbom.cdx.json" \
+            "${target}"
+
+          cosign attest --yes \
+            --type cyclonedx \
+            --predicate "${RUNNER_TEMP}/sbom.cdx.json" \
+            "${target}"
+
+          echo "target=${target}" >> "$GITHUB_OUTPUT"
 
   # Trivy against the image that was just published. Blocking, as of the third
   # consecutive clean report: 7cca1ef, eb0abcc and 513a08d each came back with
@@ -491,6 +625,82 @@ jobs:
       dagger-kcl-module: ${{ needs.kcl-meta.outputs.kcl-module }}
     secrets: inherit # pragma: allowlist secret
 
+  # The other artefact, and the one #194 singles out: the manifest set is what
+  # Argo consumes, so it is the one an attacker would rather have. An image
+  # signature on its own protects the half nobody would bother attacking.
+  #
+  # A step *after* the shared workflow rather than a change *inside* it. The
+  # push goes through github-workflow-templates, which this repository does not
+  # own, so the two artefacts do not get signed in the same place — which the
+  # issue allows "as long as it is noticed rather than discovered". This
+  # comment is the noticing. If the shared workflow ever grows signing of its
+  # own, this job is what should go.
+  #
+  # No SBOM here. A CycloneDX inventory of a rendered manifest set would list
+  # nothing a reader does not already get by pulling the artefact and looking
+  # at it — the dependency it does have, the image, carries its own.
+  sign-kustomize:
+    needs: [release, kcl-meta, kustomize]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+    outputs:
+      target: ${{ steps.sign.outputs.target }}
+    steps:
+      - name: Install oras and cosign
+        run: |
+          set -euo pipefail
+          mkdir -p "${RUNNER_TEMP}/bin"
+          curl -fsSL \
+            "https://github.com/oras-project/oras/releases/download/v${ORAS_VERSION}/oras_${ORAS_VERSION}_linux_amd64.tar.gz" \
+            | tar xz -C "${RUNNER_TEMP}/bin" oras
+          curl -fsSL \
+            "https://github.com/sigstore/cosign/releases/download/v${COSIGN_VERSION}/cosign-linux-amd64" \
+            -o "${RUNNER_TEMP}/bin/cosign"
+          chmod +x "${RUNNER_TEMP}/bin/cosign"
+          echo "${RUNNER_TEMP}/bin" >> "$GITHUB_PATH"
+
+      - name: Sign the manifest artefact
+        id: sign
+        env:
+          REPO: ${{ needs.kcl-meta.outputs.kustomize-repo }}
+          VERSION: ${{ needs.release.outputs.version }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          printenv GITHUB_TOKEN \
+            | oras login ghcr.io --username "${GITHUB_ACTOR}" --password-stdin
+          printenv GITHUB_TOKEN \
+            | cosign login ghcr.io --username "${GITHUB_ACTOR}" --password-stdin
+
+          # The shared workflow returns no digest, so it is resolved from the
+          # tag it just pushed. That is a tag read, which is the thing the
+          # image side is careful to avoid — the window is the seconds between
+          # that job finishing and this one starting, and only a second push
+          # to the same tag in that window could move it. Concurrency for this
+          # ref is already serialised at the top of this file, so the only
+          # writer that could is a human with a token. Worth a sentence rather
+          # than a mechanism; if the shared workflow ever returns a digest,
+          # take it instead of this.
+          digest="$(oras manifest fetch --descriptor "${REPO}:${VERSION}" \
+            | sed 's/.*"digest":"\([^"]*\)".*/\1/')"
+          case "${digest}" in
+            sha256:*) ;;
+            *)
+              echo "could not resolve a digest for ${REPO}:${VERSION}, got ${digest}" >&2
+              exit 1
+              ;;
+          esac
+
+          target="${REPO}@${digest}"
+          echo "signing ${target}"
+          cosign sign --yes "${target}"
+          echo "target=${target}" >> "$GITHUB_OUTPUT"
+
   # The kustomize side of this is now proved inside the shared workflow. The
   # image side is not: its "latest" is moved by the release job, so somebody
   # has to check that one too, and it stays here rather than disappearing with
@@ -537,3 +747,123 @@ jobs:
             exit 1
           fi
           echo "${REPO}: latest and ${VERSION} agree on ${v}"
+
+  # The point of all of the above, and the reason #230 is one issue rather
+  # than three.
+  #
+  #   > Signing without verification repeats exactly the failure this phase
+  #   > opens with: a mechanism that looks like coverage and asserts nothing.
+  #
+  # This job is the gate in the delivery path. It is deliberately not the only
+  # verification: an admission policy on the cluster checks the image the
+  # kubelet is about to run, which is a stronger claim than anything CI can
+  # make about what it published (policy/verify-image-signature.yaml). But
+  # admission never sees the manifest artefact — Argo pulls that, the kubelet
+  # does not — so for one of the two artefacts this job is all there is.
+  #
+  # Blocking from the first run. The Trivy precedent of three report-only runs
+  # does not transfer: Trivy's verdict depends on what the world discovered
+  # overnight, so its first run was a measurement. This one checks a signature
+  # that a job in this same run made ninety seconds earlier. A red result
+  # means signing or verification is broken, and there is no reading of that
+  # where the right response is a report nobody has to act on.
+  #
+  # Azure Container Apps is out of scope, and that is a decision rather than
+  # an oversight: it has no admission control at all (#206) and the
+  # environment is temporary (ADR-0016). What runs there is verified here and
+  # nowhere else. ADR-0020 says so in one sentence, because "silently covering
+  # one of two environments" is the failure this phase opens with, one level
+  # up.
+  verify-artefacts:
+    needs: [sign-image, sign-kustomize]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      packages: read
+    env:
+      # The two halves of "signed by us". The issuer says the certificate came
+      # from GitHub's OIDC provider; the identity says which workflow file, in
+      # which repository, asked for it. Neither alone is worth much — anybody
+      # can get a certificate from that issuer.
+      #
+      # A regexp rather than a literal because the ref differs by event:
+      # refs/heads/main on a push, refs/tags/v0.8.0 on a release, and
+      # refs/pull/<n>/merge for a preview build. It is anchored and escaped, so
+      # it will not match a fork or a repository whose name starts the same
+      # way. Kept in step with policy/verify-image-signature.yaml and
+      # docs/supply-chain.md; all three name the same two strings.
+      COSIGN_ISSUER: https://token.actions.githubusercontent.com
+      COSIGN_IDENTITY: ^https://github\.com/stuttgart-things/schmetterpause/\.github/workflows/ci\.yml@refs/
+    steps:
+      - name: Install cosign
+        run: |
+          set -euo pipefail
+          mkdir -p "${RUNNER_TEMP}/bin"
+          curl -fsSL \
+            "https://github.com/sigstore/cosign/releases/download/v${COSIGN_VERSION}/cosign-linux-amd64" \
+            -o "${RUNNER_TEMP}/bin/cosign"
+          chmod +x "${RUNNER_TEMP}/bin/cosign"
+          echo "${RUNNER_TEMP}/bin" >> "$GITHUB_PATH"
+
+      - name: Both artefacts are signed by this workflow
+        env:
+          IMAGE: ${{ needs.sign-image.outputs.target }}
+          KUSTOMIZE: ${{ needs.sign-kustomize.outputs.target }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          # Both packages are public, so this changes nothing about what can
+          # be read — it takes the job off the anonymous rate limit, which is
+          # shared with everything else leaving this runner.
+          printenv GITHUB_TOKEN \
+            | cosign login ghcr.io --username "${GITHUB_ACTOR}" --password-stdin
+
+          for target in "${IMAGE}" "${KUSTOMIZE}"; do
+            [ -n "${target}" ] || { echo "a signing job returned no target" >&2; exit 1; }
+            echo "::group::verify ${target}"
+            cosign verify \
+              --certificate-oidc-issuer "${COSIGN_ISSUER}" \
+              --certificate-identity-regexp "${COSIGN_IDENTITY}" \
+              "${target}" > /dev/null
+            echo "::endgroup::"
+            echo "${target}: signed by this workflow"
+          done
+
+          echo "::group::verify the SBOM attestation"
+          cosign verify-attestation \
+            --type cyclonedx \
+            --certificate-oidc-issuer "${COSIGN_ISSUER}" \
+            --certificate-identity-regexp "${COSIGN_IDENTITY}" \
+            "${IMAGE}" > /dev/null
+          echo "::endgroup::"
+          echo "${IMAGE}: carries an SBOM attestation signed by this workflow"
+
+      # A verification that has never refused anything is indistinguishable
+      # from one that cannot. The issue asks for that proof as a drill — push
+      # something unsigned and watch the gate refuse it — and the drill against
+      # the cluster is written down in docs/supply-chain.md, because it needs a
+      # cluster. This is the half that can run on every build: the same
+      # command, against an identity that must not match, asserting that it
+      # fails.
+      #
+      # It catches the failure the drill is for. A cosign invocation with a
+      # misspelled flag, or a --certificate-identity-regexp that accidentally
+      # matches everything, passes the step above and would pass it forever.
+      # Here it turns the build red.
+      - name: And it refuses an identity that is not ours
+        env:
+          IMAGE: ${{ needs.sign-image.outputs.target }}
+        run: |
+          set -euo pipefail
+
+          if cosign verify \
+            --certificate-oidc-issuer "${COSIGN_ISSUER}" \
+            --certificate-identity-regexp '^https://github\.com/stuttgart-things/not-this-repository/' \
+            "${IMAGE}" > /dev/null 2>&1; then
+            echo "verification accepted a signature from an identity that is not ours" >&2
+            echo "the gate above is not a gate" >&2
+            exit 1
+          fi
+          echo "refused an identity that is not ours, as it must"
