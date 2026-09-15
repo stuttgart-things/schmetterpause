@@ -1,0 +1,48 @@
+# What policy/verify-image-signature.yaml must refuse and what it must admit.
+# Run by the policy-test job in CI and by "task policy:test" (issue #254).
+#
+# Both directions, because a policy change can break either: a rule that
+# refuses nothing passes every "must admit" line forever, and one that refuses
+# everything passes every "must refuse" line. Each line below is a way the
+# first version of the policy was wrong, or a way it could quietly become so.
+#
+# The policy verifies signatures while it is tested, so this needs the network
+# (ghcr.io and Rekor) and the fixture images in pods.yaml have to stay
+# published.
+#
+# What cannot be asserted here: that a pod outside schmetterpause and
+# schmetterpause-pr-* is left alone. Kyverno produces no result at all for a
+# resource the policy does not match, and `kyverno test` reports a missing
+# result as a failure rather than as a skip.
+apiVersion: cli.kyverno.io/v1alpha1
+kind: Test
+metadata:
+  name: verify-image-signature
+policies:
+  - ../verify-image-signature.yaml
+resources:
+  - pods.yaml
+results:
+  - policy: schmetterpause-verify-image-signature
+    isImageValidatingPolicy: true
+    kind: Pod
+    resources:
+      - unsigned-by-tag
+      # The first policy matched "schmetterpause:*" only, so these two were
+      # never checked at all.
+      - unsigned-by-digest
+      - unsigned-tag-and-digest
+      # The expression walks containers only; required: true is what catches
+      # an unverified image in an init container.
+      - unsigned-init-container
+      - unsigned-in-preview
+    result: fail
+  - policy: schmetterpause-verify-image-signature
+    isImageValidatingPolicy: true
+    kind: Pod
+    resources:
+      - signed-by-tag
+      - signed-by-digest
+      # Not our image: the policy must not demand our signature on it.
+      - postgres-only
+    result: pass

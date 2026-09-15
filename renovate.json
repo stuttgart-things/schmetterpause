@@ -30,14 +30,14 @@
     },
     {
       "customType": "regex",
-      "description": "The tools the signing jobs download by version string in the CI workflow (cosign, trivy — ADR-0020). Renovate's github-actions manager moves uses: pins and nothing else, so without this the two tools that vouch for the artefacts stay on the version they were first written with. That is how the signing job came to name a trivy release that no longer has a binary to download. Release tags carry a v, the env values do not.",
+      "description": "The stuttgart-things/dagger modules the supply-chain jobs call (ADR-0021), pinned in the Taskfile and read from there by CI. No Renovate manager knows a Dagger module reference. Only these four names: KCL_MODULE is left out, because moving it changes the rendered deploy artefact and deserves a pull request of its own.",
       "managerFilePatterns": [
-        "/^\\.github/workflows/ci\\.yml$/"
+        "/^Taskfile\\.yml$/"
       ],
       "matchStrings": [
-        "# renovate: datasource=(?<datasource>[a-z-]+) depName=(?<depName>\\S+)\\n\\s*[A-Z_]+:\\s*\"(?<currentValue>[^\"]+)\""
+        "\\n  (?:COSIGN|CRANE|TRIVY|KYVERNO)_MODULE: github\\.com/(?<depName>stuttgart-things/dagger)/[a-z]+@(?<currentValue>v[0-9]+\\.[0-9]+\\.[0-9]+)"
       ],
-      "extractVersionTemplate": "^v(?<version>.*)$"
+      "datasourceTemplate": "github-tags"
     },
     {
       "customType": "regex",
@@ -66,17 +66,14 @@
       "dependencyDashboardApproval": true
     },
     {
-      "description": "A major cosign bump changes what the signing jobs write, and the Kyverno policy on the cluster has to verify what they write. A green verify-artefacts job does not prove that — it runs the same cosign on both ends. Approval on the dashboard, for the same reason as Postgres above: not blocked, just not unannounced.",
+      "description": "The four supply-chain modules share one tag in stuttgart-things/dagger, and a signature made with one release and verified with another is two answers to one question. One pull request moves all four.",
       "matchDatasources": [
-        "github-releases"
+        "github-tags"
       ],
       "matchPackageNames": [
-        "sigstore/cosign"
+        "stuttgart-things/dagger"
       ],
-      "matchUpdateTypes": [
-        "major"
-      ],
-      "dependencyDashboardApproval": true
+      "groupName": "stuttgart-things dagger supply-chain modules"
     }
   ]
 }

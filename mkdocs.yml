@@ -71,6 +71,7 @@ nav:
       - ADR-0018 PIN beim Beitritt: adr/0018-pin-beim-beitritt.md
       - ADR-0019 Backup auf Kubernetes: adr/0019-backup-auf-kubernetes.md
       - ADR-0020 Signieren und prüfen: adr/0020-signieren-und-pruefen.md
+      - ADR-0021 Signieren über Dagger-Module: adr/0021-signieren-ueber-dagger-module.md
   - Betrieb:
       - Plattform-Voraussetzungen: platform.md
       - Deployment ohne GitOps: deployment.md

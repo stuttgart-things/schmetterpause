@@ -1,6 +1,6 @@
 # ADR-0020: Schlüsselloses Signieren, SBOM am Digest — und Kyverno prüft, nicht ein Mensch
 
-- **Status:** accepted
+- **Status:** accepted — Entscheidung 3 ersetzt durch ADR-0021
 - **Datum:** 2026-09-15
 - **Betrifft:** Betrieb, Deployment, Lieferkette
 - **Bezug:** setzt #230 um (Strang 4 aus #194, Definition of Done Punkt 5).
