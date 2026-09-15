@@ -34,9 +34,10 @@ vars:
   # and the identity is what says which workflow file in which repository
   # asked for it. Anchored and escaped, so it does not match a fork.
   #
-  # The same two strings appear in .github/workflows/ci.yml and — as a glob
-  # rather than a regexp, because Kyverno matches globs — in
-  # policy/verify-image-signature.yaml. All three change together.
+  # The same two strings appear, character for character, in
+  # .github/workflows/ci.yml, policy/verify-image-signature.yaml and
+  # docs/supply-chain.md. All four change together; scripts/signing_test.sh
+  # fails when they do not.
   COSIGN_ISSUER: https://token.actions.githubusercontent.com
   COSIGN_IDENTITY: ^https://github\.com/stuttgart-things/schmetterpause/\.github/workflows/ci\.yml@refs/
   # The Azure Container Apps configuration (terraform/README.md).
@@ -624,8 +625,8 @@ tasks:
     cmds:
       - |
         set -e
-        kubectl get clusterpolicy schmetterpause-verify-image-signature \
-          -o custom-columns=NAME:.metadata.name,ACTION:.spec.validationFailureAction,READY:.status.conditions[0].status
+        kubectl get imagevalidatingpolicies.policies.kyverno.io schmetterpause-verify-image-signature \
+          -o custom-columns=NAME:.metadata.name,ACTIONS:.spec.validationActions,READY:.status.conditionStatus.ready
         echo
         # Under Audit the refusal is a report and nothing else — so the report
         # is the only place the policy speaks. See docs/supply-chain.md.

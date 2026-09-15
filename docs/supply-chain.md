@@ -17,7 +17,7 @@ issue is [#230](https://github.com/stuttgart-things/schmetterpause/issues/230).
 | Issuer | `https://token.actions.githubusercontent.com` |
 | Image | `ghcr.io/stuttgart-things/schmetterpause` — signature and CycloneDX SBOM attestation, both on the digest |
 | Manifest artefact | `ghcr.io/stuttgart-things/schmetterpause-kustomize` — signature only |
-| Checked by | a Kyverno `ClusterPolicy` at admission, and the `verify-artefacts` job in CI |
+| Checked by | a Kyverno `ImageValidatingPolicy` at admission, and the `verify-artefacts` job in CI |
 | Not checked | Azure Container Apps, and every image that is not ours |
 
 There is no key. Nothing to rotate, nothing in Vault, nothing to leak — and a
@@ -80,18 +80,20 @@ checked, and a second attestation for arm64 is an open point in ADR-0020.
 
 ### On the cluster: Kyverno
 
-`policy/verify-image-signature.yaml` is a `ClusterPolicy` with a `verifyImages`
-rule, scoped to `schmetterpause` and `schmetterpause-pr-*`. It refuses — or, for
-now, reports — a pod whose application image carries no signature from the
-identity above, and rewrites the tag to the digest it verified so the kubelet
-cannot pull something else afterwards.
+`policy/verify-image-signature.yaml` is an `ImageValidatingPolicy`
+(`policies.kyverno.io/v1`), scoped to `schmetterpause` and
+`schmetterpause-pr-*`. It refuses — or, for now, reports — a pod whose
+application image carries no signature from the identity above, whether the
+pod names that image by tag or by digest, in a container or in an init
+container. It names the signer with the same regexp as the `cosign verify`
+above.
 
 ```sh
 task policy:apply
 task policy:status
 ```
 
-**It is in `Audit` today.** It moves to `Enforce` once it has seen three clean
+**It is in `Audit` today.** It moves to `Deny` once it has seen three clean
 releases, the posture Trivy took in this repository for the same reason: a rule
 that has never run over a real release is a measurement, not a verdict.
 
@@ -99,20 +101,32 @@ that has never run over a real release is a measurement, not a verdict.
 | --- | --- | --- |
 | _(none yet — the policy has not been applied)_ | | |
 
-Fill that in as the releases come, and when the third line is clean change
-`validationFailureAction` in the policy from `Audit` to `Enforce` and say so
-here. A gate that cannot fail is a measurement, and the day it stops being one
+Fill that in as the releases come. When the third line is clean, change three
+lines in the policy and say so here:
+
+- `validationActions: [Audit]` becomes `[Deny]`;
+- `mutateDigest` and `verifyDigest` become `true`, so that the pod carries the
+  digest that was verified rather than the tag that resolved to it, and the
+  kubelet cannot pull something else afterwards.
+
+Kyverno 1.19.1 accepts that combination in a server-side dry run; what
+admission does with it has not been watched yet, and the drill below is where
+it is. A gate that cannot fail is a measurement, and the day it stops being one
 is worth a line.
 
-Two things to know before flipping it:
+Three things to know before flipping it:
 
 - `failurePolicy: Ignore`. If Kyverno cannot reach the registry or Rekor, the
   pod is admitted rather than refused. That is the right default for a cluster
   the office plays on and the wrong one for a claim of coverage, so it is
   named here rather than left to be discovered. Changing it to `Fail` makes
   every pod in those namespaces depend on Rekor being up.
-- The rule covers the application image only. Postgres, and anything else in
-  the same namespace, is not checked by it and is not claimed to be.
+- The policy covers the application image only. Postgres, and anything else in
+  the same namespace, is not checked by it and is not claimed to be — and
+  nothing stops a pod there from running a different image altogether.
+- Until the flip, the tag is not rewritten to a digest. The signature is
+  checked on whatever the tag resolved to at admission, and the kubelet may
+  pull something else later. Under `Audit` that window is open.
 
 ### In the delivery path: the `verify-artefacts` job
 
@@ -143,9 +157,9 @@ And the four places that name the signer — this page, the pipeline, the
 Taskfile and the policy — are compared against each other by
 `scripts/signing_test.sh`, which runs in the pipeline's lint stage
 (`task signing:check` locally). Widening one of them is the quiet way this
-stops being a gate: the Kyverno subject is a glob and the cosign identity is an
-anchored regexp, so "the same string" is not something a reader checks by
-looking.
+stops being a gate. The test also fails if the policy names more than one
+signer: its identities are alternatives, so a second entry beside the right one
+widens the gate without making any single line look wrong.
 
 **By hand, against the cluster.** This is the drill DoD point 5 asks for, and
 it has not been run yet — it needs the policy applied.
@@ -167,8 +181,13 @@ it has not been run yet — it needs the policy applied.
    ```sh
    kubectl -n schmetterpause get policyreport -o yaml | grep -A5 signature
    ```
-   Under `Enforce` the `kubectl run` itself fails, and the message names the
-   policy and the rule.
+   Under `Deny` the `kubectl run` itself fails, and the message names the
+   policy. Under `Deny`, also check that the application pod now carries a
+   digest rather than only a tag:
+   ```sh
+   kubectl -n schmetterpause get pods \
+     -o jsonpath='{range .items[*]}{.metadata.name}{"\t"}{.spec.containers[*].image}{"\n"}{end}'
+   ```
 4. Clean up, and delete the scratch tag from the package. A tag on the release
    repository that names something that is not a release is exactly the kind of
    thing #177 and #179 were about.

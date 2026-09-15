@@ -32,7 +32,7 @@ comes from.
 | External Secrets Operator and a store | recommended | the two Secrets | ESO 2.10.0 against OpenBao |
 | Barman Cloud plugin and object storage | recommended | database backups and point-in-time restore | plugin v0.15.0, MinIO |
 | Velero | optional | backups of the Kubernetes objects | 1.18.1 |
-| Kyverno | optional | refusing an image that CI did not sign | not on the reference cluster; running on `homerun2-test1`, version not recorded |
+| Kyverno | optional | refusing an image that CI did not sign | not on the reference cluster; 1.19.1 on `homerun2-test1` |
 | trust-manager | optional | a CA bundle for a privately signed object store | 0.24.0 |
 | GitOps (Argo CD or Flux) | optional | keeping the cluster at what Git says | Flux |
 
@@ -254,8 +254,8 @@ runtime: without it the application starts exactly as it would with it. What is
 lost is the assurance that the image the kubelet pulls is the one CI built and
 signed.
 
-`policy/verify-image-signature.yaml` is a `ClusterPolicy` with a `verifyImages`
-rule. It wants:
+`policy/verify-image-signature.yaml` is an `ImageValidatingPolicy`
+(`policies.kyverno.io/v1`). It wants:
 
 - **Kyverno installed and its admission webhook serving.** On the reference
   workload cluster it comes from the argocd catalog, `infra/kyverno/install`.
@@ -266,7 +266,10 @@ rule. It wants:
   the safe default and also the one that makes the check silently stop being a
   check. [Signatures, SBOM and what checks them](supply-chain.md) says what to
   weigh before changing it.
-- **cluster-admin to apply it**, once. A `ClusterPolicy` is cluster-scoped.
+- **A Kyverno that serves `policies.kyverno.io/v1`.** 1.19.1 does; it also
+  warns that the older `kyverno.io/v1` `ClusterPolicy` is deprecated, which is
+  why the policy is not one.
+- **cluster-admin to apply it**, once. The policy is cluster-scoped.
 
 ```sh
 task policy:apply
@@ -325,7 +328,7 @@ kubectl get clustersecretstore
 kubectl -n velero get backupstoragelocations.velero.io
 
 # Kyverno, if the image signature is to be verified at admission
-kubectl get crd clusterpolicies.kyverno.io
+kubectl api-resources --api-group=policies.kyverno.io | grep ImageValidatingPolicy
 kubectl -n kyverno get deploy kyverno-admission-controller
 ```
 
