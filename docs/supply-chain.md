@@ -22,7 +22,7 @@ and [#254](https://github.com/stuttgart-things/schmetterpause/issues/254).
 | Tools | the `cosign`, `trivy`, `crane` and `kyverno` modules from [stuttgart-things/dagger](https://github.com/stuttgart-things/dagger), pinned in `Taskfile.yml` |
 | Checked by | a Kyverno `ImageValidatingPolicy` at admission, the `verify-artefacts` job in CI, and the `policy-test` job for the policy itself |
 | Not checked | Azure Container Apps, and every image that is not ours |
-| First signed | the snapshot `3c7f3c7` on `main`; releases up to `v0.8.0` were published before anything was signed |
+| First signed | the snapshot `3c7f3c7` on `main`, then the release `v0.9.0`; releases up to `v0.8.0` were published before anything was signed |
 
 There is no key. Nothing to rotate, nothing in Vault, nothing to leak — and a
 public record in the transparency log of every signature ever made, which for a
@@ -32,7 +32,7 @@ public package is the trade the project wanted. ADR-0020 has the reasoning.
 
 ```sh
 task verify:signature                    # the current VERSION, both artefacts
-task verify:signature TAG=3c7f3c7        # a particular tag
+task verify:signature TAG=v0.9.0         # a particular release
 ```
 
 That needs Dagger and nothing else: it calls the cosign module the pipeline
@@ -44,7 +44,7 @@ a Taskfile:
 
 ```sh
 dagger call -m github.com/stuttgart-things/dagger/cosign@v0.131.0 verify \
-  --ref=ghcr.io/stuttgart-things/schmetterpause:3c7f3c7 \
+  --ref=ghcr.io/stuttgart-things/schmetterpause:v0.9.0 \
   --certificate-oidc-issuer=https://token.actions.githubusercontent.com \
   --certificate-identity-regexp='^https://github\.com/stuttgart-things/schmetterpause/\.github/workflows/ci\.yml@refs/'
 ```
@@ -61,7 +61,7 @@ cosign, for exactly this reason.
 
 ```sh
 task verify:sbom                         # build/sbom.cdx.json
-task verify:sbom TAG=3c7f3c7 DEST=/tmp/sbom.json
+task verify:sbom TAG=v0.9.0 DEST=/tmp/sbom.json
 ```
 
 Which is this, and it goes through `verify-attestation` rather than a plain
@@ -71,7 +71,7 @@ predicate itself.
 
 ```sh
 dagger call -m github.com/stuttgart-things/dagger/cosign@v0.131.0 verify-attestation \
-  --ref=ghcr.io/stuttgart-things/schmetterpause:3c7f3c7 \
+  --ref=ghcr.io/stuttgart-things/schmetterpause:v0.9.0 \
   --predicate-type=cyclonedx \
   --certificate-oidc-issuer=https://token.actions.githubusercontent.com \
   --certificate-identity-regexp='^https://github\.com/stuttgart-things/schmetterpause/\.github/workflows/ci\.yml@refs/' \
