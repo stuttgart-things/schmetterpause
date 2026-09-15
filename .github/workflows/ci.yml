@@ -352,7 +352,10 @@ jobs:
                 exit 1
                 ;;
             esac
-            echo "::add-mask::${SIGSTORE_TOKEN}"
+            # On a line of its own. A workflow command is only read at the
+            # start of a line, and the dagger call before this may end its output
+            # without a newline — on the first run (#255) it landed mid-line.
+            printf '\n::add-mask::%s\n' "${SIGSTORE_TOKEN}"
             export SIGSTORE_TOKEN
           }
 
@@ -374,7 +377,7 @@ jobs:
             --platform=linux/amd64 \
             --registry-user=env:GITHUB_ACTOR \
             --registry-password=env:GITHUB_TOKEN \
-            export --path="${RUNNER_TEMP}/sbom.cdx.json"
+            export --path="${RUNNER_TEMP}/sbom.cdx.json" > /dev/null
 
           # --replace, because a re-run attests the same digest again with a
           # document whose serial number and timestamp differ, and
@@ -721,7 +724,10 @@ jobs:
               exit 1
               ;;
           esac
-          echo "::add-mask::${SIGSTORE_TOKEN}"
+          # On a line of its own. A workflow command is only read at the
+          # start of a line, and the dagger call before this may end its output
+          # without a newline — on the first run (#255) it landed mid-line.
+          printf '\n::add-mask::%s\n' "${SIGSTORE_TOKEN}"
           export SIGSTORE_TOKEN
 
           dagger call -m "${COSIGN_MODULE}" sign \
@@ -866,7 +872,7 @@ jobs:
             --certificate-identity-regexp="${COSIGN_IDENTITY}" \
             --registry-username="${GITHUB_ACTOR}" \
             --registry-password=env:GITHUB_TOKEN \
-            export --path="${RUNNER_TEMP}/sbom.cdx.json"
+            export --path="${RUNNER_TEMP}/sbom.cdx.json" > /dev/null
           components="$(jq '.components | length' "${RUNNER_TEMP}/sbom.cdx.json")"
           echo "${IMAGE}: carries an SBOM attestation signed by this workflow (${components} components)"
 
@@ -892,12 +898,16 @@ jobs:
 
           foreign='^https://github\.com/stuttgart-things/not-this-repository/'
 
+          # Each call prints its result without a trailing newline; the echo
+          # keeps the two refusals on lines of their own in the log.
+
           dagger call -m "${COSIGN_MODULE}" verify-refuses \
             --ref="${IMAGE}" \
             --certificate-oidc-issuer="${COSIGN_ISSUER}" \
             --certificate-identity-regexp="${foreign}" \
             --registry-username="${GITHUB_ACTOR}" \
             --registry-password=env:GITHUB_TOKEN
+          echo
 
           dagger call -m "${COSIGN_MODULE}" verify-refuses \
             --ref="${IMAGE}" \
@@ -906,6 +916,7 @@ jobs:
             --certificate-identity-regexp="${foreign}" \
             --registry-username="${GITHUB_ACTOR}" \
             --registry-password=env:GITHUB_TOKEN
+          echo
 
   # The admission policy, tested against pods it must refuse and pods it must
   # admit (policy/tests, issue #254). Until now every check of the policy was
