@@ -99,11 +99,16 @@ templ statisticsTotals(t StatisticsTotals) {
 // headToHead is the matrix. It scrolls inside its own region rather than
 // pushing the page sideways — with a dozen players it is wider than a phone,
 // and the same arrangement the match list uses.
+//
+// The extra class is what freezes the two label bands. A cell here means
+// nothing without both of them: 3:1 in the middle of a scrolled grid says
+// somebody beat somebody three times and names neither. See .matrix-scroll in
+// app.css for why the region has to answer for both axes to manage that.
 templ headToHead(v StatisticsView) {
 	if len(v.Matrix) < 2 {
 		<p class="muted">Dafür braucht es mindestens zwei Spieler.</p>
 	} else {
-		<div class="table-scroll" tabindex="0" role="region" aria-label="Direktvergleich">
+		<div class="table-scroll matrix-scroll" tabindex="0" role="region" aria-label="Direktvergleich">
 			<table class="standings matrix">
 				<thead>
 					<tr>
