@@ -99,10 +99,25 @@ application image carries no signature from the identity above, whether the
 pod names that image by tag or by digest, in a container or in an init
 container. It names the signer with the same regexp as the verification above.
 
+**On `homerun2-test1` the argocd catalog reconciles it.** The consumer sets
+`policy.enabled` in `apps/schmetterpause/install`, whose child Application reads
+this file from this repository at the same tag as the deployed release. The
+policy on the cluster is therefore the one that release was tested against, and
+a version bump moves app and policy together (stuttgart-things/argocd#446,
+stuttgart-things/stuttgart-things#2982, live since 2026-09-15). For a cluster
+outside that path:
+
 ```sh
 task policy:apply
 task policy:status
 ```
+
+**A refusal reaches a human.** Under `Audit` a refusal is only a `PolicyReport`,
+so the same consumer's monitoring scrapes Kyverno for this policy's results.
+When a verification fails, it raises `SchmetterpauseUnsignedImageAdmitted`, which
+goes through the cluster's Alertmanager to the Teams alert channel, followed by a
+"Resolved:" card (stuttgart-things/argocd#448, #449). A server-side dry-run
+counts as a refusal too; no Kyverno label tells the two apart.
 
 **It is in `Audit` today.** It moves to `Deny` once it has seen three clean
 releases, the posture Trivy took in this repository for the same reason: a rule
@@ -110,7 +125,7 @@ that has never run over a real release is a measurement, not a verdict.
 
 | Release | Policy report | Date |
 | --- | --- | --- |
-| _(none yet — the policy has not been applied)_ | | |
+| _(none yet — applied 2026-09-15 while `v0.9.0` was running; that pod predates the policy, so the first report comes with the next rollout)_ | | |
 
 Fill that in as the releases come. When the third line is clean, change three
 lines in the policy and say so here:
@@ -199,39 +214,58 @@ stops being a gate. The test also fails if the policy names more than one
 signer: its identities are alternatives, so a second entry beside the right one
 widens the gate without making any single line look wrong.
 
-**By hand, against the cluster.** This is the drill DoD point 5 asks for, and
-it has not been run yet — it needs the policy applied.
+**By hand, against the cluster: the drill, as recorded.** DoD point 5 asks for
+a refusal that something other than a human catches, and that reaches a human.
+It was run on `homerun2-test1` on 2026-09-15, under `Audit`. It used the
+released, unsigned `v0.8.0` rather than a scratch tag, so nothing had to be
+pushed to the release repository or deleted from it afterwards.
 
-1. Build and push an unsigned image under a scratch tag:
-   ```sh
-   docker pull alpine:3 && \
-   docker tag alpine:3 ghcr.io/stuttgart-things/schmetterpause:unsigned-drill && \
-   docker push ghcr.io/stuttgart-things/schmetterpause:unsigned-drill
-   ```
-2. Try to run it in the namespace the policy covers:
-   ```sh
-   kubectl -n schmetterpause run signature-drill \
-     --image ghcr.io/stuttgart-things/schmetterpause:unsigned-drill \
-     --restart=Never --command -- sleep 30
-   ```
-3. Read what happened. Under `Audit` the pod starts and the refusal is a
-   report:
-   ```sh
-   kubectl -n schmetterpause get policyreport -o yaml | grep -A5 signature
-   ```
-   Under `Deny` the `kubectl run` itself fails, and the message names the
-   policy. Under `Deny`, also check that the application pod now carries a
-   digest rather than only a tag:
-   ```sh
-   kubectl -n schmetterpause get pods \
-     -o jsonpath='{range .items[*]}{.metadata.name}{"\t"}{.spec.containers[*].image}{"\n"}{end}'
-   ```
-4. Clean up, and delete the scratch tag from the package. A tag on the release
-   repository that names something that is not a release is exactly the kind of
-   thing #177 and #179 were about.
-5. **Write down how long it took and what the refusal looked like** — in this
-   section, replacing this list. A drill nobody recorded is a drill nobody can
-   tell was run.
+| Time (Z) | What happened | After creation |
+| --- | --- | --- |
+| 14:36:29 | `kubectl apply` of the pod `signature-drill`: image `…/schmetterpause:v0.8.0`, no app label, a command that does not exist. Admitted, as `Audit` must | 0 s |
+| 14:36:33 | Kyverno: `image verification failed … failed to verify cosign signatures: no signatures found` | 4 s |
+| 14:37:12 | `kyverno_image_validating_policy_results_total{result="fail"}` went from 1 to 2 in Prometheus. `PolicyReport` for the pod: `fail`, severity `high`, *the application image is not signed by the schmetterpause CI workflow* | 43 s |
+| 14:37:21 | Alertmanager: `SchmetterpauseUnsignedImageAdmitted` active, `resource_namespace=schmetterpause` | 52 s |
+| 14:37:51 | The notification-catcher caught it for Teams, and a person confirmed the card in the Teams alert channel | 82 s |
+| 14:52:51 | Alertmanager had resolved the alert at 14:51:47, and the catcher caught the green "Resolved:" card. The rule held its full 15-minute window; before stuttgart-things/argocd#449 it resolved one minute after firing | 16 min 22 s |
+
+The pod was deleted at 14:38:25. Its `PolicyReport` went with it, and the
+office pod was not touched.
+
+**What the drill does not show is what `Deny` does.** Under `Deny` the
+`kubectl apply` itself should fail and name the policy, and `mutateDigest`
+should rewrite the application pod's tag to its digest. Neither has been
+watched yet. When the policy moves to `Deny`, run the drill again the same way
+and add a second table:
+
+```sh
+kubectl apply -f - <<'EOF'
+apiVersion: v1
+kind: Pod
+metadata:
+  name: signature-drill
+  namespace: schmetterpause
+  labels: { purpose: signature-drill }
+spec:
+  restartPolicy: Never
+  activeDeadlineSeconds: 120
+  automountServiceAccountToken: false
+  containers:
+    - name: drill
+      image: ghcr.io/stuttgart-things/schmetterpause:v0.8.0
+      command: ["/nonexistent-drill"]
+EOF
+kubectl -n schmetterpause get policyreport -o yaml | grep -B2 -A6 schmetterpause-verify-image-signature
+kubectl -n schmetterpause delete pod signature-drill
+```
+
+Under `Deny`, also check that the application pod carries a digest rather than
+only a tag:
+
+```sh
+kubectl -n schmetterpause get pods \
+  -o jsonpath='{range .items[*]}{.metadata.name}{"\t"}{.spec.containers[*].image}{"\n"}{end}'
+```
 
 ## Where this does not reach
 

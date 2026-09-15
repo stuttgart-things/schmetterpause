@@ -217,8 +217,21 @@ soll.
    die es nicht kann. Der CI-Job hat seine Hälfte davon ab dem ersten Lauf.
    Mit der Übung unter `Deny` zeigt sich auch, ob `mutateDigest` an der
    Admission tut, was es soll.
+   *Für `Audit` erledigt am 15.09.:* Ein Pod mit dem unsignierten `v0.8.0` in
+   `schmetterpause` wurde gemeldet. Nach 43 s stand ein PolicyReport mit `fail`,
+   nach 52 s war der Alert im Alertmanager, nach 82 s kam die Karte in Teams,
+   und ein Mensch hat sie bestätigt (`docs/supply-chain.md`). Offen bleibt die
+   `Deny`-Hälfte: die abgelehnte Admission und `mutateDigest`.
 2. **Wer die Policy reconciled.** Heute von Hand. Sie in den argocd-Katalog zu
    legen, wäre der nächste Schritt — und die Frage, wem sie dann gehört.
+   *Erledigt am 15.09.:* Der Katalog-Eintrag `apps/schmetterpause/install`
+   liest die Policy mit `policy.enabled` aus diesem Repository, und zwar am
+   Release-Tag der ausgerollten Version. Sie gehört damit dem Release, gegen das
+   sie getestet wurde, und der Katalog hält sie nur aktuell. Auf
+   `homerun2-test1` ist sie eingeschaltet (stuttgart-things/argocd#446,
+   stuttgart-things/stuttgart-things#2982). Eine Ablehnung meldet der Alert
+   `SchmetterpauseUnsignedImageAdmitted` nach Teams (stuttgart-things/argocd#448,
+   #449).
 3. **Der Lieferweg von Argo.** Nichts prüft die Signatur des
    Kustomize-Artefakts in dem Moment, in dem Argo es zieht. Dafür bräuchte es
    eine Prüfung vor Argos OCI-Pull, die in dieser Organisation niemand
