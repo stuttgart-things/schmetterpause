@@ -551,9 +551,11 @@ tasks:
     silent: true
 
   # ------------------------------ Supply chain (verify:signature, policy:*)
-  # Issue #230, decided in ADR-0020, written up in docs/supply-chain.md. The
-  # pipeline signs; these are the two things a person does with that — check
-  # an artefact by hand, and install the thing that checks without being asked.
+  # Issues #230 and #254, decided in ADR-0020 and ADR-0021, written up in
+  # docs/supply-chain.md. The pipeline signs; these are what a person does with
+  # that — check an artefact by hand, test the policy, and install the thing
+  # that checks without being asked. The checks need Dagger and nothing else:
+  # they call the modules pinned above, the same ones CI calls.
 
   signing:check:
     desc: "The four places naming the signing identity still name the same one"
@@ -564,15 +566,11 @@ tasks:
   verify:signature:
     # Not a part of "task verify", which builds and exercises the image. This
     # one touches no source: it asks the registry whether what is published
-    # was signed by the pipeline.
+    # was signed by the pipeline. Releases up to v0.8.0 fail it — nothing was
+    # signed before 3c7f3c7.
     desc: "Check both published artefacts against the CI signing identity (TAG=<tag>)"
     vars:
       TAG: '{{.TAG | default .VERSION}}'
-    preconditions:
-      - sh: 'command -v cosign > /dev/null 2>&1'
-        msg: |
-          cosign is not installed.
-          https://docs.sigstore.dev/cosign/system_config/installation/
     cmds:
       - |
         set -e
@@ -582,19 +580,19 @@ tasks:
         # consumes. See ADR-0020.
         for ref in "{{.IMAGE_REPO}}:{{.TAG}}" "{{.KUSTOMIZE_OCI_REPO}}:{{.TAG}}"; do
           echo "verifying ${ref}"
-          cosign verify \
-            --certificate-oidc-issuer '{{.COSIGN_ISSUER}}' \
-            --certificate-identity-regexp '{{.COSIGN_IDENTITY}}' \
-            "${ref}" > /dev/null
+          dagger call -m {{.COSIGN_MODULE}} verify \
+            --ref="${ref}" \
+            --certificate-oidc-issuer='{{.COSIGN_ISSUER}}' \
+            --certificate-identity-regexp='{{.COSIGN_IDENTITY}}' > /dev/null
           echo "  signed by the pipeline"
         done
 
         echo "verifying the SBOM attestation on {{.IMAGE_REPO}}:{{.TAG}}"
-        cosign verify-attestation \
-          --type cyclonedx \
-          --certificate-oidc-issuer '{{.COSIGN_ISSUER}}' \
-          --certificate-identity-regexp '{{.COSIGN_IDENTITY}}' \
-          "{{.IMAGE_REPO}}:{{.TAG}}" > /dev/null
+        dagger call -m {{.COSIGN_MODULE}} verify-attestation \
+          --ref="{{.IMAGE_REPO}}:{{.TAG}}" \
+          --predicate-type=cyclonedx \
+          --certificate-oidc-issuer='{{.COSIGN_ISSUER}}' \
+          --certificate-identity-regexp='{{.COSIGN_IDENTITY}}' > /dev/null
         echo "  carries an SBOM signed by the pipeline"
     silent: true
 
@@ -603,24 +601,20 @@ tasks:
     vars:
       TAG: '{{.TAG | default .VERSION}}'
       DEST: '{{.DEST | default "build/sbom.cdx.json"}}'
-    preconditions:
-      - sh: 'command -v cosign > /dev/null 2>&1'
-        msg: "cosign is not installed."
-      - sh: 'command -v jq > /dev/null 2>&1'
-        msg: "jq is not installed."
     cmds:
       # Through verify-attestation rather than download, so an SBOM that
       # cannot be traced to the pipeline never reaches the file. An inventory
-      # nobody can attribute is a list, not evidence.
+      # nobody can attribute is a list, not evidence. The module returns the
+      # predicate itself, so there is no envelope left to unwrap.
       - |
         set -e
         mkdir -p "$(dirname '{{.DEST}}')"
-        cosign verify-attestation \
-          --type cyclonedx \
-          --certificate-oidc-issuer '{{.COSIGN_ISSUER}}' \
-          --certificate-identity-regexp '{{.COSIGN_IDENTITY}}' \
-          "{{.IMAGE_REPO}}:{{.TAG}}" \
-          | jq -r '.payload | @base64d | fromjson | .predicate' > '{{.DEST}}'
+        dagger call -m {{.COSIGN_MODULE}} verify-attestation \
+          --ref="{{.IMAGE_REPO}}:{{.TAG}}" \
+          --predicate-type=cyclonedx \
+          --certificate-oidc-issuer='{{.COSIGN_ISSUER}}' \
+          --certificate-identity-regexp='{{.COSIGN_IDENTITY}}' \
+          export --path='{{.DEST}}' > /dev/null
         echo "{{.DEST}} — describes linux/amd64 only, see docs/supply-chain.md"
     silent: true
 
