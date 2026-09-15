@@ -139,4 +139,6 @@ läuft.
    ist (v0.9.0, #253). Ein Release-Tag bleibt mit Absicht, ein Snapshot nur,
    weil ihn niemand löscht. *Erledigt am 15.09.: die Fixtures zeigen auf
    `v0.9.0`.*
-3. **Die Übung am Cluster** aus ADR-0020 bleibt offen.
+3. **Die Übung am Cluster** aus ADR-0020 bleibt offen. *Unter `Audit`
+   erledigt am 15.09. (ADR-0020, offener Punkt 1); die `Deny`-Hälfte steht
+   noch aus.*

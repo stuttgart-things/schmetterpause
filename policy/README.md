@@ -36,16 +36,29 @@ is for and what cannot be tested this way.
 
 ## Applying it
 
+**On `homerun2-test1` nobody applies it by hand.** The argocd catalog entry
+`apps/schmetterpause/install` has `policy.enabled`, and its child Application
+reads `verify-image-signature.yaml` from this repository at the same tag as the
+deployed release. `directory.include` names that one file, so `tests/` never
+reaches the cluster. The homerun2-test1 consumer switched it on on 2026-09-15
+(stuttgart-things/argocd#446, stuttgart-things/stuttgart-things#2982). A change to
+the policy therefore reaches the cluster with the next release that carries it,
+not with a merge to `main`.
+
+With the consumer's `monitoring.enabled` as well, a refusal raises
+`SchmetterpauseUnsignedImageAdmitted` in the Teams alert channel
+(stuttgart-things/argocd#448, #449).
+
+For a cluster outside the catalog path:
+
 ```sh
 task policy:apply            # kubectl apply -f policy/ (not recursive, so tests/ stays out)
 task policy:status           # is it ready, and what has it reported?
 ```
 
-Applying it needs cluster-admin, because the policy is cluster-scoped, and a
-Kyverno that serves `policies.kyverno.io/v1` — 1.19.1 on `homerun2-test1` does.
-On that cluster the policies the platform ships live in the argocd catalog
-(`infra/kyverno/install`); this one is applied by hand until somebody decides
-it should be reconciled, which is an open point in ADR-0020.
+Applying it by hand needs cluster-admin, because the policy is cluster-scoped,
+and a Kyverno that serves `policies.kyverno.io/v1`. 1.19.1, on `homerun2-test1`,
+does.
 
 The drill that proves the policy can refuse something on the cluster, and the
 condition for moving it from `Audit` to `Deny`, are in
