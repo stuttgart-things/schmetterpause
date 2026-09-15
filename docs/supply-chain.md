@@ -155,9 +155,9 @@ task policy:test
 ```
 
 It needs the network, because the policy checks signatures while it is tested,
-and it depends on two published images staying published: `v0.8.0` (unsigned)
-and `3c7f3c7` (signed). `policy/tests/pods.yaml` says why each, and what to
-change once a release is signed.
+and it depends on two published releases staying published: `v0.8.0`
+(unsigned) and `v0.9.0` (the first signed one). `policy/tests/pods.yaml` says
+why each.
 
 What it cannot show is that a pod outside the two namespaces is left alone:
 Kyverno produces no result for a resource it does not match, and `kyverno test`

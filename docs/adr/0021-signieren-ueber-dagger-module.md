@@ -124,16 +124,19 @@ läuft.
   `stuttgart-things/dagger` und ein Pin-Bump hier. Der Trivy-404 aus #252 wäre
   so ein Fall gewesen.
 - **Kosten:** Jeder dieser Jobs startet eine eigene Dagger-Engine.
-- **Einschränkung:** Der Policy-Test hängt an zwei veröffentlichten Images,
-  `v0.8.0` (unsigniert) und `3c7f3c7` (der erste von `main` signierte Stand).
-  Wird eins gelöscht, wird der Job rot. Er braucht außerdem Netz zu `ghcr.io`
-  und Rekor.
+- **Einschränkung:** Der Policy-Test hängt an zwei veröffentlichten Releases,
+  `v0.8.0` (unsigniert) und `v0.9.0` (das erste signierte). Wird eins gelöscht,
+  wird der Job rot. Er braucht außerdem Netz zu `ghcr.io` und Rekor.
 
 ## Offene Punkte
 
 1. **`sign` und `attest` mit echtem Token** zeigen sich erst im ersten Lauf auf
    diesem Pull Request, danach auf `main` und auf einem Release-Tag.
+   *Erledigt am 15.09.: auf #255 (`…@refs/pull/255/merge`), auf `main`
+   (`62b6008`, `…@refs/heads/main`) und am Tag `v0.9.0`
+   (`…@refs/tags/v0.9.0`).*
 2. **Die signierten Fixtures auf ein Release umstellen**, sobald eins signiert
    ist (v0.9.0, #253). Ein Release-Tag bleibt mit Absicht, ein Snapshot nur,
-   weil ihn niemand löscht.
+   weil ihn niemand löscht. *Erledigt am 15.09.: die Fixtures zeigen auf
+   `v0.9.0`.*
 3. **Die Übung am Cluster** aus ADR-0020 bleibt offen.

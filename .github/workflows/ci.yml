@@ -925,9 +925,9 @@ jobs:
   # have shown.
   #
   # Not "needs: release": the policy does not depend on this build. Its
-  # fixtures are published images that stay: v0.8.0, released before anything
-  # was signed, and the snapshot 3c7f3c7, the first commit main signed.
-  # Deleting either turns this red.
+  # fixtures are two published releases that stay: v0.8.0, released before
+  # anything was signed, and v0.9.0, the first signed release. Deleting either
+  # turns this red.
   #
   # The Kyverno release comes from the Taskfile, pinned to what homerun2-test1
   # runs rather than left to the module's default, because a policy test is a
