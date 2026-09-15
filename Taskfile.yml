@@ -29,6 +29,17 @@ vars:
   KCL_MODULE: github.com/stuttgart-things/dagger/kcl@v0.82.0
   KUSTOMIZE_OCI_REPO: ghcr.io/stuttgart-things/schmetterpause-kustomize
   IMAGE_REPO: ghcr.io/stuttgart-things/schmetterpause
+  # Who is allowed to have signed what this project publishes (ADR-0020).
+  # Both halves are needed: anybody can get a certificate from that issuer,
+  # and the identity is what says which workflow file in which repository
+  # asked for it. Anchored and escaped, so it does not match a fork.
+  #
+  # The same two strings appear, character for character, in
+  # .github/workflows/ci.yml, policy/verify-image-signature.yaml and
+  # docs/supply-chain.md. All four change together; scripts/signing_test.sh
+  # fails when they do not.
+  COSIGN_ISSUER: https://token.actions.githubusercontent.com
+  COSIGN_IDENTITY: ^https://github\.com/stuttgart-things/schmetterpause/\.github/workflows/ci\.yml@refs/
   # The Azure Container Apps configuration (terraform/README.md).
   TF_DIR: terraform
 
@@ -523,6 +534,105 @@ tasks:
           --tag {{.TAG}} \
           --user env:GITHUB_USER \
           --password env:GITHUB_TOKEN
+    silent: true
+
+  # ------------------------------ Supply chain (verify:signature, policy:*)
+  # Issue #230, decided in ADR-0020, written up in docs/supply-chain.md. The
+  # pipeline signs; these are the two things a person does with that — check
+  # an artefact by hand, and install the thing that checks without being asked.
+
+  signing:check:
+    desc: "The four places naming the signing identity still name the same one"
+    cmds:
+      - sh scripts/signing_test.sh
+    silent: true
+
+  verify:signature:
+    # Not a part of "task verify", which builds and exercises the image. This
+    # one touches no source: it asks the registry whether what is published
+    # was signed by the pipeline.
+    desc: "Check both published artefacts against the CI signing identity (TAG=<tag>)"
+    vars:
+      TAG: '{{.TAG | default .VERSION}}'
+    preconditions:
+      - sh: 'command -v cosign > /dev/null 2>&1'
+        msg: |
+          cosign is not installed.
+          https://docs.sigstore.dev/cosign/system_config/installation/
+    cmds:
+      - |
+        set -e
+
+        # Both artefacts, because an image signature on its own protects the
+        # half nobody would bother attacking — the manifest set is what Argo
+        # consumes. See ADR-0020.
+        for ref in "{{.IMAGE_REPO}}:{{.TAG}}" "{{.KUSTOMIZE_OCI_REPO}}:{{.TAG}}"; do
+          echo "verifying ${ref}"
+          cosign verify \
+            --certificate-oidc-issuer '{{.COSIGN_ISSUER}}' \
+            --certificate-identity-regexp '{{.COSIGN_IDENTITY}}' \
+            "${ref}" > /dev/null
+          echo "  signed by the pipeline"
+        done
+
+        echo "verifying the SBOM attestation on {{.IMAGE_REPO}}:{{.TAG}}"
+        cosign verify-attestation \
+          --type cyclonedx \
+          --certificate-oidc-issuer '{{.COSIGN_ISSUER}}' \
+          --certificate-identity-regexp '{{.COSIGN_IDENTITY}}' \
+          "{{.IMAGE_REPO}}:{{.TAG}}" > /dev/null
+        echo "  carries an SBOM signed by the pipeline"
+    silent: true
+
+  verify:sbom:
+    desc: "Write the published SBOM to DEST (TAG=<tag>, DEST=build/sbom.cdx.json)"
+    vars:
+      TAG: '{{.TAG | default .VERSION}}'
+      DEST: '{{.DEST | default "build/sbom.cdx.json"}}'
+    preconditions:
+      - sh: 'command -v cosign > /dev/null 2>&1'
+        msg: "cosign is not installed."
+      - sh: 'command -v jq > /dev/null 2>&1'
+        msg: "jq is not installed."
+    cmds:
+      # Through verify-attestation rather than download, so an SBOM that
+      # cannot be traced to the pipeline never reaches the file. An inventory
+      # nobody can attribute is a list, not evidence.
+      - |
+        set -e
+        mkdir -p "$(dirname '{{.DEST}}')"
+        cosign verify-attestation \
+          --type cyclonedx \
+          --certificate-oidc-issuer '{{.COSIGN_ISSUER}}' \
+          --certificate-identity-regexp '{{.COSIGN_IDENTITY}}' \
+          "{{.IMAGE_REPO}}:{{.TAG}}" \
+          | jq -r '.payload | @base64d | fromjson | .predicate' > '{{.DEST}}'
+        echo "{{.DEST}} — describes linux/amd64 only, see docs/supply-chain.md"
+    silent: true
+
+  policy:apply:
+    desc: "Install the Kyverno image-signature policy into the current cluster"
+    cmds:
+      # Printed rather than pinned, like kcl:apply: this is cluster-scoped and
+      # goes wherever kubectl currently points, which is worth reading first.
+      - |
+        set -e
+        echo "context: $(kubectl config current-context)"
+        kubectl apply -f policy/
+
+  policy:status:
+    desc: "Is the signature policy ready, and what has it reported?"
+    cmds:
+      - |
+        set -e
+        kubectl get imagevalidatingpolicies.policies.kyverno.io schmetterpause-verify-image-signature \
+          -o custom-columns=NAME:.metadata.name,ACTIONS:.spec.validationActions,READY:.status.conditionStatus.ready
+        echo
+        # Under Audit the refusal is a report and nothing else — so the report
+        # is the only place the policy speaks. See docs/supply-chain.md.
+        kubectl get policyreport -n schmetterpause \
+          -o jsonpath='{range .items[*].results[?(@.policy=="schmetterpause-verify-image-signature")]}{.result}{"\t"}{.message}{"\n"}{end}' \
+          || echo "no policy reports in namespace schmetterpause"
     silent: true
 
   # ------------------------------------------------------------ Data (db:*)

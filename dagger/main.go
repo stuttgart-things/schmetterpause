@@ -121,6 +121,11 @@ func (m *Schmetterpause) Lint(
 		// A stale ADR index and a nav naming a page nobody wrote both build
 		// cleanly and are only visible once the site is published.
 		WithExec([]string{"sh", "scripts/docs_test.sh"}).
+		// Who is allowed to have signed the artefacts is written in four
+		// places — the pipeline, the Taskfile, the admission policy and the
+		// operations page. Nothing else compares them, and the way the claim
+		// dies is not a missing check but two copies that stopped agreeing.
+		WithExec([]string{"sh", "scripts/signing_test.sh"}).
 		// A table a migration adds but the dump counts leave out is a table a
 		// restore can lose without the comparison noticing. Nothing that runs
 		// against a database checks this, because every such run counts only
