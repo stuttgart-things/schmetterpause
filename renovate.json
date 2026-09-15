@@ -30,6 +30,17 @@
     },
     {
       "customType": "regex",
+      "description": "The tools the signing jobs download by version string in the CI workflow (cosign, trivy — ADR-0020). Renovate's github-actions manager moves uses: pins and nothing else, so without this the two tools that vouch for the artefacts stay on the version they were first written with. That is how the signing job came to name a trivy release that no longer has a binary to download. Release tags carry a v, the env values do not.",
+      "managerFilePatterns": [
+        "/^\\.github/workflows/ci\\.yml$/"
+      ],
+      "matchStrings": [
+        "# renovate: datasource=(?<datasource>[a-z-]+) depName=(?<depName>\\S+)\\n\\s*[A-Z_]+:\\s*\"(?<currentValue>[^\"]+)\""
+      ],
+      "extractVersionTemplate": "^v(?<version>.*)$"
+    },
+    {
+      "customType": "regex",
       "description": "The application image, pinned in the Azure Terraform's committed values file. Renovate's terraform manager moves providers and modules and does not read .tfvars at all, so without this Azure would stay on the release it was first applied with while compose.yaml moves on.",
       "managerFilePatterns": [
         "/^terraform/schmetterpause\\.auto\\.tfvars$/"
@@ -48,6 +59,19 @@
       ],
       "matchPackageNames": [
         "postgres"
+      ],
+      "matchUpdateTypes": [
+        "major"
+      ],
+      "dependencyDashboardApproval": true
+    },
+    {
+      "description": "A major cosign bump changes what the signing jobs write, and the Kyverno policy on the cluster has to verify what they write. A green verify-artefacts job does not prove that — it runs the same cosign on both ends. Approval on the dashboard, for the same reason as Postgres above: not blocked, just not unannounced.",
+      "matchDatasources": [
+        "github-releases"
+      ],
+      "matchPackageNames": [
+        "sigstore/cosign"
       ],
       "matchUpdateTypes": [
         "major"
