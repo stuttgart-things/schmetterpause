@@ -188,6 +188,49 @@ Switched on for homerun2-test1 on 2026-09-13
 
 Everything above stays the way to *move* data. The plugin is recovery in place.
 
+```mermaid
+flowchart LR
+    subgraph office["homerun2-test1 — the office"]
+        pg["CNPG Cluster<br/>schmetterpause-db"]
+        sched["ScheduledBackup<br/>daily 03:00 UTC"]
+        pg --> sched
+    end
+
+    subgraph bucket["s3://schmetterpause-cnpg/ — MinIO on platform-sthings"]
+        path1["schmetterpause-db/<br/>WAL + base backups, kept 30 days"]
+        path2["the rebuilt server's own path<br/>set by backup.serverName"]
+    end
+
+    subgraph back["reading it back — two different questions"]
+        direction TB
+        probedb["is the backup still good?<br/>throwaway namespace<br/>recovery on, backup OFF"]
+        newdb["the office has to come back<br/>rebuilt cluster<br/>recovery on, backup ON"]
+    end
+
+    pg -->|"WAL, continuously"| path1
+    sched -->|"base backup"| path1
+    path1 --> probedb
+    path1 --> newdb
+    newdb -->|"archives under a name of its own"| path2
+```
+
+Three things worth reading off it:
+
+- **One path is written by exactly one server.** `schmetterpause-db/` belongs to
+  the office's Cluster and nothing else may archive into it. The plugin enforces
+  that — it refuses a non-empty archive rather than mixing two timelines
+  (measured 2026-09-16, below) — but the failure is quiet: a second server would
+  come up healthy and never back itself up.
+- **The two ways of reading it back are different questions, not two steps.**
+  "Is this backup still good" writes nowhere at all; "the office has to come
+  back" writes, and therefore needs a name of its own.
+- **What the picture cannot show is how few copies there are.** That bucket
+  lives on one MinIO with one replica and a 10Gi `openebs-hostpath` volume, and
+  Velero's own target is the same MinIO
+  ([stuttgart-things#2968](https://github.com/stuttgart-things/stuttgart-things/issues/2968)).
+  Everything above the line is careful; the line itself rests on one disk.
+
+
 **A green sync proves nothing, and neither does the condition.** The Cluster
 reported `ContinuousArchiving=True` before the plugin was even installed. What
 proves archiving is `pg_stat_archiver`, and what proves a backup is its phase:
