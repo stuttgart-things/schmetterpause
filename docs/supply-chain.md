@@ -28,6 +28,79 @@ There is no key. Nothing to rotate, nothing in Vault, nothing to leak — and a
 public record in the transparency log of every signature ever made, which for a
 public package is the trade the project wanted. ADR-0020 has the reasoning.
 
+## The chain, end to end
+
+What CI builds, what signs it, and what checks it before it runs. Dashed edges
+are the places nothing checks — they are drawn rather than left out, because a
+picture that shows only the covered half is the failure this whole page exists
+to avoid.
+
+```mermaid
+flowchart LR
+    src["source at a commit"]
+
+    subgraph ci["GitHub Actions"]
+        direction TB
+        build["ci<br/>build, test, race"]
+        release["release<br/>build and push"]
+        scan["scan<br/>trivy"]
+        kust["kustomize<br/>manifest artefact"]
+        signimg["sign-image<br/>cosign + CycloneDX SBOM"]
+        signkust["sign-kustomize<br/>cosign"]
+        verify["verify-artefacts<br/>verify both, prove a refusal"]
+
+        build --> release
+        release --> scan
+        release --> signimg
+        release --> kust
+        kust --> signkust
+        signimg --> verify
+        signkust --> verify
+    end
+
+    subgraph reg["ghcr.io"]
+        direction TB
+        image["schmetterpause:TAG<br/>+ .sig + SBOM attestation"]
+        artefact["schmetterpause-kustomize:TAG<br/>+ .sig"]
+    end
+
+    subgraph cluster["homerun2-test1"]
+        direction TB
+        argo["Argo CD pulls the manifest"]
+        kubelet["kubelet pulls the image"]
+        kyverno["Kyverno at admission<br/>verifies the signature"]
+        pod["the pod runs"]
+
+        argo --> kubelet
+        kubelet --> kyverno
+        kyverno --> pod
+    end
+
+    azure["Azure Container Apps"]
+
+    src --> build
+    signimg --> image
+    signkust --> artefact
+    artefact -.->|"not verified at pull"| argo
+    image --> kubelet
+    image -.->|"no admission control"| azure
+```
+
+Three things the picture is meant to make obvious:
+
+- **Only one arrow into the pod is checked.** The image passes Kyverno; the
+  manifest artefact Argo pulls does not, because the kubelet never pulls it and
+  admission cannot see it. `verify-artefacts` covers it in CI instead, which is
+  weaker by construction: it checks what we published, not what the cluster
+  pulled.
+- **Azure hangs off the registry with nothing in between.** That is #206, and
+  the environment is temporary (ADR-0016).
+- **Sigstore is on the signing path, not the verifying one.** Admission reads
+  the signature from the registry and verifies the timestamp against a root
+  embedded in Kyverno — measured on 2026-09-16, a signed image verified with the
+  policy's `ctlog.url` pointing at a host that does not resolve (#262). So a
+  Sigstore outage stops a *build*, never a deploy.
+
 ## Checking an artefact by hand
 
 ```sh
