@@ -209,6 +209,13 @@ templ Admin(v AdminView) {
 												<button class="secondary" type="submit">Entfernen</button>
 											</form>
 										}
+										// Auch in der eigenen Zeile: ein Konto, das
+										// verwaltet und nie spielt, setzt das selbst
+										// (docs/adr/0022).
+										<form method="post" action={ templ.SafeURL("/admin/players/" + p.ID + "/observer") }>
+											<input type="hidden" name="observer" value="on"/>
+											<button class="secondary" type="submit">Beobachter</button>
+										</form>
 									</td>
 								</tr>
 							}
@@ -221,6 +228,49 @@ templ Admin(v AdminView) {
 					Eintragenden genannt hat, bleibt freigeschaltet und weiß
 					danach nicht mehr, wer tippt.
 				</p>
+			}
+		</section>
+		<section class="session">
+			<h2>Beobachter</h2>
+			<p class="muted">
+				Wer mitliest und verwaltet, aber nicht spielt: nicht in der
+				Rangliste, nicht als Spieler wählbar, meldet sich aber an
+				wie jeder andere. Beobachter wird nur, wer noch nie
+				mitgespielt hat.
+			</p>
+			if len(v.Observers) == 0 {
+				<p class="muted">Niemand.</p>
+			} else {
+				<div class="table-scroll" tabindex="0" role="region" aria-label="Beobachter">
+					<table class="matches">
+						<thead>
+							<tr>
+								<th scope="col">Beobachter</th>
+								<th scope="col">Dabei seit</th>
+								<th scope="col"></th>
+							</tr>
+						</thead>
+						<tbody>
+							for _, p := range v.Observers {
+								<tr>
+									<td class="name">
+										<a href={ templ.SafeURL("/players/" + p.ID) }>{ p.DisplayName }</a>
+										if p.IsSelf {
+											<span class="muted">(du)</span>
+										}
+									</td>
+									<td class="when">{ p.Joined }</td>
+									<td>
+										<form method="post" action={ templ.SafeURL("/admin/players/" + p.ID + "/observer") }>
+											<input type="hidden" name="observer" value="off"/>
+											<button class="secondary" type="submit">Spielt wieder mit</button>
+										</form>
+									</td>
+								</tr>
+							}
+						</tbody>
+					</table>
+				</div>
 			}
 		</section>
 		<section class="session">

@@ -183,6 +183,9 @@ func (s *Server) routes() http.Handler {
 	// The joke entry and the duplicate created before anybody played. The
 	// schema refuses everybody else, which is what keeps this small (#105).
 	page.Handle("POST /admin/players/{id}/remove", admin(http.HandlerFunc(s.handleAdminRemovePlayer)))
+	// Somebody who does not play, and back (docs/adr/0022). Also on your own
+	// row: the account this exists for flags itself.
+	page.Handle("POST /admin/players/{id}/observer", admin(http.HandlerFunc(s.handleAdminSetObserver)))
 	// Taking a kiosk machine back belongs to somebody, which is what
 	// docs/adr/0008 settled and what issue #77 was waiting for. POST, so a
 	// link nobody meant to follow cannot do it.

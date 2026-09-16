@@ -187,7 +187,18 @@ func (s *Server) profileView(ctx context.Context, id uuid.UUID) (templates.Profi
 		break
 	}
 	if !found {
-		return templates.ProfileView{}, domain.ErrNotFound
+		// Records leaves observers out, since they have no place in the
+		// ranking. Their page still exists: it is where an observer sets
+		// their own PIN (docs/adr/0022).
+		player, err := s.store.Players().ByID(ctx, id)
+		if err != nil {
+			return templates.ProfileView{}, err
+		}
+		if !player.IsObserver {
+			return templates.ProfileView{}, domain.ErrNotFound
+		}
+		view.ID, view.DisplayName, view.IsObserver = player.ID.String(), player.DisplayName, true
+		return view, nil
 	}
 
 	history, err := s.store.TTRHistory().ForPlayer(ctx, id, profileHistory)

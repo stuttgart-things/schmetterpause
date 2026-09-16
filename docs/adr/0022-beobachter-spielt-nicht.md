@@ -127,9 +127,12 @@ aus #77 —, kein Spieler.
   Jede heutige Stelle von `Players().List` und `Players().Records` wird einer
   davon zugeordnet; Anmeldung und `/admin` lesen alle, alles andere die
   spielenden.
-- **Die Regel „kein Beobachter als Spieler" sitzt in der Fachlogik**, nicht in
-  den Handlern (Konventionen in `CLAUDE.md`), damit Kiosk, Turnier, Spieler-Pfad und `/api`
-  sie nicht viermal schreiben.
+- **Die Regel „kein Beobachter als Spieler" sitzt beim Schreiben**, in den
+  Repositories und nicht in den Handlern: `Matches().Create` fragt im selben
+  Insert, `Tournaments().Create` und `Replace` vor dem ersten Schreiben. So
+  schreiben Kiosk, Turnier, Spieler-Pfad und `/api` sie nicht viermal, und ein
+  Flag, das einen Moment vorher gesetzt wurde, rutscht nicht zwischen Prüfung
+  und Schreiben durch.
 - **`SP_BOOTSTRAP_ADMIN` fehlt im argocd-Katalog-Chart** (`apps/schmetterpause/install`),
   steht aber in kcl, terraform und compose. Ohne ihn lässt sich Schritt 2 auf
   homerun2-test1 nicht ausführen. Das ist eine eigene Lücke, die hier nur

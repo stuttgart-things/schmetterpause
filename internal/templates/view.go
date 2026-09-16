@@ -228,6 +228,9 @@ type SessionView struct {
 	// PlayerID is what the mascot's blade colour is derived from. Empty
 	// before anybody is recognised, which leaves the blade red.
 	PlayerID string
+	// Observer is a recognised player who does not play (docs/adr/0022), so
+	// the start page offers them no result entry.
+	Observer bool
 	// Name is the value put back into the form after a rejected attempt, so
 	// nobody has to type their name twice.
 	Name string
@@ -673,6 +676,10 @@ type ProfileView struct {
 	IsSelf bool
 	// HasPIN changes the wording from setting one to replacing one.
 	HasPIN bool
+	// IsObserver is somebody who does not play (docs/adr/0022). Their page
+	// keeps the name and, for themselves, the access section — an observer
+	// signs in like anybody — and drops everything that describes playing.
+	IsObserver bool
 }
 
 // paddleColours is how many blade colours there are. Named rather than
@@ -736,6 +743,11 @@ type AdminView struct {
 	// Removable is the players with no confirmed result, the other action
 	// issue #105 holds.
 	Removable []AdminPlayerRow
+	// Observers is everybody who does not play (docs/adr/0022), each with
+	// the button that lets them play again. The Removable rows carry the
+	// opposite button: a player with no match is the only kind the flag may
+	// be set on.
+	Observers []AdminPlayerRow
 	// Note is what just happened, shown once. The page renders it after a
 	// removal rather than redirecting, the way the kiosk answers its own
 	// undo — a refusal here is a sentence somebody has to read, and a

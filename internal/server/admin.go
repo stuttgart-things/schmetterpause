@@ -121,6 +121,9 @@ func (s *Server) adminView(ctx context.Context, note, refusal string) (templates
 	names := make(map[uuid.UUID]string, len(players))
 	for _, p := range players {
 		names[p.ID] = p.DisplayName
+		if p.IsObserver {
+			view.Observers = append(view.Observers, adminPlayerRow(p, self))
+		}
 	}
 
 	view.Kiosks = kioskGrantViews(grants, names)
@@ -156,14 +159,73 @@ func adminPlayerRows(records []domain.PlayerRecord, self uuid.UUID) []templates.
 		if r.Played > 0 {
 			continue
 		}
-		rows = append(rows, templates.AdminPlayerRow{
-			ID:          r.Player.ID.String(),
-			DisplayName: r.Player.DisplayName,
-			Joined:      r.Player.CreatedAt.Local().Format("02.01.2006 15:04"),
-			IsSelf:      r.Player.ID == self,
-		})
+		rows = append(rows, adminPlayerRow(r.Player, self))
 	}
 	return rows
+}
+
+func adminPlayerRow(p domain.Player, self uuid.UUID) templates.AdminPlayerRow {
+	return templates.AdminPlayerRow{
+		ID:          p.ID.String(),
+		DisplayName: p.DisplayName,
+		Joined:      p.CreatedAt.Local().Format("02.01.2006 15:04"),
+		IsSelf:      p.ID == self,
+	}
+}
+
+// handleAdminSetObserver marks somebody as not playing, or lets them play
+// again (docs/adr/0022).
+//
+// Allowed on your own row, unlike removal: the account this exists for is an
+// admin who never plays, and it sets the flag on itself right after the
+// bootstrap gave it the other one. Nothing about the session changes.
+//
+// Marking is refused for anybody who ever was a side of a match or in a
+// tournament field. The store asks that in the same statement that sets the
+// flag, so the refusal is the database's answer and not this list's.
+func (s *Server) handleAdminSetObserver(w http.ResponseWriter, r *http.Request) {
+	self, _ := auth.PlayerID(r.Context())
+
+	id, err := uuid.Parse(strings.TrimSpace(r.PathValue("id")))
+	if err != nil {
+		s.rejectAdmin(w, r, "Diesen Spieler gibt es nicht.")
+		return
+	}
+	observe := r.FormValue("observer") == "on"
+
+	player, err := s.store.Players().ByID(r.Context(), id)
+	if err != nil {
+		s.rejectAdmin(w, r, "Diesen Spieler gibt es nicht.")
+		return
+	}
+
+	switch err := s.store.Players().SetObserver(r.Context(), id, observe); {
+	case err == nil:
+	case errors.Is(err, domain.ErrNotFound):
+		s.rejectAdmin(w, r, "Diesen Spieler gibt es nicht mehr.")
+		return
+	case errors.Is(err, domain.ErrInUse):
+		s.rejectAdmin(w, r, player.DisplayName+" hat schon gespielt oder steht in einem "+
+			"Turnier. Beobachter wird nur, wer nie mitgespielt hat — sonst verschwänden "+
+			"seine Spiele aus der Rangliste der anderen.")
+		return
+	default:
+		s.log.ErrorContext(r.Context(), "setting the observer flag failed",
+			"player_id", id, "error", err)
+		s.rejectAdmin(w, r, "Das hat gerade nicht geklappt.")
+		return
+	}
+
+	// Named, like every other admin action (docs/adr/0008).
+	s.log.InfoContext(r.Context(), "observer flag set",
+		"player_id", id, "display_name", player.DisplayName, "observer", observe, "by", self)
+
+	if observe {
+		s.renderAdmin(w, r, player.DisplayName+" ist jetzt Beobachter: nicht in der "+
+			"Rangliste, nicht wählbar, meldet sich aber weiter an.")
+		return
+	}
+	s.renderAdmin(w, r, player.DisplayName+" spielt wieder mit.")
 }
 
 // handleAdminRemovePlayer removes a player nothing points at.

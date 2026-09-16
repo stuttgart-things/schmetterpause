@@ -381,6 +381,9 @@ func (s *Server) handleKioskRecord(w http.ResponseWriter, r *http.Request) {
 	case errors.Is(err, domain.ErrNotFound):
 		s.rejectKiosk(w, r, "Diesen Spieler gibt es nicht.", "")
 		return
+	case errors.Is(err, domain.ErrObserver):
+		s.rejectKiosk(w, r, "Ein Beobachter spielt nicht mit.", "")
+		return
 	case errors.As(err, &rejection):
 		s.rejectKiosk(w, r, describeRejection(err), "")
 		return
@@ -437,7 +440,9 @@ func (s *Server) renderKiosk(w http.ResponseWriter, r *http.Request, view templa
 }
 
 func (s *Server) kioskView(ctx context.Context) (templates.KioskView, error) {
-	players, err := s.store.Players().List(ctx)
+	// The two sides, so only people who play. The operator picker below reads
+	// everybody: an observer watching and counting is who ADR-0014 asks for.
+	players, err := s.store.Players().Playing(ctx)
 	if err != nil {
 		return templates.KioskView{}, err
 	}

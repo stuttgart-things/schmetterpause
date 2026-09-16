@@ -41,7 +41,7 @@ func (s *Server) statisticsView(ctx context.Context) (templates.StatisticsView, 
 
 	// In ranking order, so the matrix reads top to bottom the way the table
 	// on the front page does. List already returns them by rating.
-	players, err := s.store.Players().List(ctx)
+	players, err := s.store.Players().Playing(ctx)
 	if err != nil {
 		return templates.StatisticsView{}, err
 	}

@@ -30,6 +30,10 @@ const tournamentColumns = `id, name, format, status, best_of, points_to_win, ` +
 	`created_by, created_at, closed_at`
 
 func (r tournamentRepo) Create(ctx context.Context, t domain.Tournament) (domain.Tournament, error) {
+	if err := r.refuseObservers(ctx, t.Players); err != nil {
+		return domain.Tournament{}, err
+	}
+
 	const insert = `
 		insert into tournaments (name, format, status, best_of, points_to_win,
 		                         with_final, rated, count_points,
@@ -85,6 +89,23 @@ func (r tournamentRepo) Create(ctx context.Context, t domain.Tournament) (domain
 	}
 	created.Players = t.Players
 	return created, nil
+}
+
+// refuseObservers answers domain.ErrObserver when anybody in a field does not
+// play (docs/adr/0022). Asked before the first write, so a refused field
+// leaves no half-made tournament behind whether or not the caller holds a
+// transaction.
+func (r tournamentRepo) refuseObservers(ctx context.Context, field []uuid.UUID) error {
+	var n int
+	err := r.q.QueryRow(ctx,
+		`select count(*) from players where id = any($1) and is_observer`, field).Scan(&n)
+	if err != nil {
+		return fmt.Errorf("check the tournament field for observers: %w", err)
+	}
+	if n > 0 {
+		return fmt.Errorf("%d of the tournament field: %w", n, domain.ErrObserver)
+	}
+	return nil
 }
 
 func (r tournamentRepo) ByID(ctx context.Context, id uuid.UUID) (domain.Tournament, error) {
@@ -250,6 +271,10 @@ func (r tournamentRepo) DeleteIfEmpty(ctx context.Context, id uuid.UUID) (bool, 
 // so "who is in it, in which order" is one value, and patching it a name at a
 // time would produce orders nobody chose.
 func (r tournamentRepo) Replace(ctx context.Context, t domain.Tournament) (domain.Tournament, error) {
+	if err := r.refuseObservers(ctx, t.Players); err != nil {
+		return domain.Tournament{}, err
+	}
+
 	const update = `
 		update tournaments
 		set name = $2, format = $3, best_of = $4, points_to_win = $5,

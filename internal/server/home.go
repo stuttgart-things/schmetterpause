@@ -109,8 +109,9 @@ func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Result entry needs somebody to attribute the report to, so it appears
-	// only once the browser is recognised.
-	if self, ok := auth.PlayerID(r.Context()); ok {
+	// only once the browser is recognised — and never for an observer, whose
+	// every result would be refused (docs/adr/0022).
+	if self, ok := auth.PlayerID(r.Context()); ok && !view.Session.Observer {
 		opponents, err := s.opponentOptions(r.Context(), self, uuid.Nil)
 		if err != nil {
 			s.log.ErrorContext(r.Context(), "loading the opponents failed", "error", err)
@@ -240,7 +241,9 @@ func (s *Server) sessionView(ctx context.Context) templates.SessionView {
 			"player_id", id, "error", err)
 		return templates.SessionView{}
 	}
-	return templates.SessionView{DisplayName: player.DisplayName, PlayerID: player.ID.String()}
+	return templates.SessionView{
+		DisplayName: player.DisplayName, PlayerID: player.ID.String(), Observer: player.IsObserver,
+	}
 }
 
 // validateDisplayName reports whether a name is usable, and why not if it is

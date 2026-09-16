@@ -43,8 +43,9 @@ func newMemStore() *memStore {
 		kiosks:      &memKioskGrants{},
 		matches:     matches,
 		history:     history,
-		tournaments: &memTournaments{matches: matches},
+		tournaments: &memTournaments{matches: matches, players: players},
 	}
+	matches.players = players
 	// What a delete reaches, wired after construction because these point
 	// back at each other. See memPlayers.Delete.
 	players.identities = store.identities
@@ -179,7 +180,7 @@ func (p *memPlayers) Delete(_ context.Context, id uuid.UUID) error {
 // Records mirrors the Postgres aggregate: confirmed matches only, and the
 // winner from the set scores rather than from the rating change.
 func (p *memPlayers) Records(ctx context.Context) ([]domain.PlayerRecord, error) {
-	players, err := p.List(ctx)
+	players, err := p.Playing(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -297,6 +298,65 @@ func (p *memPlayers) List(context.Context) ([]domain.Player, error) {
 	defer p.mu.Unlock()
 
 	return append([]domain.Player(nil), p.rows...), nil
+}
+
+func (p *memPlayers) Playing(context.Context) ([]domain.Player, error) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
+	var playing []domain.Player
+	for _, row := range p.rows {
+		if !row.IsObserver {
+			playing = append(playing, row)
+		}
+	}
+	return playing, nil
+}
+
+// anyObserver is the guard the match and tournament fakes share.
+func (p *memPlayers) anyObserver(ids ...uuid.UUID) bool {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
+	for _, row := range p.rows {
+		if row.IsObserver && slices.Contains(ids, row.ID) {
+			return true
+		}
+	}
+	return false
+}
+
+// SetObserver mirrors the one-statement update: marking refuses anybody who
+// was a side of any match or in any tournament field, unmarking never does.
+func (p *memPlayers) SetObserver(_ context.Context, id uuid.UUID, isObserver bool) error {
+	if isObserver {
+		for _, m := range p.matches.all() {
+			if m.HomeID == id || m.AwayID == id {
+				return fmt.Errorf("player %s has played: %w", id, domain.ErrInUse)
+			}
+		}
+		if p.tournaments != nil {
+			p.tournaments.mu.Lock()
+			for _, t := range p.tournaments.rows {
+				if slices.Contains(t.Players, id) {
+					p.tournaments.mu.Unlock()
+					return fmt.Errorf("player %s has played: %w", id, domain.ErrInUse)
+				}
+			}
+			p.tournaments.mu.Unlock()
+		}
+	}
+
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
+	for i := range p.rows {
+		if p.rows[i].ID == id {
+			p.rows[i].IsObserver = isObserver
+			return nil
+		}
+	}
+	return domain.ErrNotFound
 }
 
 func (p *memPlayers) UpdateTTR(_ context.Context, id uuid.UUID, ttr int) error {
@@ -533,9 +593,16 @@ type memMatches struct {
 	// an undo would leave the rating history behind and the next one would
 	// refuse to run.
 	history *memHistory
+	// players answers the guard Postgres asks inside the insert: an observer
+	// on either side refuses the match (docs/adr/0022).
+	players *memPlayers
 }
 
 func (m *memMatches) Create(_ context.Context, in domain.Match) (domain.Match, error) {
+	if m.players != nil && m.players.anyObserver(in.HomeID, in.AwayID) {
+		return domain.Match{}, fmt.Errorf("create match: %w", domain.ErrObserver)
+	}
+
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -827,11 +894,18 @@ type memTournaments struct {
 	// matches is where booked results live: a tournament owns which matches
 	// belong to it, not the matches themselves (docs/adr/0009).
 	matches *memMatches
+	// players refuses a field with an observer in it, as Postgres does
+	// before the first write (docs/adr/0022).
+	players *memPlayers
 	mu      sync.Mutex
 	rows    []domain.Tournament
 }
 
 func (m *memTournaments) Create(_ context.Context, t domain.Tournament) (domain.Tournament, error) {
+	if m.players != nil && m.players.anyObserver(t.Players...) {
+		return domain.Tournament{}, fmt.Errorf("create tournament: %w", domain.ErrObserver)
+	}
+
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -929,6 +1003,10 @@ func (m *memTournaments) DeleteIfEmpty(ctx context.Context, id uuid.UUID) (bool,
 }
 
 func (m *memTournaments) Replace(ctx context.Context, in domain.Tournament) (domain.Tournament, error) {
+	if m.players != nil && m.players.anyObserver(in.Players...) {
+		return domain.Tournament{}, fmt.Errorf("replace tournament: %w", domain.ErrObserver)
+	}
+
 	played, _ := m.Matches(ctx, in.ID)
 	if len(played) > 0 {
 		return domain.Tournament{}, domain.ErrNotFound

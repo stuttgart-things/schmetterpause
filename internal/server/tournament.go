@@ -164,6 +164,9 @@ func (s *Server) handleEditTournament(w http.ResponseWriter, r *http.Request) {
 		s.tournamentBack(w, r, id, false,
 			"Das geht nicht mehr — es steht schon ein Ergebnis drin.")
 		return
+	case errors.Is(err, domain.ErrObserver):
+		s.tournamentBack(w, r, id, false, "Ein Beobachter spielt nicht mit.")
+		return
 	case err != nil:
 		s.log.ErrorContext(ctx, "editing the tournament failed",
 			"tournament_id", id, "error", err)
@@ -337,6 +340,10 @@ func (s *Server) handleCreateTournament(w http.ResponseWriter, r *http.Request) 
 		PointsToWin: mode.PointsToWin,
 		Players:     field,
 	})
+	if errors.Is(err, domain.ErrObserver) {
+		s.rejectTournament(w, r, name, field, mode, "Ein Beobachter spielt nicht mit.")
+		return
+	}
 	if err != nil {
 		s.log.ErrorContext(ctx, "creating the tournament failed", "error", err)
 		s.rejectTournament(w, r, name, field, mode, "Das hat gerade nicht geklappt.")
@@ -519,6 +526,9 @@ func (s *Server) handleTournamentRecord(w http.ResponseWriter, r *http.Request) 
 	case errors.Is(err, domain.ErrNotFound):
 		s.tournamentBack(w, r, id, true, "Diesen Spieler gibt es nicht.")
 		return
+	case errors.Is(err, domain.ErrObserver):
+		s.tournamentBack(w, r, id, true, "Ein Beobachter spielt nicht mit.")
+		return
 	case errors.As(err, &rejection):
 		s.tournamentBack(w, r, id, true, describeRejection(err))
 		return
@@ -581,7 +591,7 @@ func (s *Server) tournamentListView(ctx context.Context, again *uuid.UUID) (temp
 		return templates.TournamentListView{}, err
 	}
 
-	players, err := s.store.Players().List(ctx)
+	players, err := s.store.Players().Playing(ctx)
 	if err != nil {
 		return templates.TournamentListView{}, err
 	}
@@ -926,7 +936,7 @@ func (s *Server) tournamentEntry(ctx context.Context, r *http.Request,
 func (s *Server) rejectTournament(w http.ResponseWriter, r *http.Request,
 	name string, chosen []uuid.UUID, mode match.Mode, msg string,
 ) {
-	players, err := s.store.Players().List(r.Context())
+	players, err := s.store.Players().Playing(r.Context())
 	if err != nil {
 		s.log.ErrorContext(r.Context(), "loading players failed", "error", err)
 		http.Error(w, "Turniere nicht verfügbar", http.StatusInternalServerError)
@@ -1089,7 +1099,7 @@ func (s *Server) tournamentView(ctx context.Context, id uuid.UUID, kiosk bool) (
 		}
 	}
 	if signedIn && tour.Open() && len(booked) == 0 {
-		players, err := s.store.Players().List(ctx)
+		players, err := s.store.Players().Playing(ctx)
 		if err != nil {
 			return templates.TournamentView{}, fmt.Errorf("players: %w", err)
 		}
