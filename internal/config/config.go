@@ -88,6 +88,18 @@ type Config struct {
 	// the application already lets anybody do and which docs/adr/0004
 	// answers socially rather than technically.
 	KioskToken string
+	// ScoreboardToken unlocks the JSON surface the Zählwerk enters results
+	// through: GET /api/players and POST /api/results. Empty by default, and
+	// then those routes do not exist at all — the same posture as KioskToken
+	// and /kiosk, and for the same reason.
+	//
+	// A token rather than the kiosk's cookie-and-grant dance, because the
+	// caller is a machine at the table rather than a browser somebody stands
+	// at (docs/adr/0015). It does not weaken what the kiosk token protects:
+	// a result entered this way stays pending until one of the two players
+	// agrees, so holding this token buys the ability to propose a match, not
+	// to change the ranking.
+	ScoreboardToken string
 	// BootstrapAdmin names the player who gets the admin flag at startup, by
 	// display name. Empty by default, and then nothing is granted.
 	//
@@ -190,6 +202,8 @@ func Load() (Config, error) {
 	cfg.SessionKey = []byte(env("SESSION_KEY", ""))
 
 	cfg.KioskToken = env("KIOSK_TOKEN", "")
+
+	cfg.ScoreboardToken = env("SCOREBOARD_TOKEN", "")
 
 	cfg.BootstrapAdmin = env("BOOTSTRAP_ADMIN", "")
 

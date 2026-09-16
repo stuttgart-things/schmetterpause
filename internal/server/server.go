@@ -98,6 +98,19 @@ func (s *Server) routes() http.Handler {
 	// are: whatever asks is a monitor, not a player (issue #229).
 	mux.HandleFunc("GET /version", s.handleVersion)
 
+	// The Zählwerk's surface (docs/adr/0015). On the outer mux rather than on
+	// page, deliberately: these routes answer a machine holding a token, so
+	// they have no business passing through the session middleware, reading a
+	// recognition cookie or rendering a template. Same reasoning that keeps
+	// the probes and /version out here.
+	//
+	// Unset token, no routes: /api/players is a 404 like any other unknown
+	// path, exactly as /kiosk is without SP_KIOSK_TOKEN.
+	if s.cfg.ScoreboardToken != "" {
+		mux.HandleFunc("GET /api/players", s.handleAPIPlayers)
+		mux.HandleFunc("POST /api/results", s.handleAPIResults)
+	}
+
 	mux.Handle("GET /static/", staticHandler())
 
 	// Browsers ask for this whether or not the pages link an icon, and a 404
