@@ -77,5 +77,6 @@ nav:
       - Plattform-Voraussetzungen: platform.md
       - Deployment ohne GitOps: deployment.md
       - Preview-Umgebungen: preview-environments.md
+      - Admins und Beobachter: admin-and-observers.md
       - Spieldaten sichern und umziehen: backup-restore.md
       - Signaturen, SBOM und Prüfung: supply-chain.md
