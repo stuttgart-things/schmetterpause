@@ -404,18 +404,45 @@ path — is enough; archiving starts on the next retry.
   rebuild's `sourceServerName` is then the *current* `backup.serverName`, not
   `schmetterpause-db`.
 
+### What admission does during a rebuild
+
+The rebuilt pod passes the image-signature policy on its way in, so it is worth
+knowing that **admission cannot stop a rebuild** — and that this is a decision
+rather than an accident.
+
+`failurePolicy` is `Ignore` and stays `Ignore`
+([#262](https://github.com/stuttgart-things/schmetterpause/issues/262), decided
+2026-09-16). A webhook that cannot answer therefore admits the pod rather than
+refusing it, and that stays true when the policy moves from `Audit` to `Deny`:
+`Deny` changes what a *failed verification* does, not what a *failed webhook*
+does. `Fail` was rejected for exactly this step — it would have made a GHCR
+outage stop the office from coming back.
+
+**The only thing admission reaches for is GHCR**, which holds the signature.
+Not Rekor and not Sigstore's TUF root: measured on `homerun2-test1` on
+2026-09-16, a signed image verified with the policy's `ctlog.url` pointing at a
+host that does not resolve, because the signature carries an offline timestamp
+and Kyverno runs with `enableTuf=false`. A Sigstore outage cannot delay a
+restore.
+
+What *can* happen is quieter, and it is specific to a rebuild: a new cluster's
+Kyverno starts with an empty verification cache, so the first schmetterpause pod
+on it is always verified for real. If GHCR is unreachable at that moment the pod
+still starts — unchecked. `SchmetterpauseSignatureCheckSkipped`
+(stuttgart-things/argocd#457) is what says so. During a rebuild, treat that
+alert as "the office came back without its image being verified", and re-check
+the signature by hand once GHCR is reachable:
+
+```sh
+task verify:signature TAG=<the version that was deployed>
+```
+
 ### What this step list does not know yet
 
 - **How long it takes.** Step 5 alone is under a minute (records below); steps
   2 to 4 have never been timed on a cluster that did not exist.
 - **Which manual steps exist besides step 3.** That is most of what the
   rehearsal is for.
-- **What admission does.** The rebuilt pod passes the image-signature policy on
-  its way in. Today that policy runs `Audit` with `failurePolicy: Ignore`, so it
-  cannot block a rebuild. Under `Deny` it could, and whether it also depends on
-  Kyverno being up is what
-  [#262](https://github.com/stuttgart-things/schmetterpause/issues/262) decides
-  — that decision belongs to this runbook as much as to the policy.
 
 ## Azure
 
