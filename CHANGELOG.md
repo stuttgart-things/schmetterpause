@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.10.0](https://github.com/stuttgart-things/schmetterpause/compare/v0.9.0...v0.10.0) (2026-09-16)
+
+
+### Features
+
+* **api:** the Zählwerk enters results through GET /api/players and POST /api/results ([#266](https://github.com/stuttgart-things/schmetterpause/issues/266)) ([4c694ec](https://github.com/stuttgart-things/schmetterpause/commit/4c694ecb2b227f0edcc6faf52b13bedf66daa7cf)), closes [#263](https://github.com/stuttgart-things/schmetterpause/issues/263)
+
+
+### Bug Fixes
+
+* **statistics:** keep both name bands in view while the matrix scrolls ([#260](https://github.com/stuttgart-things/schmetterpause/issues/260)) ([5001299](https://github.com/stuttgart-things/schmetterpause/commit/500129995744b9aae8b46c4f3fdf89f5cc0d54d8))
+
 ## [0.9.0](https://github.com/stuttgart-things/schmetterpause/compare/v0.8.0...v0.9.0) (2026-09-15)
 
 
