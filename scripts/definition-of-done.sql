@@ -13,6 +13,16 @@
 -- They are reported beside it rather than hidden, because "how much did the
 -- kiosk do" is worth knowing too.
 --
+-- A Zählwerk result ('scoreboard', docs/adr/0015) is the same case and drops
+-- out for the same reason, but it is worth being explicit about which half of
+-- the measurement it would have broken. An evening at the counter has exactly
+-- one reported_by — the operator — so counting those rows would clear the
+-- "ten matches" bar while leaving "from five different players" where it was.
+-- That is the shape of a measurement that passes and proves nothing, which is
+-- what this whole exclusion exists to prevent. Beside the verdict, then, not
+-- in it — and never hidden, because how much ran over the counter is exactly
+-- what the test phase in that ADR wants to know.
+--
 -- Tournament matches drop out too, whoever typed them. That used to happen by
 -- itself, because entry was only possible at the kiosk and every row came out
 -- marked 'kiosk'; since ADR-0010 a player may enter their own tournament
@@ -46,6 +56,7 @@ select to_char(day, 'YYYY-MM-DD Dy') as "day",
        matches,
        reporters,
        kiosk as "of which kiosk",
+       scoreboard as "of which scoreboard",
        tournament as "of which tournament",
        case when extract(isodow from day) > 5 then 'weekend' else '' end as "note"
 from (
@@ -56,6 +67,7 @@ from (
 	                                               and m.tournament_id is null)
 	                                                                       as reporters,
 	       count(*) filter (where m.entered_via = 'kiosk')                 as kiosk,
+	       count(*) filter (where m.entered_via = 'scoreboard')            as scoreboard,
 	       count(*) filter (where m.tournament_id is not null)             as tournament
 	from matches m
 	where m.status = 'confirmed'
