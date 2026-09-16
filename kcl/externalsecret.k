@@ -30,9 +30,11 @@ _store = {
     name: config.secretStoreName
 }
 
-# The application's own secrets. SP_KIOSK_TOKEN appears only when the kiosk is
-# wanted: without the variable the kiosk routes are never registered, so it does
-# not exist rather than existing unlocked.
+# The application's own secrets. SP_KIOSK_TOKEN and SP_SCOREBOARD_TOKEN appear
+# only when each is wanted: without the variable the routes behind it are never
+# registered, so the surface does not exist rather than existing unlocked. Both
+# are separate entries under the same Vault path, so turning one on does not
+# require writing the other.
 appExternalSecret = {
     apiVersion: config.externalSecretApiVersion
     kind: "ExternalSecret"
@@ -62,6 +64,14 @@ appExternalSecret = {
                     remoteRef: {
                         key: config.vaultPath
                         property: config.vaultKeyKioskToken
+                    }
+                }
+            if config.scoreboardEnabled:
+                {
+                    secretKey: "SP_SCOREBOARD_TOKEN"
+                    remoteRef: {
+                        key: config.vaultPath
+                        property: config.vaultKeyScoreboardToken
                     }
                 }
         ]

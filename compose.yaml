@@ -55,6 +55,10 @@ services:
       # SP_KIOSK_TOKEN=... task up for an evening where one machine at the
       # table enters everybody's results.
       SP_KIOSK_TOKEN: ${SP_KIOSK_TOKEN:-}
+      # Empty by default, and then /api/players and /api/results do not exist.
+      # Set it to let a Zählwerk hand finished matches over (docs/adr/0015);
+      # the same value goes into SCHMETTERPAUSE_TOKEN on its side.
+      SP_SCOREBOARD_TOKEN: ${SP_SCOREBOARD_TOKEN:-}
       # Empty by default, and then nobody is an admin. Start it with
       # SP_BOOTSTRAP_ADMIN="Anna" task up to give that player the flag; the
       # name is the one on the ranking (docs/adr/0008).

@@ -38,6 +38,7 @@ _host = option("config.host")
 _publicBaseURL = option("config.publicBaseURL")
 _logLevel = option("config.logLevel")
 _kioskEnabled = option("config.kioskEnabled")
+_scoreboardEnabled = option("config.scoreboardEnabled")
 _bootstrapAdmin = option("config.bootstrapAdmin")
 _migrateInitContainer = option("config.migrateInitContainer")
 _seedEnabled = option("config.seedEnabled")
@@ -60,6 +61,7 @@ _refreshInterval = option("config.refreshInterval")
 _vaultPath = option("config.vaultPath")
 _vaultKeySessionKey = option("config.vaultKeySessionKey")
 _vaultKeyKioskToken = option("config.vaultKeyKioskToken")
+_vaultKeyScoreboardToken = option("config.vaultKeyScoreboardToken")
 _vaultKeyDBUsername = option("config.vaultKeyDBUsername")
 _vaultKeyDBPassword = option("config.vaultKeyDBPassword")
 _extraEnvVars = option("config.extraEnvVars") or {}
@@ -122,6 +124,8 @@ config: schema.Schmetterpause = schema.Schmetterpause {
         logLevel = _logLevel
     if _kioskEnabled != Undefined and _kioskEnabled != None:
         kioskEnabled = _bool(_kioskEnabled)
+    if _scoreboardEnabled != Undefined and _scoreboardEnabled != None:
+        scoreboardEnabled = _bool(_scoreboardEnabled)
     if _bootstrapAdmin:
         bootstrapAdmin = _bootstrapAdmin
     if _migrateInitContainer != Undefined and _migrateInitContainer != None:
@@ -166,6 +170,8 @@ config: schema.Schmetterpause = schema.Schmetterpause {
         vaultKeySessionKey = _vaultKeySessionKey
     if _vaultKeyKioskToken:
         vaultKeyKioskToken = _vaultKeyKioskToken
+    if _vaultKeyScoreboardToken:
+        vaultKeyScoreboardToken = _vaultKeyScoreboardToken
     if _vaultKeyDBUsername:
         vaultKeyDBUsername = _vaultKeyDBUsername
     if _vaultKeyDBPassword:

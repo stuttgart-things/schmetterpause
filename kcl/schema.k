@@ -100,6 +100,13 @@ schema Schmetterpause:
     # are meant to run without one.
     kioskEnabled: bool = False
 
+    # The Zählwerk's surface exists only when SP_SCOREBOARD_TOKEN is set — the
+    # two /api routes are not registered otherwise, so it does not exist rather
+    # than existing unlocked (docs/adr/0015). Off by default: a result entered
+    # this way waits for one of the two players to confirm it, which is the
+    # point during the test phase and a task afterwards.
+    scoreboardEnabled: bool = False
+
     # A display name that becomes the first admin at startup. Empty is fine and
     # normal; the person has to have joined already, so this is a second-pass
     # value rather than a first-boot one.
@@ -212,6 +219,7 @@ schema Schmetterpause:
     # Property names inside that path.
     vaultKeySessionKey: str = "session-key"
     vaultKeyKioskToken: str = "kiosk-token"
+    vaultKeyScoreboardToken: str = "scoreboard-token"
     vaultKeyDBUsername: str = "username"
     vaultKeyDBPassword: str = "password"
 

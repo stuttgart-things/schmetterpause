@@ -167,6 +167,14 @@ resource "azurerm_container_app" "this" {
     }
   }
 
+  dynamic "secret" {
+    for_each = nonsensitive(var.scoreboard_token != "") ? ["scoreboard-token"] : []
+    content {
+      name  = secret.value
+      value = var.scoreboard_token
+    }
+  }
+
   ingress {
     external_enabled = true
     target_port      = 8080
@@ -247,6 +255,14 @@ resource "azurerm_container_app" "this" {
         content {
           name        = env.value
           secret_name = "kiosk-token"
+        }
+      }
+
+      dynamic "env" {
+        for_each = nonsensitive(var.scoreboard_token != "") ? ["SP_SCOREBOARD_TOKEN"] : []
+        content {
+          name        = env.value
+          secret_name = "scoreboard-token"
         }
       }
 

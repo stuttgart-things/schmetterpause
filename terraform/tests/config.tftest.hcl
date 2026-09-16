@@ -68,7 +68,7 @@ run "defaults_mirror_kcl" {
   assert {
     condition = length(setintersection(
       [for e in azurerm_container_app.this.template[0].container[0].env : e.name],
-      ["SP_COOKIE_SECURE", "SP_KIOSK_TOKEN", "SP_BOOTSTRAP_ADMIN", "SP_METRICS_ADDR"],
+      ["SP_COOKIE_SECURE", "SP_KIOSK_TOKEN", "SP_SCOREBOARD_TOKEN", "SP_BOOTSTRAP_ADMIN", "SP_METRICS_ADDR"],
     )) == 0
     error_message = "Unset options must stay absent, and SP_COOKIE_SECURE always."
   }
@@ -91,16 +91,22 @@ run "options_are_wired" {
   command = apply
 
   variables {
-    kiosk_token     = "0123456789abcdef"
-    bootstrap_admin = "Kim"
-    public_base_url = "https://pause.example.com/"
-    metrics_port    = 9090
-    extra_env_vars  = { SP_LOG_LEVEL = "debug" }
+    kiosk_token      = "0123456789abcdef"
+    scoreboard_token = "fedcba9876543210"
+    bootstrap_admin  = "Kim"
+    public_base_url  = "https://pause.example.com/"
+    metrics_port     = 9090
+    extra_env_vars   = { SP_LOG_LEVEL = "debug" }
   }
 
   assert {
     condition     = { for e in azurerm_container_app.this.template[0].container[0].env : e.name => e.secret_name if e.secret_name != null }["SP_KIOSK_TOKEN"] == "kiosk-token"
     error_message = "A kiosk token must reach the app as a secret."
+  }
+
+  assert {
+    condition     = { for e in azurerm_container_app.this.template[0].container[0].env : e.name => e.secret_name if e.secret_name != null }["SP_SCOREBOARD_TOKEN"] == "scoreboard-token"
+    error_message = "A scoreboard token must reach the app as a secret, never as a plain env value."
   }
 
   assert {
