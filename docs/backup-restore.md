@@ -7,7 +7,10 @@ Compose, Kubernetes and Azure as a logical dump, one writer at a time.
 through the Barman Cloud plugin, and made the office's move there wait for a
 timed restore.
 
-This page is the how. Everything on it has been run: a full round trip
+This page is the how. Everything on it has been run — except
+[Rebuilding a lost cluster](#rebuilding-a-lost-cluster), which is marked as
+unrehearsed where it stands, because a runbook nobody has followed is a draft.
+What has been run: a full round trip
 Kubernetes → Azure → Kubernetes → Compose on 2026-09-12, with row counts
 compared at every station and a PIN sign-in on Azure and on Compose; backups
 switched on, a backup taken and restored into an empty namespace on
@@ -271,6 +274,149 @@ stop at it — `recoveryTarget: {backupID: <id>, targetImmediate: true}` under
 `bootstrap.recovery` — and compare with a dump taken just before it. A running
 origin keeps changing, so its counts only match by luck.
 
+## Rebuilding a lost cluster
+
+Everything above restores data *into* a cluster that exists. This is the other
+case: `homerun2-test1` is gone and the office's ranking has to come back onto a
+new one.
+
+> **Not rehearsed.** The pieces are proven separately — the recovery bootstrap
+> (below, and the records at the end), the Vault and Argo paths (audited object
+> by object in
+> [#248](https://github.com/stuttgart-things/schmetterpause/issues/248)) — but
+> nobody has run this list top to bottom against a cluster that did not exist
+> before. The rehearsal is
+> [#259](https://github.com/stuttgart-things/schmetterpause/issues/259)'s
+> Definition of Done point 1 and needs a throwaway cluster
+> (stuttgart-things/stuttgart-things#2989). Expect to find steps that are not
+> written here; when you do, write them down.
+
+**Almost everything comes back from Git by itself.** The cluster registration,
+cert-manager, trust-manager and `cluster-trust-bundle`, External Secrets,
+openebs and its StorageClass, the Cilium gateway, the CNPG operator and
+`plugin-barman-cloud` — all Argo-managed, nothing on the cluster unmanaged.
+The part that does not come back by itself is the data, and the step that
+brings it back is step 5.
+
+### The order
+
+**1. Stop anyone entering results.** A half-rebuilt instance that accepts a
+match is a second ranking. No QR sheet, no link in Teams, until step 6 passes.
+
+**2. New cluster, kubeconfig into Vault.** The `ClusterbookCluster` picks it up
+and Argo registers it.
+
+**3. Vault Kubernetes auth, re-applied against the new API server.** A manual
+step, and the one already known:
+`argocd/clusters/homerun2-test1/vault-k8s-auth` in `stuttgart-things`, locally
+or through the dispatch workflow's `create-vault-k8s-auth`. A new cluster has a
+new API address and reviewer token; without this ESO reads nothing — no
+database credentials, no backup keys.
+
+```sh
+kubectl get externalsecret -A     # every one must reach SecretSynced
+```
+
+A `Valid` `ClusterSecretStore` proves only that the login works, not that
+anything can be read. Check the ExternalSecrets.
+
+**4. Base apps sync by themselves.** Wait for them rather than helping.
+
+**5. Schmetterpause with recovery on — not a plain sync.** A plain sync runs
+`initdb` and the office comes back with an empty ranking, healthy, `/readyz`
+answering 200, and the first person who joins starts a second one. Nothing
+alerts on an empty ranking.
+
+In
+`clusters/labul/vsphere/platform-sthings/argocd/homerun2-test1/schmetterpause.yaml`,
+**before the first sync**:
+
+```yaml
+        database:
+          backup:
+            enabled: true
+            serverName: schmetterpause-db-r1     # where the REBUILT server archives
+            # endpointURL, destinationPath, remoteKey unchanged
+          recovery:
+            enabled: true
+            sourceServerName: schmetterpause-db  # where it reads from
+```
+
+The two names must differ. Unset, the plugin archives under the *Cluster* name,
+which is the path being recovered from; the chart refuses to render that
+(stuttgart-things/argocd#453). Pick the new name deliberately — it is what the
+*next* rebuild will have to name as its source.
+
+`spec.bootstrap` is read only when the Cluster is created. Getting this wrong
+is not a value you can correct afterwards: it means deleting the Cluster and
+its volume and doing step 5 again.
+
+**6. Check it is the office, before anyone uses it.**
+
+```sh
+kubectl -n schmetterpause exec schmetterpause-db-1 -c postgres -- psql -U postgres -d schmetterpause -tAc \
+  "select 'players='||(select count(*) from players)||' matches='||(select count(*) from matches)"
+curl -fsS https://schmetterpause.homerun2-test1.sthings-vsphere.labul.sva.de/readyz
+```
+
+Counts against the last dump or the backup it recovered from, then a PIN
+sign-in. A sign-in is the check; entering a result is not.
+
+**7. Prove it can back itself up**, which is the step that catches a rebuild
+that looks finished:
+
+```sh
+kubectl -n schmetterpause get cluster schmetterpause-db \
+  -o jsonpath='{.spec.plugins[0].parameters.serverName}{"\n"}'   # the NEW name
+kubectl -n schmetterpause exec schmetterpause-db-1 -c postgres -- psql -tAc \
+  "select archived_count, failed_count, last_archived_wal from pg_stat_archiver"
+```
+
+then a manual `Backup` (the YAML is under [Scheduled backups on
+Kubernetes](#scheduled-backups-on-kubernetes)) and wait for phase `completed`.
+
+### If archiving never starts
+
+`ContinuousArchiving=False` with `archived_count` stuck at 0 means the archive
+path is not empty — almost certainly `serverName` collides with the source.
+The log says so:
+
+```
+barman-cloud-check-wal-archive: WAL archive check failed for server <name>: Expected empty archive
+```
+
+**Nothing is corrupted by this**, and the office's archive is intact: the
+plugin refuses before the first segment rather than mixing two timelines.
+What you have instead is a database that reports `Cluster in healthy state`,
+serves the office, and never backs itself up, while WAL it cannot recycle grows
+on its volume. `SchmetterpauseWALArchivingFailing` reports it after 15 minutes.
+
+**The Cluster does not have to be recreated.** The check runs on every archive
+attempt, not once at startup, so correcting `serverName` — or emptying the
+path — is enough; archiving starts on the next retry.
+
+### Two things that are easy to get wrong afterwards
+
+- **Do not set `backup.serverName` on a running Cluster** to tidy up. It starts
+  a new path, and the backups taken before it stay where the next recovery will
+  not look.
+- **`recovery` may stay on.** It is inert once the Cluster exists. But the next
+  rebuild's `sourceServerName` is then the *current* `backup.serverName`, not
+  `schmetterpause-db`.
+
+### What this step list does not know yet
+
+- **How long it takes.** Step 5 alone is under a minute (records below); steps
+  2 to 4 have never been timed on a cluster that did not exist.
+- **Which manual steps exist besides step 3.** That is most of what the
+  rehearsal is for.
+- **What admission does.** The rebuilt pod passes the image-signature policy on
+  its way in. Today that policy runs `Audit` with `failurePolicy: Ignore`, so it
+  cannot block a rebuild. Under `Deny` it could, and whether it also depends on
+  Kyverno being up is what
+  [#262](https://github.com/stuttgart-things/schmetterpause/issues/262) decides
+  — that decision belongs to this runbook as much as to the policy.
+
 ## Azure
 
 Needs an applied instance (`task tf:apply`) and a live login (`task tf:login`).
@@ -475,8 +621,75 @@ and was compared with the counts of the move dump it was taken after,
 
 The namespace was deleted afterwards.
 
+## The recovery path from the chart, 2026-09-16
+
+The 58 s restore above used hand-written YAML. This one used the chart
+(stuttgart-things/argocd#453), which is what a rebuild will run, and answered a
+question that had been open since the backups were switched on.
+
+**Probe 1 — does the chart's recovery path produce the office?** Namespace
+`schmetterpause-recovery-probe` on homerun2-test1, recovering from
+`serverName: schmetterpause-db` and archiving under `probe-r1`.
+
+| | |
+| --- | --- |
+| Created → `Cluster in healthy state` | 42 s |
+| Counts against the live office | identical: 16 players, 69 matches (68 confirmed), 120 sets, 136 rating-history rows |
+| Archived under | `probe-r1`, not the office's path |
+| Manual `Backup` | `completed`, `20260916T053037` |
+| Bucket afterwards | `probe-r1/` beside `schmetterpause-db/` |
+
+It replayed to the end of the archive rather than stopping at a backup, and the
+counts still matched — a quiet Wednesday morning, where the 2026-09-13 restore
+had a Sunday moving underneath it.
+
+**Probe 2 — what happens if a rebuild archives into the path it recovered
+from?** A fresh `initdb` Cluster pointed at `probe-r1` after probe 1 was
+deleted. It never wrote a segment:
+
+```
+barman-cloud-check-wal-archive: WAL archive check failed for server probe-r1: Expected empty archive
+ContinuousArchiving=False   archived_count=0   failed_count=9
+```
+
+**So two servers in one path do not corrupt each other's timeline.** That claim
+was carried by the flux component `schmetterpause-db-backup`, by
+stuttgart-things/argocd#424 and by
+[#259](https://github.com/stuttgart-things/schmetterpause/issues/259), and it is
+wrong for `plugin-barman-cloud` v0.15.0. The plugin checks first and refuses.
+The real failure is the quiet one in the runbook above.
+
+`SchmetterpauseWALArchivingFailing` does catch it, after 15 minutes. That is
+not obvious from its expression, which compares `last_failed_time` against
+`last_archived_time` on a server that has never archived once: the exporter
+reports `cnpg_pg_stat_archiver_last_archived_time = -1` there rather than
+dropping the series, so the comparison holds. Read off the probe.
+
+**Probe 3 — recovery without archiving.** `recovery` on, `backup` off: up in
+56 s with the same counts, `spec.plugins` empty, no `ScheduledBackup`, and its
+prefix in the bucket stayed empty. `archive_mode` reads `on` because CNPG always
+sets it; with no archiver plugin nothing reaches object storage. That is the
+shape for asking whether a backup is still good, as opposed to rebuilding onto
+it — and it now comes from the chart instead of being written by hand.
+
+All three namespaces and their paths in the bucket were deleted. The office was
+not touched: `Cluster in healthy state`, `ContinuousArchiving=True`, same counts
+before and after.
+
+**One thing found while cleaning up**, which is why the runbook says a refused
+Cluster need not be recreated: the empty-archive check runs on *every* archive
+attempt, not once at startup. Probe 2 was still running when its path was
+emptied, and it archived into it on the next retry — which also means a bucket
+listing taken while a writer is alive proves nothing. Delete the Cluster first,
+list afterwards.
+
 ## Not covered
 
+- **The rebuild, end to end.** [Rebuilding a lost
+  cluster](#rebuilding-a-lost-cluster) is written from proven pieces and an
+  audit, not from having done it. Until it has been rehearsed on a throwaway
+  cluster, treat its timings as unknown and expect manual steps it does not
+  name.
 - **Point-in-time recovery to a moment.** Both restores either replayed to the
   end of the archive or stopped at the end of a named backup. Recovering to a
   time just before a mistake needs `recoveryTarget.targetTime` and WAL from
