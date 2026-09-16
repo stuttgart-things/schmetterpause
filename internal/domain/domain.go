@@ -297,6 +297,13 @@ const (
 	// EnteredViaKiosk is the machine at the table, where one person enters
 	// for everybody.
 	EnteredViaKiosk EnteredVia = "kiosk"
+	// EnteredViaScoreboard is the Zählwerk: the counter at the table posts a
+	// finished match through /api/results, and a person watching it is named
+	// as the operator. docs/adr/0015 keeps these rows out of the Definition
+	// of Done's verdict and shows them in a column of their own — a whole
+	// evening at the table has one reporter, so counting them would clear the
+	// "ten matches" bar without moving the "five different players" one.
+	EnteredViaScoreboard EnteredVia = "scoreboard"
 )
 
 // Match is a singles encounter between two players. Doubles do not count

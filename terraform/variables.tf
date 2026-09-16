@@ -105,9 +105,9 @@ variable "extra_env_vars" {
   validation {
     condition = alltrue([
       for k in keys(var.extra_env_vars) :
-      !contains(["SP_DATABASE_URL", "SP_SESSION_KEY", "SP_KIOSK_TOKEN"], k)
+      !contains(["SP_DATABASE_URL", "SP_SESSION_KEY", "SP_KIOSK_TOKEN", "SP_SCOREBOARD_TOKEN"], k)
     ])
-    error_message = "extra_env_vars must not set SP_DATABASE_URL, SP_SESSION_KEY or SP_KIOSK_TOKEN — those are secrets and have variables of their own."
+    error_message = "extra_env_vars must not set SP_DATABASE_URL, SP_SESSION_KEY, SP_KIOSK_TOKEN or SP_SCOREBOARD_TOKEN — those are secrets and have variables of their own."
   }
 }
 
@@ -167,6 +167,14 @@ variable "session_key" {
 # kcl: kioskEnabled + vaultKeyKioskToken (kiosk-token)
 variable "kiosk_token" {
   description = "SP_KIOSK_TOKEN, in terraform.tfvars. Left out or empty, the kiosk does not exist — its routes are not registered, rather than registered and unlocked."
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+# kcl: scoreboardEnabled + vaultKeyScoreboardToken (scoreboard-token)
+variable "scoreboard_token" {
+  description = "SP_SCOREBOARD_TOKEN, in terraform.tfvars. Left out or empty, the Zählwerk's /api/players and /api/results do not exist — the routes are not registered, rather than registered and unlocked (docs/adr/0015)."
   type        = string
   sensitive   = true
   default     = ""

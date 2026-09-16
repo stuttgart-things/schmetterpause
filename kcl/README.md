@@ -139,7 +139,7 @@ initContainer gets only the database Secret and never sees the cookie secret.
 | Secret | Keys | Read by |
 |---|---|---|
 | `<name>-db` | `username`, `password`, `SP_DATABASE_URL` | initContainer **and** app |
-| `<name>-app` | `SP_SESSION_KEY`, optionally `SP_KIOSK_TOKEN` | the app only |
+| `<name>-app` | `SP_SESSION_KEY`, optionally `SP_KIOSK_TOKEN` and `SP_SCOREBOARD_TOKEN` | the app only |
 
 `<name>-db` is of type `kubernetes.io/basic-auth` so CloudNativePG can take it
 through `appSecretName` as the owner's credentials at bootstrap. The `username`
@@ -154,6 +154,7 @@ The Vault entry has three properties, and a fourth only with the kiosk:
 | `username` | DB owner and DSN | equal to the CNPG Application's `owner` |
 | `password` | DB password and DSN | alphanumeric, `openssl rand -hex 24` |
 | `kiosk-token` | `SP_KIOSK_TOKEN` | only with `kioskEnabled: true` |
+| `scoreboard-token` | `SP_SCOREBOARD_TOKEN` | only with `scoreboardEnabled: true` |
 
 The ESO template assembles `SP_DATABASE_URL` from these: the password comes
 from Vault, while host, port, database and `sslmode` come from this module.
@@ -217,6 +218,7 @@ The full list, with reasoning, is in `schema.k`. What one actually sets:
 | `config.gatewayName` / `…Namespace` | *(empty)* | Both required once routes are on |
 | `config.httpRedirectEnabled` | `true` | Route on port 80 redirecting to https |
 | `config.kioskEnabled` | `false` | Without `SP_KIOSK_TOKEN` there is no kiosk |
+| `config.scoreboardEnabled` | `false` | Without `SP_SCOREBOARD_TOKEN` there is no `/api` (ADR-0015) |
 | `config.secretsMode` | `external` | `existing` = render no ExternalSecrets; something else creates the Secrets |
 | `config.secretStoreName` | *(empty)* | e.g. `vault-cicd-test2` |
 | `config.vaultPath` | *(empty)* | A path, never a value |

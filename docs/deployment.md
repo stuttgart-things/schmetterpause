@@ -59,7 +59,7 @@ variant, because the Deployment reads them by name:
 
 | Secret | Keys | Read by |
 | --- | --- | --- |
-| `schmetterpause-app` | `SP_SESSION_KEY`, optionally `SP_KIOSK_TOKEN` | the application |
+| `schmetterpause-app` | `SP_SESSION_KEY`, optionally `SP_KIOSK_TOKEN` and `SP_SCOREBOARD_TOKEN` | the application |
 | `schmetterpause-db` | `username`, `password`, `SP_DATABASE_URL` | CloudNativePG and the application |
 
 `schmetterpause-db` is of type `kubernetes.io/basic-auth` and does double duty:
