@@ -143,6 +143,16 @@ func (s *Server) handleRecordMatch(w http.ResponseWriter, r *http.Request) {
 		TournamentRound: tournamentRound,
 		Sets:            sets,
 	})
+	if errors.Is(err, domain.ErrObserver) {
+		// Either side: the opponent picker hides observers, so this is
+		// somebody signed in as one, or a form older than the flag.
+		if tour != nil {
+			s.tournamentBack(w, r, tour.ID, false, "Ein Beobachter spielt nicht mit.")
+			return
+		}
+		s.rejectMatch(w, r, self, uuid.Nil, form, "Ein Beobachter spielt nicht mit.")
+		return
+	}
 	if err != nil {
 		s.log.ErrorContext(r.Context(), "recording the match failed", "error", err)
 		if tour != nil {
@@ -204,7 +214,7 @@ func (s *Server) rejectMatch(
 
 // opponentOptions lists everyone except the player themselves.
 func (s *Server) opponentOptions(ctx context.Context, self, selected uuid.UUID) ([]templates.OpponentOption, error) {
-	players, err := s.store.Players().List(ctx)
+	players, err := s.store.Players().Playing(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -451,7 +461,7 @@ func (s *Server) kioskPicker(r *http.Request) *templates.KioskPicker {
 		return nil
 	}
 
-	players, err := s.store.Players().List(r.Context())
+	players, err := s.store.Players().Playing(r.Context())
 	if err != nil {
 		s.log.ErrorContext(r.Context(), "rebuilding the kiosk picker failed", "error", err)
 		return nil

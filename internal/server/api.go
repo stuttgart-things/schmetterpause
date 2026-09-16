@@ -114,7 +114,9 @@ func (s *Server) handleAPIPlayers(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	players, err := s.store.Players().List(r.Context())
+	// Playing, not List: an observer is never one of the two sides, so the
+	// Zählwerk is not offered one (docs/adr/0022).
+	players, err := s.store.Players().Playing(r.Context())
 	if err != nil {
 		s.log.ErrorContext(r.Context(), "listing players for the api failed", "error", err)
 		s.apiRefuse(w, r, http.StatusInternalServerError, "the player list is not available")
@@ -225,6 +227,12 @@ func (s *Server) handleAPIResults(w http.ResponseWriter, r *http.Request) {
 		// its own question. docs/adr/0015 postpones it by name.
 		Sets: sets,
 	})
+	if errors.Is(err, domain.ErrObserver) {
+		// The list this application hands out has no observers in it, so a
+		// sender that names one holds a list from before the flag.
+		s.apiRefuse(w, r, http.StatusUnprocessableEntity, "an observer cannot be one of the two players")
+		return
+	}
 	if err != nil {
 		s.log.ErrorContext(r.Context(), "storing a scoreboard result failed", "error", err)
 		s.apiRefuse(w, r, http.StatusInternalServerError, "the result could not be stored")
