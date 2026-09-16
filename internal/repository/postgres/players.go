@@ -13,15 +13,22 @@ import (
 
 type playerRepo struct{ q queryer }
 
+// playerColumns and scanPlayer travel together: a flag added to one and not
+// the other is a column read into the wrong field, or silently not at all.
+const playerColumns = `id, display_name, ttr, created_at, is_admin, is_observer`
+
+func scanPlayer(row pgx.Row, p *domain.Player) error {
+	return row.Scan(&p.ID, &p.DisplayName, &p.TTR, &p.CreatedAt, &p.IsAdmin, &p.IsObserver)
+}
+
 func (r playerRepo) Create(ctx context.Context, displayName string, initialTTR int) (domain.Player, error) {
 	const q = `
 		insert into players (display_name, ttr)
 		values ($1, $2)
-		returning id, display_name, ttr, created_at, is_admin`
+		returning ` + playerColumns
 
 	var p domain.Player
-	err := r.q.QueryRow(ctx, q, displayName, initialTTR).
-		Scan(&p.ID, &p.DisplayName, &p.TTR, &p.CreatedAt, &p.IsAdmin)
+	err := scanPlayer(r.q.QueryRow(ctx, q, displayName, initialTTR), &p)
 	if err != nil {
 		if isUniqueViolation(err) {
 			return domain.Player{}, fmt.Errorf("create player %q: %w", displayName, domain.ErrConflict)
@@ -32,10 +39,10 @@ func (r playerRepo) Create(ctx context.Context, displayName string, initialTTR i
 }
 
 func (r playerRepo) ByID(ctx context.Context, id uuid.UUID) (domain.Player, error) {
-	const q = `select id, display_name, ttr, created_at, is_admin from players where id = $1`
+	const q = `select ` + playerColumns + ` from players where id = $1`
 
 	var p domain.Player
-	err := r.q.QueryRow(ctx, q, id).Scan(&p.ID, &p.DisplayName, &p.TTR, &p.CreatedAt, &p.IsAdmin)
+	err := scanPlayer(r.q.QueryRow(ctx, q, id), &p)
 	switch {
 	case errors.Is(err, pgx.ErrNoRows):
 		return domain.Player{}, fmt.Errorf("player %s: %w", id, domain.ErrNotFound)
@@ -46,11 +53,22 @@ func (r playerRepo) ByID(ctx context.Context, id uuid.UUID) (domain.Player, erro
 }
 
 func (r playerRepo) List(ctx context.Context) ([]domain.Player, error) {
-	const q = `
-		select id, display_name, ttr, created_at, is_admin
+	return r.list(ctx, `
+		select `+playerColumns+`
 		from players
-		order by ttr desc, lower(display_name)`
+		order by ttr desc, lower(display_name)`)
+}
 
+// Playing is List without the observers (docs/adr/0022).
+func (r playerRepo) Playing(ctx context.Context) ([]domain.Player, error) {
+	return r.list(ctx, `
+		select `+playerColumns+`
+		from players
+		where not is_observer
+		order by ttr desc, lower(display_name)`)
+}
+
+func (r playerRepo) list(ctx context.Context, q string) ([]domain.Player, error) {
 	rows, err := r.q.Query(ctx, q)
 	if err != nil {
 		return nil, fmt.Errorf("load player list: %w", err)
@@ -60,7 +78,7 @@ func (r playerRepo) List(ctx context.Context) ([]domain.Player, error) {
 	var players []domain.Player
 	for rows.Next() {
 		var p domain.Player
-		if err := rows.Scan(&p.ID, &p.DisplayName, &p.TTR, &p.CreatedAt, &p.IsAdmin); err != nil {
+		if err := scanPlayer(rows, &p); err != nil {
 			return nil, fmt.Errorf("read player: %w", err)
 		}
 		players = append(players, p)
@@ -71,7 +89,9 @@ func (r playerRepo) List(ctx context.Context) ([]domain.Player, error) {
 	return players, nil
 }
 
-// Records counts confirmed matches per player in one statement.
+// Records counts confirmed matches per player in one statement. Observers
+// are left out: somebody with no row in the ranking has no tally to show
+// (docs/adr/0022).
 //
 // The winner comes from the set scores rather than from the rating history:
 // a strong favourite who wins can move by zero points, so "did the rating go
@@ -99,6 +119,7 @@ func (r playerRepo) Records(ctx context.Context) ([]domain.PlayerRecord, error) 
 		       count(*) filter (where pp.won) as won
 		from players p
 		left join per_player pp on pp.player_id = p.id
+		where not p.is_observer
 		group by p.id, p.display_name, p.ttr, p.created_at
 		order by p.ttr desc, lower(btrim(p.display_name))`
 
@@ -132,12 +153,12 @@ func (r playerRepo) Records(ctx context.Context) ([]domain.PlayerRecord, error) 
 // into the join form.
 func (r playerRepo) ByDisplayName(ctx context.Context, name string) (domain.Player, error) {
 	const q = `
-		select id, display_name, ttr, created_at, is_admin
+		select ` + playerColumns + `
 		from players
 		where lower(btrim(display_name)) = lower(btrim($1))`
 
 	var p domain.Player
-	err := r.q.QueryRow(ctx, q, name).Scan(&p.ID, &p.DisplayName, &p.TTR, &p.CreatedAt, &p.IsAdmin)
+	err := scanPlayer(r.q.QueryRow(ctx, q, name), &p)
 	switch {
 	case errors.Is(err, pgx.ErrNoRows):
 		return domain.Player{}, fmt.Errorf("player %q: %w", name, domain.ErrNotFound)
@@ -154,7 +175,7 @@ func (r playerRepo) ByDisplayName(ctx context.Context, name string) (domain.Play
 // with each other.
 func (r playerRepo) Admins(ctx context.Context) ([]domain.Player, error) {
 	const q = `
-		select id, display_name, ttr, created_at, is_admin
+		select ` + playerColumns + `
 		from players
 		where is_admin
 		order by lower(btrim(display_name))`
@@ -168,7 +189,7 @@ func (r playerRepo) Admins(ctx context.Context) ([]domain.Player, error) {
 	var admins []domain.Player
 	for rows.Next() {
 		var p domain.Player
-		if err := rows.Scan(&p.ID, &p.DisplayName, &p.TTR, &p.CreatedAt, &p.IsAdmin); err != nil {
+		if err := scanPlayer(rows, &p); err != nil {
 			return nil, fmt.Errorf("read admin: %w", err)
 		}
 		admins = append(admins, p)
@@ -189,6 +210,35 @@ func (r playerRepo) SetAdmin(ctx context.Context, id uuid.UUID, isAdmin bool) er
 		return fmt.Errorf("player %s: %w", id, domain.ErrNotFound)
 	}
 	return nil
+}
+
+// SetObserver marks somebody as not playing, or as playing again.
+//
+// Marking is one statement that also asks whether they ever took part — as a
+// side of any match, whatever its status, or in any tournament field — so a
+// result entered a moment earlier cannot slip between a check and the update.
+// A history is what refuses, as domain.ErrInUse: flagging a player who has
+// one would take their matches out of other people's ranking (docs/adr/0022).
+// Unmarking is always allowed.
+func (r playerRepo) SetObserver(ctx context.Context, id uuid.UUID, isObserver bool) error {
+	const q = `
+		update players set is_observer = $2
+		where id = $1
+		  and (not $2
+		       or (not exists (select 1 from matches where home_id = $1 or away_id = $1)
+		           and not exists (select 1 from tournament_players where player_id = $1)))`
+
+	tag, err := r.q.Exec(ctx, q, id, isObserver)
+	if err != nil {
+		return fmt.Errorf("set observer flag of player %s: %w", id, err)
+	}
+	if tag.RowsAffected() == 1 {
+		return nil
+	}
+	if _, err := r.ByID(ctx, id); err != nil {
+		return err
+	}
+	return fmt.Errorf("player %s has played: %w", id, domain.ErrInUse)
 }
 
 // Delete removes a player the schema still lets go of. The cascades in the

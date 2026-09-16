@@ -29,6 +29,12 @@ var ErrConflict = errors.New("already exists")
 // rather than apologise for it.
 var ErrInUse = errors.New("still referenced")
 
+// ErrObserver reports a player named where somebody has to play — as one side
+// of a match or in a tournament field — who is an observer (docs/adr/0022).
+// The repositories refuse at the write, so a picker that forgot to hide
+// somebody cannot put them into a result; the handler explains it.
+var ErrObserver = errors.New("observers do not play")
+
 // DefaultTTR is the starting rating for newly created players.
 //
 // 1000 stays, decided on the first week of real results (issue #17). Across 54
@@ -88,6 +94,12 @@ type Player struct {
 	// A property of the person rather than of a browser, which is what makes
 	// it revocable and what makes a log line name somebody.
 	IsAdmin bool
+	// IsObserver marks somebody who does not play: out of the ranking, out of
+	// every picker that chooses a player, refused as one side of a match or
+	// in a tournament field (docs/adr/0022). Independent of IsAdmin — the
+	// account this exists for holds both. Only ever set on somebody with no
+	// match and no tournament, so no history disappears with it.
+	IsObserver bool
 }
 
 // PlayerRecord is a player with their confirmed match tally. Only confirmed

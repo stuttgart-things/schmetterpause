@@ -41,10 +41,15 @@ type PlayerRepository interface {
 	// List returns all players by descending rating — the order the ranking
 	// in AP6 needs.
 	List(ctx context.Context) ([]domain.Player, error)
+	// Playing is List without the observers — everybody who may be chosen as
+	// a player (docs/adr/0022). List stays everybody: signing in, naming the
+	// people on an old result and the admin page all need the observers too.
+	Playing(ctx context.Context) ([]domain.Player, error)
 	// Records returns every player with their confirmed match tally, in the
 	// same order as List. The counting is the database's job: a Go loop over
 	// every match to answer "how many has she won" is the shape this
 	// interface exists to avoid.
+	// Observers have no record: they are not in the ranking.
 	Records(ctx context.Context) ([]domain.PlayerRecord, error)
 	Count(ctx context.Context) (int, error)
 	UpdateTTR(ctx context.Context, id uuid.UUID, ttr int) error
@@ -58,6 +63,11 @@ type PlayerRepository interface {
 	// property of the person rather than of a browser — which is what makes
 	// it revocable and lets a log line name somebody (docs/adr/0008).
 	SetAdmin(ctx context.Context, id uuid.UUID, isAdmin bool) error
+	// SetObserver marks somebody as not playing, or as playing again
+	// (docs/adr/0022). Marking refuses with domain.ErrInUse for anybody who
+	// was ever a side of a match or in a tournament field; unmarking always
+	// works.
+	SetObserver(ctx context.Context, id uuid.UUID, isObserver bool) error
 	// Delete removes a player nothing points at, for the joke entry and the
 	// duplicate created before anybody played (issue #105).
 	//
@@ -147,7 +157,8 @@ type KioskGrantRepository interface {
 // MatchRepository manages encounters along with their sets.
 type MatchRepository interface {
 	// Create stores match and sets together and returns the persisted state,
-	// including the assigned ID.
+	// including the assigned ID. An observer on either side is refused with
+	// domain.ErrObserver (docs/adr/0022).
 	Create(ctx context.Context, m domain.Match) (domain.Match, error)
 	ByID(ctx context.Context, id uuid.UUID) (domain.Match, error)
 	// PendingFor returns the matches waiting on this player: the pending ones
@@ -201,6 +212,9 @@ type TournamentRepository interface {
 	// over it, so the pairings are recomputed from this rather than stored.
 	// A caller who wants a randomised draw shuffles before calling — which
 	// is the same contract tournament.Draw keeps, and for the same reason.
+	//
+	// An observer in the field is refused with domain.ErrObserver before
+	// anything is written (docs/adr/0022). Replace does the same.
 	Create(ctx context.Context, t domain.Tournament) (domain.Tournament, error)
 	// ByID returns one tournament with its field. An unknown id is
 	// domain.ErrNotFound.

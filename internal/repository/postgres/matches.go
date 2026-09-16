@@ -23,7 +23,9 @@ func (r matchRepo) Create(ctx context.Context, m domain.Match) (domain.Match, er
 		insert into matches (home_id, away_id, best_of, points_to_win, status,
 		                     reported_by, played_at, entered_via, tournament_id,
 		                     tournament_round)
-		values ($1, $2, $3, $4, $5, $6, coalesce($7, now()), $8, $9, $10)
+		select $1, $2, $3, $4, $5, $6, coalesce($7::timestamptz, now()), $8, $9, $10
+		where not exists (
+			select 1 from players where id in ($1, $2) and is_observer)
 		returning ` + matchColumns
 
 	var playedAt *time.Time
@@ -45,7 +47,14 @@ func (r matchRepo) Create(ctx context.Context, m domain.Match) (domain.Match, er
 	created, err := scanMatch(r.q.QueryRow(ctx, insertMatch,
 		m.HomeID, m.AwayID, m.BestOf, m.PointsToWin, string(status), m.ReportedBy,
 		playedAt, string(via), m.TournamentID, m.TournamentRound))
-	if err != nil {
+	switch {
+	case errors.Is(err, pgx.ErrNoRows):
+		// The guard above, not a missing row: an observer does not play
+		// (docs/adr/0022), and asking inside the insert is what keeps a flag
+		// set a moment earlier from slipping past a separate check.
+		return domain.Match{}, fmt.Errorf("create match of %s and %s: %w",
+			m.HomeID, m.AwayID, domain.ErrObserver)
+	case err != nil:
 		return domain.Match{}, fmt.Errorf("create match: %w", err)
 	}
 
