@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.11.0](https://github.com/stuttgart-things/schmetterpause/compare/v0.10.0...v0.11.0) (2026-09-16)
+
+
+### Features
+
+* observers — an account that administers and never plays ([#271](https://github.com/stuttgart-things/schmetterpause/issues/271)) ([#274](https://github.com/stuttgart-things/schmetterpause/issues/274)) ([bc8bc5d](https://github.com/stuttgart-things/schmetterpause/commit/bc8bc5d0da35feabfe13c6152e03434b2536f292))
+
 ## [0.10.0](https://github.com/stuttgart-things/schmetterpause/compare/v0.9.0...v0.10.0) (2026-09-16)
 
 
