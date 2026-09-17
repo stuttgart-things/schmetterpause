@@ -48,6 +48,39 @@ Repo auf diesen Cluster kommt.** Dafür gibt es zwei Wege:
 | Voraussetzung | ein Konto im Azure-Tenant | Netzzugang ins Lab |
 | Betriebsmodell | ein zweites | dasselbe wie auf dem Übergang |
 
+Beide Wege beginnen am selben Punkt — die Plattform-Seite baut den Cluster
+per Terraform — und enden im selben Cluster. Sie unterscheiden sich darin,
+*wer* Argo CD hineinbringt und *womit* ein Mensch hineinkommt:
+
+```mermaid
+flowchart LR
+    tf["Plattform: Terraform baut<br/>AKS auf Azure Local"]
+    ghcr["ghcr.io<br/>Image + kustomize-Artefakt<br/>(ci.yml, unverändert)"]
+
+    subgraph w1["Weg 1 — Azure-native"]
+        direction TB
+        ext["Argo CD als Arc-Extension<br/>(Public Preview)"]
+        proxy["Mensch: az connectedk8s proxy<br/>Entra-Konto, Azure RBAC"]
+    end
+
+    subgraph w2["Weg 2 — Kubeconfig (gewählt)"]
+        direction TB
+        kc["Kubeconfig vom Plattform-Team<br/>server = Control-Plane-IP im Lab"]
+        argo["Argo CD selbst betrieben,<br/>wie auf homerun2-test1"]
+        kc --> argo
+    end
+
+    cluster["AKS-Cluster<br/>Gateway · CNPG · Secrets · die App"]
+
+    tf --> w1
+    tf --> w2
+    ghcr -. "pull" .-> ext
+    ghcr -. "pull" .-> argo
+    ext --> cluster
+    argo --> cluster
+    proxy --> cluster
+```
+
 ## Entscheidung
 
 1. **Azure Local ist die Zielumgebung, `homerun2-test1` der Übergang.**
