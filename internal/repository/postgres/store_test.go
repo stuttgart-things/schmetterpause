@@ -798,3 +798,77 @@ func TestUnsettledIsEverythingWaitingOldestFirst(t *testing.T) {
 		t.Errorf("the sets did not come along: %+v", got[0].Sets)
 	}
 }
+
+// TestUnsettledSummaryGroupsByStatusAndOrigin pins what /metrics is built
+// from (issue #251): one row per status and origin that has anything waiting,
+// with its count and its oldest played_at, and nothing confirmed.
+func TestUnsettledSummaryGroupsByStatusAndOrigin(t *testing.T) {
+	store, ctx := newStore(t)
+	matches := store.Matches()
+
+	anna := mustPlayer(ctx, t, store, "Anna", domain.DefaultTTR)
+	bodo := mustPlayer(ctx, t, store, "Bodo", domain.DefaultTTR)
+
+	now := time.Now().UTC().Truncate(time.Second)
+	create := func(via domain.EnteredVia, playedAt time.Time) domain.Match {
+		t.Helper()
+		created, err := matches.Create(ctx, domain.Match{
+			HomeID: anna.ID, AwayID: bodo.ID,
+			BestOf: 3, PointsToWin: 11,
+			Status: domain.MatchPending, ReportedBy: anna.ID,
+			PlayedAt: playedAt, EnteredVia: via,
+			Sets: []domain.MatchSet{{SetNo: 1, HomePoints: 11, AwayPoints: 9}},
+		})
+		if err != nil {
+			t.Fatalf("Create(): %v", err)
+		}
+		return created
+	}
+
+	create(domain.EnteredViaScoreboard, now.Add(-1*time.Hour))
+	create(domain.EnteredViaScoreboard, now.Add(-5*time.Hour))
+	create(domain.EnteredViaPlayer, now.Add(-2*time.Hour))
+	contested := create(domain.EnteredViaPlayer, now.Add(-9*time.Hour))
+	if err := matches.SetStatus(ctx, contested.ID, domain.MatchDisputed, nil); err != nil {
+		t.Fatalf("SetStatus(disputed): %v", err)
+	}
+	settled := create(domain.EnteredViaPlayer, now.Add(-20*time.Hour))
+	if err := matches.SetStatus(ctx, settled.ID, domain.MatchConfirmed, &now); err != nil {
+		t.Fatalf("SetStatus(confirmed): %v", err)
+	}
+
+	groups, err := matches.UnsettledSummary(ctx)
+	if err != nil {
+		t.Fatalf("UnsettledSummary(): %v", err)
+	}
+
+	type key struct {
+		status domain.MatchStatus
+		via    domain.EnteredVia
+	}
+	got := map[key]domain.UnsettledGroup{}
+	for _, g := range groups {
+		got[key{g.Status, g.EnteredVia}] = g
+	}
+	want := map[key]struct {
+		count  int
+		oldest time.Time
+	}{
+		{domain.MatchPending, domain.EnteredViaScoreboard}: {2, now.Add(-5 * time.Hour)},
+		{domain.MatchPending, domain.EnteredViaPlayer}:     {1, now.Add(-2 * time.Hour)},
+		{domain.MatchDisputed, domain.EnteredViaPlayer}:    {1, now.Add(-9 * time.Hour)},
+	}
+	if len(got) != len(want) {
+		t.Fatalf("UnsettledSummary() = %+v, want %d groups", groups, len(want))
+	}
+	for k, w := range want {
+		g, ok := got[k]
+		if !ok {
+			t.Errorf("no group for %v", k)
+			continue
+		}
+		if g.Count != w.count || !g.Oldest.Equal(w.oldest) {
+			t.Errorf("%v = %d since %v, want %d since %v", k, g.Count, g.Oldest, w.count, w.oldest)
+		}
+	}
+}

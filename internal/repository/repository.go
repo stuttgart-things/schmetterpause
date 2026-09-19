@@ -180,6 +180,10 @@ type MatchRepository interface {
 	// each player: a result the loop of enter, confirm, rate has stopped on
 	// is invisible to everybody who did not play it (issue #251).
 	Unsettled(ctx context.Context) ([]domain.Match, error)
+	// UnsettledSummary is the same set counted rather than fetched: one
+	// group per status and origin that has anything waiting, with the oldest
+	// played_at in it. Groups with nothing waiting are absent.
+	UnsettledSummary(ctx context.Context) ([]domain.UnsettledGroup, error)
 	// RecentFor returns a player's most recent matches.
 	RecentFor(ctx context.Context, playerID uuid.UUID, limit int) ([]domain.Match, error)
 	// Recent returns the most recent matches of everybody, newest first, at

@@ -16,6 +16,7 @@ import (
 
 	"github.com/stuttgart-things/schmetterpause/internal/auth"
 	"github.com/stuttgart-things/schmetterpause/internal/config"
+	"github.com/stuttgart-things/schmetterpause/internal/domain"
 	"github.com/stuttgart-things/schmetterpause/internal/metrics"
 	"github.com/stuttgart-things/schmetterpause/internal/ratelimit"
 	"github.com/stuttgart-things/schmetterpause/internal/repository"
@@ -66,10 +67,27 @@ func New(cfg config.Config, store repository.Store, log *slog.Logger, a auth.Ses
 		kioskByAddress:  ratelimit.New(kioskPolicy),
 	}
 	if cfg.MetricsAddr != "" {
-		s.metrics = metrics.New(build.Version)
+		s.metrics = metrics.New(build.Version,
+			metrics.WithUnsettled(s.unsettledSummary, unsettledQueryTimeout))
 	}
 	s.handler = s.routes()
 	return s
+}
+
+// unsettledQueryTimeout bounds the query behind the unsettled-results metric.
+// Far below any scrape timeout, so a slow database costs this one series and
+// not the whole scrape.
+const unsettledQueryTimeout = 2 * time.Second
+
+// unsettledSummary is the metric's view of the store, with the failure logged
+// here: the collector can only say that it failed, not why.
+func (s *Server) unsettledSummary(ctx context.Context) ([]domain.UnsettledGroup, error) {
+	groups, err := s.store.Matches().UnsettledSummary(ctx)
+	if err != nil {
+		s.log.ErrorContext(ctx, "counting unsettled matches for /metrics failed", "error", err)
+		return nil, fmt.Errorf("count unsettled matches: %w", err)
+	}
+	return groups, nil
 }
 
 // Handler returns the fully wired HTTP handler.

@@ -33,8 +33,9 @@ type Metrics struct {
 	duration *prometheus.HistogramVec
 }
 
-// New builds the registry for a binary of the given version.
-func New(version string) *Metrics {
+// New builds the registry for a binary of the given version, with whatever
+// the options add to it.
+func New(version string, opts ...Option) *Metrics {
 	registry := prometheus.NewRegistry()
 
 	// Which build is answering, as a metric: the same fact /version gives a
@@ -61,6 +62,9 @@ func New(version string) *Metrics {
 		collectors.NewProcessCollector(collectors.ProcessCollectorOpts{}),
 		build, requests, duration,
 	)
+	for _, opt := range opts {
+		opt(registry)
+	}
 
 	// /metrics and nothing else, so the second port is not a second way into
 	// anything the first one serves.

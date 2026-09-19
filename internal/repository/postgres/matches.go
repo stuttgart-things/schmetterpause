@@ -159,6 +159,35 @@ func (r matchRepo) Unsettled(ctx context.Context) ([]domain.Match, error) {
 	return r.list(ctx, q)
 }
 
+func (r matchRepo) UnsettledSummary(ctx context.Context) ([]domain.UnsettledGroup, error) {
+	// Same filter as Unsettled, grouped. Runs on every scrape of /metrics, so
+	// it returns at most six rows and never touches match_sets.
+	const q = `
+		select status, entered_via, count(*), min(played_at)
+		from matches
+		where status in ('pending', 'disputed')
+		group by status, entered_via`
+
+	rows, err := r.q.Query(ctx, q)
+	if err != nil {
+		return nil, fmt.Errorf("summarise unsettled matches: %w", err)
+	}
+	defer rows.Close()
+
+	var out []domain.UnsettledGroup
+	for rows.Next() {
+		var g domain.UnsettledGroup
+		if err := rows.Scan(&g.Status, &g.EnteredVia, &g.Count, &g.Oldest); err != nil {
+			return nil, fmt.Errorf("scan unsettled summary: %w", err)
+		}
+		out = append(out, g)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("read unsettled summary: %w", err)
+	}
+	return out, nil
+}
+
 func (r matchRepo) RecentFor(ctx context.Context, playerID uuid.UUID, limit int) ([]domain.Match, error) {
 	const q = `
 		select ` + matchColumns + `
