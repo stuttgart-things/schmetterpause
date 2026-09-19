@@ -128,6 +128,12 @@ func (s *Server) adminView(ctx context.Context, note, refusal string) (templates
 
 	view.Kiosks = kioskGrantViews(grants, names)
 
+	unsettled, err := s.store.Matches().Unsettled(ctx)
+	if err != nil {
+		return templates.AdminView{}, fmt.Errorf("load the unsettled matches: %w", err)
+	}
+	view.Unsettled = adminUnsettledRows(unsettled, names, time.Now())
+
 	matches, err := s.store.Matches().Recent(ctx, adminRecentMatches)
 	if err != nil {
 		return templates.AdminView{}, fmt.Errorf("load the recent matches: %w", err)
@@ -287,6 +293,67 @@ func (s *Server) handleAdminRemovePlayer(w http.ResponseWriter, r *http.Request)
 
 	s.renderAdmin(w, r, "Entfernt: "+player.DisplayName+". Mit ihm sind seine "+
 		"Anmeldung, seine PIN und sein Wiederherstellungscode weg.")
+}
+
+// adminUnsettledRows puts the results still waiting on somebody into the
+// words the page uses, in the order the store returned them: oldest first.
+func adminUnsettledRows(
+	matches []domain.Match, names map[uuid.UUID]string, now time.Time,
+) []templates.AdminUnsettledRow {
+	rows := make([]templates.AdminUnsettledRow, 0, len(matches))
+	for _, m := range matches {
+		row := templates.AdminUnsettledRow{
+			// Date and time, unlike the match list: two results of the same
+			// pair on one day are the ordinary case at a kiosk evening, and
+			// the operator is telling them apart for somebody else.
+			PlayedAt:  m.PlayedAt.Local().Format("02.01.2006 15:04"),
+			HomeName:  names[m.HomeID],
+			AwayName:  names[m.AwayID],
+			Disputed:  m.Status == domain.MatchDisputed,
+			WaitingOn: waitingOn(m, names),
+			Via:       enteredViaLabel(m.EnteredVia),
+		}
+		for _, set := range m.Sets {
+			if set.HomePoints > set.AwayPoints {
+				row.HomeSets++
+			} else {
+				row.AwaySets++
+			}
+		}
+		row.Age, row.Stale = waitedSince(now, m.PlayedAt)
+		rows = append(rows, row)
+	}
+	return rows
+}
+
+// waitingOn is who can move an unsettled result.
+//
+// A pending one waits for the side that did not report it. When the reporter
+// is neither side — the Zählwerk's operator, who may not play (docs/adr/0015)
+// — either player may confirm, and so may either one correct a contested
+// result.
+func waitingOn(m domain.Match, names map[uuid.UUID]string) string {
+	if m.Status == domain.MatchPending {
+		switch m.ReportedBy {
+		case m.HomeID:
+			return names[m.AwayID]
+		case m.AwayID:
+			return names[m.HomeID]
+		}
+	}
+	return "beide"
+}
+
+// enteredViaLabel names where a result came from, in the page's words.
+func enteredViaLabel(v domain.EnteredVia) string {
+	switch v {
+	case domain.EnteredViaKiosk:
+		return "Kiosk"
+	case domain.EnteredViaScoreboard:
+		return "Zählwerk"
+	default:
+		return "Spieler"
+	}
 }
 
 // adminMatchRows keeps the settled results and puts them in the words the
