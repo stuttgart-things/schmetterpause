@@ -200,13 +200,17 @@ that has never run over a real release is a measurement, not a verdict.
 | --- | --- | --- |
 | `v0.9.0` | _none_ — the policy was applied on 2026-09-15 while that pod was already running, so it was never admitted through the check | 2026-09-15 |
 | `v0.10.0` | **pass** — `schmetterpause-verify-image-signature`, on the pod and on the Deployment | 2026-09-16 |
+| `v0.11.0` | **pass** — `schmetterpause-verify-image-signature`, on the pod and on the Deployment | 2026-09-16 |
 
 **`v0.10.0` is the first release this policy has ever actually checked**, and it
 is the first line of the three the flip waits on. `v0.9.0` is listed as what it
 is — a release that ran under the policy without ever passing through it, which
 is not evidence of anything and should not be counted as a clean line.
 
-So: one of three, not two of three.
+`v0.11.0` is the second: its pod was admitted at 16:01Z on 2026-09-16 and both
+reports read `pass`, read off the cluster on 2026-09-19.
+
+So: two of three. The next release that passes is the third.
 
 Fill the rest in as the releases come. When the third line is clean, change three
 lines in the policy and say so here:
