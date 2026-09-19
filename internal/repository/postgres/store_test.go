@@ -738,3 +738,63 @@ func TestRecentAndForMatches(t *testing.T) {
 		t.Errorf("ForMatches(nil) = %v, %v; want nil, nil", got, err)
 	}
 }
+
+// TestUnsettledIsEverythingWaitingOldestFirst pins the operator's list
+// (issue #251): pending and contested from everybody, nothing confirmed, and
+// the oldest at the top, because it is read to find what is stuck.
+func TestUnsettledIsEverythingWaitingOldestFirst(t *testing.T) {
+	store, ctx := newStore(t)
+	matches := store.Matches()
+
+	anna := mustPlayer(ctx, t, store, "Anna", domain.DefaultTTR)
+	bodo := mustPlayer(ctx, t, store, "Bodo", domain.DefaultTTR)
+
+	now := time.Now()
+	create := func(status domain.MatchStatus, playedAt time.Time) domain.Match {
+		t.Helper()
+
+		m := domain.Match{
+			HomeID: anna.ID, AwayID: bodo.ID,
+			BestOf: 3, PointsToWin: 11,
+			Status: domain.MatchPending, ReportedBy: anna.ID,
+			PlayedAt: playedAt,
+			Sets:     []domain.MatchSet{{SetNo: 1, HomePoints: 11, AwayPoints: 9}},
+		}
+		created, err := matches.Create(ctx, m)
+		if err != nil {
+			t.Fatalf("Create(): %v", err)
+		}
+		if status != domain.MatchPending {
+			var at *time.Time
+			if status == domain.MatchConfirmed {
+				at = &now
+			}
+			if err := matches.SetStatus(ctx, created.ID, status, at); err != nil {
+				t.Fatalf("SetStatus(%s): %v", status, err)
+			}
+		}
+		return created
+	}
+
+	newest := create(domain.MatchPending, now.Add(-1*time.Hour))
+	create(domain.MatchConfirmed, now.Add(-2*time.Hour))
+	contested := create(domain.MatchDisputed, now.Add(-3*time.Hour))
+	oldest := create(domain.MatchPending, now.Add(-4*time.Hour))
+
+	got, err := matches.Unsettled(ctx)
+	if err != nil {
+		t.Fatalf("Unsettled(): %v", err)
+	}
+	want := []uuid.UUID{oldest.ID, contested.ID, newest.ID}
+	if len(got) != len(want) {
+		t.Fatalf("Unsettled() = %d matches, want %d", len(got), len(want))
+	}
+	for i := range want {
+		if got[i].ID != want[i] {
+			t.Errorf("Unsettled()[%d] = %s, want %s", i, got[i].ID, want[i])
+		}
+	}
+	if len(got[0].Sets) != 1 {
+		t.Errorf("the sets did not come along: %+v", got[0].Sets)
+	}
+}

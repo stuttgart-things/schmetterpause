@@ -707,6 +707,24 @@ func (m *memMatches) WaitingOnOpponentFor(_ context.Context, playerID uuid.UUID)
 	return out, nil
 }
 
+// Unsettled mirrors the Postgres query: pending and contested, from
+// everybody, oldest first.
+func (m *memMatches) Unsettled(_ context.Context) ([]domain.Match, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	var out []domain.Match
+	for _, row := range m.rows {
+		if row.Status == domain.MatchPending || row.Status == domain.MatchDisputed {
+			out = append(out, row)
+		}
+	}
+	slices.SortFunc(out, func(a, b domain.Match) int {
+		return a.PlayedAt.Compare(b.PlayedAt)
+	})
+	return out, nil
+}
+
 // RecentFor mirrors the Postgres query: every match the player is in, newest
 // first, whatever its status.
 func (m *memMatches) RecentFor(_ context.Context, playerID uuid.UUID, limit int) ([]domain.Match, error) {
