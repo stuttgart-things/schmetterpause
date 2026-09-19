@@ -318,6 +318,18 @@ const (
 	EnteredViaScoreboard EnteredVia = "scoreboard"
 )
 
+// UnsettledGroup is how many results of one status and one origin are
+// waiting, and since when. It is what the operator's metric is made of
+// (issue #251): a count and an age per group, rather than the matches behind
+// them, because a scrape every thirty seconds has no use for their sets.
+type UnsettledGroup struct {
+	Status     MatchStatus
+	EnteredVia EnteredVia
+	Count      int
+	// Oldest is when the longest-waiting result in the group was played.
+	Oldest time.Time
+}
+
 // Match is a singles encounter between two players. Doubles do not count
 // towards TTR and would need a rating of their own if they ever arrive.
 type Match struct {

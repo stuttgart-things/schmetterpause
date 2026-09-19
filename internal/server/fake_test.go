@@ -725,6 +725,43 @@ func (m *memMatches) Unsettled(_ context.Context) ([]domain.Match, error) {
 	return out, nil
 }
 
+// UnsettledSummary mirrors the Postgres query: the unsettled rows, grouped
+// by status and origin, each with its oldest played_at.
+func (m *memMatches) UnsettledSummary(ctx context.Context) ([]domain.UnsettledGroup, error) {
+	rows, err := m.Unsettled(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	type key struct {
+		status domain.MatchStatus
+		via    domain.EnteredVia
+	}
+	groups := map[key]*domain.UnsettledGroup{}
+	var order []key
+	for _, row := range rows {
+		via := row.EnteredVia
+		if via == "" {
+			via = domain.EnteredViaPlayer
+		}
+		k := key{row.Status, via}
+		g, ok := groups[k]
+		if !ok {
+			// Rows arrive oldest first, so the first one seen is the oldest.
+			g = &domain.UnsettledGroup{Status: row.Status, EnteredVia: via, Oldest: row.PlayedAt}
+			groups[k] = g
+			order = append(order, k)
+		}
+		g.Count++
+	}
+
+	out := make([]domain.UnsettledGroup, 0, len(order))
+	for _, k := range order {
+		out = append(out, *groups[k])
+	}
+	return out, nil
+}
+
 // RecentFor mirrors the Postgres query: every match the player is in, newest
 // first, whatever its status.
 func (m *memMatches) RecentFor(_ context.Context, playerID uuid.UUID, limit int) ([]domain.Match, error) {
