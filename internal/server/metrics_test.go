@@ -69,3 +69,37 @@ func TestRequestsAreCountedUnderTheirPattern(t *testing.T) {
 		t.Error("an unknown path became a label")
 	}
 }
+
+// The unsettled-results metric reads the store the page reads (issue #251):
+// a result recorded and not yet confirmed shows up on the next scrape, under
+// the origin it came from.
+func TestAnUnconfirmedResultIsCountedOnTheNextScrape(t *testing.T) {
+	store := newMemStore()
+	cfg := testConfig()
+	cfg.SessionKey = testSessionKey
+	cfg.MetricsAddr = ":9090"
+	srv := server.New(cfg, store, slog.New(slog.DiscardHandler),
+		auth.NewCookieAuthenticator(store.Identities(), testSessionKey, false),
+		server.Build{Version: "v9.9.9"})
+	h := srv.Handler()
+
+	anna := sessionCookie(t, join(t, h, "Anna"))
+	join(t, h, "Bodo")
+	if rec := recordMatch(t, h, anna, opponentID(t, store, "Bodo"), 3, 11, "11:9", "12:10"); rec.Code != http.StatusOK {
+		t.Fatalf("recording: status %d: %s", rec.Code, rec.Body.String())
+	}
+
+	rec := httptest.NewRecorder()
+	srv.MetricsHandler().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/metrics", nil))
+	body := rec.Body.String()
+
+	for _, want := range []string{
+		`schmetterpause_matches_open{entered_via="player",status="pending"} 1`,
+		`schmetterpause_matches_open{entered_via="scoreboard",status="pending"} 0`,
+		`schmetterpause_matches_open_query_up 1`,
+	} {
+		if !strings.Contains(body, want) {
+			t.Errorf("the metrics lack %s: %s", want, body)
+		}
+	}
+}
