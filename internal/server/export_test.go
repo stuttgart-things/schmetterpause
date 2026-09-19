@@ -5,6 +5,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+
+	"github.com/stuttgart-things/schmetterpause/internal/domain"
 )
 
 // WaitInWords exposes the wording helper to the package's external tests.
@@ -31,3 +33,8 @@ const StaleAfter = staleAfter
 
 // MaxTournamentPlayers is the cap the form and the check share.
 const MaxTournamentPlayers = maxTournamentPlayers
+
+// WaitingOn is exposed because its third case — a reporter who is neither
+// side — only arrives through the Zählwerk's token-gated API, and building
+// that round trip to check one word would bury the case it is about.
+func WaitingOn(m domain.Match, names map[uuid.UUID]string) string { return waitingOn(m, names) }

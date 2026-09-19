@@ -175,6 +175,11 @@ type MatchRepository interface {
 	// person who typed a result is otherwise the only participant never told
 	// that it did not land. See issue #159.
 	WaitingOnOpponentFor(ctx context.Context, playerID uuid.UUID) ([]domain.Match, error)
+	// Unsettled returns every pending and contested match, oldest first. It
+	// is the operator's view of what PendingFor and WaitingOnOpponentFor show
+	// each player: a result the loop of enter, confirm, rate has stopped on
+	// is invisible to everybody who did not play it (issue #251).
+	Unsettled(ctx context.Context) ([]domain.Match, error)
 	// RecentFor returns a player's most recent matches.
 	RecentFor(ctx context.Context, playerID uuid.UUID, limit int) ([]domain.Match, error)
 	// Recent returns the most recent matches of everybody, newest first, at

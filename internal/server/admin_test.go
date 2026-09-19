@@ -515,3 +515,95 @@ func TestRemovingAPlayerIsBehindTheFlag(t *testing.T) {
 		t.Errorf("the admin gets %d, want 200", got)
 	}
 }
+
+// TestTheAdminPageListsWhatIsStillOpen is issue #251's first half: a result
+// the loop of enter, confirm, rate has stopped on was visible only to the two
+// who played it. The operator sees it now, with whom to ask — and no button,
+// because moving it is the players' (docs/adr/0008).
+func TestTheAdminPageListsWhatIsStillOpen(t *testing.T) {
+	h, store, anna, bodo := twoPlayersAndAnAdmin(t)
+
+	section := func() string {
+		t.Helper()
+		page := getWith(t, h, "/admin", anna).Body.String()
+		start := strings.Index(page, "Offene Ergebnisse")
+		end := strings.Index(page, "Gewertete Ergebnisse")
+		if start < 0 || end < start {
+			t.Fatalf("the page has no open-results section before the counted one: %s", page)
+		}
+		return page[start:end]
+	}
+
+	if got := section(); !strings.Contains(got, "Nichts offen.") {
+		t.Errorf("an empty list does not say so: %s", got)
+	}
+
+	rec := recordMatch(t, h, anna, opponentID(t, store, "Bodo"), 3, 11, "11:9", "12:10")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("recording: status %d: %s", rec.Code, rec.Body.String())
+	}
+	stored := store.matches.all()
+	id := stored[len(stored)-1].ID.String()
+
+	// Anna reported it, so it waits on Bodo.
+	open := section()
+	for _, want := range []string{"Anna – Bodo", "2:0", "offen", "<td>Bodo</td>", "Spieler"} {
+		if !strings.Contains(open, want) {
+			t.Errorf("the pending row does not show %q: %s", want, open)
+		}
+	}
+	if strings.Contains(open, "<form") {
+		t.Errorf("the list offers an action, and moving a result is the players': %s", open)
+	}
+
+	// Contested, either of them can put it right.
+	if rec := post(t, h, "/matches/"+id+"/dispute", bodo); rec.Code != http.StatusOK {
+		t.Fatalf("disputing: status %d: %s", rec.Code, rec.Body.String())
+	}
+	disputed := section()
+	for _, want := range []string{"strittig", "<td>beide</td>"} {
+		if !strings.Contains(disputed, want) {
+			t.Errorf("the contested row does not show %q: %s", want, disputed)
+		}
+	}
+}
+
+// TestAnOpenResultLeavesTheListOnceConfirmed: the list is what waits, not a
+// history — /matches is the history.
+func TestAnOpenResultLeavesTheListOnceConfirmed(t *testing.T) {
+	h, store, anna, bodo := twoPlayersAndAnAdmin(t)
+
+	countedMatch(t, h, store, anna, bodo)
+
+	page := getWith(t, h, "/admin", anna).Body.String()
+	if !strings.Contains(page, "Nichts offen.") {
+		t.Errorf("a confirmed result is still listed as open: %s", page)
+	}
+}
+
+// TestAResultFromTheZaehlwerkWaitsOnBoth: the Zählwerk reports under an
+// operator who may not play (docs/adr/0015), so neither side is the reporter
+// and either may confirm. Naming one of them would send the operator to ask
+// the wrong person half the time.
+func TestAResultFromTheZaehlwerkWaitsOnBoth(t *testing.T) {
+	home, away, operator := uuid.New(), uuid.New(), uuid.New()
+	names := map[uuid.UUID]string{home: "Anna", away: "Bodo", operator: "Timo"}
+
+	cases := map[string]struct {
+		m    domain.Match
+		want string
+	}{
+		"reported by home": {domain.Match{HomeID: home, AwayID: away, ReportedBy: home, Status: domain.MatchPending}, "Bodo"},
+		"reported by away": {domain.Match{HomeID: home, AwayID: away, ReportedBy: away, Status: domain.MatchPending}, "Anna"},
+		"reported by an operator": {domain.Match{
+			HomeID: home, AwayID: away, ReportedBy: operator,
+			Status: domain.MatchPending, EnteredVia: domain.EnteredViaScoreboard,
+		}, "beide"},
+		"contested": {domain.Match{HomeID: home, AwayID: away, ReportedBy: home, Status: domain.MatchDisputed}, "beide"},
+	}
+	for name, c := range cases {
+		if got := server.WaitingOn(c.m, names); got != c.want {
+			t.Errorf("%s: waiting on %q, want %q", name, got, c.want)
+		}
+	}
+}
