@@ -111,6 +111,66 @@ templ Admin(v AdminView) {
 			}
 		</section>
 		<section class="session">
+			<h2>Offene Ergebnisse</h2>
+			<p class="muted">
+				Alles, was noch auf jemanden wartet, das älteste zuerst. Hier
+				gibt es keinen Knopf: bestätigen oder korrigieren können nur die
+				beiden, die gespielt haben. Die Liste sagt, wen man fragen muss.
+			</p>
+			if len(v.Unsettled) == 0 {
+				<p class="muted">Nichts offen.</p>
+			} else {
+				<div class="table-scroll" tabindex="0" role="region" aria-label="Offene Ergebnisse">
+					<table class="matches">
+						<thead>
+							<tr>
+								<th scope="col">Gespielt</th>
+								<th scope="col">Spiel</th>
+								<th scope="col" class="num">Sätze</th>
+								<th scope="col">Stand</th>
+								<th scope="col">Wartet auf</th>
+							</tr>
+						</thead>
+						<tbody>
+							for _, m := range v.Unsettled {
+								<tr>
+									// The age under the date rather than beside it:
+									// side by side they made this the widest column
+									// and pushed the last one out of view at 1000 px.
+									<td class="when">
+										{ m.PlayedAt }
+										if m.Age != "" {
+											<br/>
+											@waitedFor(m.Age, m.Stale)
+										}
+									</td>
+									<td>{ m.HomeName } – { m.AwayName }</td>
+									<td class="num">
+										{ strconv.Itoa(m.HomeSets) }:{ strconv.Itoa(m.AwaySets) }
+									</td>
+									<td>
+										if m.Disputed {
+											<span class="state state-disputed">strittig</span>
+										} else {
+											<span class="state state-pending">offen</span>
+										}
+										<br/>
+										<span class="muted">{ m.Via }</span>
+									</td>
+									<td>{ m.WaitingOn }</td>
+								</tr>
+							}
+						</tbody>
+					</table>
+				</div>
+				<p class="muted">
+					Vom Zählwerk kommen Ergebnisse immer offen an und warten
+					nach einem Abend am Tisch oft gesammelt. Das ist so gewollt
+					und kein Stau.
+				</p>
+			}
+		</section>
+		<section class="session">
 			<h2>Gewertete Ergebnisse</h2>
 			<p class="muted">
 				Ein gewertetes Ergebnis lässt sich nicht ändern — es gibt

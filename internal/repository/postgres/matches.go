@@ -146,6 +146,19 @@ func (r matchRepo) WaitingOnOpponentFor(ctx context.Context, playerID uuid.UUID)
 	return r.list(ctx, q, playerID)
 }
 
+func (r matchRepo) Unsettled(ctx context.Context) ([]domain.Match, error) {
+	// Oldest first, like WaitingOnOpponentFor, and for the same reason: this
+	// list is read to find what is stuck. matches_status_idx covers the
+	// filter; the set it returns is a handful of rows.
+	const q = `
+		select ` + matchColumns + `
+		from matches
+		where status in ('pending', 'disputed')
+		order by played_at asc`
+
+	return r.list(ctx, q)
+}
+
 func (r matchRepo) RecentFor(ctx context.Context, playerID uuid.UUID, limit int) ([]domain.Match, error) {
 	const q = `
 		select ` + matchColumns + `

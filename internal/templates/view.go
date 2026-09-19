@@ -735,6 +735,12 @@ type AdminView struct {
 	// exactly this question, and the old derived cookie could not answer it:
 	// it was the same value in every browser that had ever seen the token.
 	Kiosks []KioskGrantView
+	// Unsettled is every result still waiting on somebody, oldest first
+	// (issue #251). No button on it: a pending result waits for a player's
+	// yes or no and a contested one for a player's correction, and neither
+	// is the flag's to give (docs/adr/0008). What the operator can do is know
+	// whom to ask.
+	Unsettled []AdminUnsettledRow
 	// Matches is the recent counted results, so a wrong one can be taken
 	// back without psql (issue #105). Only settled ones: a pending result is
 	// still waiting for a plain yes or no, and a contested one has a path of
@@ -777,6 +783,31 @@ type AdminPlayerRow struct {
 	// IsSelf marks the reader. Their own row carries no button: removing the
 	// player you are signed in as would take the session with it.
 	IsSelf bool
+}
+
+// AdminUnsettledRow is one result nobody has settled yet.
+type AdminUnsettledRow struct {
+	PlayedAt string
+	HomeName string
+	AwayName string
+	HomeSets int
+	AwaySets int
+	// Disputed tells the two states apart: pending waits for a confirmation,
+	// disputed for a correction.
+	Disputed bool
+	// WaitingOn is who can move it: the side that did not report it, or
+	// "beide" when either may — a contested result, or one the Zählwerk
+	// reported under an operator who did not play (docs/adr/0015).
+	WaitingOn string
+	// Via says where it came from. Rows from the Zählwerk are pending by
+	// design after an evening at the table, and an operator reading the
+	// list has to be able to tell those from a loop that stopped.
+	Via string
+	// Age and Stale are the same words and the same line the players'
+	// own list uses, so both pages call the same result stuck at the same
+	// moment.
+	Age   string
+	Stale bool
 }
 
 // AdminMatchRow is one counted result, with the button that takes it back.
