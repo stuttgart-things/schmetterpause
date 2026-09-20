@@ -532,6 +532,11 @@ So: **a teardown is not finished until its archive path is gone.** Deleting the
 cluster leaves the bucket untouched, and the next rebuild inherits it. Check
 before you build, not after:
 
+**Delete it before the cluster, if you can.** The credentials live in the
+cluster being destroyed, so afterwards you need them from somewhere else — the
+office's own namespace has the same Secret, which is how the 2026-09-20
+teardown did it, but that means a Pod on the cluster you did not want to touch.
+
 There is no S3 client on these clusters, but the Barman sidecar image carries
 boto3 and the backup Secret is already in the namespace. A throwaway Pod with
 `ghcr.io/cloudnative-pg/plugin-barman-cloud-sidecar`, `AWS_ACCESS_KEY_ID` /
@@ -619,14 +624,11 @@ task verify:signature TAG=<the version that was deployed>
 
 ### What this step list still does not know
 
-- **A PIN sign-in on a rebuilt instance.** The rehearsal proved the credential
-  rows come back (13 PINs and 18 recovery codes, the office's counts), and that
-  the app serves the ranking — but nobody signed in with a real PIN, because
-  nobody's PIN is written down anywhere, which is the point of them. Step 6
-  still ends with a person.
-- **A rebuild under load.** The office was idle; the newest match in the
-  restored data was three days old. A rebuild while somebody is entering a
-  result has never been tried, and step 1 exists so it never has to be.
+- ~~A PIN sign-in on a rebuilt instance.~~ **Done on 2026-09-20**: a real PIN,
+  typed by a person, on `schmetterpause-rehearsal1`. The credential rows travel
+  with the database (13 PINs and 18 recovery codes, the office's counts), and
+  they still open the door afterwards. Step 6 still ends with a person — that
+  part does not change, because nobody's PIN is written down anywhere.
 - **Anything about losing `platform-sthings`.** Every rehearsal so far
   recovered *from* the MinIO on that cluster. If it is what burns, this runbook
   starts at a bucket that no longer exists
@@ -930,8 +932,32 @@ from the second, which was built from an unmodified XR in `main`.
 | ttr_history | 140 | 140 |
 | PIN / recovery credentials | 13 / 18 | 13 / 18 |
 
+A PIN sign-in on the rebuilt instance was done by hand the same day and
+worked — the last check of step 6, and the only one nobody can automate.
+
 `bootstrap: recovery`, not `initdb`; `ContinuousArchiving=True` under its own
 `serverName`; the office's archive untouched at 93 objects throughout.
+
+**The teardown, measured on the same cluster** — and slower than the earlier
+ones, because this was a complete platform rather than a half-built cluster:
+
+| | |
+| --- | --- |
+| Phase 1, `platformEnabled: false` → Platform gone | **361 s** |
+| Phase 2, `delete clusterstack` → zero managed resources | **739 s** |
+| Argo registration gone | 40 s into phase 2 |
+| Archive path `schmetterpause-rehearsal1/` deleted | 7 objects, 1.1 MB |
+| Office archive `schmetterpause-db/` after | **93 objects, unchanged** |
+
+The earlier teardowns took ~45 s per phase; those clusters never got past the
+platform stage. Budget a quarter of an hour for a cluster that actually ran.
+
+The archive path needs the bucket credentials, which live in the cluster being
+destroyed — so delete it **before** the cluster, or from somewhere else
+afterwards. This one was done afterwards from a throwaway Pod in the office's
+own namespace, reading `schmetterpause-db-backup`, with the guard that refuses
+any key outside the prefix and a count of the office's own path before and
+after.
 
 **What the two runs cost in fixes**, all of them found here and none in the
 application: the join play pinned the rke2 kubeconfig path on a k3s cluster
@@ -943,17 +969,18 @@ profile did not bring the Barman plugin so the database could not render
 by the XRD, which made a failed join unrepairable
 (stuttgart-things/crossplane-configurations#479, #480).
 
-**Still open**: nothing checks that the chosen distribution matches what the
-rancher environment provisions
-(stuttgart-things/crossplane-configurations#490) — the mismatch that cost the
-first two runs is still buildable.
+**Closed since**: the mismatch that cost the first two runs is no longer
+buildable. The catalog entry now names the server it configures, the
+composition loads the rancher environment, and the module refuses a pair that
+disagrees — `cluster` v0.11.10, installed on u26-kind3 on 2026-09-20
+(stuttgart-things/crossplane-configurations#490).
 
 ## Not covered
 
-- **A PIN sign-in on a rebuilt instance, and a rebuild under load.** The
-  rebuild itself is rehearsed now (2026-09-20, the record above), but step 6
-  still ends with a person: the credential rows come back, and nobody has typed
-  a real PIN into a rebuilt instance. The office was idle during the rehearsal.
+- **A rebuild under load.** The office was idle during the rehearsal; the
+  newest match in the restored data was three days old. A rebuild while
+  somebody is entering a result has never been tried, and step 1 exists so it
+  never has to be.
 - **Losing `platform-sthings` itself.** Every rehearsal recovered from the
   MinIO that runs there. A copy outside it is
   stuttgart-things/stuttgart-things#2968 and does not exist yet.
