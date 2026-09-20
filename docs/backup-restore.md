@@ -323,16 +323,12 @@ Everything above restores data *into* a cluster that exists. This is the other
 case: `homerun2-test1` is gone and the office's ranking has to come back onto a
 new one.
 
-> **Not rehearsed.** The pieces are proven separately — the recovery bootstrap
-> (below, and the records at the end), the Vault and Argo paths (audited object
-> by object in
-> [#248](https://github.com/stuttgart-things/schmetterpause/issues/248)) — but
-> nobody has run this list top to bottom against a cluster that did not exist
-> before. The rehearsal is
-> [#259](https://github.com/stuttgart-things/schmetterpause/issues/259)'s
-> Definition of Done point 1 and needs a throwaway cluster
-> (stuttgart-things/stuttgart-things#2989). Expect to find steps that are not
-> written here; when you do, write them down.
+> **Rehearsed on 2026-09-20**, top to bottom on a cluster that did not exist
+> before: `schmetterpause-rehearsal1`, a throwaway ClusterStack on
+> u26-kind3 (stuttgart-things/stuttgart-things#2989). Cluster ready in 16
+> minutes, the office's data back 41 seconds after the recovery started,
+> row counts identical table by table. Every timing below is from that run;
+> the record is at the end, and the two traps it found are their own sections.
 
 **Almost everything comes back from Git by itself.** The cluster registration,
 cert-manager, trust-manager and `cluster-trust-bundle`, External Secrets,
@@ -340,6 +336,79 @@ openebs and its StorageClass, the Cilium gateway, the CNPG operator and
 `plugin-barman-cloud` — all Argo-managed, nothing on the cluster unmanaged.
 The part that does not come back by itself is the data, and the step that
 brings it back is step 5.
+
+### The cluster itself is one XR
+
+The rehearsal built the machine, the Kubernetes on it, the Argo registration,
+the Vault auth for ESO and the per-app secrets from a single `ClusterStack` in
+Rancher mode — `crossplane/xrs/clusterstack/labul/schmetterpause-rehearsal1.yaml`
+in `stuttgart-things`, applied on the machinery cluster. The short version:
+
+```yaml
+apiVersion: config.stuttgart-things.com/v1alpha1
+kind: ClusterStack
+metadata:
+  name: schmetterpause-rehearsal1
+spec:
+  provider: proxmox
+  distribution: rancher-k3s        # MUST match what the rancher environment provisions
+  size: medium
+  environmentConfig: labul
+  kubeconfig:
+    vaultSecretName: vault-infra-kubeconfig-writer
+    lifecycle: {vaultAddr: https://vault.infra.sthings-vsphere.labul.sva.de}
+  ansible:
+    stages:
+      join:
+        pipelineNamespace: tekton-ci
+        extraCollections: ["…/sthings-rke-26.920.1331.tar.gz"]
+  profiles: [network, security, storage-openebs, homerun2, tabletennis]
+  # Read the office's own values instead of generating new ones: the recovered
+  # database brings the office's owner password, so the app secret must carry
+  # the same one. Read-only, from the fleet-wide entry.
+  secretOverrides:
+    - {app: schmetterpause, key: password,    vaultRef: {mount: schmetterpause, entry: schmetterpause, key: password}}
+    - {app: schmetterpause, key: session-key, vaultRef: {mount: schmetterpause, entry: schmetterpause, key: session-key}}
+  rancher:
+    environmentConfig: rancher-join-test
+    argocd:
+      register: true
+      reservation: {enabled: true, networkKey: '10.31.102'}
+      annotations:
+        tabletennis-platform.stuttgart-things.com/db-backup-enabled: "true"
+        tabletennis-platform.stuttgart-things.com/db-backup-endpoint-url: https://artifacts.platform.sthings-vsphere.labul.sva.de
+        tabletennis-platform.stuttgart-things.com/db-backup-destination-path: s3://schmetterpause-cnpg/
+        tabletennis-platform.stuttgart-things.com/db-backup-server-name: schmetterpause-rehearsal1
+        tabletennis-platform.stuttgart-things.com/db-recovery-enabled: "true"
+        tabletennis-platform.stuttgart-things.com/db-recovery-source-server-name: schmetterpause-db
+  platformEnabled: true
+  platform:
+    fluxInit: {enabled: false}
+    vaultIssuer: {enabled: true, …}
+```
+
+The annotations are what step 5 below is on a cluster built this way: the
+`tabletennis` AppSet maps them onto the chart's `database.backup` and
+`database.recovery`, so recovery is configured *before* the database exists
+rather than edited into a values file afterwards.
+
+**Measured phases**, from `kubectl apply` to a working instance:
+
+| | |
+|---|---|
+| VM provisioned, base OS done | 8 min |
+| Rancher join, kubeconfig in Vault | 9 min |
+| Argo registration | 14 min |
+| ClusterStack `Ready` | 16 min |
+| ~30 platform Applications healthy | 18 min |
+| CNPG recovery, once it starts | **41 s** |
+| App answering on its own hostname | +3 min |
+
+**Three things this replaces.** On the ClusterStack path there is no manual
+Vault Kubernetes auth (step 3 below), no hand-written cluster registration and
+no per-cluster app list: the profiles carry them. What it does NOT replace is
+step 1 and steps 6 and 7 — nobody else decides that only one instance takes
+results, and nothing checks the data for you.
 
 ### The order
 
@@ -350,7 +419,10 @@ match is a second ranking. No QR sheet, no link in Teams, until step 6 passes.
 and Argo registers it.
 
 **3. Vault Kubernetes auth, re-applied against the new API server.** A manual
-step, and the one already known:
+step on a hand-registered cluster — **and not needed at all on the ClusterStack
+path**, where the stack derives the auth mount, the role and the policies from
+its profiles (proved on 2026-09-20: every ExternalSecret reached `SecretSynced`
+without anyone applying Terraform). For the hand-registered case it is:
 `argocd/clusters/homerun2-test1/vault-k8s-auth` in `stuttgart-things`, locally
 or through the dispatch workflow's `create-vault-k8s-auth`. A new cluster has a
 new API address and reviewer token; without this ESO reads nothing — no
@@ -438,6 +510,71 @@ on its volume. `SchmetterpauseWALArchivingFailing` reports it after 15 minutes.
 attempt, not once at startup, so correcting `serverName` — or emptying the
 path — is enough; archiving starts on the next retry.
 
+### If the RESTORE fails on "Expected empty archive"
+
+The same check runs at the *end of the restore*, not only when archiving
+starts, and there it is fatal rather than a warning: the recovery job exits,
+CNPG starts another one, and the Cluster never reaches a healthy state.
+
+```
+barman-cloud-check-wal-archive: WAL archive check failed for server
+  schmetterpause-rehearsal1: Expected empty archive
+restore error: unexpected failure invoking barman-cloud-wal-archive: exit status 1
+```
+
+**The cause is almost always a cluster of the same name that existed before.**
+`backup.serverName` is where the REBUILT server archives, and a previous
+rebuild under the same name left WAL segments there. Measured on 2026-09-20:
+five objects under `schmetterpause-rehearsal1/` from the previous run were
+enough.
+
+So: **a teardown is not finished until its archive path is gone.** Deleting the
+cluster leaves the bucket untouched, and the next rebuild inherits it. Check
+before you build, not after:
+
+There is no S3 client on these clusters, but the Barman sidecar image carries
+boto3 and the backup Secret is already in the namespace. A throwaway Pod with
+`ghcr.io/cloudnative-pg/plugin-barman-cloud-sidecar`, `AWS_ACCESS_KEY_ID` /
+`AWS_SECRET_ACCESS_KEY` from `schmetterpause-db-backup` and `AWS_CA_BUNDLE`
+pointing at its `trust-bundle.pem` is enough to list — and, with a guard that
+refuses any key outside the prefix, to delete:
+
+```python
+import boto3
+s3 = boto3.client("s3", endpoint_url="https://artifacts.platform.sthings-vsphere.labul.sva.de")
+PREFIX = "schmetterpause-rehearsal1/"          # NEVER schmetterpause-db/
+keys = [o["Key"] for page in s3.get_paginator("list_objects_v2")
+        .paginate(Bucket="schmetterpause-cnpg", Prefix=PREFIX)
+        for o in page.get("Contents", [])]
+assert all(k.startswith(PREFIX) for k in keys)
+```
+
+Count the office's own path before and after (`schmetterpause-db/`, 93 objects
+on 2026-09-20) — a deletion that touched it would show there.
+
+The alternative is to pick a `serverName` that has never been used, which is
+cheaper than deleting anything and leaves the evidence of the previous run in
+place.
+
+**After a few failed attempts CNPG gives up**, and then emptying the path is
+not enough:
+
+```
+phase: Cluster is unrecoverable and needs manual intervention
+```
+
+It stops starting recovery jobs, so nothing retries once the cause is fixed.
+Delete the `Cluster` — it holds no data, it never bootstrapped — and let Argo
+recreate it:
+
+```sh
+kubectl -n schmetterpause delete cluster.postgresql.cnpg.io schmetterpause-db
+```
+
+On 2026-09-20 the recovery then completed in 41 seconds. **This is the one
+case where deleting a CNPG `Cluster` is safe**: it has no PVC worth keeping
+because it never came up. On a running one the volume goes with it.
+
 ### Two things that are easy to get wrong afterwards
 
 - **Do not set `backup.serverName` on a running Cluster** to tidy up. It starts
@@ -480,12 +617,21 @@ the signature by hand once GHCR is reachable:
 task verify:signature TAG=<the version that was deployed>
 ```
 
-### What this step list does not know yet
+### What this step list still does not know
 
-- **How long it takes.** Step 5 alone is under a minute (records below); steps
-  2 to 4 have never been timed on a cluster that did not exist.
-- **Which manual steps exist besides step 3.** That is most of what the
-  rehearsal is for.
+- **A PIN sign-in on a rebuilt instance.** The rehearsal proved the credential
+  rows come back (13 PINs and 18 recovery codes, the office's counts), and that
+  the app serves the ranking — but nobody signed in with a real PIN, because
+  nobody's PIN is written down anywhere, which is the point of them. Step 6
+  still ends with a person.
+- **A rebuild under load.** The office was idle; the newest match in the
+  restored data was three days old. A rebuild while somebody is entering a
+  result has never been tried, and step 1 exists so it never has to be.
+- **Anything about losing `platform-sthings`.** Every rehearsal so far
+  recovered *from* the MinIO on that cluster. If it is what burns, this runbook
+  starts at a bucket that no longer exists
+  ([#259](https://github.com/stuttgart-things/schmetterpause/issues/259),
+  stuttgart-things/stuttgart-things#2968).
 
 ## Azure
 
@@ -753,13 +899,64 @@ emptied, and it archived into it on the next retry — which also means a bucket
 listing taken while a writer is alive proves nothing. Delete the Cluster first,
 list afterwards.
 
+## The office rebuilt onto a cluster that did not exist, 2026-09-20
+
+The rehearsal [#259](https://github.com/stuttgart-things/schmetterpause/issues/259)
+asks for, on the throwaway ClusterStack `schmetterpause-rehearsal1`
+(stuttgart-things/stuttgart-things#2989). Two complete runs; the timings are
+from the second, which was built from an unmodified XR in `main`.
+
+| Time (UTC) | What happened |
+| --- | --- |
+| 08:45:27 | `kubectl apply` of one `ClusterStack`. Nothing else was applied at any point |
+| +8 min | Proxmox VM and base OS done |
+| +9 min | Rancher join finished in 70 s; the play **detected** `/etc/rancher/k3s/k3s.yaml` and wrote the kubeconfig to Vault |
+| +14 min | Argo registration, with the platform labels from the profiles |
+| +16 min | ClusterStack `Ready` |
+| +18 min | ~30 Applications healthy, the database Application among them |
+| 09:22 | **trap 1**: the restore refused with *Expected empty archive* — five WAL objects under `schmetterpause-rehearsal1/` left over from the first run |
+| 09:31 | **trap 2**: CNPG had given up (*unrecoverable*); deleting the `Cluster` let Argo recreate it |
+| 09:35:36 | recovery complete, **41 s**, `Cluster in healthy state` |
+| 09:38 | app `1/1`, `/readyz` 200, `/standings` rendering, `v0.11.0` |
+
+**The data, table by table against the office the same minute:**
+
+| | office | rebuilt |
+| --- | --- | --- |
+| players | 18 | 18 |
+| matches | 74 | 74 |
+| confirmed | 70 | 70 |
+| match_sets | 134 | 134 |
+| ttr_history | 140 | 140 |
+| PIN / recovery credentials | 13 / 18 | 13 / 18 |
+
+`bootstrap: recovery`, not `initdb`; `ContinuousArchiving=True` under its own
+`serverName`; the office's archive untouched at 93 objects throughout.
+
+**What the two runs cost in fixes**, all of them found here and none in the
+application: the join play pinned the rke2 kubeconfig path on a k3s cluster
+(stuttgart-things/kcl#277, stuttgart-things/ansible#1227 and #1230), the
+catalog had no k3s entry for the rancher provisioner so flannel survived and
+cilium never started (stuttgart-things/kcl#282, #283), the `tabletennis`
+profile did not bring the Barman plugin so the database could not render
+(stuttgart-things/kcl#286, #287), and `runIDs.join` was documented but pruned
+by the XRD, which made a failed join unrepairable
+(stuttgart-things/crossplane-configurations#479, #480).
+
+**Still open**: nothing checks that the chosen distribution matches what the
+rancher environment provisions
+(stuttgart-things/crossplane-configurations#490) — the mismatch that cost the
+first two runs is still buildable.
+
 ## Not covered
 
-- **The rebuild, end to end.** [Rebuilding a lost
-  cluster](#rebuilding-a-lost-cluster) is written from proven pieces and an
-  audit, not from having done it. Until it has been rehearsed on a throwaway
-  cluster, treat its timings as unknown and expect manual steps it does not
-  name.
+- **A PIN sign-in on a rebuilt instance, and a rebuild under load.** The
+  rebuild itself is rehearsed now (2026-09-20, the record above), but step 6
+  still ends with a person: the credential rows come back, and nobody has typed
+  a real PIN into a rebuilt instance. The office was idle during the rehearsal.
+- **Losing `platform-sthings` itself.** Every rehearsal recovered from the
+  MinIO that runs there. A copy outside it is
+  stuttgart-things/stuttgart-things#2968 and does not exist yet.
 - **Point-in-time recovery to a moment.** Both restores either replayed to the
   end of the archive or stopped at the end of a named backup. Recovering to a
   time just before a mistake needs `recoveryTarget.targetTime` and WAL from
