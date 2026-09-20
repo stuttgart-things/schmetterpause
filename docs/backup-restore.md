@@ -532,6 +532,11 @@ So: **a teardown is not finished until its archive path is gone.** Deleting the
 cluster leaves the bucket untouched, and the next rebuild inherits it. Check
 before you build, not after:
 
+**Delete it before the cluster, if you can.** The credentials live in the
+cluster being destroyed, so afterwards you need them from somewhere else — the
+office's own namespace has the same Secret, which is how the 2026-09-20
+teardown did it, but that means a Pod on the cluster you did not want to touch.
+
 There is no S3 client on these clusters, but the Barman sidecar image carries
 boto3 and the backup Secret is already in the namespace. A throwaway Pod with
 `ghcr.io/cloudnative-pg/plugin-barman-cloud-sidecar`, `AWS_ACCESS_KEY_ID` /
@@ -932,6 +937,27 @@ worked — the last check of step 6, and the only one nobody can automate.
 
 `bootstrap: recovery`, not `initdb`; `ContinuousArchiving=True` under its own
 `serverName`; the office's archive untouched at 93 objects throughout.
+
+**The teardown, measured on the same cluster** — and slower than the earlier
+ones, because this was a complete platform rather than a half-built cluster:
+
+| | |
+| --- | --- |
+| Phase 1, `platformEnabled: false` → Platform gone | **361 s** |
+| Phase 2, `delete clusterstack` → zero managed resources | **739 s** |
+| Argo registration gone | 40 s into phase 2 |
+| Archive path `schmetterpause-rehearsal1/` deleted | 7 objects, 1.1 MB |
+| Office archive `schmetterpause-db/` after | **93 objects, unchanged** |
+
+The earlier teardowns took ~45 s per phase; those clusters never got past the
+platform stage. Budget a quarter of an hour for a cluster that actually ran.
+
+The archive path needs the bucket credentials, which live in the cluster being
+destroyed — so delete it **before** the cluster, or from somewhere else
+afterwards. This one was done afterwards from a throwaway Pod in the office's
+own namespace, reading `schmetterpause-db-backup`, with the guard that refuses
+any key outside the prefix and a count of the office's own path before and
+after.
 
 **What the two runs cost in fixes**, all of them found here and none in the
 application: the join play pinned the rke2 kubeconfig path on a k3s cluster
