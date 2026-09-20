@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.12.0](https://github.com/stuttgart-things/schmetterpause/compare/v0.11.0...v0.12.0) (2026-09-20)
+
+
+### Features
+
+* **admin:** show which results are still waiting, and on whom ([#281](https://github.com/stuttgart-things/schmetterpause/issues/281)) ([c37ce59](https://github.com/stuttgart-things/schmetterpause/commit/c37ce590740aa6e4290756f9666480bf3bd08eda))
+* **metrics:** export how many results wait, and for how long ([#283](https://github.com/stuttgart-things/schmetterpause/issues/283)) ([50d9fb5](https://github.com/stuttgart-things/schmetterpause/commit/50d9fb5cd8b805dd08d0958de2e27be5b41a4ec3))
+
 ## [0.11.0](https://github.com/stuttgart-things/schmetterpause/compare/v0.10.0...v0.11.0) (2026-09-16)
 
 
