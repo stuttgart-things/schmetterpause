@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.13.0](https://github.com/stuttgart-things/schmetterpause/compare/v0.12.0...v0.13.0) (2026-09-21)
+
+
+### Features
+
+* **admin:** show which switches this instance started with ([#288](https://github.com/stuttgart-things/schmetterpause/issues/288)) ([e7c7b3b](https://github.com/stuttgart-things/schmetterpause/commit/e7c7b3bd530833bff551f1bf856157008348215e))
+
 ## [0.12.0](https://github.com/stuttgart-things/schmetterpause/compare/v0.11.0...v0.12.0) (2026-09-20)
 
 
