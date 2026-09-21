@@ -91,10 +91,11 @@ func (s *Server) adminView(ctx context.Context, note, refusal string) (templates
 	self, _ := auth.PlayerID(ctx)
 
 	view := templates.AdminView{
-		Header: s.headerView(ctx),
-		Note:   note,
-		Error:  refusal,
-		People: make([]templates.AdminPerson, 0, len(admins)),
+		Header:   s.headerView(ctx),
+		Note:     note,
+		Error:    refusal,
+		People:   make([]templates.AdminPerson, 0, len(admins)),
+		Instance: s.adminInstance(),
 	}
 	for _, p := range admins {
 		view.People = append(view.People, templates.AdminPerson{
@@ -149,6 +150,20 @@ func (s *Server) adminView(ctx context.Context, note, refusal string) (templates
 	view.Removable = adminPlayerRows(records, self)
 
 	return view, nil
+}
+
+// adminInstance says which switches this process started with. Presence
+// only for the two tokens: the page is read at the table, over shoulders.
+func (s *Server) adminInstance() templates.AdminInstance {
+	return templates.AdminInstance{
+		Version:        s.build.Version,
+		Started:        s.started.Local().Format("02.01.2006 15:04"),
+		Kiosk:          s.cfg.KioskToken != "",
+		Scoreboard:     s.cfg.ScoreboardToken != "",
+		BootstrapAdmin: s.cfg.BootstrapAdmin,
+		Metrics:        s.cfg.MetricsAddr != "",
+		PublicBaseURL:  s.cfg.PublicBaseURL,
+	}
 }
 
 // adminPlayerRows keeps the players with no confirmed result.

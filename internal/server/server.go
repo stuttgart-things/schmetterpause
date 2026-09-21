@@ -30,6 +30,10 @@ type Server struct {
 	auth    auth.SessionAuthenticator
 	build   Build
 	handler http.Handler
+	// started is when this process read its configuration. /admin shows it
+	// beside the settings, because a changed variable only counts after a
+	// restart and the page should not claim a value it has not read yet.
+	started time.Time
 	// metrics is nil unless SP_METRICS_ADDR is set, and then nothing is
 	// measured and no second port is opened.
 	metrics *metrics.Metrics
@@ -62,6 +66,7 @@ type Build struct {
 func New(cfg config.Config, store repository.Store, log *slog.Logger, a auth.SessionAuthenticator, build Build) *Server {
 	s := &Server{
 		cfg: cfg, store: store, log: log, auth: a, build: build,
+		started:         time.Now(),
 		signInByPlayer:  ratelimit.New(signInPlayerPolicy),
 		signInByAddress: ratelimit.New(signInAddressPolicy),
 		kioskByAddress:  ratelimit.New(kioskPolicy),

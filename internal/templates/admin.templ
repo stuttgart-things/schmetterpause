@@ -50,9 +50,14 @@ templ Admin(v AdminView) {
 				</ul>
 			}
 		</section>
+		@adminInstance(v.Instance)
 		<section class="session">
 			<h2>Freigeschaltete Kiosk-Geräte</h2>
-			if len(v.Kiosks) == 0 {
+			if len(v.Kiosks) == 0 && !v.Instance.Kiosk {
+				<p class="muted">
+					Keins, und es kann auch keins werden: der Kiosk ist aus.
+				</p>
+			} else if len(v.Kiosks) == 0 {
 				<p class="muted">
 					Gerade keins. Ein Gerät wird eins, indem es einmal
 					<code>/kiosk?token=…</code> öffnet, und bleibt es zwölf
@@ -362,6 +367,82 @@ templ Admin(v AdminView) {
 				Nachzulesen in <code>docs/adr/0008</code>.
 			</p>
 		</section>
+	}
+}
+
+// adminInstance is what this process started with. Whether a token is set,
+// never the token: the page is read at the table, over shoulders.
+//
+// The start time is on it because every value here is read once, at start.
+// Somebody who just switched the kiosk on in a manifest and sees "aus" should
+// be told why rather than left to doubt the manifest.
+templ adminInstance(v AdminInstance) {
+	<section class="session">
+		<h2>Diese Instanz</h2>
+		// Two columns rather than three: at phone width a third one pushed
+		// the answer, the only thing anybody opens this for, out of view.
+		<table class="matches">
+			<thead>
+				<tr>
+					<th scope="col">Einstellung</th>
+					<th scope="col">Stand</th>
+				</tr>
+			</thead>
+			<tbody>
+				@instanceRow("Kiosk am Tisch", "SP_KIOSK_TOKEN") {
+					@onOff(v.Kiosk)
+				}
+				@instanceRow("Zählwerk", "SP_SCOREBOARD_TOKEN") {
+					@onOff(v.Scoreboard)
+				}
+				@instanceRow("Admin beim Start", "SP_BOOTSTRAP_ADMIN") {
+					if v.BootstrapAdmin != "" {
+						{ v.BootstrapAdmin }
+					} else {
+						<span class="muted">niemand</span>
+					}
+				}
+				@instanceRow("Metriken", "SP_METRICS_ADDR") {
+					@onOff(v.Metrics)
+				}
+				@instanceRow("Adresse im QR-Code", "SP_PUBLIC_BASE_URL") {
+					if v.PublicBaseURL != "" {
+						{ v.PublicBaseURL }
+					} else {
+						<span class="muted">aus der Anfrage</span>
+					}
+				}
+			</tbody>
+		</table>
+		<p class="muted">
+			Version { v.Version }, gestartet { v.Started }. Gelesen wird das
+			alles beim Start: wer eine Variable ändert, startet neu, und bis
+			dahin steht hier der alte Stand. Die Tokens selbst zeigt die Seite
+			nie, nur ob sie gesetzt sind.
+		</p>
+	</section>
+}
+
+// instanceRow is one setting: what it is called here, the variable that sets
+// it underneath, and its state as the children.
+templ instanceRow(label, variable string) {
+	<tr>
+		<td>
+			{ label }
+			<br/>
+			<code class="instance-var">{ variable }</code>
+		</td>
+		<td class="instance-value">
+			{ children... }
+		</td>
+	</tr>
+}
+
+templ onOff(on bool) {
+	if on {
+		<span class="state state-pending">an</span>
+	} else {
+		<span class="muted">aus</span>
 	}
 }
 

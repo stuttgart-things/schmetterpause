@@ -731,6 +731,10 @@ func PaddleClass(playerID string) string {
 type AdminView struct {
 	Header HeaderView
 	People []AdminPerson
+	// Instance is what this process was started with, so the question "is
+	// the kiosk on here?" has an answer in the browser and not only in a
+	// manifest somebody has to find.
+	Instance AdminInstance
 	// Kiosks is which machines are unlocked right now. Issue #77 filed
 	// exactly this question, and the old derived cookie could not answer it:
 	// it was the same value in every browser that had ever seen the token.
@@ -763,6 +767,31 @@ type AdminView struct {
 	// keeps them apart: "entfernt" and "geht nicht" are opposite outcomes and
 	// must not arrive in the same words. The handler answers 422 with it.
 	Error string
+}
+
+// AdminInstance is the switches this process read at start.
+//
+// Whether a token is set, never the token: the page is behind the flag, but
+// a screen at the table is read over shoulders, and the kiosk token is the
+// very thing that must not be read that way.
+type AdminInstance struct {
+	Version string
+	// Started is when the settings below were read. A variable changed after
+	// that is not in effect until the next restart.
+	Started string
+	// Kiosk is whether SP_KIOSK_TOKEN is set, and so whether /kiosk exists.
+	Kiosk bool
+	// Scoreboard is whether SP_SCOREBOARD_TOKEN is set, and so whether the
+	// Zählwerk can reach /api at all.
+	Scoreboard bool
+	// BootstrapAdmin is the display name SP_BOOTSTRAP_ADMIN grants the flag
+	// to at every start, empty when unset.
+	BootstrapAdmin string
+	// Metrics is whether SP_METRICS_ADDR opens the second port.
+	Metrics bool
+	// PublicBaseURL is where the QR code points, empty when it is read off
+	// the request.
+	PublicBaseURL string
 }
 
 // AdminPlayerRow is one player who has no confirmed result to their name,

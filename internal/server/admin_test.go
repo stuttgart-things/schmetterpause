@@ -214,6 +214,63 @@ func TestTheAdminPageStatesTheBoundary(t *testing.T) {
 	}
 }
 
+// Whether the kiosk is on is a question somebody asks standing in front of
+// the application, not in front of a manifest. The page answers it, and says
+// only whether a token is set: the screen at the table is read over
+// shoulders.
+func TestTheAdminPageSaysWhatThisInstanceStartedWith(t *testing.T) {
+	const kioskToken = "kiosk-token-that-must-not-show"
+	const scoreboardToken = "scoreboard-token-that-must-not-show"
+
+	store := newMemStore()
+	cfg := testConfig()
+	cfg.SessionKey = testSessionKey
+	cfg.BootstrapAdmin = "Anna"
+	cfg.KioskToken = kioskToken
+	cfg.ScoreboardToken = scoreboardToken
+	srv := server.New(cfg, store, discardLogger(),
+		auth.NewCookieAuthenticator(store.Identities(), testSessionKey, false),
+		server.Build{Version: "v9.9.9"})
+	h := srv.Handler()
+
+	annaCookie := sessionCookie(t, join(t, h, "Anna"))
+	srv.GrantBootstrapAdmin(t.Context())
+
+	body := getWith(t, h, "/admin", annaCookie).Body.String()
+
+	for _, want := range []string{"Diese Instanz", "SP_KIOSK_TOKEN", "SP_SCOREBOARD_TOKEN", "v9.9.9"} {
+		if !strings.Contains(body, want) {
+			t.Errorf("the page does not mention %q", want)
+		}
+	}
+	for _, secret := range []string{kioskToken, scoreboardToken} {
+		if strings.Contains(body, secret) {
+			t.Fatalf("the page shows a token: %q", secret)
+		}
+	}
+	if strings.Contains(body, "der Kiosk ist aus") {
+		t.Error("the page says the kiosk is off while SP_KIOSK_TOKEN is set")
+	}
+}
+
+// Without the token there is no kiosk, and the kiosk section says so rather
+// than explaining how a machine becomes one.
+func TestTheAdminPageSaysWhenTheKioskIsOff(t *testing.T) {
+	srv, _ := adminHandler(t, "Anna")
+	h := srv.Handler()
+
+	annaCookie := sessionCookie(t, join(t, h, "Anna"))
+	srv.GrantBootstrapAdmin(t.Context())
+
+	body := getWith(t, h, "/admin", annaCookie).Body.String()
+	if !strings.Contains(body, "der Kiosk ist aus") {
+		t.Error("the page does not say the kiosk is off")
+	}
+	if strings.Contains(body, "/kiosk?token=") {
+		t.Error("the page explains how to unlock a kiosk that does not exist")
+	}
+}
+
 // A joined player is not an admin. The flag is granted, never inherited.
 func TestJoiningDoesNotMakeAnAdmin(t *testing.T) {
 	store := newMemStore()
