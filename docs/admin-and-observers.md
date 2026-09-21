@@ -35,7 +35,9 @@ Every action writes a log line with the admin's `player_id`.
 
 An admin **cannot**:
 
-- set or read anybody's PIN (ADR-0007, ADR-0008);
+- set or read anybody's PIN (ADR-0007, ADR-0008). Somebody who is locked
+  out gets a new recovery code at the kiosk instead; see
+  [Getting a player back in](access-recovery.md);
 - grant or withdraw the admin flag through the page. That only happens through
   `SP_BOOTSTRAP_ADMIN`; see [Open ends](#open-ends).
 
