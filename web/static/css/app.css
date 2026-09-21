@@ -516,6 +516,11 @@ h1 {
 
 /* A user agent is long and is not prose. It wraps rather than pushing the
    revoke button off the edge of a phone. */
+/* The settings table on /admin. The variable sits small under its label, and
+   a long base URL wraps rather than widening the table past a phone. */
+.instance-var { font-size: 0.75rem; }
+.instance-value { overflow-wrap: anywhere; }
+
 .kiosk-agent {
 	max-width: 22rem;
 	font-size: 0.8rem;
