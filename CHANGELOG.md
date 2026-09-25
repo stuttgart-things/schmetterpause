@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.14.0](https://github.com/stuttgart-things/schmetterpause/compare/v0.13.0...v0.14.0) (2026-09-25)
+
+
+### Features
+
+* **api:** list who may keep score in GET /api/operators ([#295](https://github.com/stuttgart-things/schmetterpause/issues/295)) ([a75956a](https://github.com/stuttgart-things/schmetterpause/commit/a75956a2d68add0d70d3cfc961cebf08032fce89))
+
 ## [0.13.0](https://github.com/stuttgart-things/schmetterpause/compare/v0.12.0...v0.13.0) (2026-09-21)
 
 
