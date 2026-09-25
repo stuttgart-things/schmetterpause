@@ -131,6 +131,7 @@ func (s *Server) routes() http.Handler {
 	// path, exactly as /kiosk is without SP_KIOSK_TOKEN.
 	if s.cfg.ScoreboardToken != "" {
 		mux.HandleFunc("GET /api/players", s.handleAPIPlayers)
+		mux.HandleFunc("GET /api/operators", s.handleAPIOperators)
 		mux.HandleFunc("POST /api/results", s.handleAPIResults)
 	}
 
