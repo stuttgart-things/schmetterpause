@@ -73,6 +73,7 @@ nav:
       - ADR-0020 Signieren und prüfen: adr/0020-signieren-und-pruefen.md
       - ADR-0021 Signieren über Dagger-Module: adr/0021-signieren-ueber-dagger-module.md
       - ADR-0022 Ein Beobachter spielt nicht: adr/0022-beobachter-spielt-nicht.md
+      - ADR-0023 Das Zählwerk bietet Beobachter als Operator an: adr/0023-zaehlwerk-bietet-beobachter-als-operator-an.md
   - Betrieb:
       - Plattform-Voraussetzungen: platform.md
       - Deployment ohne GitOps: deployment.md

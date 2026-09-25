@@ -173,3 +173,56 @@ func TestTheScoreboardAndAnObserver(t *testing.T) {
 		t.Errorf("the observer as operator: status %d, want 201 (%s)", rec.Code, rec.Body)
 	}
 }
+
+// TestTheScoreboardOffersAnObserverAsOperator is the other half of
+// TestTheScoreboardAndAnObserver: POST /api/results already took an observer as
+// operator, but nothing listed one, so the Zählwerk could never offer them
+// (docs/adr/0023).
+func TestTheScoreboardOffersAnObserverAsOperator(t *testing.T) {
+	h, store := scoreboardHandler(t)
+	home, away, operator := threePlayers(t, store)
+	if err := store.Players().SetObserver(t.Context(), operator.ID, true); err != nil {
+		t.Fatalf("SetObserver(): %v", err)
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/api/operators", nil)
+	req.Header.Set("Authorization", "Bearer "+testScoreboardToken)
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("GET /api/operators: got %d, want 200 (%s)", rec.Code, rec.Body)
+	}
+	if got := rec.Header().Get("Content-Type"); got != "application/json; charset=utf-8" {
+		t.Errorf("Content-Type: got %q", got)
+	}
+
+	var operators []struct {
+		ID          uuid.UUID `json:"id"`
+		DisplayName string    `json:"display_name"`
+		Observer    *bool     `json:"observer"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &operators); err != nil {
+		t.Fatalf("decoding the list: %v", err)
+	}
+	if len(operators) != 3 {
+		t.Fatalf("GET /api/operators lists %d, want all 3 accounts", len(operators))
+	}
+	flags := map[uuid.UUID]bool{}
+	for _, o := range operators {
+		if o.ID == uuid.Nil || o.DisplayName == "" || o.Observer == nil {
+			t.Fatalf("incomplete operator in the list: %+v", o)
+		}
+		flags[o.ID] = *o.Observer
+	}
+	if !flags[operator.ID] {
+		t.Error("the observer is not flagged as one")
+	}
+	if flags[home.ID] || flags[away.ID] {
+		t.Error("a player is flagged as an observer")
+	}
+
+	// Picked from this list, the observer is accepted as operator.
+	if rec := apiPost(t, h, testScoreboardToken, goodResult(home, away, operator)); rec.Code != http.StatusCreated {
+		t.Errorf("the listed observer as operator: status %d, want 201 (%s)", rec.Code, rec.Body)
+	}
+}

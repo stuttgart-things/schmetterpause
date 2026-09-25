@@ -31,3 +31,4 @@ festlegt, steht hier mit den Alternativen, die dabei verworfen wurden. Eine
 | 0020 | [Schlüsselloses Signieren, SBOM am Digest — und Kyverno prüft, nicht ein Mensch](0020-signieren-und-pruefen.md) | accepted — Entscheidung 3 ersetzt durch ADR-0021 | 2026-09-15 |
 | 0021 | [Signieren und Prüfen über die geteilten Dagger-Module, das Token holt der Workflow](0021-signieren-ueber-dagger-module.md) | accepted | 2026-09-15 |
 | 0022 | [Ein Beobachter spielt nicht](0022-beobachter-spielt-nicht.md) | accepted | 2026-09-16 |
+| 0023 | [Das Zählwerk bietet Beobachter als Operator an](0023-zaehlwerk-bietet-beobachter-als-operator-an.md) | accepted | 2026-09-25 |

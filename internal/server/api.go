@@ -47,6 +47,14 @@ type apiPlayer struct {
 	TTR         int       `json:"ttr"`
 }
 
+// apiOperator is one entry of GET /api/operators: somebody who may keep score.
+// No TTR: the list answers who may watch and count, not how anybody plays.
+type apiOperator struct {
+	ID          uuid.UUID `json:"id"`
+	DisplayName string    `json:"display_name"`
+	Observer    bool      `json:"observer"`
+}
+
 // apiResult is the body of POST /api/results.
 //
 // Sets are pairs rather than objects so that the sender can pass its own
@@ -126,6 +134,36 @@ func (s *Server) handleAPIPlayers(w http.ResponseWriter, r *http.Request) {
 	out := make([]apiPlayer, 0, len(players))
 	for _, p := range players {
 		out = append(out, apiPlayer{ID: p.ID, DisplayName: p.DisplayName, TTR: p.TTR})
+	}
+	s.writeJSON(w, r, http.StatusOK, out)
+}
+
+// handleAPIOperators lists everybody who may keep score for a result.
+//
+// That is every account, observers included: an observer does not play, and
+// somebody who watches and counts is exactly what an operator is (ADR-0014,
+// ADR-0022). /api/players stays the list of the two sides, which is why this is
+// a second endpoint rather than a flag on that one -- a Zählwerk that does not
+// know the flag would offer an observer as a player (docs/adr/0023).
+//
+// Whether the operator also plays in the match is still decided where it can
+// be: in POST /api/results, against the two sides actually sent.
+func (s *Server) handleAPIOperators(w http.ResponseWriter, r *http.Request) {
+	if !s.scoreboardAuthorized(r) {
+		s.apiRefuse(w, r, http.StatusUnauthorized, "a bearer token is required")
+		return
+	}
+
+	players, err := s.store.Players().List(r.Context())
+	if err != nil {
+		s.log.ErrorContext(r.Context(), "listing operators for the api failed", "error", err)
+		s.apiRefuse(w, r, http.StatusInternalServerError, "the operator list is not available")
+		return
+	}
+
+	out := make([]apiOperator, 0, len(players))
+	for _, p := range players {
+		out = append(out, apiOperator{ID: p.ID, DisplayName: p.DisplayName, Observer: p.IsObserver})
 	}
 	s.writeJSON(w, r, http.StatusOK, out)
 }

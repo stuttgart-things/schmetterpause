@@ -83,6 +83,7 @@ func TestScoreboardRoutesDoNotExistWithoutTheToken(t *testing.T) {
 
 	for _, tc := range []struct{ method, path string }{
 		{http.MethodGet, "/api/players"},
+		{http.MethodGet, "/api/operators"},
 		{http.MethodPost, "/api/results"},
 	} {
 		req := httptest.NewRequest(tc.method, tc.path, nil)
@@ -110,6 +111,16 @@ func TestScoreboardRefusesAWrongOrMissingToken(t *testing.T) {
 		h.ServeHTTP(rec, req)
 		if rec.Code != http.StatusUnauthorized {
 			t.Errorf("GET /api/players with token %q: got %d, want 401", token, rec.Code)
+		}
+
+		req = httptest.NewRequest(http.MethodGet, "/api/operators", nil)
+		if token != "" {
+			req.Header.Set("Authorization", "Bearer "+token)
+		}
+		rec = httptest.NewRecorder()
+		h.ServeHTTP(rec, req)
+		if rec.Code != http.StatusUnauthorized {
+			t.Errorf("GET /api/operators with token %q: got %d, want 401", token, rec.Code)
 		}
 
 		if rec := apiPost(t, h, token, goodResult(home, away, operator)); rec.Code != http.StatusUnauthorized {
