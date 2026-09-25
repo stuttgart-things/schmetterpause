@@ -47,12 +47,14 @@ An observer signs in like anybody else, but does not play:
 
 - **not in the ranking** or the statistics;
 - **not offered** as opponent, kiosk player, tournament player or in
-  `GET /api/players`, so the Zählwerk does not offer them either;
+  `GET /api/players`, so the Zählwerk does not offer them as a side either;
 - **refused as a player** on every write path. The form, the kiosk and the
   tournament page answer *„Ein Beobachter spielt nicht mit."*;
   `POST /api/results` answers 422;
 - **allowed as the operator** at the kiosk and in `POST /api/results`: somebody
-  who watches and counts is exactly what an operator is (ADR-0014).
+  who watches and counts is exactly what an operator is (ADR-0014). They are
+  **listed** for that in `GET /api/operators`, flagged `"observer": true`, so a
+  Zählwerk can offer them as the one keeping score (ADR-0023).
 
 Their own profile page keeps the name and the access section (PIN, recovery
 code), and drops rating, rank and matches. Their start page has no result entry.
