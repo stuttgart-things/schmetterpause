@@ -592,7 +592,7 @@ jobs:
           #
           # An empty preview is a useless preview (issue #82), and this is what
           # keeps that fix out of every release: the Job exists in `pr-*` and
-          # nowhere else. Should a `pr-*` artefact ever be deployed somewhere
+          # in the `preview` tag (job kustomize-preview), nowhere else. Should a `pr-*` artefact ever be deployed somewhere
           # real, the binary still refuses a database that has players.
           parameters="config.image=${image_repo}:${VERSION}"
           case "${VERSION}" in
@@ -642,6 +642,34 @@ jobs:
       # latest at one would make it mean "most recent build" rather than "most
       # recent release" — the rule the image already follows.
       additional-tags: ${{ github.ref_type == 'tag' && 'latest' || '' }}
+      dagger-kcl-module: ${{ needs.kcl-meta.outputs.kcl-module }}
+    secrets: inherit # pragma: allowlist secret
+
+  # A seeded base from main under the moving tag `preview`, for environments
+  # that need a schmetterpause with a field in it but are not previews of
+  # schmetterpause itself: a zaehlwerk PR preview bundles one (stuttgart-things/argocd
+  # platforms/zaehlwerk-pr-preview), and zaehlwerk takes its players AND the
+  # people allowed to keep score from schmetterpause, so an empty league makes
+  # that preview unusable.
+  #
+  # Its own tag rather than the seed switched on for main's sha artefacts: those
+  # are snapshots something real may pin, and the rule above keeps the seed Job
+  # out of every artefact whose name does not say "preview". Same image as the
+  # sha artefact of this run; no signature, like a `pr-*` artefact.
+  kustomize-preview:
+    if: github.event_name == 'push' && github.ref_type == 'branch'
+    needs: [release, kcl-meta]
+    permissions:
+      contents: read
+      packages: write
+    uses: stuttgart-things/github-workflow-templates/.github/workflows/call-push-kustomize.yaml@32c33efe0ff952fc4fd3a7afb5865496f2b34e0c # main
+    with:
+      runs-on: ubuntu-latest
+      kcl-source-dir: kcl
+      kcl-profile-file: kcl/profiles/base.yaml
+      kcl-parameters: ${{ needs.kcl-meta.outputs.parameters }},config.seedEnabled=true
+      kustomize-oci-repo: ${{ needs.kcl-meta.outputs.kustomize-repo }}
+      tag: preview
       dagger-kcl-module: ${{ needs.kcl-meta.outputs.kcl-module }}
     secrets: inherit # pragma: allowlist secret
 
