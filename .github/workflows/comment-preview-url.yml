@@ -21,18 +21,28 @@ on:
 
 jobs:
   comment:
-    if: github.event.label.name == 'preview'
+    # Only when the org variable HOMERUN2_PREVIEW_DOMAIN names the preview
+    # cluster -- the variable every preview repository reads, so moving the
+    # previews is one value in the org settings. Unset, the comment would carry
+    # an address with no domain.
+    if: github.event.label.name == 'preview' && vars.HOMERUN2_PREVIEW_DOMAIN != ''
     permissions:
       contents: read
       pull-requests: write
     uses: stuttgart-things/github-workflow-templates/.github/workflows/call-comment-preview-url.yaml@32c33efe0ff952fc4fd3a7afb5865496f2b34e0c # main
     with:
       hostname-prefix: schmetterpause-pr
-      hostname-domain: homerun2-test1.sthings-vsphere.labul.sva.de
+      # Was homerun2-test1 -- the previews moved to app-dev
+      # (stuttgart-things/stuttgart-things#3065) and every link went dead.
+      hostname-domain: ${{ vars.HOMERUN2_PREVIEW_DOMAIN }}
       namespace-prefix: schmetterpause-pr
       # /readyz, not the template's /health default: this application has no
       # /health, and a link to a 404 is worse than no link. /readyz also
       # answers the question a reviewer actually has — whether the preview has
       # a database yet — which /healthz deliberately does not.
       health-path: /readyz
+      # The preview is the tabletennis bundle: a released zaehlwerk wired to
+      # this schmetterpause by the handover (stuttgart-things/argocd
+      # platforms/schmetterpause-pr-preview).
+      additional-urls: 'zaehlwerk=https://zaehlwerk-schmetterpause-pr-${{ github.event.number }}.${{ vars.HOMERUN2_PREVIEW_DOMAIN }}'
     secrets: inherit
