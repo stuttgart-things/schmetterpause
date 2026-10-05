@@ -112,6 +112,12 @@ schema Schmetterpause:
     # value rather than a first-boot one.
     bootstrapAdmin: str = ""
 
+    # SP_ZAEHLWERK_URL: scheme and host of the Zählwerk whose running score the
+    # start page shows (#188). Empty shows none. The players' browsers connect
+    # to it, not the pod, so it has to be an address they resolve, and that
+    # Zählwerk has to list this app's origin in ALLOWED_ORIGINS.
+    zaehlwerkURL: str = ""
+
     # ── Migrations ──────────────────────────────────────────────────────────
     
     # SP_AUTO_MIGRATE stays false and "migrate up" runs as an initContainer.

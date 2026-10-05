@@ -86,6 +86,17 @@ variable "bootstrap_admin" {
   type        = string
 }
 
+# kcl: zaehlwerkURL
+variable "zaehlwerk_url" {
+  description = "SP_ZAEHLWERK_URL: scheme and host of the Zählwerk whose running score the start page shows (#188). Empty shows none. The players' browsers connect to it, so that Zählwerk has to list this app's origin in ALLOWED_ORIGINS."
+  type        = string
+
+  validation {
+    condition     = var.zaehlwerk_url == "" || can(regex("^https?://[^/?#]+/?$", var.zaehlwerk_url))
+    error_message = "zaehlwerk_url must be empty, or scheme and host only, for example https://zaehlwerk.example.com."
+  }
+}
+
 # kcl: metricsEnabled/metricsPort
 variable "metrics_port" {
   description = "The port of SP_METRICS_ADDR, /metrics on a listener of its own. 0 serves none. Container Apps exposes only the ingress target port, so nothing outside the app would reach it — and nothing on Azure scrapes it yet."

@@ -95,6 +95,7 @@ run "options_are_wired" {
     scoreboard_token = "fedcba9876543210"
     bootstrap_admin  = "Kim"
     public_base_url  = "https://pause.example.com/"
+    zaehlwerk_url    = "https://zaehlwerk.example.com/"
     metrics_port     = 9090
     extra_env_vars   = { SP_LOG_LEVEL = "debug" }
   }
@@ -117,6 +118,11 @@ run "options_are_wired" {
   assert {
     condition     = { for e in azurerm_container_app.this.template[0].container[0].env : e.name => e.value }["SP_BOOTSTRAP_ADMIN"] == "Kim"
     error_message = "bootstrap_admin must reach SP_BOOTSTRAP_ADMIN."
+  }
+
+  assert {
+    condition     = { for e in azurerm_container_app.this.template[0].container[0].env : e.name => e.value }["SP_ZAEHLWERK_URL"] == "https://zaehlwerk.example.com"
+    error_message = "zaehlwerk_url must reach SP_ZAEHLWERK_URL, without a trailing slash."
   }
 
   assert {
