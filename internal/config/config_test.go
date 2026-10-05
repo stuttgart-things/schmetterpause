@@ -2,6 +2,7 @@ package config_test
 
 import (
 	"log/slog"
+	"strings"
 	"testing"
 	"time"
 
@@ -199,5 +200,46 @@ func TestKioskTokenIsOffByDefault(t *testing.T) {
 	}
 	if cfg.KioskToken != "tuesday" {
 		t.Errorf("KioskToken = %q, want \"tuesday\"", cfg.KioskToken)
+	}
+}
+
+func TestZaehlwerkURL(t *testing.T) {
+	tests := []struct {
+		name  string
+		raw   string
+		want  string
+		valid bool
+	}{
+		{"unset", "", "", true},
+		{"host and scheme", "https://zaehlwerk.example.org", "https://zaehlwerk.example.org", true},
+		{"trailing slash", "http://192.168.1.5:8081/", "http://192.168.1.5:8081", true},
+		{"no scheme", "zaehlwerk.example.org", "", false},
+		// The script appends /live/stream to it.
+		{"path prefix", "https://example.org/zaehlwerk", "", false},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Setenv("SP_DATABASE_URL", "postgres://user:pw@db:5432/schmetterpause")
+			t.Setenv("SP_SESSION_KEY", testKey)
+			t.Setenv("SP_ZAEHLWERK_URL", tc.raw)
+
+			cfg, err := config.Load()
+			switch {
+			case tc.valid && err != nil:
+				t.Fatalf("Load(): %v", err)
+			case !tc.valid && err == nil:
+				t.Fatalf("Load() accepted %q", tc.raw)
+			case !tc.valid:
+				if !strings.Contains(err.Error(), "SP_ZAEHLWERK_URL") {
+					t.Errorf("the error does not name the variable: %v", err)
+				}
+				return
+			}
+
+			if cfg.ZaehlwerkURL != tc.want {
+				t.Errorf("ZaehlwerkURL = %q, want %q", cfg.ZaehlwerkURL, tc.want)
+			}
+		})
 	}
 }
