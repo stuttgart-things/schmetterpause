@@ -1,0 +1,59 @@
+package templates
+
+import "strconv"
+
+// LiveScore is the match being counted at the table right now, filled by
+// web/static/js/live.js from the Zählwerk's table stream (#188).
+//
+// It is rendered hidden and stays hidden until an event says a match is
+// running, so a page opened between matches looks exactly like one without
+// it. A section that is empty most of the day goes unread; one that appears
+// only when there is something in it is the reason this is on the start page
+// and not a tab of its own.
+//
+// Nothing here is required for the page to work. Without the script, or
+// with the Zählwerk unreachable, the section simply never shows.
+//
+// The ratings are the server's part: a player_id → TTR map, read from the
+// same standings the ranking is built from, so the script fills in numbers
+// and names and computes nothing. They are the stored ratings, not a
+// projection of what this match would do — ADR-0015 leaves instant rating
+// out.
+templ LiveScore(v LiveView) {
+	if v.Enabled() {
+		<section
+			id="live"
+			class="live"
+			hidden
+			data-stream={ v.StreamURL }
+			aria-labelledby="live-title"
+		>
+			<h2 id="live-title">Am Tisch</h2>
+			// aria-live on the board rather than the section: the heading
+			// does not change, and a screen reader should hear the score
+			// rather than the title again with every point.
+			<div class="live-board" aria-live="polite">
+				@liveSide(0)
+				<span class="live-sep" aria-hidden="true">:</span>
+				@liveSide(1)
+			</div>
+			<p class="live-set"></p>
+			@templ.JSONScript("live-ratings", v.Ratings)
+		</section>
+		// Here rather than in the layout: it is the one page that has the
+		// element, and a page without SP_ZAEHLWERK_URL must not carry the
+		// script either.
+		<script src="/static/js/live.js" defer></script>
+	}
+}
+
+// liveSide is one player's half of the board. Index 0 is the Zählwerk's
+// player a, which is the handover's home player.
+templ liveSide(i int) {
+	<div class="live-side" data-side={ strconv.Itoa(i) }>
+		<span class="live-name"></span>
+		<span class="live-ttr"></span>
+		<span class="live-sets"></span>
+		<span class="live-points"></span>
+	</div>
+}

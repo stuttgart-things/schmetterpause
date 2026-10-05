@@ -163,6 +163,7 @@ func (s *Server) adminInstance() templates.AdminInstance {
 		BootstrapAdmin: s.cfg.BootstrapAdmin,
 		Metrics:        s.cfg.MetricsAddr != "",
 		PublicBaseURL:  s.cfg.PublicBaseURL,
+		ZaehlwerkURL:   s.cfg.ZaehlwerkURL,
 	}
 }
 

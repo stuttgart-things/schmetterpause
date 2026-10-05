@@ -218,7 +218,23 @@ type IndexView struct {
 	// one person who never learned that a tournament had started was the
 	// player somebody had just added to it.
 	Tournaments RunningTournamentsView
+	// Live is the running score from the Zählwerk, when one is configured.
+	Live LiveView
 }
+
+// LiveView configures the running score on the start page (#188).
+type LiveView struct {
+	// StreamURL is the Zählwerk's table stream, empty when SP_ZAEHLWERK_URL
+	// is unset — and then neither the element nor its script is rendered.
+	StreamURL string
+	// Ratings maps player_id to the stored TTR, for the two ids a reported
+	// match carries. A match nobody reports carries no ids and shows names
+	// only.
+	Ratings map[string]int
+}
+
+// Enabled reports whether the page carries the element at all.
+func (v LiveView) Enabled() bool { return v.StreamURL != "" }
 
 // SessionView drives the join form and the signed-in notice. Both render into
 // the same #session region, so the form can replace itself with the result.
@@ -792,6 +808,9 @@ type AdminInstance struct {
 	// PublicBaseURL is where the QR code points, empty when it is read off
 	// the request.
 	PublicBaseURL string
+	// ZaehlwerkURL is where the start page reads the running score from,
+	// empty when it shows none.
+	ZaehlwerkURL string
 }
 
 // AdminPlayerRow is one player who has no confirmed result to their name,

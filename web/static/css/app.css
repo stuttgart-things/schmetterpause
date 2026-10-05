@@ -341,7 +341,7 @@ h1 {
    look lives in a hand-kept list of names, and that one was never added. Those
    two pages have been running without surfaces — flat text where every other
    page has objects. */
-.card, .session, .match, .pending, .running, .standings, .stat {
+.card, .session, .match, .pending, .running, .live, .standings, .stat {
 	margin: 0 0 1rem;
 	padding: 1.1rem 1.25rem;
 	background: var(--card);
@@ -1747,6 +1747,70 @@ tr.self td { background: color-mix(in srgb, var(--accent) 8%, transparent); }
 
 /* Inside a card the list has nothing above it to keep its distance from. */
 .running .tournament-list { margin: 0; }
+
+/* --- Am Tisch ------------------------------------------------------------ */
+
+/* The match the Zählwerk is counting right now (#188), filled by live.js. No
+   display on .live itself: the section comes up with the hidden attribute and
+   a display rule here would override it. The two sides mirror each other
+   around the colon, points large because they are what somebody walking past
+   looks for, sets and rating small underneath. */
+.live h2 {
+	margin: 0 0 0.6rem;
+}
+
+.live-board {
+	display: grid;
+	grid-template-columns: 1fr auto 1fr;
+	/* Start, not center: the colon belongs between the two scores, not
+	   halfway down the names and ratings under them. */
+	align-items: start;
+	gap: 0.75rem;
+}
+
+.live-side {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	min-width: 0;
+	text-align: center;
+}
+
+.live-name {
+	font-weight: 600;
+	overflow-wrap: anywhere;
+}
+
+/* Who serves next, as a dot after the name rather than a word: it changes
+   every two points, and a word would make the name jump. */
+.live-serving .live-name::after {
+	content: " \25CF";
+	color: var(--accent-text);
+}
+
+.live-ttr, .live-sets {
+	font-size: 0.85rem;
+	color: var(--muted);
+}
+
+.live-points {
+	order: -1;
+	font-size: 2.6rem;
+	font-weight: 700;
+	line-height: 1.1;
+	font-variant-numeric: tabular-nums;
+}
+
+.live-sep {
+	font-size: 2.6rem;
+	line-height: 1.1;
+	color: var(--muted);
+}
+
+.live-set {
+	margin: 0.5rem 0 0;
+	text-align: center;
+}
 
 /* The mark on the reader's own row. Mono and small, like .side and .unrated:
    it is a label on a name, not a second name. Coloured, unlike those two,

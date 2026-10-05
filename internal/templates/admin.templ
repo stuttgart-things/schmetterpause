@@ -412,6 +412,13 @@ templ adminInstance(v AdminInstance) {
 						<span class="muted">aus der Anfrage</span>
 					}
 				}
+				@instanceRow("Live-Spielstand", "SP_ZAEHLWERK_URL") {
+					if v.ZaehlwerkURL != "" {
+						{ v.ZaehlwerkURL }
+					} else {
+						<span class="muted">aus</span>
+					}
+				}
 			</tbody>
 		</table>
 		<p class="muted">

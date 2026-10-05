@@ -74,6 +74,7 @@ func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	view.Standings = table
+	view.Live = s.liveView(table)
 
 	// Which door a stranger gets. Signing in is the common case once
 	// anybody is on the roster — joining happens once per person, a browser
@@ -131,6 +132,23 @@ func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 	}
 
 	s.render(w, r, templates.Index(view))
+}
+
+// liveView points the running score at the Zählwerk, with the ratings it
+// shows next to the names. Read off the standings already loaded for this
+// page, so the element costs no query of its own.
+func (s *Server) liveView(table templates.StandingsView) templates.LiveView {
+	if s.cfg.ZaehlwerkURL == "" {
+		return templates.LiveView{}
+	}
+	ratings := make(map[string]int, len(table.Rows))
+	for _, row := range table.Rows {
+		ratings[row.ID] = row.TTR
+	}
+	return templates.LiveView{
+		StreamURL: s.cfg.ZaehlwerkURL + "/live/stream",
+		Ratings:   ratings,
+	}
 }
 
 // handleJoin creates a player with their PIN, starts a session for them and

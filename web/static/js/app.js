@@ -1,5 +1,6 @@
-// The only handwritten JavaScript in the application. Invariant 7 allows it
-// where HTMX does not reach, and this is that place.
+// Handwritten JavaScript, which invariant 7 allows where HTMX does not reach,
+// and this is that place. live.js is the only other file, for the same reason
+// and only on the start page.
 //
 // A rejected form comes back as 422 with the form re-rendered and the reason
 // inside it. HTMX swaps 2xx responses only, so without this the response is
