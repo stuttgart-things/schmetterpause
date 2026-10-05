@@ -40,7 +40,7 @@ const (
 	goVersion         = "1.27"
 	goVariant         = "alpine"
 	goImage           = "golang:" + goVersion + "-" + goVariant
-	golangciLintImage = "golangci/golangci-lint:v2.13.2-alpine"
+	golangciLintImage = "golangci/golangci-lint:v2.14.0-alpine"
 	postgresImage     = "postgres:18-alpine"
 	runtimeImage      = "gcr.io/distroless/static-debian12:nonroot"
 	toolingImage      = "alpine:3.24"
