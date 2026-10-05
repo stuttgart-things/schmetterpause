@@ -26,6 +26,9 @@ public_base_url = ""
 # Empty grants nothing. A display name, once that player has joined.
 bootstrap_admin = ""
 
+# Empty: no running score on the start page (#188).
+zaehlwerk_url = ""
+
 # 0: no /metrics listener. Nothing on Azure would scrape it, and the kcl base
 # turns it on only because a cluster scraper can reach the pod directly.
 metrics_port = 0

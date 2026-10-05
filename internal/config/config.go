@@ -120,6 +120,17 @@ type Config struct {
 	// because there the incoming request no longer says where the code should
 	// point.
 	PublicBaseURL string
+	// ZaehlwerkURL is where a browser on the start page reaches the Zählwerk,
+	// scheme and host only. Empty by default, and then the start page carries
+	// neither the running score nor the script that would fill it (#188) —
+	// the same posture as KioskToken.
+	//
+	// It is the browser that connects, not this process: the page opens the
+	// Zählwerk's GET /live/stream itself, so the address has to be one the
+	// players' machines resolve, and the Zählwerk has to list this
+	// application's origin in its ALLOWED_ORIGINS. Schmetterpause never
+	// calls it and carries no events (ADR-0002 is not touched).
+	ZaehlwerkURL string
 }
 
 // Load reads the configuration from the environment and validates it.
@@ -208,11 +219,19 @@ func Load() (Config, error) {
 	cfg.BootstrapAdmin = env("BOOTSTRAP_ADMIN", "")
 
 	if raw := env("PUBLIC_BASE_URL", ""); raw != "" {
-		base, err := parseBaseURL(raw)
+		base, err := parseBaseURL("PUBLIC_BASE_URL", raw)
 		if err != nil {
 			errs = append(errs, err)
 		}
 		cfg.PublicBaseURL = base
+	}
+
+	if raw := env("ZAEHLWERK_URL", ""); raw != "" {
+		base, err := parseBaseURL("ZAEHLWERK_URL", raw)
+		if err != nil {
+			errs = append(errs, err)
+		}
+		cfg.ZaehlwerkURL = base
 	}
 
 	if err := errors.Join(errs...); err != nil {
@@ -237,25 +256,28 @@ func (c Config) ValidateForServe() error {
 	return nil
 }
 
-// parseBaseURL accepts an absolute http or https address without a path.
+// parseBaseURL accepts an absolute http or https address without a path, read
+// from the variable named key.
 //
 // A path prefix is rejected rather than half-supported: every link in this
 // application is root-absolute, so a code pointing at /schmetterpause/ would
-// scan fine and send the first click after it to the wrong place.
-func parseBaseURL(raw string) (string, error) {
+// scan fine and send the first click after it to the wrong place. The
+// Zählwerk's address follows the same rule because its stream lives at a
+// fixed root path too.
+func parseBaseURL(key, raw string) (string, error) {
 	u, err := url.Parse(raw)
 	if err != nil {
-		return "", fmt.Errorf("%sPUBLIC_BASE_URL=%q is not a URL: %w", envPrefix, raw, err)
+		return "", fmt.Errorf("%s%s=%q is not a URL: %w", envPrefix, key, raw, err)
 	}
 
 	switch {
 	case u.Scheme != "http" && u.Scheme != "https":
-		return "", fmt.Errorf("%sPUBLIC_BASE_URL=%q needs an http:// or https:// scheme", envPrefix, raw)
+		return "", fmt.Errorf("%s%s=%q needs an http:// or https:// scheme", envPrefix, key, raw)
 	case u.Host == "":
-		return "", fmt.Errorf("%sPUBLIC_BASE_URL=%q has no host", envPrefix, raw)
+		return "", fmt.Errorf("%s%s=%q has no host", envPrefix, key, raw)
 	case strings.Trim(u.Path, "/") != "", u.RawQuery != "", u.Fragment != "":
-		return "", fmt.Errorf("%sPUBLIC_BASE_URL=%q must be scheme and host only, without a path",
-			envPrefix, raw)
+		return "", fmt.Errorf("%s%s=%q must be scheme and host only, without a path",
+			envPrefix, key, raw)
 	}
 	return u.Scheme + "://" + u.Host, nil
 }

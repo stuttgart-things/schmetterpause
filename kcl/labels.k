@@ -40,6 +40,7 @@ _logLevel = option("config.logLevel")
 _kioskEnabled = option("config.kioskEnabled")
 _scoreboardEnabled = option("config.scoreboardEnabled")
 _bootstrapAdmin = option("config.bootstrapAdmin")
+_zaehlwerkURL = option("config.zaehlwerkURL")
 _migrateInitContainer = option("config.migrateInitContainer")
 _seedEnabled = option("config.seedEnabled")
 _dbClusterName = option("config.dbClusterName")
@@ -128,6 +129,8 @@ config: schema.Schmetterpause = schema.Schmetterpause {
         scoreboardEnabled = _bool(_scoreboardEnabled)
     if _bootstrapAdmin:
         bootstrapAdmin = _bootstrapAdmin
+    if _zaehlwerkURL:
+        zaehlwerkURL = _zaehlwerkURL
     if _migrateInitContainer != Undefined and _migrateInitContainer != None:
         migrateInitContainer = _bool(_migrateInitContainer)
     if _seedEnabled != Undefined and _seedEnabled != None:

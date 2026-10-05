@@ -79,6 +79,8 @@ Configuration comes exclusively from environment variables:
                         off the request
   SP_BOOTSTRAP_ADMIN    display name of the player who gets the admin flag at
                         startup (docs/adr/0008); unset grants nothing
+  SP_ZAEHLWERK_URL      scheme and host of the Zählwerk the start page shows
+                        the running score from; unset shows none
 `
 
 func main() {
