@@ -55,10 +55,13 @@ spec:
   # rather than noticed. docs/supply-chain.md has the running count and the
   # three lines to change: this one, and mutateDigest and verifyDigest below.
   validationActions: [Audit]
-  # Verification talks to a registry and to Rekor, so it is not free. A
-  # cluster that cannot reach either should not be a cluster on which no pod
-  # starts; under Deny this becomes the interesting question, and the answer
-  # is in docs/supply-chain.md.
+  # Verification reaches GHCR, which holds the signature, and nothing else:
+  # the signature carries an offline Rekor timestamp, so Rekor and the TUF
+  # root are never contacted (measured on homerun2-test1, 2026-09-16, #262).
+  # Ignore stays under Deny too, decided in #262: Fail would let a GHCR
+  # outage stop every schmetterpause pod, a rebuilt cluster's first one
+  # included. The hole Ignore leaves is alerted on as
+  # SchmetterpauseSignatureCheckSkipped. docs/supply-chain.md has the rest.
   failurePolicy: Ignore
   webhookConfiguration:
     timeoutSeconds: 30
