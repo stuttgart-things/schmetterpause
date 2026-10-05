@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.15.0](https://github.com/stuttgart-things/schmetterpause/compare/v0.14.0...v0.15.0) (2026-10-05)
+
+
+### Features
+
+* **start:** show the running score from the Zählwerk on the start page ([#303](https://github.com/stuttgart-things/schmetterpause/issues/303)) ([62f210a](https://github.com/stuttgart-things/schmetterpause/commit/62f210a0f9bf89259ae5afaf22ef0035b4f61a13))
+
+
+### Bug Fixes
+
+* **deps:** update module github.com/a-h/templ to v0.3.1070 ([#300](https://github.com/stuttgart-things/schmetterpause/issues/300)) ([6e742ed](https://github.com/stuttgart-things/schmetterpause/commit/6e742edce0198e0771616cd7395c99e024de0102))
+
 ## [0.14.0](https://github.com/stuttgart-things/schmetterpause/compare/v0.13.0...v0.14.0) (2026-09-25)
 
 
