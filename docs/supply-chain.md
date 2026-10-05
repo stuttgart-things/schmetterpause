@@ -225,13 +225,35 @@ admission does with it has not been watched yet, and the drill below is where
 it is. A gate that cannot fail is a measurement, and the day it stops being one
 is worth a line.
 
+**`policy/tests` does not pass with both `true`.** Measured on 2026-10-05 with
+`task policy:test` (kyverno CLI 1.19.1). With `Deny`, `mutateDigest: true` and
+`verifyDigest: true`, `signed-by-tag` comes back `fail` and the other seven
+lines are as expected. With `verifyDigest: false` all eight pass. The CLI does
+not run the mutation that rewrites the tag to a digest, so `verifyDigest` sees
+a bare tag. Admission does run it, so the failure is the CLI's view, not
+necessarily the cluster's. The flip therefore has to choose one of these:
+keep `verifyDigest: false`, change the `signed-by-tag` expectation, or move
+that line out of the CLI test. It cannot just flip the three lines and keep CI
+green.
+
 Three things to know before flipping it:
 
-- `failurePolicy: Ignore`. If Kyverno cannot reach the registry or Rekor, the
-  pod is admitted rather than refused. That is the right default for a cluster
-  the office plays on and the wrong one for a claim of coverage, so it is
-  named here rather than left to be discovered. Changing it to `Fail` makes
-  every pod in those namespaces depend on Rekor being up.
+- `failurePolicy: Ignore`, and it stays `Ignore` after the flip (#262, decided
+  2026-09-16). While the webhook cannot answer, the pod is admitted unchecked
+  rather than refused. `Fail` was rejected because it would let a GHCR outage
+  stop every schmetterpause pod, the first one on a rebuilt cluster included
+  (`docs/backup-restore.md`). The hole is not silent:
+  `SchmetterpauseSignatureCheckSkipped` fires on the API server's fail-open
+  counter (stuttgart-things/argocd#457). `Deny` changes what a failed
+  *verification* does, not what a failed *webhook* does.
+- **Admission reaches GHCR and nothing else.** Not Rekor and not Sigstore's TUF
+  root: measured on `homerun2-test1` on 2026-09-16 with `ctlog.url` pointed at
+  a host that does not resolve. The signed probe still passed and the unsigned
+  one still failed. That holds because the signature CI makes carries a
+  `SignedEntryTimestamp` bundle, which Kyverno verifies offline against the
+  Rekor key it ships with (`enableTuf=false`). **Do not drop the bundle from
+  signing.** A signature without it sends verification to the online Rekor
+  lookup, and then `rekor.sigstore.dev` is on the admission path.
 - The policy covers the application image only. Postgres, and anything else in
   the same namespace, is not checked by it and is not claimed to be — and
   nothing stops a pod there from running a different image altogether.
