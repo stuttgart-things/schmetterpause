@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.16.0](https://github.com/stuttgart-things/schmetterpause/compare/v0.15.0...v0.16.0) (2026-10-06)
+
+
+### ⚠ BREAKING CHANGES
+
+* **policy:** a schmetterpause pod whose image is not signed by this repository's CI workflow is refused in schmetterpause and schmetterpause-pr-* instead of reported.
+
+### Features
+
+* **policy:** refuse unsigned images at admission ([#305](https://github.com/stuttgart-things/schmetterpause/issues/305)) ([33ed5b1](https://github.com/stuttgart-things/schmetterpause/commit/33ed5b16c7cef1b7abaec041026d68daacc85f03)), closes [#262](https://github.com/stuttgart-things/schmetterpause/issues/262)
+
 ## [0.15.0](https://github.com/stuttgart-things/schmetterpause/compare/v0.14.0...v0.15.0) (2026-10-05)
 
 
