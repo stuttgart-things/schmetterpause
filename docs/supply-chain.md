@@ -167,7 +167,7 @@ arm64 is still an open point in ADR-0020.
 
 `policy/verify-image-signature.yaml` is an `ImageValidatingPolicy`
 (`policies.kyverno.io/v1`), scoped to `schmetterpause` and
-`schmetterpause-pr-*`. It refuses — or, for now, reports — a pod whose
+`schmetterpause-pr-*`. It refuses a pod whose
 application image carries no signature from the identity above, whether the
 pod names that image by tag or by digest, in a container or in an init
 container. It names the signer with the same regexp as the verification above.
@@ -185,60 +185,71 @@ task policy:apply
 task policy:status
 ```
 
-**A refusal reaches a human.** Under `Audit` a refusal is only a `PolicyReport`,
-so the same consumer's monitoring scrapes Kyverno for this policy's results.
-When a verification fails, it raises `SchmetterpauseUnsignedImageAdmitted`, which
-goes through the cluster's Alertmanager to the Teams alert channel, followed by a
-"Resolved:" card (stuttgart-things/argocd#448, #449). A server-side dry-run
-counts as a refusal too; no Kyverno label tells the two apart.
+**A refusal reaches a human.** The pod is refused at admission, which whoever
+deploys sees as a failed rollout. The same consumer's monitoring scrapes Kyverno
+for this policy's results as well, and a failed verification raises an alert
+through the cluster's Alertmanager to the Teams alert channel
+(stuttgart-things/argocd#448, #449). Under `Audit` that alert was called
+`SchmetterpauseUnsignedImageAdmitted`. Under `Deny` it has to say *refused*, and
+the rename lands in the argocd catalog together with the version bump that
+brings this policy, because the policy is read at the deployed tag. A
+server-side dry-run counts as a refusal too; no Kyverno label tells the two
+apart.
 
-**It is in `Audit` today.** It moves to `Deny` once it has seen three clean
-releases, the posture Trivy took in this repository for the same reason: a rule
-that has never run over a real release is a measurement, not a verdict.
+**It is in `Deny` from the release after v0.15.0.** It ran in `Audit` until it
+had seen three clean releases, the posture Trivy took in this repository for
+the same reason: a rule that has never run over a real release is a
+measurement, not a verdict.
 
-| Release | Policy report | Date |
-| --- | --- | --- |
-| `v0.9.0` | _none_ — the policy was applied on 2026-09-15 while that pod was already running, so it was never admitted through the check | 2026-09-15 |
-| `v0.10.0` | **pass** — `schmetterpause-verify-image-signature`, on the pod and on the Deployment | 2026-09-16 |
-| `v0.11.0` | **pass** — `schmetterpause-verify-image-signature`, on the pod and on the Deployment | 2026-09-16 |
+| Release | Result | Cluster | Date |
+| --- | --- | --- | --- |
+| `v0.9.0` | _none_ — the policy was applied on 2026-09-15 while that pod was already running, so it was never admitted through the check | homerun2-test1 | 2026-09-15 |
+| `v0.10.0` | **pass** — PolicyReport on the pod and on the Deployment | homerun2-test1 | 2026-09-16 |
+| `v0.11.0` | **pass** — PolicyReport on the pod and on the Deployment | homerun2-test1 | 2026-09-16 |
+| `v0.12.0` | _not read_ — homerun2-test1 was torn down on 2026-09-28 before anybody read its report | homerun2-test1 | 2026-09-20 |
+| `v0.13.0` | **pass** — pod `create` and `update` | homerun2-dev2 | 2026-09-28 |
+| `v0.14.0` | **pass** — pod `create` and `update` | homerun2-dev2 | 2026-09-30 |
+| `v0.15.0` | **pass** — pod `create` and `update` | homerun2-dev2 | 2026-10-05 |
 
-**`v0.10.0` is the first release this policy has ever actually checked**, and it
-is the first line of the three the flip waits on. `v0.9.0` is listed as what it
-is — a release that ran under the policy without ever passing through it, which
-is not evidence of anything and should not be counted as a clean line.
+`v0.10.0` is the first release this policy ever actually checked. `v0.9.0` is
+listed as what it is, a release that ran under the policy without passing
+through it, and is not counted.
 
-`v0.11.0` is the second: its pod was admitted at 16:01Z on 2026-09-16 and both
-reports read `pass`, read off the cluster on 2026-09-19.
+**The homerun2-dev2 lines come from a metric, not from a PolicyReport.**
+homerun2-dev2, the office's cluster since the move (stuttgart-things#3228),
+carries no PolicyReport at all, for this policy or any other; read off the
+cluster on 2026-10-06. What it does have is Kyverno's own counter
+`kyverno_image_validating_policy_results_total`, scraped by the monitoring that
+exists for the alert, with 15 days of retention. `increase(...[30m])` around
+each rollout's ReplicaSet creation shows `pass` on `create` and on `update` for
+v0.13.0 (2026-09-28 13:25Z), v0.14.0 (2026-09-30 11:29Z) and v0.15.0
+(2026-10-05 22:20Z). Across the whole cluster the counter has no `fail` series,
+and Kyverno's scrape was not down once in those ten days. Why that cluster
+writes no reports is a question for the platform and does not change the
+count: the counter is what the alert reads.
 
-So: two of three. The next release that passes is the third.
+Five clean releases on two clusters, so the policy moved:
 
-Fill the rest in as the releases come. When the third line is clean, change three
-lines in the policy and say so here:
+- `validationActions: [Audit]` became `[Deny]`;
+- `mutateDigest` became `true`, so the pod carries the digest that was verified
+  rather than the tag that resolved to it, and the kubelet cannot pull
+  something else afterwards;
+- `verifyDigest` stays `false`. It only demands that the reference already be a
+  digest, which after `mutateDigest` holds by construction, so on the cluster it
+  adds nothing. In the kyverno CLI, which does not run the mutation, it would
+  report `signed-by-tag` as having no digest: measured on 2026-10-05 with
+  `task policy:test`, all eight lines pass with it off and `signed-by-tag` fails
+  with it on. Kept off, `policy/tests` still shows that a signed tag is
+  admitted. That the rewrite really happens is checked on the cluster, in the
+  drill below.
 
-- `validationActions: [Audit]` becomes `[Deny]`;
-- `mutateDigest` and `verifyDigest` become `true`, so that the pod carries the
-  digest that was verified rather than the tag that resolved to it, and the
-  kubelet cannot pull something else afterwards.
+Kyverno 1.19.1 accepts `Deny` with `mutateDigest` in a server-side dry run.
+What admission does with it on a real refusal is the drill below, run again
+under `Deny`.
 
-Kyverno 1.19.1 accepts that combination in a server-side dry run; what
-admission does with it has not been watched yet, and the drill below is where
-it is. A gate that cannot fail is a measurement, and the day it stops being one
-is worth a line.
+Three things to know about it:
 
-**`policy/tests` does not pass with both `true`.** Measured on 2026-10-05 with
-`task policy:test` (kyverno CLI 1.19.1). With `Deny`, `mutateDigest: true` and
-`verifyDigest: true`, `signed-by-tag` comes back `fail` and the other seven
-lines are as expected. With `verifyDigest: false` all eight pass. The CLI does
-not run the mutation that rewrites the tag to a digest, so `verifyDigest` sees
-a bare tag. Admission does run it, so the failure is the CLI's view, not
-necessarily the cluster's. The flip therefore has to choose one of these:
-keep `verifyDigest: false`, change the `signed-by-tag` expectation, or move
-that line out of the CLI test. It cannot just flip the three lines and keep CI
-green.
-
-Three things to know before flipping it:
-
-- `failurePolicy: Ignore`, and it stays `Ignore` after the flip (#262, decided
+- `failurePolicy: Ignore`, and it stays `Ignore` under `Deny` (#262, decided
   2026-09-16). While the webhook cannot answer, the pod is admitted unchecked
   rather than refused. `Fail` was rejected because it would let a GHCR outage
   stop every schmetterpause pod, the first one on a rebuilt cluster included
@@ -257,9 +268,6 @@ Three things to know before flipping it:
 - The policy covers the application image only. Postgres, and anything else in
   the same namespace, is not checked by it and is not claimed to be — and
   nothing stops a pod there from running a different image altogether.
-- Until the flip, the tag is not rewritten to a digest. The signature is
-  checked on whatever the tag resolved to at admission, and the kubelet may
-  pull something else later. Under `Audit` that window is open.
 
 ### The policy itself: the `policy-test` job
 

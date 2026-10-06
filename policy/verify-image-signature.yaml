@@ -46,15 +46,13 @@ metadata:
       The application image must carry a keyless cosign signature made by
       this repository's CI workflow. See ADR-0020 and docs/supply-chain.md.
 spec:
-  # Audit first, Deny once it has seen three clean releases — the posture
-  # Trivy took in this repository for the same reason: a rule that has never
-  # run over a real release is a measurement, not a verdict.
-  #
-  # THE FLIP HAS TO BE WRITTEN DOWN. A gate that cannot fail is a
-  # measurement, and #230 asks for the day it stops being one to be recorded
-  # rather than noticed. docs/supply-chain.md has the running count and the
-  # three lines to change: this one, and mutateDigest and verifyDigest below.
-  validationActions: [Audit]
+  # Deny since three clean releases (#262): v0.10.0 and v0.11.0 on
+  # homerun2-test1, then v0.13.0, v0.14.0 and v0.15.0 on homerun2-dev2, every
+  # verification `pass` and not one `fail`. The running count and the day it
+  # flipped are in docs/supply-chain.md — a gate that could not fail was a
+  # measurement, and #230 asked for the day it stopped being one to be written
+  # down rather than noticed.
+  validationActions: [Deny]
   # Verification reaches GHCR, which holds the signature, and nothing else:
   # the signature carries an offline Rekor timestamp, so Rekor and the TUF
   # root are never contacted (measured on homerun2-test1, 2026-09-16, #262).
@@ -105,18 +103,20 @@ spec:
     # same image in one, and an unverified image there is reported all the
     # same.
     required: true
-    # Rewrite the tag to the digest that was verified, and insist on one.
-    # That is the "what runs is verifiably what CI built" half: without it the
-    # signature is checked against whatever the tag resolved to at admission
-    # time, and the kubelet is then free to pull something else.
+    # Rewrite the tag to the digest that was verified. That is the "what runs
+    # is verifiably what CI built" half: without it the signature is checked
+    # against whatever the tag resolved to at admission time, and the kubelet
+    # is then free to pull something else.
     #
-    # Off while this is Audit, on with the flip. The server accepts both under
-    # Audit, but the kyverno CLI then reports every tag reference as "does not
-    # have a digest" instead of saying whether it is signed — a measurement of
-    # something other than the signature — and nothing here has watched what
-    # admission does with the combination. The drill in docs/supply-chain.md
-    # is where that gets seen.
-    mutateDigest: false
+    # verifyDigest stays false, deliberately (#262). It only demands that the
+    # reference already be a digest, and after mutateDigest has rewritten it
+    # that holds by construction, so on the cluster it adds nothing. Where it
+    # does change something is the kyverno CLI, which does not run the
+    # mutation: with it on, policy/tests reports `signed-by-tag` as "does not
+    # have a digest" and stops showing that a signed tag is admitted at all.
+    # That the rewrite really happens is checked on the cluster instead — the
+    # drill in docs/supply-chain.md looks for @sha256 on the admitted pod.
+    mutateDigest: true
     verifyDigest: false
   attestors:
     - name: ci
