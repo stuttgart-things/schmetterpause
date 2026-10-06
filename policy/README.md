@@ -46,8 +46,9 @@ the policy therefore reaches the cluster with the next release that carries it,
 not with a merge to `main`.
 
 With the consumer's `monitoring.enabled` as well, a refusal raises
-`SchmetterpauseUnsignedImageAdmitted` in the Teams alert channel
-(stuttgart-things/argocd#448, #449).
+`SchmetterpauseUnsignedImageRefused` in the Teams alert channel
+(stuttgart-things/argocd#448, #449, renamed from
+`SchmetterpauseUnsignedImageAdmitted` with the move to `Deny`).
 
 For a cluster outside the catalog path:
 
@@ -60,6 +61,6 @@ Applying it by hand needs cluster-admin, because the policy is cluster-scoped,
 and a Kyverno that serves `policies.kyverno.io/v1`. 1.19.1, on `homerun2-test1`,
 does.
 
-The drill that proves the policy can refuse something on the cluster, and the
-condition for moving it from `Audit` to `Deny`, are in
-[`docs/supply-chain.md`](../docs/supply-chain.md).
+The policy is in `Deny` from v0.16.0 (#262). The ledger of clean releases that
+move rests on, and the drill that proves the policy refuses something on the
+cluster, are in [`docs/supply-chain.md`](../docs/supply-chain.md).
