@@ -347,11 +347,24 @@ pushed to the release repository or deleted from it afterwards.
 The pod was deleted at 14:38:25. Its `PolicyReport` went with it, and the
 office pod was not touched.
 
-**What the drill does not show is what `Deny` does.** Under `Deny` the
-`kubectl apply` itself should fail and name the policy, and `mutateDigest`
-should rewrite the application pod's tag to its digest. Neither has been
-watched yet. When the policy moves to `Deny`, run the drill again the same way
-and add a second table:
+**The drill again, under `Deny`.** Run on `homerun2-dev2` on 2026-10-07, after
+v0.16.0 reached the cluster through catalog v0.71.0, with the same pod as above:
+
+| Time (UTC) | What | |
+| --- | --- | --- |
+| 04:49 | The v0.16.0 app pod, admitted under `Deny`, runs `…/schmetterpause:v0.16.0@sha256:10e1a97e…`: `mutateDigest` rewrote the tag to the digest it verified | — |
+| 04:50:36 | `kubectl apply` of `signature-drill` (unsigned `v0.8.0`) | 0 s |
+| 04:50:40 | **Refused.** `admission webhook "ivpol.validate.kyverno.svc-ignore-finegrained-schmetterpause-verify-image-signature" denied the request: … the application image is not signed by the schmetterpause CI workflow`. No pod exists afterwards, so there is nothing to delete | 4 s |
+| 04:50:54 | `SchmetterpauseUnsignedImageRefused` **firing** in Prometheus, `resource_namespace=schmetterpause`; `kyverno_image_validating_policy_results_total{result="fail",resource_request_operation="create"}` is 1 | 18 s |
+| 04:51 | The same alert active in Alertmanager, routed to the receiver `webhook` (the path to the Teams channel) | ~25 s |
+
+Both things the first drill could not show are now watched: the `apply` itself
+fails and names the policy, and the admitted application pod carries a digest.
+What this run does not show is the Teams card itself, which is read in the
+channel and not from here.
+
+homerun2-dev2 writes no PolicyReports, so on that cluster the refusal is read
+from the `apply` and from the alert. To repeat it:
 
 ```sh
 kubectl apply -f - <<'EOF'
@@ -370,16 +383,10 @@ spec:
       image: ghcr.io/stuttgart-things/schmetterpause:v0.8.0
       command: ["/nonexistent-drill"]
 EOF
-kubectl -n schmetterpause get policyreport -o yaml | grep -B2 -A6 schmetterpause-verify-image-signature
-kubectl -n schmetterpause delete pod signature-drill
-```
-
-Under `Deny`, also check that the application pod carries a digest rather than
-only a tag:
-
-```sh
+# expected: "denied the request", and no pod afterwards
 kubectl -n schmetterpause get pods \
   -o jsonpath='{range .items[*]}{.metadata.name}{"\t"}{.spec.containers[*].image}{"\n"}{end}'
+# expected: the application image ends in @sha256:…
 ```
 
 ## Where this does not reach
