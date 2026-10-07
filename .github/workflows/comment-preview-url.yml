@@ -29,7 +29,7 @@ jobs:
     permissions:
       contents: read
       pull-requests: write
-    uses: stuttgart-things/github-workflow-templates/.github/workflows/call-comment-preview-url.yaml@1d3dc8094444afa907d78f384a0aed151efd759e # main
+    uses: stuttgart-things/github-workflow-templates/.github/workflows/call-comment-preview-url.yaml@7cd3b0092dc2623133e3e3dafcc5dcd39dc2e35d # main
     with:
       hostname-prefix: schmetterpause-pr
       # Was homerun2-test1 -- the previews moved to app-dev
