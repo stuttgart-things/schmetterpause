@@ -648,11 +648,19 @@ tasks:
         kubectl get imagevalidatingpolicies.policies.kyverno.io schmetterpause-verify-image-signature \
           -o custom-columns=NAME:.metadata.name,ACTIONS:.spec.validationActions,READY:.status.conditionStatus.ready
         echo
-        # Under Audit the refusal is a report and nothing else — so the report
-        # is the only place the policy speaks. See docs/supply-chain.md.
+        # Reports exist only under Audit. Under Deny Kyverno writes no admission
+        # report for an ImageValidatingPolicy, and the background scan is off,
+        # so the refusal shows as a PolicyViolation event on the policy (in
+        # namespace default, gone after the event TTL) and in the metric.
+        # See docs/supply-chain.md.
         kubectl get policyreport -n schmetterpause \
           -o jsonpath='{range .items[*].results[?(@.policy=="schmetterpause-verify-image-signature")]}{.result}{"\t"}{.message}{"\n"}{end}' \
           || echo "no policy reports in namespace schmetterpause"
+        echo
+        kubectl get events -n default \
+          --field-selector reason=PolicyViolation,involvedObject.name=schmetterpause-verify-image-signature \
+          -o custom-columns=TIME:.metadata.creationTimestamp,MESSAGE:.message \
+          || echo "no PolicyViolation events for the policy"
     silent: true
 
   # ------------------------------------------------------------ Data (db:*)

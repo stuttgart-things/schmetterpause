@@ -224,9 +224,40 @@ exists for the alert, with 15 days of retention. `increase(...[30m])` around
 each rollout's ReplicaSet creation shows `pass` on `create` and on `update` for
 v0.13.0 (2026-09-28 13:25Z), v0.14.0 (2026-09-30 11:29Z) and v0.15.0
 (2026-10-05 22:20Z). Across the whole cluster the counter has no `fail` series,
-and Kyverno's scrape was not down once in those ten days. Why that cluster
-writes no reports is a question for the platform and does not change the
-count: the counter is what the alert reads.
+and Kyverno's scrape was not down once in those ten days. The counter is what
+the alert reads.
+
+**Why homerun2-dev2 has no PolicyReport** (stuttgart-things#3488, read off the
+cluster and the Kyverno v1.19.1 source on 2026-10-07). Two causes, one per mode:
+
+- **Under `Audit` it was a stuck circuit breaker, not configuration.** Kyverno's
+  admission controller writes an admission report only through a breaker that
+  counts the existing admission reports through a watch, and treats a watch that
+  has stopped as "open". The API server restarted on 2026-09-28 at 12:13Z, the
+  watch did not come back, and the breaker has been open since. That was 44
+  minutes before this policy reached the cluster. The admission controller's
+  own metrics show it: `kyverno_breaker_drops_total{circuit_name="admission
+  reports"}` equals `kyverno_breaker_total`, both 17. That is exactly the
+  number of `Audit` results the policy produced (8 pod `create`, 3 pod
+  `update`, 6 Deployment `update`). The controller never sent a single
+  `create` for an `EphemeralReport` since it started on 2026-09-27. Reporting
+  flags and RBAC are fine. Going by the source, restarting the admission
+  controller starts a new watch and closes the breaker. That has not been
+  tried. It is the platform's call, and it would not bring reports back for
+  this policy, because:
+- **Under `Deny` Kyverno writes no admission report for this kind of policy at
+  all.** For `ImageValidatingPolicy` (and `ValidatingPolicy`) the handler skips
+  the report as soon as the policy *has* the `Deny` action, whether the result
+  is a pass or a fail (`pkg/webhooks/resource/ivpol/handler.go`, `audit()`).
+  The only other source of reports is the background scan, and this policy
+  turns it off (`evaluation.background.enabled: false`), so nothing re-checks
+  signatures against GHCR every hour. Under `Deny` the instruments are
+  therefore the counter, the alert, the failed `apply`, and a
+  `PolicyViolation` event on the policy. The event lives in namespace `default`
+  and expires with the cluster's event TTL. `task policy:status` shows both.
+
+On homerun2-test1 the policy ran in `Audit` with a working breaker, which is
+why the PolicyReports in the table above exist.
 
 Five clean releases on two clusters, so the policy moved:
 
@@ -363,8 +394,9 @@ fails and names the policy, and the admitted application pod carries a digest.
 What this run does not show is the Teams card itself, which is read in the
 channel and not from here.
 
-homerun2-dev2 writes no PolicyReports, so on that cluster the refusal is read
-from the `apply` and from the alert. To repeat it:
+Under `Deny` no cluster writes a PolicyReport for this policy (see above), so
+the refusal is read from the `apply`, from the alert and from the
+`PolicyViolation` event that `task policy:status` lists. To repeat it:
 
 ```sh
 kubectl apply -f - <<'EOF'
