@@ -32,7 +32,7 @@ comes from.
 | External Secrets Operator and a store | recommended | the two Secrets | ESO 2.10.0 against OpenBao |
 | Barman Cloud plugin and object storage | recommended | database backups and point-in-time restore | plugin v0.15.0, MinIO |
 | Velero | optional | backups of the Kubernetes objects | 1.18.1 |
-| Kyverno | optional | refusing an image that CI did not sign | not on the reference cluster; 1.19.1 on `homerun2-test1` |
+| Kyverno | optional | refusing an image that CI did not sign | not on the reference cluster; 1.19.1 on `homerun2-dev2` |
 | trust-manager | optional | a CA bundle for a privately signed object store | 0.24.0 |
 | GitOps (Argo CD or Flux) | optional | keeping the cluster at what Git says | Flux |
 

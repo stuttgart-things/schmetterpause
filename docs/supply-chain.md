@@ -64,7 +64,7 @@ flowchart LR
         artefact["schmetterpause-kustomize:TAG<br/>+ .sig"]
     end
 
-    subgraph cluster["homerun2-test1"]
+    subgraph cluster["homerun2-dev2 — the office"]
         direction TB
         argo["Argo CD pulls the manifest"]
         kubelet["kubelet pulls the image"]
@@ -172,13 +172,18 @@ application image carries no signature from the identity above, whether the
 pod names that image by tag or by digest, in a container or in an init
 container. It names the signer with the same regexp as the verification above.
 
-**On `homerun2-test1` the argocd catalog reconciles it.** The consumer sets
-`policy.enabled` in `apps/schmetterpause/install`, whose child Application reads
-this file from this repository at the same tag as the deployed release. The
-policy on the cluster is therefore the one that release was tested against, and
-a version bump moves app and policy together (stuttgart-things/argocd#446,
-stuttgart-things/stuttgart-things#2982, live since 2026-09-15). For a cluster
-outside that path:
+**On `homerun2-dev2` the argocd catalog reconciles it.** The cluster's
+ClusterStack order (`clusters/labda/vsphere/machinery-xrs/homerun2-dev2.yaml`
+in `stuttgart-things`) sets the annotation
+`tabletennis-platform.stuttgart-things.com/policy-enabled: 'true'`, which the
+`tabletennis` ApplicationSet maps onto `policy.enabled` in
+`apps/schmetterpause/install`. Its child Application
+(`tabletennis-homerun2-dev2-schmetterpause-delegate-policy`) reads this file
+from this repository at the same tag as the deployed release (`v0.16.0` on
+2026-10-08). The policy on the cluster is therefore the one that release was
+tested against, and a version bump moves app and policy together
+(stuttgart-things/argocd#446, stuttgart-things/stuttgart-things#2982; first
+live on homerun2-test1 on 2026-09-15). For a cluster outside that path:
 
 ```sh
 task policy:apply
@@ -186,7 +191,8 @@ task policy:status
 ```
 
 **A refusal reaches a human.** The pod is refused at admission, which whoever
-deploys sees as a failed rollout. The same consumer's monitoring scrapes Kyverno
+deploys sees as a failed rollout. The cluster's monitoring
+(`monitoring-enabled` on the same order) scrapes Kyverno
 for this policy's results as well, and a failed verification raises an alert
 through the cluster's Alertmanager to the Teams alert channel
 (stuttgart-things/argocd#448, #449). Under `Audit` that alert was called
@@ -307,7 +313,8 @@ unsigned image by tag, by digest, by tag and digest, in an init container and
 in a preview namespace — and the pods it must admit: a signed image by tag and
 by digest, and a pod running only Postgres. The `policy-test` job runs
 `kyverno test` over it on every change, through the kyverno module, with the
-Kyverno release `homerun2-test1` runs (`KYVERNO_VERSION` in the Taskfile) and
+Kyverno release the office's cluster runs (`KYVERNO_VERSION` in the Taskfile;
+1.19.1 on `homerun2-dev2`, as on `homerun2-test1` before it) and
 with warnings as errors, so a deprecated policy kind fails before the cluster
 stops accepting it.
 

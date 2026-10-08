@@ -39,7 +39,8 @@ vars:
   CRANE_MODULE: github.com/stuttgart-things/dagger/crane@v0.137.3
   TRIVY_MODULE: github.com/stuttgart-things/dagger/trivy@v0.137.3
   KYVERNO_MODULE: github.com/stuttgart-things/dagger/kyverno@v0.137.3
-  # The Kyverno release homerun2-test1 runs (checked 2026-09-15). policy:test
+  # The Kyverno release the office's cluster runs: homerun2-dev2 (checked
+  # 2026-10-08), as homerun2-test1 did before it (checked 2026-09-15). policy:test
   # and the policy-test job test against this rather than the module's
   # default, because a policy test is a claim about the cluster enforcing it.
   KYVERNO_VERSION: "1.19.1"

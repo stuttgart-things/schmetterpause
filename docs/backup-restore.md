@@ -45,11 +45,14 @@ chooses — once the server is gone, it is the only copy.
 
 ## First: back up the office
 
-**Since 2026-09-13 the office plays on Kubernetes**: the CloudNativePG cluster
-`schmetterpause-db` in namespace `schmetterpause` on homerun2-test1, served at
-<https://schmetterpause.homerun2-test1.sthings-vsphere.labul.sva.de>. It
-archives its WAL and takes a base backup every night (see
-[Scheduled backups on Kubernetes](#scheduled-backups-on-kubernetes)).
+**Since 2026-09-13 the office plays on Kubernetes**, and since 2026-09-28 on
+homerun2-dev2: the CloudNativePG cluster `schmetterpause-db` in namespace
+`schmetterpause`, served at
+<https://schmetterpause.homerun2-dev2.sthings-vsphere.labul.sva.de>. Its
+kubeconfig is `~/.kube/homerun2-dev2`. homerun2-test1, where it played until
+then and where most of the records on this page were taken, was torn down on
+2026-09-28. The office archives its WAL and takes a base backup every night
+(see [Scheduled backups on Kubernetes](#scheduled-backups-on-kubernetes)).
 
 The local Compose project `schmetterpause` is stopped. Its volume
 `schmetterpause_pgdata` still holds the office as it was at 14:25Z that day,
@@ -63,7 +66,7 @@ restores — a backup nobody restored is not a backup. The nightly backup does
 not replace this: it is recovery in place, a dump is what you can hold.
 
 ```sh
-KUBECONFIG=~/.kube/homerun2-test1 task db:dump ENV=kubernetes   # reads only; the app keeps running
+KUBECONFIG=~/.kube/homerun2-dev2 task db:dump ENV=kubernetes   # reads only; the app keeps running
 
 # Probe-restore into a throwaway Compose project with its own volume and no ports.
 cat > /tmp/compose.probe.yaml <<'EOF'
@@ -103,8 +106,8 @@ Whatever kubeconfig and context `kubectl` uses. The task names them before it
 does anything; check that line.
 
 ```sh
-KUBECONFIG=~/.kube/homerun2-test1 task db:dump ENV=kubernetes
-KUBECONFIG=~/.kube/homerun2-test1 task db:restore ENV=kubernetes NAMESPACE=… FILE=…
+KUBECONFIG=~/.kube/homerun2-dev2 task db:dump ENV=kubernetes
+KUBECONFIG=~/.kube/homerun2-dev2 task db:restore ENV=kubernetes NAMESPACE=… FILE=…
 ```
 
 `NAMESPACE` defaults to `schmetterpause`, `DB_CLUSTER` to `schmetterpause-db`.
@@ -122,25 +125,35 @@ kubectl -n <namespace> scale deployment/schmetterpause --replicas=0
 kubectl -n <namespace> scale deployment/schmetterpause --replicas=1
 ```
 
-**Under ArgoCD a plain scale does not hold.** On homerun2-test1 the Application
-`schmetterpause-test1` syncs with `selfHeal`, and `argocd-controller` owns
-`spec.replicas` through server-side apply, so the Deployment is back at 1 within
-seconds. Stop Argo reconciling that one Application first, and check that it
-holds before anything else stops:
+**Under ArgoCD a plain scale does not hold.** The office's Argo CD is the
+central one on platform-sthings, not on homerun2-dev2 (that cluster has no
+`argocd` namespace). The Deployment belongs to the Application
+`tabletennis-homerun2-dev2-schmetterpause-delegate`, which syncs with
+`selfHeal`, and `argocd-controller` owns `spec.replicas` through server-side
+apply, so the Deployment is back at 1 within seconds. That Application is
+itself rendered by `tabletennis-homerun2-dev2-schmetterpause`, which comes from
+`tabletennis-platform-homerun2-dev2`, which the `tabletennis-platform`
+ApplicationSet generates — all three with `selfHeal`. Stop Argo reconciling the
+one Application that owns the Deployment, and check that it holds before
+anything else stops:
 
 ```sh
 argo() { KUBECONFIG=~/.kube/platform-sthings kubectl -n argocd "$@"; }
+export KUBECONFIG=~/.kube/homerun2-dev2
 
-argo annotate application schmetterpause-test1 argocd.argoproj.io/skip-reconcile=true
+argo annotate application tabletennis-homerun2-dev2-schmetterpause-delegate argocd.argoproj.io/skip-reconcile=true
 kubectl -n schmetterpause scale deployment/schmetterpause --replicas=0
 sleep 60; kubectl -n schmetterpause get deployment schmetterpause   # still 0/0?
 # restore
-argo annotate application schmetterpause-test1 argocd.argoproj.io/skip-reconcile-
+argo annotate application tabletennis-homerun2-dev2-schmetterpause-delegate argocd.argoproj.io/skip-reconcile-
 ```
 
-Removing the annotation is the scale back up: Argo syncs within a second and
-restores the replica count from Git. Nothing in Git changes, and the parent
-Application and Flux leave the annotation alone.
+Removing the annotation is the scale back up: Argo syncs and restores the
+replica count from Git. Nothing in Git changes. On homerun2-test1 the parent
+Application and Flux left the annotation alone; on homerun2-dev2 the parent is
+the generated `tabletennis-homerun2-dev2-schmetterpause`, and this has not been
+tried there yet — which is what the 60-second check is for. If the Deployment
+comes back, look first at whether the annotation is still on the Application.
 
 A restore also refuses a database that has players, and there is no task to
 empty one — see [Not covered](#not-covered). When that is the decision, after a
@@ -172,16 +185,28 @@ volume goes with it.
 
 Switched on for homerun2-test1 on 2026-09-13
 (stuttgart-things/stuttgart-things#2957), from `database.backup` in
-`apps/schmetterpause/database` in `stuttgart-things/argocd`:
+`apps/schmetterpause/database` in `stuttgart-things/argocd`. Since 2026-09-28
+homerun2-dev2 archives instead (step 5 of
+stuttgart-things/stuttgart-things#3228, after homerun2-test1 had stopped
+archiving). There the values come from the `db-backup-*` annotations in
+`stuttgart-things`
+`clusters/labda/vsphere/machinery-xrs/homerun2-dev2.yaml`, which the
+`tabletennis` ApplicationSet maps onto `database.backup`:
 
 - **WAL archiving**, continuously, and a **base backup every night at 03:00
-  UTC**, kept for 30 days
+  UTC** (ScheduledBackup `schmetterpause-db-daily`), kept for 30 days
 - into `s3://schmetterpause-cnpg/` on the platform MinIO
-  (`artifacts.platform.sthings-vsphere.labul.sva.de`), as a MinIO user of the
-  same name whose policy covers only that bucket
-- with the key pair from its own Vault entry, `schmetterpause-backup` under the
-  `schmetterpause` mount (stuttgart-things/stuttgart-things#2956) — not the
-  app's entry, whose whole-entry write could reset the session key
+  (`artifacts.platform.sthings-vsphere.labul.sva.de`). homerun2-test1 wrote as
+  a MinIO user of the same name whose policy covered only that bucket; what
+  the shared `_backup` credential below may reach has not been checked
+- **under the server name `schmetterpause-db-dev2`**, not `schmetterpause-db`:
+  `schmetterpause-db/` is the path homerun2-dev2 was recovered *from*, written
+  by homerun2-test1 until it stopped archiving
+- with the key pair from the shared backup entry `_backup` under the
+  `schmetterpause` mount, the one the ClusterStack names in
+  `shared-object-store-backup-secret-key` (on homerun2-test1 it was its own
+  entry, `schmetterpause-backup`, stuttgart-things/stuttgart-things#2956) — not
+  the app's entry, whose whole-entry write could reset the session key
 - the endpoint's certificate checked against `cluster-trust-bundle`, never
   skipped
 - through `plugin-barman-cloud` in the operator's namespace `postgres`
@@ -190,14 +215,14 @@ Everything above stays the way to *move* data. The plugin is recovery in place.
 
 ```mermaid
 flowchart LR
-    subgraph office["homerun2-test1 — the office"]
+    subgraph office["homerun2-dev2 — the office"]
         pg["CNPG Cluster<br/>schmetterpause-db"]
         sched["ScheduledBackup<br/>daily 03:00 UTC"]
         pg --> sched
     end
 
     subgraph bucket["s3://schmetterpause-cnpg/ — MinIO on platform-sthings"]
-        path1["schmetterpause-db/<br/>WAL + base backups, kept 30 days"]
+        path1["schmetterpause-db-dev2/<br/>WAL + base backups, kept 30 days"]
         path2["the rebuilt server's own path<br/>set by backup.serverName"]
     end
 
@@ -216,9 +241,11 @@ flowchart LR
 
 Three things worth reading off it:
 
-- **One path is written by exactly one server.** `schmetterpause-db/` belongs to
-  the office's Cluster and nothing else may archive into it. The plugin enforces
-  that — it refuses a non-empty archive rather than mixing two timelines
+- **One path is written by exactly one server.** `schmetterpause-db-dev2/`
+  belongs to the office's Cluster and nothing else may archive into it. The
+  older `schmetterpause-db/`, homerun2-test1's, is where homerun2-dev2 was
+  recovered from; nothing writes there any more, and nothing may. The plugin
+  enforces that — it refuses a non-empty archive rather than mixing two timelines
   (measured 2026-09-16, below) — but the failure is quiet: a second server would
   come up healthy and never back itself up.
 - **The two ways of reading it back are different questions, not two steps.**
@@ -300,13 +327,16 @@ spec:
         name: barman-cloud.cloudnative-pg.io
         parameters:
           barmanObjectName: restore-origin
-          serverName: schmetterpause-db
+          serverName: schmetterpause-db-dev2   # the office's path since 2026-09-28
 ```
 
 Two things about that Cluster matter more than they look. It has **no
 `spec.plugins`**: a restored cluster that archived would write into the
-origin's archive. And it names the **StorageClass**: homerun2-test1 has two
-default ones, so without it nobody knows which a PVC gets.
+origin's archive. And it names the **StorageClass**: homerun2-test1 had two
+default ones, so without it nobody knew which a PVC got. homerun2-dev2 has
+`openebs-hostpath` as its only default and `nfs-csi` beside it (checked
+2026-10-08), and the office's own Cluster names `openebs-hostpath` all the
+same; keep naming it.
 
 It replays to the end of the archive and promotes itself. Compare the counts
 with the origin, then delete the namespace; `openebs-hostpath` removes the
@@ -320,8 +350,9 @@ origin keeps changing, so its counts only match by luck.
 ## Rebuilding a lost cluster
 
 Everything above restores data *into* a cluster that exists. This is the other
-case: `homerun2-test1` is gone and the office's ranking has to come back onto a
-new one.
+case: `homerun2-dev2` is gone and the office's ranking has to come back onto a
+new one. (It was written when the office was on `homerun2-test1`; the move to
+homerun2-dev2 on 2026-09-28 followed this path, from a ClusterStack order.)
 
 > **Rehearsed on 2026-09-20**, top to bottom on a cluster that did not exist
 > before: `schmetterpause-rehearsal1`, a throwaway ClusterStack on
@@ -422,9 +453,12 @@ and Argo registers it.
 step on a hand-registered cluster — **and not needed at all on the ClusterStack
 path**, where the stack derives the auth mount, the role and the policies from
 its profiles (proved on 2026-09-20: every ExternalSecret reached `SecretSynced`
-without anyone applying Terraform). For the hand-registered case it is:
-`argocd/clusters/homerun2-test1/vault-k8s-auth` in `stuttgart-things`, locally
-or through the dispatch workflow's `create-vault-k8s-auth`. A new cluster has a
+without anyone applying Terraform). The office is on that path:
+homerun2-dev2's ClusterSecretStores log in through its own mount
+`homerun2-dev2-eso`, which nobody applied by hand. For a hand-registered
+cluster it is a copy of `argocd/clusters/homerun2-test1/vault-k8s-auth` in
+`stuttgart-things` (the last cluster that needed it), run locally or through
+the dispatch workflow's `create-vault-k8s-auth`. A new cluster has a
 new API address and reviewer token; without this ESO reads nothing — no
 database credentials, no backup keys.
 
@@ -442,20 +476,30 @@ anything can be read. Check the ExternalSecrets.
 answering 200, and the first person who joins starts a second one. Nothing
 alerts on an empty ranking.
 
-In
-`clusters/labul/vsphere/platform-sthings/argocd/homerun2-test1/schmetterpause.yaml`,
-**before the first sync**:
+On a ClusterStack cluster these are annotations under
+`spec.rancher.argocd.annotations` in the new cluster's order in
+`stuttgart-things` `clusters/labda/vsphere/machinery-xrs/` — copy the
+`db-*` block of `homerun2-dev2.yaml` — and they have to be in the order
+**before the cluster is built**, because the database is created in the
+first sync:
 
 ```yaml
-        database:
-          backup:
-            enabled: true
-            serverName: schmetterpause-db-r1     # where the REBUILT server archives
-            # endpointURL, destinationPath, remoteKey unchanged
-          recovery:
-            enabled: true
-            sourceServerName: schmetterpause-db  # where it reads from
+        tabletennis-platform.stuttgart-things.com/db-recovery-enabled: 'true'
+        # where it reads from: the office's CURRENT path, not schmetterpause-db
+        tabletennis-platform.stuttgart-things.com/db-recovery-source-server-name: schmetterpause-db-dev2
+        tabletennis-platform.stuttgart-things.com/db-backup-enabled: 'true'
+        # where the REBUILT server archives -- a name never used before
+        tabletennis-platform.stuttgart-things.com/db-backup-server-name: schmetterpause-db-<new>
+        tabletennis-platform.stuttgart-things.com/db-backup-endpoint-url: https://artifacts.platform.sthings-vsphere.labul.sva.de
+        tabletennis-platform.stuttgart-things.com/db-backup-destination-path: s3://schmetterpause-cnpg/
+        tabletennis-platform.stuttgart-things.com/storage-class: openebs-hostpath
 ```
+
+The `tabletennis` ApplicationSet maps them onto `database.recovery` and
+`database.backup`. homerun2-dev2's order carries no `secretOverrides`, unlike
+the rehearsal above: the Cluster's `managed.roles` keeps the `schmetterpause`
+role's password at the value in the new cluster's own `schmetterpause-db` Secret,
+whatever the recovered database brought (read off homerun2-dev2 on 2026-10-08).
 
 The two names must differ. Unset, the plugin archives under the *Cluster* name,
 which is the path being recovered from; the chart refuses to render that
@@ -471,7 +515,7 @@ its volume and doing step 5 again.
 ```sh
 kubectl -n schmetterpause exec schmetterpause-db-1 -c postgres -- psql -U postgres -d schmetterpause -tAc \
   "select 'players='||(select count(*) from players)||' matches='||(select count(*) from matches)"
-curl -fsS https://schmetterpause.homerun2-test1.sthings-vsphere.labul.sva.de/readyz
+curl -fsS https://schmetterpause.<new cluster>.sthings-vsphere.labul.sva.de/readyz
 ```
 
 Counts against the last dump or the backup it recovered from, then a PIN
@@ -547,15 +591,16 @@ refuses any key outside the prefix, to delete:
 ```python
 import boto3
 s3 = boto3.client("s3", endpoint_url="https://artifacts.platform.sthings-vsphere.labul.sva.de")
-PREFIX = "schmetterpause-rehearsal1/"          # NEVER schmetterpause-db/
+PREFIX = "schmetterpause-rehearsal1/"          # NEVER schmetterpause-db-dev2/ or schmetterpause-db/
 keys = [o["Key"] for page in s3.get_paginator("list_objects_v2")
         .paginate(Bucket="schmetterpause-cnpg", Prefix=PREFIX)
         for o in page.get("Contents", [])]
 assert all(k.startswith(PREFIX) for k in keys)
 ```
 
-Count the office's own path before and after (`schmetterpause-db/`, 93 objects
-on 2026-09-20) — a deletion that touched it would show there.
+Count the office's own path before and after — today `schmetterpause-db-dev2/`;
+on 2026-09-20 it was `schmetterpause-db/` with 93 objects — a deletion that
+touched it would show there.
 
 The alternative is to pick a `serverName` that has never been used, which is
 cheaper than deleting anything and leaves the evidence of the previous run in
@@ -587,7 +632,8 @@ because it never came up. On a running one the volume goes with it.
   not look.
 - **`recovery` may stay on.** It is inert once the Cluster exists. But the next
   rebuild's `sourceServerName` is then the *current* `backup.serverName`, not
-  `schmetterpause-db`.
+  `schmetterpause-db`. For the office today that is `schmetterpause-db-dev2`:
+  homerun2-dev2 still has recovery on, from `schmetterpause-db`.
 
 ### What admission does during a rebuild
 
@@ -681,17 +727,20 @@ image and creating the storage account.
 
 A dump only ever goes into the **same or a newer** PostgreSQL major, and the
 same or a newer application version. Everything is on 18: Compose, the kcl
-default (#221), Azure (#224), and the CloudNativePG cluster on homerun2-test1
-since its in-place upgrade on 2026-09-12 (see below).
+default (#221), Azure (#224), and the office's CloudNativePG cluster —
+on homerun2-test1 since its in-place upgrade on 2026-09-12 (see below), and on
+homerun2-dev2 (`ghcr.io/cloudnative-pg/postgresql:18`, checked 2026-10-08).
 
-That cluster's major is pinned in `stuttgart-things/stuttgart-things`, as
-`database.imageName` in
-`clusters/labul/vsphere/platform-sthings/argocd/homerun2-test1/schmetterpause.yaml`.
-The catalog default in `stuttgart-things/argocd`
-`apps/schmetterpause/install/values.yaml` is 18 as well
-(stuttgart-things/argocd#398), and the PR previews, which set no image, get it.
-The homerun2-test1 pin stays anyway, so a later catalog change cannot move the
-office's Cluster to another major.
+**The office's major is no longer pinned per cluster.** On homerun2-test1 it
+was, as `database.imageName` in that cluster's consumer file. homerun2-dev2
+has no such file: the `tabletennis` ApplicationSet passes no `imageName`, so
+the Cluster gets the catalog default, `database.imageName` in
+`stuttgart-things/argocd` `apps/schmetterpause/install/values.yaml` (18,
+stuttgart-things/argocd#398), at the catalog tag the platform pins
+(`targetRevision` in `platforms/tabletennis/appset-tabletennis.yaml`, v0.71.0
+on 2026-10-08). A catalog change to that default is therefore an offline
+in-place major upgrade of the office's database the next time the tag moves —
+take a dump before merging one.
 
 ## What travels, and what does not
 
@@ -702,9 +751,10 @@ office's Cluster to another major.
   same.
 - **Pending and disputed matches travel as they are.** Somebody still has to
   confirm them on the other side.
-- **Kiosk grants travel, the kiosk does not.** The office's Compose stack had
-  one; on homerun2-test1 it is off (ADR-0014), so the grants sit in the table
-  with no route that reads them.
+- **Kiosk grants travel; whether the kiosk does depends on the target.** The
+  office's Compose stack had one. On homerun2-dev2 it is on (see
+  [access-recovery.md](access-recovery.md)); on a target without
+  `SP_KIOSK_TOKEN` the grants sit in the table with no route that reads them.
 - **Flexible Server's own backups do not.** They are deleted with the server.
 - **Row order can differ.** The Alpine images sort text bytewise even though
   they report `en_US.utf8` — musl has no collation — while Flexible Server

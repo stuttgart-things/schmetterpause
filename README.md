@@ -44,8 +44,10 @@ task office:setup # .env für einen Abend an der Platte
 task office:up    # starten, im Netz erreichbar
 ```
 
-Das Büro spielt seit dem 13.09.2026 auf der Instanz im Cluster
-(homerun2-test1), mit nächtlichem Backup. `office:setup` und `office:up` sind
+Das Büro spielt seit dem 13.09.2026 auf der Instanz im Cluster — seit dem
+28.09.2026 auf homerun2-dev2
+(<https://schmetterpause.homerun2-dev2.sthings-vsphere.labul.sva.de>), davor auf
+homerun2-test1 —, mit nächtlichem Backup. `office:setup` und `office:up` sind
 der Weg für einen Abend mit eigenem Laptop — mit eigener Rangliste, siehe
 [Turnier vor Ort](docs/turnier-vor-ort.md) und
 [Spieldaten sichern und umziehen](docs/backup-restore.md).

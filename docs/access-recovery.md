@@ -49,31 +49,40 @@ registered. How the variable gets there depends on the environment:
 | Terraform (Azure) | `kiosk_token` in `terraform.tfvars` |
 | argocd catalog | `kiosk.enabled: true` in the schmetterpause values (argocd#514) |
 
-### On homerun2-test1
+### On homerun2-dev2
 
-On homerun2-test1 there are four steps, and **every one of them has to be
-in place**:
+homerun2-dev2 has been the office's cluster since 2026-09-28; homerun2-test1,
+where the record below was taken, was torn down that day. On homerun2-dev2 the
+kiosk is **on** (checked 2026-10-08: `SP_KIOSK_TOKEN` in the Secret, `/kiosk`
+answers 200). There are four steps, and **every one of them has to be in
+place**:
 
-1. **The Vault entry** `schmetterpause/schmetterpause-kiosk`, property `token`.
-   It has existed since 2026-09-21, so this step is only needed if the entry
-   was deleted. Use a token of its own, never one of the other entries:
-   ```sh
-   curl -sS -X POST -H "X-Vault-Token: $VAULT_TOKEN" \
-     https://vault.infra.sthings-vsphere.labul.sva.de/v1/schmetterpause/data/schmetterpause-kiosk \
-     -d "$(jq -n --arg t "$(openssl rand -hex 16)" '{data:{token:$t}}')"
-   ```
-2. **Read access for the office.** The policy `read-schmetterpause` names
-   every entry it grants, one path per entry. An entry the policy does not
-   name is refused with **403**. The policy lives in `stuttgart-things`
-   `clusters/labul/vsphere/infra-sthings/vault-schmetterpause-secrets/terraform.tfvars.sops.json`
-   (`kv_policies`). It has included the kiosk path since stuttgart-things#3104.
-3. **The switch** `kiosk.enabled: true` in `stuttgart-things`
-   `clusters/labul/vsphere/platform-sthings/argocd/homerun2-test1/tabletennis.yaml`
-   (stuttgart-things#3101). Argo appends `SP_KIOSK_TOKEN` to the ExternalSecret
-   `schmetterpause-app`.
+1. **The Vault entry** `schmetterpause/homerun2-dev2-kiosk`, property `token`.
+   Nobody writes it by hand: the ClusterStack creates it from the
+   `schmetterpause` AppSecretProfile (suffix `-kiosk`,
+   `clusters/labda/vsphere/machinery-fleet-state/appsecretprofiles.yaml` in
+   `stuttgart-things`), managed on the machinery cluster as the `SecretV2`
+   `homerun2-dev2-kiosk`. If the entry is missing, that object is where to
+   look; a hand-written entry would be overwritten or fought over.
+2. **Read access for the office.** The ClusterSecretStore `vault-schmetterpause`
+   logs in through the cluster's own Kubernetes auth mount
+   (`homerun2-dev2-eso`, role `eso`), and the ClusterStack derives the policy
+   behind it. An entry the policy does not cover is refused with **403**.
+3. **The switch**: the annotations
+   `tabletennis-platform.stuttgart-things.com/kiosk-enabled: 'true'` and
+   `tabletennis-platform.stuttgart-things.com/kiosk-vault-path: homerun2-dev2-kiosk`
+   in `stuttgart-things`
+   `clusters/labda/vsphere/machinery-xrs/homerun2-dev2.yaml`. The `tabletennis`
+   ApplicationSet in `stuttgart-things/argocd` maps them onto `kiosk.enabled`
+   and `kiosk.vaultPath`; there is no default path, so both are needed. Argo
+   appends `SP_KIOSK_TOKEN` to the ExternalSecret `schmetterpause-app`. Merging
+   a change to that file is what changes the cluster — read the
+   `machinery-xrs` README there first.
 4. **A restart.** The Deployment does not restart by itself when the Secret
-   changes:
+   changes. Reloader runs on the cluster, but this Deployment carries no
+   Reloader annotation:
    ```sh
+   export KUBECONFIG=~/.kube/homerun2-dev2
    kubectl -n schmetterpause rollout restart deploy/schmetterpause
    kubectl -n schmetterpause rollout status deploy/schmetterpause
    ```
@@ -117,7 +126,7 @@ kubectl -n schmetterpause get secret schmetterpause-app \
 ```
 
 Without cluster access you can read it from Vault instead:
-`curl -sS -H "X-Vault-Token: $VAULT_TOKEN" https://vault.infra.sthings-vsphere.labul.sva.de/v1/schmetterpause/data/schmetterpause-kiosk | jq -r .data.data.token | xclip -sel clip`.
+`curl -sS -H "X-Vault-Token: $VAULT_TOKEN" https://vault.infra.sthings-vsphere.labul.sva.de/v1/schmetterpause/data/homerun2-dev2-kiosk | jq -r .data.data.token | xclip -sel clip`.
 
 1. **Unlock the machine.** On the device at the table, open
    `https://<host>/kiosk?token=<token>`. The token becomes a cookie and
@@ -143,9 +152,11 @@ player's id and the operator's id.
   and anybody who walks past it can enter results for everybody.
 - **Leave the kiosk on or switch it off.** Leaving it on is fine. The token is
   the lock, and no device is a kiosk until somebody types the token. To switch
-  it off, set `kiosk.enabled: false`, restart the pod, and check that
-  *Diese Instanz* says **aus**. The Vault entry and the policy line can stay:
-  they cost nothing and save steps 1 and 2 next time.
+  it off on homerun2-dev2, set the `kiosk-enabled` annotation in the
+  ClusterStack order to `'false'`, restart the pod once Argo has synced, and
+  check that *Diese Instanz* says **aus**. Leave `kiosk-vault-path` and the
+  Vault entry in place: they cost nothing, and switching back on is then one
+  annotation.
 
 ## Record: homerun2-test1, 2026-09-21
 
