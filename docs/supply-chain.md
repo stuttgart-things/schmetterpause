@@ -388,11 +388,11 @@ v0.16.0 reached the cluster through catalog v0.71.0, with the same pod as above:
 | 04:50:40 | **Refused.** `admission webhook "ivpol.validate.kyverno.svc-ignore-finegrained-schmetterpause-verify-image-signature" denied the request: … the application image is not signed by the schmetterpause CI workflow`. No pod exists afterwards, so there is nothing to delete | 4 s |
 | 04:50:54 | `SchmetterpauseUnsignedImageRefused` **firing** in Prometheus, `resource_namespace=schmetterpause`; `kyverno_image_validating_policy_results_total{result="fail",resource_request_operation="create"}` is 1 | 18 s |
 | 04:51 | The same alert active in Alertmanager, routed to the receiver `webhook` (the path to the Teams channel) | ~25 s |
+| later | The card in the Teams alert channel: *"Resolved: An image not signed by the schmetterpause CI workflow was refused"*, tags `cluster=homerun2-dev2`, `resource_namespace=schmetterpause`, start time 04:50:54. One client showed it as `cards.unsupported` (no plain-text fallback, fixed in homerun2-notification-catcher v3.0.3, stuttgart-things/stuttgart-things#3490) | — |
 
 Both things the first drill could not show are now watched: the `apply` itself
 fails and names the policy, and the admitted application pod carries a digest.
-What this run does not show is the Teams card itself, which is read in the
-channel and not from here.
+The refusal reached the Teams channel as well.
 
 Under `Deny` no cluster writes a PolicyReport for this policy (see above), so
 the refusal is read from the `apply`, from the alert and from the
