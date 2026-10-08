@@ -86,15 +86,29 @@ a failed start.
 | Terraform (Azure) | `bootstrap_admin`, as a second apply after the person has joined |
 | argocd catalog | `bootstrapAdmin` in the schmetterpause `values` (argocd#470) |
 
-On homerun2-test1 it is the schmetterpause `values` block in
-`stuttgart-things/stuttgart-things`
-`clusters/labul/vsphere/platform-sthings/argocd/homerun2-test1/tabletennis.yaml`.
+On homerun2-dev2, the office's cluster since 2026-09-28, nobody edits the
+values directly. The cluster comes from a ClusterStack order, and the
+`tabletennis` ApplicationSet in `stuttgart-things/argocd`
+(`platforms/tabletennis/appset-tabletennis.yaml`) maps the cluster annotation
+`tabletennis-platform.stuttgart-things.com/bootstrap-admin` onto
+`bootstrapAdmin`. That annotation is set under `spec.rancher.argocd.annotations`
+in `stuttgart-things/stuttgart-things`
+`clusters/labda/vsphere/machinery-xrs/homerun2-dev2.yaml` (today:
+`timoboll`). A change there is a pull request to that repository; once it is
+merged, Flux applies the order on the machinery cluster, Crossplane carries the
+annotation to the Argo CD cluster Secret, and the ApplicationSet renders it
+into the ConfigMap `schmetterpause-config` as `SP_BOOTSTRAP_ADMIN`. Read the
+`machinery-xrs` README in that directory before touching the file: merging an
+order there is what builds or changes a cluster.
 
 **3. Restart the application.** The flag is granted at start, and the
 catalog's ConfigMap has a fixed name, so a changed value does **not** roll the
-Deployment by itself:
+Deployment by itself. Reloader runs on homerun2-dev2 (since 2026-10-07), but
+the schmetterpause Deployment carries no `reloader.stakater.com/*` annotation,
+so it does not restart this one (checked 2026-10-08):
 
 ```sh
+export KUBECONFIG=~/.kube/homerun2-dev2
 kubectl -n schmetterpause rollout restart deploy/schmetterpause
 ```
 

@@ -11,13 +11,14 @@ veröffentlicht hat, nicht eines, das er selbst baut. Der Unterschied zum Alltag
 sind drei Umgebungsvariablen und eine zweite Compose-Datei, die sie einfordert.
 
 > **Das Büro spielt seit dem 13.09.2026 nicht mehr auf einem Laptop**, sondern
-> auf der Instanz im Cluster:
-> <https://schmetterpause.homerun2-test1.sthings-vsphere.labul.sva.de>. Dort
-> ist der Kiosk abgeschaltet: Ein Kiosk-Ergebnis zählt sofort, weil jemand an
-> der Platte steht, und dieser Ort trägt nicht mehr, sobald `/kiosk` von jedem
-> Telefon im Netz erreichbar ist
-> ([ADR-0014](adr/0014-kiosk-benennt-wer-eintraegt.md)). Ergebnisse trägt dort
-> jeder über sein eigenes Handy ein, und der Aushang kommt von dort, von `/qr`.
+> auf der Instanz im Cluster, seit dem 28.09.2026 auf homerun2-dev2:
+> <https://schmetterpause.homerun2-dev2.sthings-vsphere.labul.sva.de>.
+> Ergebnisse trägt dort jeder über sein eigenes Handy ein, und der Aushang kommt
+> von dort, von `/qr`. Der Kiosk ist dort seit dem 21.09.2026 eingeschaltet,
+> damit jemand ohne PIN und Wiederherstellungscode wieder hineinkommt
+> ([access-recovery.md](access-recovery.md)). Ein Gerät wird erst mit dem Token
+> zum Kiosk, und es fragt zuerst, wer einträgt
+> ([ADR-0014](adr/0014-kiosk-benennt-wer-eintraegt.md)).
 >
 > Diese Seite beschreibt den Abend mit eigenem Laptop, etwa ein Turnier an
 > einem Ort ohne Weg zum Cluster. **Das ist eine zweite, eigene Rangliste.**

@@ -14,7 +14,7 @@ Within a few minutes a comment appears with the address, and roughly ten
 minutes after labelling the environment answers:
 
 ```
-https://schmetterpause-pr-<number>.homerun2-test1.sthings-vsphere.labul.sva.de
+https://schmetterpause-pr-<number>.app-dev.sthings-vsphere.labul.sva.de
 ```
 
 What takes the time, in order: CI publishes the image and the manifest artefact
@@ -32,10 +32,10 @@ artefact is already there.
 
 | | |
 |---|---|
-| Namespace | `schmetterpause-pr-<n>` on `homerun2-test1` |
+| Namespace | `schmetterpause-pr-<n>` on `app-dev` (on `homerun2-test1` until stuttgart-things/stuttgart-things#3065) |
 | Database | its own CloudNativePG instance, 1Gi |
 | Content | six players, twelve results — ten confirmed, one waiting, one contested |
-| Certificate | the gateway's `*.homerun2-test1…` wildcard; no per-preview certificate or DNS record |
+| Certificate | the gateway's `*.app-dev…` wildcard; no per-preview certificate or DNS record |
 | Version shown on `/info` | `pr-<n>-<head sha>`, so you can check you are looking at what you think you are |
 
 The fixture matters more than it sounds. An empty Schmetterpause is a join form
@@ -83,12 +83,15 @@ below has to be touched to get a preview.
 × (open pull requests labelled `preview`), rendering
 `apps/schmetterpause/install` per cell.
 
-**`stuttgart-things/stuttgart-things`** — two files under
-`clusters/labul/vsphere/platform-sthings/argocd/`:
-`schmetterpause-pr-preview-platform.yaml` (the bootstrap Application) and
-`homerun2-test1/cluster.yaml`, whose `spec.labels` carries
-`schmetterpause-pr-preview: "true"`. Clusterbook propagates that label to the
-Argo cluster Secret, which is what the ApplicationSet actually reads.
+**`stuttgart-things/stuttgart-things`** — two files:
+`clusters/labul/vsphere/platform-sthings/argocd/schmetterpause-pr-preview-platform.yaml`
+(the bootstrap Application) and app-dev's ClusterStack order
+`clusters/labda/vsphere/machinery-xrs/app-dev.yaml`, whose
+`spec.rancher.argocd.labels` carries `schmetterpause-pr-preview: 'true'`. The
+registration puts that label on the Argo cluster Secret `cluster-app-dev`,
+which is what the ApplicationSet actually reads. Exactly one cluster may carry
+it. The address in the pull-request comment comes from the organisation
+variable `HOMERUN2_PREVIEW_DOMAIN`.
 
 Four things the platform already provides, and none of them needs work per
 preview: the shared PR-reader token every preview ApplicationSet in the catalog

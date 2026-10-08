@@ -36,16 +36,21 @@ is for and what cannot be tested this way.
 
 ## Applying it
 
-**On `homerun2-test1` nobody applies it by hand.** The argocd catalog entry
-`apps/schmetterpause/install` has `policy.enabled`, and its child Application
-reads `verify-image-signature.yaml` from this repository at the same tag as the
-deployed release. `directory.include` names that one file, so `tests/` never
-reaches the cluster. The homerun2-test1 consumer switched it on on 2026-09-15
+**On `homerun2-dev2`, the office's cluster, nobody applies it by hand.** The
+argocd catalog entry `apps/schmetterpause/install` has `policy.enabled`, and its
+child Application reads `verify-image-signature.yaml` from this repository at
+the same tag as the deployed release. `directory.include` names that one file,
+so `tests/` never reaches the cluster. On homerun2-dev2 the switch is the
+annotation `tabletennis-platform.stuttgart-things.com/policy-enabled: 'true'`
+in the cluster's ClusterStack order
+(`clusters/labda/vsphere/machinery-xrs/homerun2-dev2.yaml` in
+`stuttgart-things`), which the `tabletennis` ApplicationSet maps onto
+`policy.enabled`. It was first switched on on homerun2-test1 on 2026-09-15
 (stuttgart-things/argocd#446, stuttgart-things/stuttgart-things#2982). A change to
 the policy therefore reaches the cluster with the next release that carries it,
 not with a merge to `main`.
 
-With the consumer's `monitoring.enabled` as well, a refusal raises
+With `monitoring-enabled` on the same order as well, a refusal raises
 `SchmetterpauseUnsignedImageRefused` in the Teams alert channel
 (stuttgart-things/argocd#448, #449, renamed from
 `SchmetterpauseUnsignedImageAdmitted` with the move to `Deny`).
@@ -58,8 +63,8 @@ task policy:status           # is it ready, and what has it reported?
 ```
 
 Applying it by hand needs cluster-admin, because the policy is cluster-scoped,
-and a Kyverno that serves `policies.kyverno.io/v1`. 1.19.1, on `homerun2-test1`,
-does.
+and a Kyverno that serves `policies.kyverno.io/v1`. 1.19.1, on `homerun2-dev2`
+(as on `homerun2-test1` before it), does.
 
 The policy is in `Deny` from v0.16.0 (#262). The ledger of clean releases that
 move rests on, and the drill that proves the policy refuses something on the
