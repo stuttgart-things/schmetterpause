@@ -23,7 +23,7 @@ festlegt, steht hier mit den Alternativen, die dabei verworfen wurden. Eine
 | 0012 | [Ein Turnier kann ohne Wertung laufen](0012-turnier-ohne-wertung.md) | accepted | 2026-09-03 |
 | 0013 | [Im Turnier ist die Tischseite Teil der Paarung](0013-turnierseiten-und-erster-aufschlag.md) | accepted | 2026-09-03 |
 | 0014 | [Der Kiosk benennt, wer einträgt](0014-kiosk-benennt-wer-eintraegt.md) | accepted | 2026-09-04 |
-| 0015 | [Das Zählwerk trägt Ergebnisse ein](0015-zaehlwerk-traegt-ergebnisse-ein.md) | accepted | 2026-09-08 |
+| 0015 | [Das Zählwerk trägt Ergebnisse ein](0015-zaehlwerk-traegt-ergebnisse-ein.md) | accepted — „Der Operator ist Pflicht" für angemeldete Matches ersetzt durch ADR-0024 | 2026-09-08 |
 | 0016 | [Azure läuft auf Zeit, die Spieldaten ziehen um](0016-azure-auf-zeit-daten-ziehen-um.md) | accepted — Punkt 6 für den Büro-Umzug nach Kubernetes ersetzt durch ADR-0019 | 2026-09-10 |
 | 0017 | [Zwei Spieler zusammenführen heißt neu rechnen](0017-spieler-zusammenfuehren.md) | proposed — Entwurf, nicht entschieden | 2026-09-12 |
 | 0018 | [PIN beim Beitritt, der Code auch als Datei](0018-pin-beim-beitritt.md) | accepted | 2026-09-13 |
@@ -32,3 +32,4 @@ festlegt, steht hier mit den Alternativen, die dabei verworfen wurden. Eine
 | 0021 | [Signieren und Prüfen über die geteilten Dagger-Module, das Token holt der Workflow](0021-signieren-ueber-dagger-module.md) | accepted | 2026-09-15 |
 | 0022 | [Ein Beobachter spielt nicht](0022-beobachter-spielt-nicht.md) | accepted | 2026-09-16 |
 | 0023 | [Das Zählwerk bietet Beobachter als Operator an](0023-zaehlwerk-bietet-beobachter-als-operator-an.md) | accepted | 2026-09-25 |
+| 0024 | [Wer sich am Tisch angemeldet hat, braucht keinen Operator](0024-angemeldete-matches-ohne-operator.md) | accepted | 2026-10-13 |

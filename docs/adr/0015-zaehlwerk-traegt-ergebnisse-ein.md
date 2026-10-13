@@ -1,6 +1,6 @@
 # ADR-0015: Das Zählwerk trägt Ergebnisse ein
 
-- **Status:** accepted
+- **Status:** accepted — „Der Operator ist Pflicht" für angemeldete Matches ersetzt durch ADR-0024
 - **Datum:** 2026-09-08
 - **Betrifft:** Schnittstellen, Datenmodell, Messung, Betrieb
 - **Bezug:** führt `0014-kiosk-benennt-wer-eintraegt` fort — das Zählwerk ist
