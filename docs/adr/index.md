@@ -34,3 +34,4 @@ festlegt, steht hier mit den Alternativen, die dabei verworfen wurden. Eine
 | 0023 | [Das Zählwerk bietet Beobachter als Operator an](0023-zaehlwerk-bietet-beobachter-als-operator-an.md) | accepted | 2026-09-25 |
 | 0024 | [Wer sich am Tisch angemeldet hat, braucht keinen Operator](0024-angemeldete-matches-ohne-operator.md) | accepted | 2026-10-13 |
 | 0025 | [Ein Fob ist eine Identität, gekoppelt nur im Fenster](0025-fob-als-identitaet.md) | accepted | 2026-10-14 |
+| 0026 | [Anmeldung am Tisch mit dem Handy, über einen QR-Code pro Seite](0026-anmeldung-am-tisch-mit-dem-handy.md) | accepted | 2026-10-14 |
