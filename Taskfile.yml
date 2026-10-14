@@ -304,7 +304,7 @@ tasks:
           -f - < scripts/definition-of-done.sql
       - |
         echo "Counting from {{.SINCE}} in {{.ZONE}}."
-        echo "Kiosk entries do not count towards the verdict; they are listed per day."
+        echo "Kiosk, scoreboard and checked-in entries do not count towards the verdict; they are listed per day."
         echo "For an evening everybody typed in themselves: task office:dod SINCE=<the day after>"
 
   # ---------------------------------------------------------------- Manifests

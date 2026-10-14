@@ -169,6 +169,12 @@ against it. The machine is already identified by its token and by
 `entered_via = 'scoreboard'`, and `reported_by` names the person who watched.
 An account would erase that person and put a PIN into a device.
 
+A match both players checked in to (`entered_via = 'checkin'`,
+[ADR-0024](adr/0024-angemeldete-matches-ohne-operator.md)) has nobody to name,
+and `reported_by` is empty for it, on purpose. The two check-ins the row points
+at say who stood at the table. Anything that counts reporters has to know that
+a null there means "the table", not "somebody".
+
 ## Open ends
 
 - **No page grants or withdraws the admin flag.** A second admin means naming

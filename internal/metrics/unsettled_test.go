@@ -42,7 +42,7 @@ func TestEveryStatusAndOriginIsExportedEvenAtZero(t *testing.T) {
 		t.Errorf("query_up = %v, want 1", got)
 	}
 	for _, status := range []string{"pending", "disputed"} {
-		for _, via := range []string{"player", "kiosk", "scoreboard"} {
+		for _, via := range []string{"player", "kiosk", "scoreboard", "checkin"} {
 			labels := `{entered_via="` + via + `",status="` + status + `"}`
 			if got := value(t, body, "schmetterpause_matches_open"+labels); got != 0 {
 				t.Errorf("open%s = %v, want 0", labels, got)
