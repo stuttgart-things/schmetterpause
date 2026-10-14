@@ -68,7 +68,7 @@ run "defaults_mirror_kcl" {
   assert {
     condition = length(setintersection(
       [for e in azurerm_container_app.this.template[0].container[0].env : e.name],
-      ["SP_COOKIE_SECURE", "SP_KIOSK_TOKEN", "SP_SCOREBOARD_TOKEN", "SP_BOOTSTRAP_ADMIN", "SP_METRICS_ADDR"],
+      ["SP_COOKIE_SECURE", "SP_KIOSK_TOKEN", "SP_SCOREBOARD_TOKEN", "SP_RFID_UID_KEY", "SP_BOOTSTRAP_ADMIN", "SP_METRICS_ADDR"],
     )) == 0
     error_message = "Unset options must stay absent, and SP_COOKIE_SECURE always."
   }
@@ -93,6 +93,7 @@ run "options_are_wired" {
   variables {
     kiosk_token      = "0123456789abcdef"
     scoreboard_token = "fedcba9876543210"
+    rfid_uid_key     = "0123456789abcdef0123456789abcdef"
     bootstrap_admin  = "Kim"
     public_base_url  = "https://pause.example.com/"
     zaehlwerk_url    = "https://zaehlwerk.example.com/"
@@ -108,6 +109,11 @@ run "options_are_wired" {
   assert {
     condition     = { for e in azurerm_container_app.this.template[0].container[0].env : e.name => e.secret_name if e.secret_name != null }["SP_SCOREBOARD_TOKEN"] == "scoreboard-token"
     error_message = "A scoreboard token must reach the app as a secret, never as a plain env value."
+  }
+
+  assert {
+    condition     = { for e in azurerm_container_app.this.template[0].container[0].env : e.name => e.secret_name if e.secret_name != null }["SP_RFID_UID_KEY"] == "rfid-uid-key"
+    error_message = "A fob key must reach the app as a secret, never as a plain env value."
   }
 
   assert {
@@ -174,6 +180,18 @@ run "short_session_key_is_refused" {
   }
 
   expect_failures = [var.session_key]
+}
+
+# The fob key is all that stands between a stored hash and the UID it came
+# from (docs/adr/0025), so a short one is refused as the session key is.
+run "short_rfid_uid_key_is_refused" {
+  command = plan
+
+  variables {
+    rfid_uid_key = "too-short"
+  }
+
+  expect_failures = [var.rfid_uid_key]
 }
 
 run "secret_through_extra_env_is_refused" {

@@ -107,6 +107,12 @@ schema Schmetterpause:
     # point during the test phase and a task afterwards.
     scoreboardEnabled: bool = False
 
+    # Key fobs at the Zählwerk's reader exist only when SP_RFID_UID_KEY is set:
+    # without it there is no resolve route and no "Anhänger koppeln" on the
+    # profile (docs/adr/0025). The key hashes every fob, so a new one unlinks
+    # them all. Useful only together with scoreboardEnabled.
+    fobsEnabled: bool = False
+
     # A display name that becomes the first admin at startup. Empty is fine and
     # normal; the person has to have joined already, so this is a second-pass
     # value rather than a first-boot one.
@@ -226,6 +232,7 @@ schema Schmetterpause:
     vaultKeySessionKey: str = "session-key"
     vaultKeyKioskToken: str = "kiosk-token"
     vaultKeyScoreboardToken: str = "scoreboard-token"
+    vaultKeyRFIDUIDKey: str = "rfid-uid-key"
     vaultKeyDBUsername: str = "username"
     vaultKeyDBPassword: str = "password"
 

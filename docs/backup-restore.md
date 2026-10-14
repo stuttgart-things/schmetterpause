@@ -749,6 +749,10 @@ take a dump before merging one.
   with them works — checked on Azure and on Compose, and on Kubernetes after the
   office move. `SP_SESSION_KEY` only matters behind an address that stays the
   same.
+- **Key fobs travel only with `SP_RFID_UID_KEY`.** A fob is stored as a hash
+  keyed with it (ADR-0025), so a target with a different key, or none, finds no
+  fob it knows. Nothing is lost but the links: every player links their fob
+  again. Carry the key over from Vault when the fobs should keep working.
 - **Pending and disputed matches travel as they are.** Somebody still has to
   confirm them on the other side.
 - **Kiosk grants travel; whether the kiosk does depends on the target.** The

@@ -30,11 +30,11 @@ _store = {
     name: config.secretStoreName
 }
 
-# The application's own secrets. SP_KIOSK_TOKEN and SP_SCOREBOARD_TOKEN appear
-# only when each is wanted: without the variable the routes behind it are never
-# registered, so the surface does not exist rather than existing unlocked. Both
-# are separate entries under the same Vault path, so turning one on does not
-# require writing the other.
+# The application's own secrets. SP_KIOSK_TOKEN, SP_SCOREBOARD_TOKEN and
+# SP_RFID_UID_KEY appear only when each is wanted: without the variable the
+# routes behind it are never registered, so the surface does not exist rather
+# than existing unlocked. All are separate entries under the same Vault path, so
+# turning one on does not require writing the others.
 appExternalSecret = {
     apiVersion: config.externalSecretApiVersion
     kind: "ExternalSecret"
@@ -72,6 +72,14 @@ appExternalSecret = {
                     remoteRef: {
                         key: config.vaultPath
                         property: config.vaultKeyScoreboardToken
+                    }
+                }
+            if config.fobsEnabled:
+                {
+                    secretKey: "SP_RFID_UID_KEY"
+                    remoteRef: {
+                        key: config.vaultPath
+                        property: config.vaultKeyRFIDUIDKey
                     }
                 }
         ]
