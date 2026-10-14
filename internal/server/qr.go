@@ -35,6 +35,8 @@ func (s *Server) handleQRSheet(w http.ResponseWriter, r *http.Request) {
 		Target: target,
 		Path:   code.Path,
 		Size:   code.Size,
+		// The other sheet for the same wall, when there is one.
+		TableSheet: s.tables != nil,
 	}))
 }
 

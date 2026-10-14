@@ -1,0 +1,102 @@
+package templates
+
+import (
+	"strconv"
+
+	"github.com/stuttgart-things/schmetterpause/web"
+)
+
+// TablePage is where the QR code at one half of the table leads
+// (docs/adr/0026).
+//
+// Opening it checks nobody in. Only the button does, as a POST, so a link
+// preview or a scan in passing leaves nothing behind.
+templ TablePage(v TableView) {
+	@Layout("Am Tisch anmelden", v.Header) {
+		<section class="session">
+			<h1>{ "Am Tisch anmelden: " + v.HalfLabel }</h1>
+			switch  {
+				case !v.SignedIn:
+					<p>
+						Dieses Handy kennt dich noch nicht. Melde dich zuerst an oder
+						trag dich ein, dann scanne den Code an der Platte noch einmal.
+					</p>
+					<p><a href="/">Zur Anmeldung</a></p>
+				case v.Observer:
+					<p class="muted">
+						Du bist als Beobachter eingetragen und spielst nicht mit. Am
+						Tisch anmelden können sich nur die beiden, die spielen.
+					</p>
+				default:
+					@TablePanel(v.Panel)
+			}
+		</section>
+	}
+}
+
+// TablePanel is the button and what it did. The POST answers with this
+// fragment, so the page never reloads.
+templ TablePanel(v TablePanelView) {
+	<div id="table-checkin">
+		<p class="muted">
+			Wenn ihr beide angemeldet seid, startet das Zählwerk euer Match. Das
+			Ergebnis bestätigt danach einer von euch beiden.
+		</p>
+		<button
+			type="button"
+			hx-post={ "/table/" + v.Half }
+			hx-target="#table-checkin"
+			hx-swap="outerHTML"
+			hx-disabled-elt="this"
+		>
+			{ "Hier anmelden (" + v.HalfLabel + ")" }
+		</button>
+		if v.Result != "" {
+			<p class={ templ.KV("ok", v.OK), templ.KV("fail", !v.OK) } role="status">{ v.Result }</p>
+		}
+		if v.Left != "" || v.Right != "" {
+			<p class="muted">
+				{ "Links: " + orDash(v.Left) + " · Rechts: " + orDash(v.Right) }
+			</p>
+		}
+	</div>
+}
+
+// TableSheet prints one QR code per half, to stick at each end of the table.
+templ TableSheet(v TableSheetView) {
+	@Layout("Tisch-Aushang", v.Header) {
+		<article class="sheet">
+			<span class={ "sheet-mascot", PaddleSheet }>
+				@templ.Raw(web.Mascot)
+			</span>
+			<h1>Am Tisch anmelden</h1>
+			<p class="sheet-lead">Jede Seite hat ihren Code. Scannen, anmelden, spielen.</p>
+			for _, c := range v.Codes {
+				<figure class="qr">
+					<svg
+						viewBox={ "0 0 " + strconv.Itoa(c.Size) + " " + strconv.Itoa(c.Size) }
+						role="img"
+						aria-label={ "QR-Code für " + c.Label }
+						shape-rendering="crispEdges"
+					>
+						<title>{ "QR-Code für " + c.Label }</title>
+						<rect width={ strconv.Itoa(c.Size) } height={ strconv.Itoa(c.Size) } fill="#fff"></rect>
+						<path d={ c.Path } fill="#000"></path>
+					</svg>
+					<figcaption><strong>{ c.Label }</strong><br/>{ c.Target }</figcaption>
+				</figure>
+			}
+			<p class="sheet-back no-print">
+				<a href="/qr">Zum Ergebnis-Aushang</a>
+				<a href="/">Zurück zur Startseite</a>
+			</p>
+		</article>
+	}
+}
+
+func orDash(s string) string {
+	if s == "" {
+		return "–"
+	}
+	return s
+}
