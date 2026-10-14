@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.17.0](https://github.com/stuttgart-things/schmetterpause/compare/v0.16.0...v0.17.0) (2026-10-14)
+
+
+### Features
+
+* **api:** accept a result proven by two check-ins instead of an operator ([#328](https://github.com/stuttgart-things/schmetterpause/issues/328)) ([56304ca](https://github.com/stuttgart-things/schmetterpause/commit/56304ca9f9de0e08d466f7dfccd81010ad820e6f))
+* **checkin:** check in at a table half with the phone, from a QR code ([#331](https://github.com/stuttgart-things/schmetterpause/issues/331)) ([dfe4bf4](https://github.com/stuttgart-things/schmetterpause/commit/dfe4bf4c6949d13c6d7f3dfaaa7911a38078fc10))
+* **fobs:** link a key fob in a window and resolve it for the Zählwerk ([#326](https://github.com/stuttgart-things/schmetterpause/issues/326)) ([ffb4372](https://github.com/stuttgart-things/schmetterpause/commit/ffb437250f38d0d6d0312f1e0d9806506454392a))
+
+
+### Bug Fixes
+
+* **deps:** update module github.com/pressly/goose/v3 to v3.29.0 ([#319](https://github.com/stuttgart-things/schmetterpause/issues/319)) ([8947d4a](https://github.com/stuttgart-things/schmetterpause/commit/8947d4aea3ea30b72d636bd174c9df40635a0b18))
+* **deps:** update module github.com/prometheus/client_golang to v1.25.0 ([#317](https://github.com/stuttgart-things/schmetterpause/issues/317)) ([08cfe2c](https://github.com/stuttgart-things/schmetterpause/commit/08cfe2c45bd8dcf702398f5db88d08f9bc0843ad))
+
 ## [0.16.0](https://github.com/stuttgart-things/schmetterpause/compare/v0.15.0...v0.16.0) (2026-10-06)
 
 
