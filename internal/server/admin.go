@@ -369,6 +369,8 @@ func enteredViaLabel(v domain.EnteredVia) string {
 		return "Kiosk"
 	case domain.EnteredViaScoreboard:
 		return "Zählwerk"
+	case domain.EnteredViaCheckin:
+		return "Zählwerk, angemeldet"
 	default:
 		return "Spieler"
 	}

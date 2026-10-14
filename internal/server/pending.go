@@ -408,9 +408,14 @@ func (s *Server) pendingEntry(
 		opponentID = m.HomeID
 	}
 
-	reporterName, err := lookup(m.ReportedBy)
-	if err != nil {
-		return templates.PendingMatchView{}, err
+	// Nobody reported a checked-in match (docs/adr/0024), and uuid.Nil is
+	// not a player to look up.
+	var reporterName string
+	if m.ReportedBy != uuid.Nil {
+		var err error
+		if reporterName, err = lookup(m.ReportedBy); err != nil {
+			return templates.PendingMatchView{}, err
+		}
 	}
 	opponentName, err := lookup(opponentID)
 	if err != nil {
