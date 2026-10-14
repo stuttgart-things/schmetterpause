@@ -78,6 +78,10 @@ const (
 	// ProviderPasskey is WebAuthn. Stores only a public key and a signature
 	// counter, never biometric data (docs/adr/0004).
 	ProviderPasskey Provider = "passkey"
+	// ProviderRFID is a key fob at the Zählwerk's reader. The subject is a
+	// keyed hash of the UID, never the UID (docs/adr/0025). It names a player
+	// for a match and never signs in a browser: a UID is not a secret.
+	ProviderRFID Provider = "rfid"
 )
 
 // Player is a player. The struct carries business data only; how a player was
@@ -118,7 +122,54 @@ type Identity struct {
 	Subject   string
 	PlayerID  uuid.UUID
 	CreatedAt time.Time
+	// LastUsedAt is when the proof was last used, or nil if nobody recorded
+	// it. Only fobs record it so far (docs/adr/0025).
+	LastUsedAt *time.Time
 }
+
+// Half is one end of the table, named as the Zählwerk names it (its
+// docs/adr/0005): whoever checked in at the left half is side a.
+type Half string
+
+const (
+	HalfLeft  Half = "left"
+	HalfRight Half = "right"
+)
+
+// Valid reports whether h is one of the two halves.
+func (h Half) Valid() bool { return h == HalfLeft || h == HalfRight }
+
+// CheckinMethod is how a player proved they stood at the table.
+type CheckinMethod string
+
+const (
+	// CheckinPhone is the player's own signed-in phone.
+	CheckinPhone CheckinMethod = "phone"
+	// CheckinRFID is a fob at the reader, resolved here (docs/adr/0025).
+	CheckinRFID CheckinMethod = "rfid"
+)
+
+// Checkin records that a player stood at one half of the table. It is created
+// here and only here: a result without an operator names two of them, and
+// this application checks them against its own records (docs/adr/0024).
+type Checkin struct {
+	ID        uuid.UUID
+	PlayerID  uuid.UUID
+	Half      Half
+	Method    CheckinMethod
+	CreatedAt time.Time
+}
+
+// FobWindow is the short span in which the next unknown fob at the reader is
+// linked to PlayerID. There is at most one (docs/adr/0025).
+type FobWindow struct {
+	PlayerID  uuid.UUID
+	OpenedAt  time.Time
+	ExpiresAt time.Time
+}
+
+// Open reports whether the window still links a fob at t.
+func (w FobWindow) Open(t time.Time) bool { return t.Before(w.ExpiresAt) }
 
 // CredentialKind names a sort of shared secret a player can prove themselves
 // with. Both kinds are bearer credentials: whoever holds one is the player,

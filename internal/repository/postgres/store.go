@@ -105,6 +105,12 @@ func (s *Store) Credentials() repository.CredentialRepository { return credentia
 // KioskGrants returns the kiosk grant repository.
 func (s *Store) KioskGrants() repository.KioskGrantRepository { return kioskGrantRepo{s.q} }
 
+// Checkins returns the check-in repository.
+func (s *Store) Checkins() repository.CheckinRepository { return checkinRepo{s.q} }
+
+// FobWindow returns the repository of the fob link window.
+func (s *Store) FobWindow() repository.FobWindowRepository { return fobWindowRepo{s.q} }
+
 // Matches returns the match repository.
 func (s *Store) Matches() repository.MatchRepository { return matchRepo{s.q} }
 
