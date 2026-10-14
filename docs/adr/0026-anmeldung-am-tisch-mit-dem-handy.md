@@ -55,16 +55,21 @@ andere per Handy ist ein gewöhnlicher Fall.
 - **Neu ist die Richtung.** Bisher ruft nur das Zählwerk hier an. Jetzt ruft
   diese Anwendung auch das Zählwerk auf, und zwar an genau einer Stelle: wenn
   ein Spieler den Knopf drückt.
-- **`SP_ZAEHLWERK_URL`** schaltet das ein. Ohne die Variable gibt es
-  `/table/*` nicht, `/qr` druckt keine Tischcodes, und beim Start steht eine
-  Zeile im Log, die das sagt. So ist es auch bei `SP_SCOREBOARD_TOKEN` und
-  `SP_RFID_UID_KEY` (Invariante 2).
+- **`SP_ZAEHLWERK_URL` gibt es schon.** Über diese Adresse liest der Browser
+  auf der Startseite den laufenden Spielstand. Dieselbe Adresse gilt jetzt
+  auch für den Aufruf vom Server aus. Eine zweite Variable für dasselbe Gerät
+  würde früher oder später auf ein anderes zeigen. Erreicht der Server die
+  Adresse nicht, die der Browser benutzt, ist das ein Fehler in der
+  Einrichtung, und die Seite sagt „Zählwerk nicht erreichbar".
+- **Eingeschaltet ist es nur mit Adresse und Token zusammen.** Fehlt eines
+  von beiden, gibt es `/table/*` nicht, `/qr` druckt keine Tischcodes, und
+  beim Start steht eine Zeile im Log, die das sagt. So ist es auch bei
+  `SP_SCOREBOARD_TOKEN` und `SP_RFID_UID_KEY` (Invariante 2).
 - **Das Geheimnis ist das, das beide Seiten schon teilen.** Diese Anwendung
   schickt `SP_SCOREBOARD_TOKEN` als Bearer, also dasselbe Token wie bisher, nur
   in die andere Richtung. Ein zweites Geheimnis müsste man verteilen, im Vault
   ablegen und rotieren, und es würde nichts schützen, was das erste nicht
-  schützt: Wer es hat, kann ohnehin schon Ergebnisse eintragen. Ohne Token
-  bleibt die Kopplung aus, auch wenn die URL gesetzt ist.
+  schützt: Wer es hat, kann ohnehin schon Ergebnisse eintragen.
 - **Der Aufruf wartet kurz und wird nicht wiederholt.** Antwortet das
   Zählwerk nicht, sagt die Seite das, und der Spieler drückt noch einmal.
   Eine Schleife, die im Hintergrund weiterversucht, würde einen Spieler
@@ -118,8 +123,10 @@ Verlauf des Browsers ausgelöst.
 
 ## Konsequenzen
 
-- **Neue Konfiguration:** `SP_ZAEHLWERK_URL` in Code, kcl, Terraform und
-  Compose, beschrieben in `docs/deployment.md`.
+- **Keine neue Variable.** `SP_ZAEHLWERK_URL` und `SP_SCOREBOARD_TOKEN` gibt
+  es schon, in Code, kcl, Terraform und Compose. Neu ist, dass beide zusammen
+  die Tischseiten einschalten. Das gehört in `docs/deployment.md` und in
+  `kcl/README.md`.
 - **`/qr` bekommt zwei Codes**, je einen pro Seite, zum Ausdrucken und
   Aufkleben.
 - **Das Zählwerk braucht eine Route**, über die diese Anwendung eine Seite
