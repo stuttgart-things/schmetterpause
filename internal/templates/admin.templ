@@ -395,6 +395,9 @@ templ adminInstance(v AdminInstance) {
 				@instanceRow("Zählwerk", "SP_SCOREBOARD_TOKEN") {
 					@onOff(v.Scoreboard)
 				}
+				@instanceRow("Schlüsselanhänger", "SP_RFID_UID_KEY") {
+					@onOff(v.Fobs)
+				}
 				@instanceRow("Admin beim Start", "SP_BOOTSTRAP_ADMIN") {
 					if v.BootstrapAdmin != "" {
 						{ v.BootstrapAdmin }

@@ -116,9 +116,9 @@ variable "extra_env_vars" {
   validation {
     condition = alltrue([
       for k in keys(var.extra_env_vars) :
-      !contains(["SP_DATABASE_URL", "SP_SESSION_KEY", "SP_KIOSK_TOKEN", "SP_SCOREBOARD_TOKEN"], k)
+      !contains(["SP_DATABASE_URL", "SP_SESSION_KEY", "SP_KIOSK_TOKEN", "SP_SCOREBOARD_TOKEN", "SP_RFID_UID_KEY"], k)
     ])
-    error_message = "extra_env_vars must not set SP_DATABASE_URL, SP_SESSION_KEY, SP_KIOSK_TOKEN or SP_SCOREBOARD_TOKEN — those are secrets and have variables of their own."
+    error_message = "extra_env_vars must not set SP_DATABASE_URL, SP_SESSION_KEY, SP_KIOSK_TOKEN, SP_SCOREBOARD_TOKEN or SP_RFID_UID_KEY — those are secrets and have variables of their own."
   }
 }
 
@@ -189,6 +189,19 @@ variable "scoreboard_token" {
   type        = string
   sensitive   = true
   default     = ""
+}
+
+# kcl: fobsEnabled + vaultKeyRFIDUIDKey (rfid-uid-key)
+variable "rfid_uid_key" {
+  description = "SP_RFID_UID_KEY, in terraform.tfvars. Left out or empty, there are no key fobs: no resolve route and no linking on the profile (docs/adr/0025). It keys the hash every fob is stored under, so a new one unlinks them all."
+  type        = string
+  sensitive   = true
+  default     = ""
+
+  validation {
+    condition     = var.rfid_uid_key == "" || length(var.rfid_uid_key) >= 32
+    error_message = "rfid_uid_key must be empty or at least 32 characters."
+  }
 }
 
 # ── Database ──────────────────────────────────────────────────────────────────

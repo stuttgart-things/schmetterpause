@@ -1,0 +1,93 @@
+package templates
+
+import "strconv"
+
+// FobCard is the key fob section on a player's own profile (docs/adr/0025).
+//
+// While the player's window is open the card polls itself every two seconds,
+// so holding the fob to the reader is enough: nobody has to come back to the
+// phone and reload. The poll stops with the window.
+templ FobCard(v FobCardView) {
+	<section
+		id="fobs"
+		class="session fob-card"
+		if v.Waiting {
+			hx-get={ "/fragments/fobs?known=" + strconv.Itoa(v.Known) }
+			hx-trigger="every 2s"
+			hx-swap="outerHTML"
+		}
+	>
+		<h2>Schlüsselanhänger</h2>
+		<p class="muted">
+			Mit einem Anhänger meldest du dich am Zählwerk an: an den Leser
+			halten, dann den Taster deiner Seite drücken. Bitte keinen
+			Firmenausweis — gespeichert wird er nicht, aber er gehört nicht
+			hierher.
+		</p>
+		if len(v.Fobs) > 0 {
+			<ul class="fob-list">
+				for _, fob := range v.Fobs {
+					<li>
+						<span>
+							Anhänger <code>{ fob.Label }</code>
+							<span class="muted">
+								{ "gekoppelt am " + fob.LinkedAt }
+								if fob.LastUsed != "" {
+									{ " · zuletzt benutzt " + fob.LastUsed }
+								}
+							</span>
+						</span>
+						<form hx-post="/fobs/remove" hx-target="#fobs" hx-swap="outerHTML">
+							<input type="hidden" name="subject" value={ fob.Subject }/>
+							<button type="submit" class="secondary">Entfernen</button>
+						</form>
+					</li>
+				}
+			</ul>
+		}
+		if v.JustLinked {
+			<p class="ok" role="status">
+				Anhänger gekoppelt. Du bist damit auch gleich am Tisch angemeldet.
+			</p>
+		}
+		if v.Expired {
+			<p class="muted" role="status">
+				Das Fenster ist abgelaufen, ohne dass ein Anhänger kam.
+			</p>
+		}
+		if v.Waiting {
+			<p role="status">
+				Halte jetzt deinen Anhänger an den Leser und drück den Taster
+				deiner Seite. { "Noch " + strconv.Itoa(v.SecondsLeft) + " Sekunden." }
+			</p>
+			<button
+				type="button"
+				class="secondary"
+				hx-post="/fobs/window/close"
+				hx-target="#fobs"
+				hx-swap="outerHTML"
+			>
+				Abbrechen
+			</button>
+		} else {
+			<button
+				type="button"
+				class="secondary"
+				hx-post="/fobs/window"
+				hx-target="#fobs"
+				hx-swap="outerHTML"
+			>
+				Anhänger koppeln
+			</button>
+		}
+		if v.BusySeconds > 0 {
+			<p class="fail" role="alert">
+				Gerade koppelt jemand anderes einen Anhänger.
+				{ "Versuch es in " + strconv.Itoa(v.BusySeconds) + " Sekunden noch einmal." }
+			</p>
+		}
+		if v.Error != "" {
+			<p class="fail" role="alert">{ v.Error }</p>
+		}
+	</section>
+}

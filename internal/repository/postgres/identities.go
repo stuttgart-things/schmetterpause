@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -70,9 +71,22 @@ func (r identityRepo) Unlink(ctx context.Context, provider domain.Provider, subj
 	return nil
 }
 
+func (r identityRepo) Touch(ctx context.Context, provider domain.Provider, subject string, at time.Time) error {
+	const q = `update identities set last_used_at = $3 where provider = $1 and subject = $2`
+
+	tag, err := r.q.Exec(ctx, q, string(provider), subject, at)
+	if err != nil {
+		return fmt.Errorf("touch identity %s: %w", provider, err)
+	}
+	if tag.RowsAffected() == 0 {
+		return fmt.Errorf("touch identity %s: %w", provider, domain.ErrNotFound)
+	}
+	return nil
+}
+
 func (r identityRepo) ForPlayer(ctx context.Context, playerID uuid.UUID) ([]domain.Identity, error) {
 	const q = `
-		select provider, subject, player_id, created_at
+		select provider, subject, player_id, created_at, last_used_at
 		from identities
 		where player_id = $1
 		order by created_at`
@@ -89,7 +103,7 @@ func (r identityRepo) ForPlayer(ctx context.Context, playerID uuid.UUID) ([]doma
 			id       domain.Identity
 			provider string
 		)
-		if err := rows.Scan(&provider, &id.Subject, &id.PlayerID, &id.CreatedAt); err != nil {
+		if err := rows.Scan(&provider, &id.Subject, &id.PlayerID, &id.CreatedAt, &id.LastUsedAt); err != nil {
 			return nil, fmt.Errorf("read identity: %w", err)
 		}
 		id.Provider = domain.Provider(provider)

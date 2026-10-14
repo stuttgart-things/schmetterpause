@@ -26,6 +26,8 @@ type memStore struct {
 	identities  *memIdentities
 	credentials *memCredentials
 	kiosks      *memKioskGrants
+	checkins    *memCheckins
+	fobWindow   *memFobWindow
 	matches     *memMatches
 	history     *memHistory
 	tournaments *memTournaments
@@ -41,6 +43,8 @@ func newMemStore() *memStore {
 		identities:  &memIdentities{players: players},
 		credentials: &memCredentials{},
 		kiosks:      &memKioskGrants{},
+		checkins:    &memCheckins{},
+		fobWindow:   &memFobWindow{},
 		matches:     matches,
 		history:     history,
 		tournaments: &memTournaments{matches: matches, players: players},
@@ -63,6 +67,8 @@ func (m *memStore) Credentials() repository.CredentialRepository {
 	return m.credentials
 }
 func (m *memStore) KioskGrants() repository.KioskGrantRepository { return m.kiosks }
+func (m *memStore) Checkins() repository.CheckinRepository       { return m.checkins }
+func (m *memStore) FobWindow() repository.FobWindowRepository    { return m.fobWindow }
 func (m *memStore) Matches() repository.MatchRepository          { return m.matches }
 func (m *memStore) TTRHistory() repository.TTRHistoryRepository  { return m.history }
 func (m *memStore) Tournaments() repository.TournamentRepository { return m.tournaments }
@@ -386,6 +392,8 @@ type memIdentities struct {
 	players *memPlayers
 	mu      sync.Mutex
 	rows    map[string]uuid.UUID
+	// meta mirrors created_at and last_used_at, for the profile's fob list.
+	meta map[string]domain.Identity
 }
 
 func (i *memIdentities) key(provider domain.Provider, subject string) string {
@@ -398,9 +406,49 @@ func (i *memIdentities) Link(_ context.Context, provider domain.Provider, subjec
 
 	if i.rows == nil {
 		i.rows = map[string]uuid.UUID{}
+		i.meta = map[string]domain.Identity{}
 	}
-	i.rows[i.key(provider, subject)] = playerID
+	k := i.key(provider, subject)
+	if owner, ok := i.rows[k]; ok && owner != playerID {
+		// The same conflict as the primary key against Postgres: merging two
+		// players is a separate operation (docs/adr/0003).
+		return fmt.Errorf("identity %s already belongs to player %s", provider, owner)
+	}
+	i.rows[k] = playerID
+	if _, ok := i.meta[k]; !ok {
+		i.meta[k] = domain.Identity{
+			Provider: provider, Subject: subject, PlayerID: playerID, CreatedAt: time.Now(),
+		}
+	}
 	return nil
+}
+
+func (i *memIdentities) Touch(_ context.Context, provider domain.Provider, subject string, at time.Time) error {
+	i.mu.Lock()
+	defer i.mu.Unlock()
+
+	k := i.key(provider, subject)
+	id, ok := i.meta[k]
+	if !ok {
+		return domain.ErrNotFound
+	}
+	id.LastUsedAt = &at
+	i.meta[k] = id
+	return nil
+}
+
+func (i *memIdentities) ForPlayer(_ context.Context, playerID uuid.UUID) ([]domain.Identity, error) {
+	i.mu.Lock()
+	defer i.mu.Unlock()
+
+	var out []domain.Identity
+	for k, owner := range i.rows {
+		if owner == playerID {
+			out = append(out, i.meta[k])
+		}
+	}
+	slices.SortFunc(out, func(a, b domain.Identity) int { return a.CreatedAt.Compare(b.CreatedAt) })
+	return out, nil
 }
 
 func (i *memIdentities) Unlink(_ context.Context, provider domain.Provider, subject string) error {
@@ -409,6 +457,7 @@ func (i *memIdentities) Unlink(_ context.Context, provider domain.Provider, subj
 
 	// A row that is not there is not an error, the same as against Postgres.
 	delete(i.rows, i.key(provider, subject))
+	delete(i.meta, i.key(provider, subject))
 	return nil
 }
 
@@ -1081,4 +1130,86 @@ func (m *memTournaments) Replace(ctx context.Context, in domain.Tournament) (dom
 		return t, nil
 	}
 	return domain.Tournament{}, domain.ErrNotFound
+}
+
+// memCheckins keeps every check-in, so a test can look for the row a resolve
+// should or should not have written.
+type memCheckins struct {
+	mu   sync.Mutex
+	rows []domain.Checkin
+}
+
+func (c *memCheckins) Create(_ context.Context, in domain.Checkin) (domain.Checkin, error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	in.ID = uuid.New()
+	c.rows = append(c.rows, in)
+	return in, nil
+}
+
+func (c *memCheckins) all() []domain.Checkin {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return slices.Clone(c.rows)
+}
+
+// memFobWindow mirrors the one-row table: at most one window, replaced only
+// once expired or by the player who holds it.
+type memFobWindow struct {
+	mu     sync.Mutex
+	window *domain.FobWindow
+}
+
+func (f *memFobWindow) Open(_ context.Context, playerID uuid.UUID, at, expiresAt time.Time) (domain.FobWindow, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+
+	if f.window != nil && f.window.Open(at) && f.window.PlayerID != playerID {
+		return *f.window, domain.ErrConflict
+	}
+	f.window = &domain.FobWindow{PlayerID: playerID, OpenedAt: at, ExpiresAt: expiresAt}
+	return *f.window, nil
+}
+
+func (f *memFobWindow) Current(_ context.Context, at time.Time) (domain.FobWindow, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+
+	if f.window == nil || !f.window.Open(at) {
+		return domain.FobWindow{}, domain.ErrNotFound
+	}
+	return *f.window, nil
+}
+
+func (f *memFobWindow) Consume(ctx context.Context, at time.Time) (domain.FobWindow, error) {
+	w, err := f.Current(ctx, at)
+	if err != nil {
+		return domain.FobWindow{}, err
+	}
+	f.mu.Lock()
+	f.window = nil
+	f.mu.Unlock()
+	return w, nil
+}
+
+func (f *memFobWindow) Close(_ context.Context, playerID uuid.UUID) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+
+	if f.window != nil && f.window.PlayerID == playerID {
+		f.window = nil
+	}
+	return nil
+}
+
+// expire moves the window into the past, the way a minute passing would.
+func (f *memFobWindow) expire() {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+
+	if f.window != nil {
+		f.window.ExpiresAt = time.Now().Add(-time.Second)
+		f.window.OpenedAt = f.window.ExpiresAt.Add(-time.Minute)
+	}
 }

@@ -176,6 +176,14 @@ resource "azurerm_container_app" "this" {
     }
   }
 
+  dynamic "secret" {
+    for_each = nonsensitive(var.rfid_uid_key != "") ? ["rfid-uid-key"] : []
+    content {
+      name  = secret.value
+      value = var.rfid_uid_key
+    }
+  }
+
   ingress {
     external_enabled = true
     target_port      = 8080
@@ -264,6 +272,14 @@ resource "azurerm_container_app" "this" {
         content {
           name        = env.value
           secret_name = "scoreboard-token"
+        }
+      }
+
+      dynamic "env" {
+        for_each = nonsensitive(var.rfid_uid_key != "") ? ["SP_RFID_UID_KEY"] : []
+        content {
+          name        = env.value
+          secret_name = "rfid-uid-key"
         }
       }
 

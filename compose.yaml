@@ -59,6 +59,10 @@ services:
       # Set it to let a Zählwerk hand finished matches over (docs/adr/0015);
       # the same value goes into SCHMETTERPAUSE_TOKEN on its side.
       SP_SCOREBOARD_TOKEN: ${SP_SCOREBOARD_TOKEN:-}
+      # Empty by default, and then there are no key fobs. Set it, with the
+      # token above, to let the Zählwerk check players in by fob
+      # (docs/adr/0025); at least 32 characters.
+      SP_RFID_UID_KEY: ${SP_RFID_UID_KEY:-}
       # Empty by default, and then nobody is an admin. Start it with
       # SP_BOOTSTRAP_ADMIN="Anna" task up to give that player the flag; the
       # name is the one on the ranking (docs/adr/0008).

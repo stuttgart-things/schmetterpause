@@ -692,6 +692,9 @@ type ProfileView struct {
 	IsSelf bool
 	// HasPIN changes the wording from setting one to replacing one.
 	HasPIN bool
+	// Fobs is the key fob card, on your own page and only when fobs are on
+	// (docs/adr/0025). Nil leaves the card out.
+	Fobs *FobCardView
 	// IsObserver is somebody who does not play (docs/adr/0022). Their page
 	// keeps the name and, for themselves, the access section — an observer
 	// signs in like anybody — and drops everything that describes playing.
@@ -800,6 +803,9 @@ type AdminInstance struct {
 	// Scoreboard is whether SP_SCOREBOARD_TOKEN is set, and so whether the
 	// Zählwerk can reach /api at all.
 	Scoreboard bool
+	// Fobs is whether SP_RFID_UID_KEY is set, and so whether a fob can be
+	// linked or resolved at all (docs/adr/0025).
+	Fobs bool
 	// BootstrapAdmin is the display name SP_BOOTSTRAP_ADMIN grants the flag
 	// to at every start, empty when unset.
 	BootstrapAdmin string
@@ -1502,4 +1508,41 @@ func plural(n int, one, many string) string {
 		word = one
 	}
 	return strconv.Itoa(n) + " " + word
+}
+
+// FobCardView is the key fob section on somebody's own profile
+// (docs/adr/0025).
+type FobCardView struct {
+	Fobs []FobRow
+	// Waiting is true while this player's link window is open. The card then
+	// polls itself, so it turns into "gekoppelt" without a reload the moment
+	// the fob is at the reader.
+	Waiting bool
+	// SecondsLeft is how long the window stays open, for the sentence that
+	// asks for the fob.
+	SecondsLeft int
+	// Known is how many fobs the player had when the window opened. The poll
+	// carries it, so the card can tell "a fob arrived" from "the window ran
+	// out" once the window is gone.
+	Known int
+	// JustLinked and Expired are the two ways a window ends.
+	JustLinked bool
+	Expired    bool
+	// BusySeconds is set when somebody else holds the window: how long until
+	// it is free again. Only one may be open, so a fob cannot land on the
+	// wrong player.
+	BusySeconds int
+	Error       string
+}
+
+// FobRow is one linked fob.
+type FobRow struct {
+	// Subject is what the remove button sends back. It is the keyed hash,
+	// which identifies nothing outside this application.
+	Subject string
+	// Label tells two fobs apart: the first characters of the hash.
+	Label    string
+	LinkedAt string
+	// LastUsed is empty for a fob that has not been used since linking.
+	LastUsed string
 }

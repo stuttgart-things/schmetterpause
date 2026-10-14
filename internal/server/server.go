@@ -37,6 +37,9 @@ type Server struct {
 	// metrics is nil unless SP_METRICS_ADDR is set, and then nothing is
 	// measured and no second port is opened.
 	metrics *metrics.Metrics
+	// fobs is nil unless SP_RFID_UID_KEY is set, and then there is no resolve
+	// route and no "Fob koppeln" (docs/adr/0025).
+	fobs *auth.Fobs
 
 	// The two halves of the brake on guessing at a credential. One alone is
 	// not a limit: per player, somebody walks the roster; per address,
@@ -70,6 +73,11 @@ func New(cfg config.Config, store repository.Store, log *slog.Logger, a auth.Ses
 		signInByPlayer:  ratelimit.New(signInPlayerPolicy),
 		signInByAddress: ratelimit.New(signInAddressPolicy),
 		kioskByAddress:  ratelimit.New(kioskPolicy),
+	}
+	if len(cfg.RFIDUIDKey) > 0 {
+		s.fobs = auth.NewFobs(store, cfg.RFIDUIDKey)
+	} else {
+		log.Info("fobs are off: SP_RFID_UID_KEY is not set")
 	}
 	if cfg.MetricsAddr != "" {
 		s.metrics = metrics.New(build.Version,
@@ -133,6 +141,11 @@ func (s *Server) routes() http.Handler {
 		mux.HandleFunc("GET /api/players", s.handleAPIPlayers)
 		mux.HandleFunc("GET /api/operators", s.handleAPIOperators)
 		mux.HandleFunc("POST /api/results", s.handleAPIResults)
+		// Only with a key as well: without one there is nothing to hash a
+		// UID with, and the route does not exist (docs/adr/0025).
+		if s.fobs != nil {
+			mux.HandleFunc("POST /api/identities/rfid/resolve", s.handleAPIResolveFob)
+		}
 	}
 
 	mux.Handle("GET /static/", staticHandler())
@@ -170,6 +183,14 @@ func (s *Server) routes() http.Handler {
 	// POST, never GET. Chat programs follow links to build previews, so a
 	// GET /signout is a URL somebody pastes into Teams that signs people out.
 	page.Handle("POST /signout", auth.RequirePlayer(http.HandlerFunc(s.handleSignOut)))
+	// Linking and removing your own fobs (docs/adr/0025). Absent without
+	// SP_RFID_UID_KEY, like the resolve route, and only ever for yourself.
+	if s.fobs != nil {
+		page.Handle("POST /fobs/window", auth.RequirePlayer(http.HandlerFunc(s.handleOpenFobWindow)))
+		page.Handle("POST /fobs/window/close", auth.RequirePlayer(http.HandlerFunc(s.handleCloseFobWindow)))
+		page.Handle("POST /fobs/remove", auth.RequirePlayer(http.HandlerFunc(s.handleRemoveFob)))
+		page.Handle("GET /fragments/fobs", auth.RequirePlayer(http.HandlerFunc(s.handleFobFragment)))
+	}
 	page.HandleFunc("GET /fragments/match", s.handleMatchForm)
 	// Not behind a player check: the kiosk has no player session and needs
 	// the same rows.

@@ -86,6 +86,9 @@ templ Profile(v ProfileView) {
 				<h2>PIN</h2>
 				@PINForm(PINFormView{Set: v.HasPIN})
 			</section>
+			if v.Fobs != nil {
+				@FobCard(*v.Fobs)
+			}
 		}
 		if v.IsObserver {
 			// Nothing to list: an observer is only ever flagged with no match

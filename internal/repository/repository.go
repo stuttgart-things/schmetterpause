@@ -20,6 +20,8 @@ type Store interface {
 	Identities() IdentityRepository
 	Credentials() CredentialRepository
 	KioskGrants() KioskGrantRepository
+	Checkins() CheckinRepository
+	FobWindow() FobWindowRepository
 	Matches() MatchRepository
 	Tournaments() TournamentRepository
 	TTRHistory() TTRHistoryRepository
@@ -103,6 +105,40 @@ type IdentityRepository interface {
 	// A proof that is not there is not an error. Signing out twice, or after
 	// a key rotation left the cookie unreadable, is an ordinary thing to do.
 	Unlink(ctx context.Context, provider domain.Provider, subject string) error
+	// Touch records that a proof was just used. A proof that is not there is
+	// domain.ErrNotFound.
+	Touch(ctx context.Context, provider domain.Provider, subject string, at time.Time) error
+}
+
+// CheckinRepository records who stood at which half of the table
+// (docs/adr/0024). Rows are only ever created by this application.
+type CheckinRepository interface {
+	// Create records a check-in and returns it with its id. CreatedAt is
+	// taken from c, so a caller and its tests agree on the clock.
+	Create(ctx context.Context, c domain.Checkin) (domain.Checkin, error)
+}
+
+// FobWindowRepository keeps the one window in which an unknown fob is linked
+// to a player (docs/adr/0025).
+//
+// Every method takes the time it is asked about rather than reading a clock,
+// the same as KioskGrantRepository: whether a window is open is a question
+// about a moment, and the caller owns the moment.
+type FobWindowRepository interface {
+	// Open opens a window for playerID until expiresAt. It replaces a window
+	// that has expired at at, or one the same player already holds. While
+	// somebody else's window is open it refuses with domain.ErrConflict and
+	// returns that window, so the caller can say how long to wait.
+	Open(ctx context.Context, playerID uuid.UUID, at, expiresAt time.Time) (domain.FobWindow, error)
+	// Current returns the window open at at, or domain.ErrNotFound.
+	Current(ctx context.Context, at time.Time) (domain.FobWindow, error)
+	// Consume closes the window open at at and returns it, or
+	// domain.ErrNotFound when none is. One call wins: two fobs arriving
+	// together cannot both be linked.
+	Consume(ctx context.Context, at time.Time) (domain.FobWindow, error)
+	// Close removes the window if playerID holds it. Anything else is not an
+	// error: the window may have expired or been used a moment earlier.
+	Close(ctx context.Context, playerID uuid.UUID) error
 }
 
 // CredentialRepository stores the shared secrets a player proves themselves

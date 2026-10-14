@@ -133,6 +133,15 @@ func (s *Server) handleProfile(w http.ResponseWriter, r *http.Request) {
 	if self, ok := auth.PlayerID(r.Context()); ok && self == id {
 		view.IsSelf = true
 		view.HasPIN = s.hasPIN(r.Context(), self)
+		if s.fobs != nil {
+			fobs, err := s.fobCardView(r.Context(), self)
+			if err != nil {
+				// The rest of the page is worth showing without it.
+				s.log.ErrorContext(r.Context(), "loading the fob card failed", "player_id", self, "error", err)
+				fobs = templates.FobCardView{Error: "Die Anhänger sind gerade nicht verfügbar."}
+			}
+			view.Fobs = &fobs
+		}
 	}
 
 	s.render(w, r, templates.Profile(view))
