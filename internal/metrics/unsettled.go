@@ -58,6 +58,7 @@ var (
 	unsettledStatuses = []domain.MatchStatus{domain.MatchPending, domain.MatchDisputed}
 	unsettledOrigins  = []domain.EnteredVia{
 		domain.EnteredViaPlayer, domain.EnteredViaKiosk, domain.EnteredViaScoreboard,
+		domain.EnteredViaCheckin,
 	}
 )
 

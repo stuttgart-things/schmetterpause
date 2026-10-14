@@ -23,6 +23,15 @@
 -- in it — and never hidden, because how much ran over the counter is exactly
 -- what the test phase in that ADR wants to know.
 --
+-- A checked-in result ('checkin', docs/adr/0024) drops out as well, in a
+-- column of its own. It is closer to the question than a counter with an
+-- operator: both players stood at the table and proved it. But nobody typed
+-- it in, so it says nothing about whether players log voluntarily, and it has
+-- no reported_by at all — count(distinct reported_by) would skip it silently,
+-- which is right only by accident. So the exclusion is explicit, like the
+-- others, and the ADR says it waits for the confirmation step before it is
+-- anything more.
+--
 -- Tournament matches drop out too, whoever typed them. That used to happen by
 -- itself, because entry was only possible at the kiosk and every row came out
 -- marked 'kiosk'; since ADR-0010 a player may enter their own tournament
@@ -57,6 +66,7 @@ select to_char(day, 'YYYY-MM-DD Dy') as "day",
        reporters,
        kiosk as "of which kiosk",
        scoreboard as "of which scoreboard",
+       checkin as "of which checkin",
        tournament as "of which tournament",
        case when extract(isodow from day) > 5 then 'weekend' else '' end as "note"
 from (
@@ -68,6 +78,7 @@ from (
 	                                                                       as reporters,
 	       count(*) filter (where m.entered_via = 'kiosk')                 as kiosk,
 	       count(*) filter (where m.entered_via = 'scoreboard')            as scoreboard,
+	       count(*) filter (where m.entered_via = 'checkin')               as checkin,
 	       count(*) filter (where m.tournament_id is not null)             as tournament
 	from matches m
 	where m.status = 'confirmed'
