@@ -76,6 +76,7 @@ nav:
       - ADR-0023 Das Zählwerk bietet Beobachter als Operator an: adr/0023-zaehlwerk-bietet-beobachter-als-operator-an.md
       - ADR-0024 Angemeldete Matches ohne Operator: adr/0024-angemeldete-matches-ohne-operator.md
       - ADR-0025 Fob als Identität: adr/0025-fob-als-identitaet.md
+      - ADR-0026 Anmeldung am Tisch mit dem Handy: adr/0026-anmeldung-am-tisch-mit-dem-handy.md
   - Betrieb:
       - Plattform-Voraussetzungen: platform.md
       - Deployment ohne GitOps: deployment.md
