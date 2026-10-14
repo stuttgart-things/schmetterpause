@@ -132,7 +132,9 @@ type Identity struct {
 type Half string
 
 const (
-	HalfLeft  Half = "left"
+	// HalfLeft is side a.
+	HalfLeft Half = "left"
+	// HalfRight is side b.
 	HalfRight Half = "right"
 )
 
