@@ -144,7 +144,7 @@ templ reportedResult(m PendingMatchView) {
 			if m.ReporterName != "" {
 				<strong>{ m.ReporterName }</strong> hat eingetragen:
 			} else {
-				Das <strong>Zählwerk</strong> hat eingetragen, ihr wart beide angemeldet:
+				Das <strong>Zählwerk</strong> hat eingetragen:
 			}
 			if m.Won {
 				{ strconv.Itoa(m.OwnSets) }:{ strconv.Itoa(m.OpponentSets) } für dich
