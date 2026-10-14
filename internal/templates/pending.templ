@@ -141,11 +141,15 @@ templ PendingItem(m PendingMatchView) {
 templ reportedResult(m PendingMatchView) {
 	<div class="pending-match">
 		<p>
-			<strong>{ m.ReporterName }</strong> hat eingetragen:
+			if m.ReporterName != "" {
+				<strong>{ m.ReporterName }</strong> hat eingetragen:
+			} else {
+				Das <strong>Zählwerk</strong> hat eingetragen, ihr wart beide angemeldet:
+			}
 			if m.Won {
 				{ strconv.Itoa(m.OwnSets) }:{ strconv.Itoa(m.OpponentSets) } für dich
 			} else {
-				{ strconv.Itoa(m.OpponentSets) }:{ strconv.Itoa(m.OwnSets) } für { m.ReporterName }
+				{ strconv.Itoa(m.OpponentSets) }:{ strconv.Itoa(m.OwnSets) } für { m.OpponentName }
 			}
 		</p>
 		<p class="sets-line muted">

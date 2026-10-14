@@ -13,8 +13,10 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/stuttgart-things/schmetterpause/internal/auth"
+	"github.com/stuttgart-things/schmetterpause/internal/checkin"
 	"github.com/stuttgart-things/schmetterpause/internal/domain"
 	"github.com/stuttgart-things/schmetterpause/internal/match"
+	"github.com/stuttgart-things/schmetterpause/internal/repository"
 )
 
 // The only JSON this application speaks, and the only place it may grow.
@@ -26,8 +28,9 @@ import (
 // and this surface stays exactly as narrow as the ADR describes. Anything
 // wider needs its own ADR.
 //
-// Players and operators out, one finished result in, and one question about a
-// fob (docs/adr/0025). No updates, no deletes, no listing of matches, and
+// Players and operators out, one finished result in (with an operator or with
+// two check-ins, docs/adr/0024), and one question about a fob
+// (docs/adr/0025). No updates, no deletes, no listing of matches, and
 // nothing that lets the caller change a rating.
 
 // maxAPIBody bounds what a handler will read. The largest legitimate body is a
@@ -62,13 +65,20 @@ type apiOperator struct {
 // scorer.State.CompletedSets ([][2]int) through unchanged — it is the field
 // that exists over there for exactly this handover. Home first, away second,
 // in the order they were played.
+//
+// Exactly one of two proofs comes with it: an operator who watched
+// (docs/adr/0015), or the check-ins of both players (docs/adr/0024). The ids
+// of those check-ins are the ones POST /api/identities/rfid/resolve handed
+// out, so the sender passes back what it was given and asserts nothing.
 type apiResult struct {
-	HomeID      uuid.UUID `json:"home_id"`
-	AwayID      uuid.UUID `json:"away_id"`
-	OperatorID  uuid.UUID `json:"operator_id"`
-	Sets        [][2]int  `json:"sets"`
-	BestOf      int       `json:"best_of"`
-	PointsToWin int       `json:"points_to_win"`
+	HomeID        uuid.UUID `json:"home_id"`
+	AwayID        uuid.UUID `json:"away_id"`
+	OperatorID    uuid.UUID `json:"operator_id"`
+	HomeCheckinID uuid.UUID `json:"home_checkin_id"`
+	AwayCheckinID uuid.UUID `json:"away_checkin_id"`
+	Sets          [][2]int  `json:"sets"`
+	BestOf        int       `json:"best_of"`
+	PointsToWin   int       `json:"points_to_win"`
 	// PlayedAt is optional. The Zählwerk knows when the match ended; if it
 	// says nothing, the moment the result arrives is close enough.
 	PlayedAt *time.Time `json:"played_at,omitempty"`
@@ -207,13 +217,38 @@ func (s *Server) handleAPIResults(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// The operator is required, and may not be playing. docs/adr/0014 gives
-	// the reason and docs/adr/0015 keeps it unchanged: a machine has no
-	// identity, so it names the person standing there who watched the match.
-	// Without that, a result has nobody behind it and both players could
-	// confirm a match neither of them reported.
+	checkedIn := body.HomeCheckinID != uuid.Nil || body.AwayCheckinID != uuid.Nil
+	if checkedIn && body.OperatorID != uuid.Nil {
+		// Two proofs is a sender that has not decided which path it is on,
+		// and taking either one would be guessing.
+		s.apiRefuse(w, r, http.StatusBadRequest,
+			"send operator_id or home_checkin_id and away_checkin_id, not both")
+		return
+	}
+	if checkedIn {
+		if body.HomeCheckinID == uuid.Nil || body.AwayCheckinID == uuid.Nil {
+			s.apiRefuse(w, r, http.StatusBadRequest,
+				"home_checkin_id and away_checkin_id are both required")
+			return
+		}
+		if body.HomeCheckinID == body.AwayCheckinID {
+			s.apiRefuse(w, r, http.StatusBadRequest,
+				"home_checkin_id and away_checkin_id must differ")
+			return
+		}
+		s.recordCheckedInResult(w, r, body, result)
+		return
+	}
+
+	// Without check-ins the operator is required, and may not be playing.
+	// docs/adr/0014 gives the reason and docs/adr/0015 keeps it unchanged: a
+	// machine has no identity, so it names the person standing there who
+	// watched the match. Without that, a result has nobody behind it and both
+	// players could confirm a match neither of them reported. docs/adr/0024
+	// lifts this only where two check-ins take the operator's place.
 	if body.OperatorID == uuid.Nil {
-		s.apiRefuse(w, r, http.StatusBadRequest, "operator_id is required")
+		s.apiRefuse(w, r, http.StatusBadRequest,
+			"operator_id is required, or home_checkin_id and away_checkin_id")
 		return
 	}
 	if body.OperatorID == body.HomeID || body.OperatorID == body.AwayID {
@@ -240,15 +275,7 @@ func (s *Server) handleAPIResults(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	playedAt := time.Now()
-	if body.PlayedAt != nil {
-		playedAt = *body.PlayedAt
-	}
-
-	sets := make([]domain.MatchSet, 0, len(result.Sets))
-	for i, set := range result.Sets {
-		sets = append(sets, domain.MatchSet{SetNo: i + 1, HomePoints: set.Home, AwayPoints: set.Away})
-	}
+	playedAt, sets := body.playedAt(), matchSets(result)
 
 	created, err := s.store.Matches().Create(r.Context(), domain.Match{
 		HomeID:      body.HomeID,
@@ -285,6 +312,107 @@ func (s *Server) handleAPIResults(w http.ResponseWriter, r *http.Request) {
 		MatchID uuid.UUID          `json:"match_id"`
 		Status  domain.MatchStatus `json:"status"`
 	}{MatchID: created.ID, Status: created.Status})
+}
+
+// recordCheckedInResult stores a result whose proof is two check-ins
+// (docs/adr/0024). The handler has already checked the body's shape: both ids
+// are there, they differ, and there is no operator.
+//
+// The check-ins are read and the match written in one transaction, with the
+// check-in rows locked. Otherwise two copies of the same result — a sender
+// retrying after a lost answer — could both find the check-ins unused.
+func (s *Server) recordCheckedInResult(w http.ResponseWriter, r *http.Request, body apiResult, result match.Result) {
+	var (
+		created domain.Match
+		missing uuid.UUID
+	)
+	err := s.store.InTx(r.Context(), func(tx repository.Store) error {
+		found, err := tx.Checkins().Lock(r.Context(), []uuid.UUID{body.HomeCheckinID, body.AwayCheckinID})
+		if err != nil {
+			return err
+		}
+		for _, id := range []uuid.UUID{body.HomeCheckinID, body.AwayCheckinID} {
+			if _, ok := found[id]; !ok {
+				missing = id
+				return domain.ErrNotFound
+			}
+		}
+		if err := checkin.Verify(found[body.HomeCheckinID], found[body.AwayCheckinID],
+			body.HomeID, body.AwayID, time.Now()); err != nil {
+			return err
+		}
+
+		created, err = tx.Matches().Create(r.Context(), domain.Match{
+			HomeID:      body.HomeID,
+			AwayID:      body.AwayID,
+			BestOf:      result.Mode.BestOf,
+			PointsToWin: result.Mode.PointsToWin,
+			// Pending, as on the operator path (docs/adr/0015). Nobody
+			// reported it, so scoring.load lets either player confirm.
+			// Counting it at once is the auto-accept question, which
+			// docs/adr/0024 leaves to its own decision.
+			Status:        domain.MatchPending,
+			ReportedBy:    uuid.Nil,
+			PlayedAt:      body.playedAt(),
+			EnteredVia:    domain.EnteredViaCheckin,
+			HomeCheckinID: &body.HomeCheckinID,
+			AwayCheckinID: &body.AwayCheckinID,
+			Sets:          matchSets(result),
+		})
+		return err
+	})
+
+	var rejection *checkin.Rejection
+	switch {
+	case errors.As(err, &rejection) && rejection.Kind == checkin.Used,
+		errors.Is(err, domain.ErrConflict):
+		// Conflict rather than unprocessable: the likeliest sender is the
+		// Zählwerk retrying a result that did arrive, and 409 tells it so.
+		s.apiRefuse(w, r, http.StatusConflict, "a check-in already carries a result")
+		return
+	case errors.As(err, &rejection):
+		s.apiRefuse(w, r, http.StatusUnprocessableEntity, rejection.Error())
+		return
+	case errors.Is(err, domain.ErrNotFound):
+		// The id, like the unknown player above: the sender got it from
+		// this application, so naming it leaks nothing and says what is
+		// stale.
+		s.apiRefuse(w, r, http.StatusUnprocessableEntity, fmt.Sprintf("no check-in with id %s", missing))
+		return
+	case errors.Is(err, domain.ErrObserver):
+		s.apiRefuse(w, r, http.StatusUnprocessableEntity, "an observer cannot be one of the two players")
+		return
+	case err != nil:
+		s.log.ErrorContext(r.Context(), "storing a checked-in result failed", "error", err)
+		s.apiRefuse(w, r, http.StatusInternalServerError, "the result could not be stored")
+		return
+	}
+
+	s.log.InfoContext(r.Context(), "checked-in result recorded",
+		"match_id", created.ID,
+		"home_checkin_id", body.HomeCheckinID, "away_checkin_id", body.AwayCheckinID)
+
+	s.writeJSON(w, r, http.StatusCreated, struct {
+		MatchID uuid.UUID          `json:"match_id"`
+		Status  domain.MatchStatus `json:"status"`
+	}{MatchID: created.ID, Status: created.Status})
+}
+
+// playedAt is when the sender says the match ended, or now.
+func (b apiResult) playedAt() time.Time {
+	if b.PlayedAt != nil {
+		return *b.PlayedAt
+	}
+	return time.Now()
+}
+
+// matchSets numbers the validated sets for storage.
+func matchSets(result match.Result) []domain.MatchSet {
+	sets := make([]domain.MatchSet, 0, len(result.Sets))
+	for i, set := range result.Sets {
+		sets = append(sets, domain.MatchSet{SetNo: i + 1, HomePoints: set.Home, AwayPoints: set.Away})
+	}
+	return sets
 }
 
 // toMatchResult turns the wire shape into what match.Validate checks, and
@@ -355,7 +483,7 @@ func (s *Server) handleAPIResolveFob(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	checkin, err := s.fobs.Resolve(r.Context(), body.UID, body.Half)
+	got, err := s.fobs.Resolve(r.Context(), body.UID, body.Half)
 	switch {
 	case errors.Is(err, auth.ErrBadUID):
 		s.apiRefuse(w, r, http.StatusBadRequest, auth.ErrBadUID.Error())
@@ -370,14 +498,14 @@ func (s *Server) handleAPIResolveFob(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if checkin.Linked {
-		s.log.InfoContext(r.Context(), "fob linked", "player_id", checkin.PlayerID)
+	if got.Linked {
+		s.log.InfoContext(r.Context(), "fob linked", "player_id", got.PlayerID)
 	}
 	s.log.InfoContext(r.Context(), "fob check-in recorded",
-		"player_id", checkin.PlayerID, "checkin_id", checkin.CheckinID, "half", body.Half)
+		"player_id", got.PlayerID, "checkin_id", got.CheckinID, "half", body.Half)
 
 	s.writeJSON(w, r, http.StatusOK, struct {
 		PlayerID  uuid.UUID `json:"player_id"`
 		CheckinID uuid.UUID `json:"checkin_id"`
-	}{PlayerID: checkin.PlayerID, CheckinID: checkin.CheckinID})
+	}{PlayerID: got.PlayerID, CheckinID: got.CheckinID})
 }

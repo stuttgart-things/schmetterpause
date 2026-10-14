@@ -554,11 +554,14 @@ type WaitingMatchView struct {
 // in place: a reported result waiting for yes or no, and a contested one
 // waiting for a correction.
 type PendingMatchView struct {
-	ID           string
+	ID string
+	// ReporterName is who entered the result. Empty when nobody did: a
+	// match both players checked in to was entered by the table
+	// (docs/adr/0024).
 	ReporterName string
-	// OpponentName is the other participant. On a reported result that is
-	// the reporter; on a contested one it need not be, because either side
-	// may have put the wrong number in.
+	// OpponentName is the other participant. On a result a player reported
+	// that is the reporter; at the kiosk or the Zählwerk it is not, and on a
+	// contested one either side may have put the wrong number in.
 	OpponentName string
 	OwnSets      int
 	OpponentSets int
