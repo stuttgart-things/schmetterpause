@@ -34,8 +34,11 @@ Anwendung legt die Anmeldung an und meldet sie danach selbst ans Zählwerk.**
 1. Der QR-Code der linken Seite zeigt auf `/table/left`, der der rechten auf
    `/table/right`. Gedruckt wird er auf `/qr`, neben dem Code, den es dort
    schon gibt.
-2. Die Seite braucht einen angemeldeten Spieler. Wer nicht angemeldet ist,
-   meldet sich an oder tritt bei und landet danach wieder auf derselben Seite.
+2. Die Seite braucht einen angemeldeten Spieler. Wer auf diesem Handy noch
+   nicht angemeldet ist, bekommt einen Link zur Anmeldung und scannt den Code
+   danach noch einmal. Ein Rücksprung nach der Anmeldung wäre bequemer, aber
+   Anmelden und Beitreten sind Fragmente der Startseite, und das passiert
+   einmal pro Handy.
 3. **Erst der Knopf meldet an, ein Aufruf des Links allein nicht.** Der Knopf
    schickt einen POST. Vorschauen in Messengern, ein Scan im Vorbeigehen oder
    ein zweiter Tab legen also nichts an.
