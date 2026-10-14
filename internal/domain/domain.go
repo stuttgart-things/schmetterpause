@@ -160,6 +160,9 @@ type Checkin struct {
 	Half      Half
 	Method    CheckinMethod
 	CreatedAt time.Time
+	// Used is whether a match already cites this check-in. Derived when the
+	// row is read, never stored: the match is what points at the check-in.
+	Used bool
 }
 
 // FobWindow is the short span in which the next unknown fob at the reader is
@@ -369,6 +372,10 @@ const (
 	// evening at the table has one reporter, so counting them would clear the
 	// "ten matches" bar without moving the "five different players" one.
 	EnteredViaScoreboard EnteredVia = "scoreboard"
+	// EnteredViaCheckin is the Zählwerk too, for a match both players checked
+	// in to (docs/adr/0024). There is no operator and no reporter: the two
+	// check-ins are the proof, and either player may confirm.
+	EnteredViaCheckin EnteredVia = "checkin"
 )
 
 // UnsettledGroup is how many results of one status and one origin are
@@ -392,8 +399,11 @@ type Match struct {
 	BestOf      int
 	PointsToWin int
 	Status      MatchStatus
-	ReportedBy  uuid.UUID
-	PlayedAt    time.Time
+	// ReportedBy is who entered the result. uuid.Nil means nobody did, which
+	// only a checked-in match may say (docs/adr/0024): no player id is ever
+	// Nil, so both players count as somebody other than the reporter.
+	ReportedBy uuid.UUID
+	PlayedAt   time.Time
 	// ConfirmedAt is set exactly when Status is MatchConfirmed.
 	ConfirmedAt *time.Time
 	// EnteredVia is how the result reached the database. Empty means
@@ -414,7 +424,11 @@ type Match struct {
 	// the draw; this says which of them a result belongs to, which is the
 	// thing that cannot be derived once a pair can meet more than once.
 	TournamentRound *int
-	Sets            []MatchSet
+	// HomeCheckinID and AwayCheckinID are the check-ins a checked-in match
+	// cites as its proof. Set exactly when EnteredVia is EnteredViaCheckin.
+	HomeCheckinID *uuid.UUID
+	AwayCheckinID *uuid.UUID
+	Sets          []MatchSet
 }
 
 // MatchSet is a single set within a match.

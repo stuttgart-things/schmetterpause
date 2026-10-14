@@ -16,14 +16,15 @@ type matchRepo struct{ q queryer }
 
 const matchColumns = `id, home_id, away_id, best_of, points_to_win, status,
 	reported_by, played_at, confirmed_at, entered_via, tournament_id,
-	tournament_round`
+	tournament_round, home_checkin_id, away_checkin_id`
 
 func (r matchRepo) Create(ctx context.Context, m domain.Match) (domain.Match, error) {
 	const insertMatch = `
 		insert into matches (home_id, away_id, best_of, points_to_win, status,
 		                     reported_by, played_at, entered_via, tournament_id,
-		                     tournament_round)
-		select $1, $2, $3, $4, $5, $6, coalesce($7::timestamptz, now()), $8, $9, $10
+		                     tournament_round, home_checkin_id, away_checkin_id)
+		select $1, $2, $3, $4, $5, $6, coalesce($7::timestamptz, now()), $8, $9, $10,
+		       $11, $12
 		where not exists (
 			select 1 from players where id in ($1, $2) and is_observer)
 		returning ` + matchColumns
@@ -44,9 +45,14 @@ func (r matchRepo) Create(ctx context.Context, m domain.Match) (domain.Match, er
 		via = domain.EnteredViaPlayer
 	}
 
+	// Nil is "nobody reported it", which the column says as null and only
+	// a checked-in row may say at all (docs/adr/0024).
+	reportedBy := uuid.NullUUID{UUID: m.ReportedBy, Valid: m.ReportedBy != uuid.Nil}
+
 	created, err := scanMatch(r.q.QueryRow(ctx, insertMatch,
-		m.HomeID, m.AwayID, m.BestOf, m.PointsToWin, string(status), m.ReportedBy,
-		playedAt, string(via), m.TournamentID, m.TournamentRound))
+		m.HomeID, m.AwayID, m.BestOf, m.PointsToWin, string(status), reportedBy,
+		playedAt, string(via), m.TournamentID, m.TournamentRound,
+		m.HomeCheckinID, m.AwayCheckinID))
 	switch {
 	case errors.Is(err, pgx.ErrNoRows):
 		// The guard above, not a missing row: an observer does not play
@@ -54,6 +60,11 @@ func (r matchRepo) Create(ctx context.Context, m domain.Match) (domain.Match, er
 		// set a moment earlier from slipping past a separate check.
 		return domain.Match{}, fmt.Errorf("create match of %s and %s: %w",
 			m.HomeID, m.AwayID, domain.ErrObserver)
+	case isUniqueViolation(err):
+		// A check-in that already carries a result. The caller locks and
+		// checks first; this is the index behind it.
+		return domain.Match{}, fmt.Errorf("create match: a check-in is already used: %w",
+			domain.ErrConflict)
 	case err != nil:
 		return domain.Match{}, fmt.Errorf("create match: %w", err)
 	}
@@ -95,12 +106,16 @@ func (r matchRepo) PendingFor(ctx context.Context, playerID uuid.UUID) ([]domain
 	// match is in here too, from both sides: it is waiting on somebody to
 	// say what the result really was, and if it only appeared in the answer
 	// to the dispute it could be lost to a page reload.
+	//
+	// "is distinct from", not "<>": a checked-in match has no reporter
+	// (docs/adr/0024), and null <> $1 is null, which would hide it from both
+	// players — the only two people who can confirm it.
 	const q = `
 		select ` + matchColumns + `
 		from matches
 		where (home_id = $1 or away_id = $1)
 		  and (
-		        (status = 'pending' and reported_by <> $1)
+		        (status = 'pending' and reported_by is distinct from $1)
 		     or status = 'disputed'
 		  )
 		order by played_at desc`
@@ -115,7 +130,7 @@ func (r matchRepo) PendingCountFor(ctx context.Context, playerID uuid.UUID) (int
 		from matches
 		where (home_id = $1 or away_id = $1)
 		  and (
-		        (status = 'pending' and reported_by <> $1)
+		        (status = 'pending' and reported_by is distinct from $1)
 		     or status = 'disputed'
 		  )`
 
@@ -360,16 +375,19 @@ func (r matchRepo) setsFor(ctx context.Context, ids []uuid.UUID) (map[uuid.UUID]
 // scanMatch reads one match row in the order given by matchColumns.
 func scanMatch(row pgx.Row) (domain.Match, error) {
 	var (
-		m      domain.Match
-		status string
-		via    string
+		m          domain.Match
+		status     string
+		via        string
+		reportedBy uuid.NullUUID
 	)
 	err := row.Scan(&m.ID, &m.HomeID, &m.AwayID, &m.BestOf, &m.PointsToWin,
-		&status, &m.ReportedBy, &m.PlayedAt, &m.ConfirmedAt, &via, &m.TournamentID,
-		&m.TournamentRound)
+		&status, &reportedBy, &m.PlayedAt, &m.ConfirmedAt, &via, &m.TournamentID,
+		&m.TournamentRound, &m.HomeCheckinID, &m.AwayCheckinID)
 	if err != nil {
 		return domain.Match{}, err
 	}
+	// Null stays uuid.Nil: see domain.Match.ReportedBy.
+	m.ReportedBy = reportedBy.UUID
 	m.Status = domain.MatchStatus(status)
 	m.EnteredVia = domain.EnteredVia(via)
 	return m, nil

@@ -43,7 +43,7 @@ func newMemStore() *memStore {
 		identities:  &memIdentities{players: players},
 		credentials: &memCredentials{},
 		kiosks:      &memKioskGrants{},
-		checkins:    &memCheckins{},
+		checkins:    &memCheckins{matches: matches},
 		fobWindow:   &memFobWindow{},
 		matches:     matches,
 		history:     history,
@@ -655,6 +655,14 @@ func (m *memMatches) Create(_ context.Context, in domain.Match) (domain.Match, e
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
+	// The unique indexes on the check-in columns: one check-in carries one
+	// result.
+	for _, id := range []*uuid.UUID{in.HomeCheckinID, in.AwayCheckinID} {
+		if id != nil && m.citesLocked(*id) {
+			return domain.Match{}, fmt.Errorf("create match: %w", domain.ErrConflict)
+		}
+	}
+
 	in.ID = uuid.New()
 	if in.PlayedAt.IsZero() {
 		in.PlayedAt = time.Now()
@@ -669,6 +677,24 @@ func (m *memMatches) Create(_ context.Context, in domain.Match) (domain.Match, e
 	}
 	m.rows = append(m.rows, in)
 	return in, nil
+}
+
+// cites reports whether any match names checkinID as its proof.
+func (m *memMatches) cites(checkinID uuid.UUID) bool {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return m.citesLocked(checkinID)
+}
+
+func (m *memMatches) citesLocked(checkinID uuid.UUID) bool {
+	for _, row := range m.rows {
+		for _, id := range []*uuid.UUID{row.HomeCheckinID, row.AwayCheckinID} {
+			if id != nil && *id == checkinID {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // backdate moves a stored match into the past, so a test can watch something
@@ -1137,6 +1163,10 @@ func (m *memTournaments) Replace(ctx context.Context, in domain.Tournament) (dom
 type memCheckins struct {
 	mu   sync.Mutex
 	rows []domain.Checkin
+	// matches answers Used: a check-in is used once a match cites it, the
+	// same question Postgres asks of matches.home_checkin_id and
+	// away_checkin_id.
+	matches *memMatches
 }
 
 func (c *memCheckins) Create(_ context.Context, in domain.Checkin) (domain.Checkin, error) {
@@ -1146,6 +1176,34 @@ func (c *memCheckins) Create(_ context.Context, in domain.Checkin) (domain.Check
 	in.ID = uuid.New()
 	c.rows = append(c.rows, in)
 	return in, nil
+}
+
+// Lock reads the check-ins and marks the used ones. There is nothing to lock:
+// the fake has no concurrency to guard against beyond its mutexes.
+func (c *memCheckins) Lock(_ context.Context, ids []uuid.UUID) (map[uuid.UUID]domain.Checkin, error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	out := make(map[uuid.UUID]domain.Checkin, len(ids))
+	for _, row := range c.rows {
+		if slices.Contains(ids, row.ID) {
+			row.Used = c.matches.cites(row.ID)
+			out[row.ID] = row
+		}
+	}
+	return out, nil
+}
+
+// backdate moves a check-in into the past, so a test can watch it expire.
+func (c *memCheckins) backdate(id uuid.UUID, at time.Time) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	for i := range c.rows {
+		if c.rows[i].ID == id {
+			c.rows[i].CreatedAt = at
+		}
+	}
 }
 
 func (c *memCheckins) all() []domain.Checkin {

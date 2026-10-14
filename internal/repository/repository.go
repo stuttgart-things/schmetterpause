@@ -116,6 +116,12 @@ type CheckinRepository interface {
 	// Create records a check-in and returns it with its id. CreatedAt is
 	// taken from c, so a caller and its tests agree on the clock.
 	Create(ctx context.Context, c domain.Checkin) (domain.Checkin, error)
+	// Lock reads the check-ins named by ids and holds them until the
+	// transaction ends, so two results cannot both decide that the same
+	// check-in is unused. Used is filled in. An id with no row is simply
+	// missing from the map; the caller says which one, because it knows
+	// which side it was. Outside InTx the lock ends with the statement.
+	Lock(ctx context.Context, ids []uuid.UUID) (map[uuid.UUID]domain.Checkin, error)
 }
 
 // FobWindowRepository keeps the one window in which an unknown fob is linked
