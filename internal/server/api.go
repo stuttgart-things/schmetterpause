@@ -12,6 +12,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/stuttgart-things/schmetterpause/internal/auth"
 	"github.com/stuttgart-things/schmetterpause/internal/domain"
 	"github.com/stuttgart-things/schmetterpause/internal/match"
 )
@@ -25,9 +26,9 @@ import (
 // and this surface stays exactly as narrow as the ADR describes. Anything
 // wider needs its own ADR.
 //
-// Two routes, one direction each: players out, one finished result in. No
-// updates, no deletes, no listing of matches, and nothing that lets the caller
-// change a rating.
+// Players and operators out, one finished result in, and one question about a
+// fob (docs/adr/0025). No updates, no deletes, no listing of matches, and
+// nothing that lets the caller change a rating.
 
 // maxAPIBody bounds what a handler will read. The largest legitimate body is a
 // result with a handful of sets — a few hundred bytes — so this is four orders
@@ -313,4 +314,70 @@ func (b apiResult) toMatchResult() (match.Result, string) {
 		return match.Result{}, describeRejection(err)
 	}
 	return result, ""
+}
+
+// apiFobResolve is the body of POST /api/identities/rfid/resolve.
+//
+// The UID travels in the body, never in the path, so it does not end up in
+// anybody's access log (docs/adr/0025).
+type apiFobResolve struct {
+	UID  string      `json:"uid"`
+	Half domain.Half `json:"half"`
+}
+
+// handleAPIResolveFob tells the Zählwerk who a fob is, and records that this
+// player checked in at that half.
+//
+// The check-in is created here rather than asserted by the Zählwerk: a result
+// that reports without an operator names two of them, and this application
+// only believes its own (docs/adr/0024).
+//
+// An unknown fob outside a link window is a 404 with nothing in it, and
+// leaves nothing behind: no row, and no UID or hash in the log. A badge held
+// against the reader by mistake has to pass through without a trace.
+func (s *Server) handleAPIResolveFob(w http.ResponseWriter, r *http.Request) {
+	if !s.scoreboardAuthorized(r) {
+		s.apiRefuse(w, r, http.StatusUnauthorized, "a bearer token is required")
+		return
+	}
+
+	var body apiFobResolve
+	dec := json.NewDecoder(io.LimitReader(r.Body, maxAPIBody))
+	dec.DisallowUnknownFields()
+	if err := dec.Decode(&body); err != nil {
+		// Not err.Error(): a decode error can quote the input, and the input
+		// is a card number.
+		s.apiRefuse(w, r, http.StatusBadRequest, "the body is not a fob resolve request")
+		return
+	}
+	if !body.Half.Valid() {
+		s.apiRefuse(w, r, http.StatusBadRequest, "half must be left or right")
+		return
+	}
+
+	checkin, err := s.fobs.Resolve(r.Context(), body.UID, body.Half)
+	switch {
+	case errors.Is(err, auth.ErrBadUID):
+		s.apiRefuse(w, r, http.StatusBadRequest, auth.ErrBadUID.Error())
+		return
+	case errors.Is(err, auth.ErrUnknownFob):
+		s.log.InfoContext(r.Context(), "unknown fob")
+		w.WriteHeader(http.StatusNotFound)
+		return
+	case err != nil:
+		s.log.ErrorContext(r.Context(), "resolving a fob failed", "error", err)
+		s.apiRefuse(w, r, http.StatusInternalServerError, "the fob could not be resolved")
+		return
+	}
+
+	if checkin.Linked {
+		s.log.InfoContext(r.Context(), "fob linked", "player_id", checkin.PlayerID)
+	}
+	s.log.InfoContext(r.Context(), "fob check-in recorded",
+		"player_id", checkin.PlayerID, "checkin_id", checkin.CheckinID, "half", body.Half)
+
+	s.writeJSON(w, r, http.StatusOK, struct {
+		PlayerID  uuid.UUID `json:"player_id"`
+		CheckinID uuid.UUID `json:"checkin_id"`
+	}{PlayerID: checkin.PlayerID, CheckinID: checkin.CheckinID})
 }

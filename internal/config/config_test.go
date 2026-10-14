@@ -243,3 +243,36 @@ func TestZaehlwerkURL(t *testing.T) {
 		})
 	}
 }
+
+// docs/adr/0025: the fob key is optional, and a short one is refused rather
+// than used — it is all that stands between a stored hash and the UID.
+func TestRFIDUIDKey(t *testing.T) {
+	for _, tc := range []struct {
+		name    string
+		raw     string
+		wantErr bool
+		wantLen int
+	}{
+		{name: "unset is off", raw: "", wantLen: 0},
+		{name: "too short", raw: "tooshort", wantErr: true},
+		{name: "proper", raw: testKey, wantLen: len(testKey)},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Setenv("SP_DATABASE_URL", "postgres://user:pw@db:5432/schmetterpause")
+			t.Setenv("SP_SESSION_KEY", testKey)
+			t.Setenv("SP_RFID_UID_KEY", tc.raw)
+
+			cfg, err := config.Load()
+			if err != nil {
+				t.Fatalf("Load(): %v", err)
+			}
+			err = cfg.ValidateForServe()
+			if (err != nil) != tc.wantErr {
+				t.Fatalf("ValidateForServe() = %v, want error %v", err, tc.wantErr)
+			}
+			if !tc.wantErr && len(cfg.RFIDUIDKey) != tc.wantLen {
+				t.Errorf("RFIDUIDKey has %d bytes, want %d", len(cfg.RFIDUIDKey), tc.wantLen)
+			}
+		})
+	}
+}

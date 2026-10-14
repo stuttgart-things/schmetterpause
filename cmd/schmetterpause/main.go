@@ -73,6 +73,8 @@ Configuration comes exclusively from environment variables:
   SP_COOKIE_SECURE      send the cookie over HTTPS only, default "true"
   SP_KIOSK_TOKEN        unlocks /kiosk; unset means the kiosk does not exist
   SP_SCOREBOARD_TOKEN   unlocks /api for the Zählwerk; unset means no /api
+  SP_RFID_UID_KEY       keys the hash fobs are stored under (docs/adr/0025),
+                        at least 32 characters; unset means no fobs
   SP_METRICS_ADDR       serves /metrics on a port of its own, e.g. ":9090";
                         unset measures nothing
   SP_PUBLIC_BASE_URL    scheme and host the QR code points at; unset reads it

@@ -153,13 +153,15 @@ func (s *Server) adminView(ctx context.Context, note, refusal string) (templates
 }
 
 // adminInstance says which switches this process started with. Presence
-// only for the two tokens: the page is read at the table, over shoulders.
+// only for the tokens and the fob key: the page is read at the table, over
+// shoulders.
 func (s *Server) adminInstance() templates.AdminInstance {
 	return templates.AdminInstance{
 		Version:        s.build.Version,
 		Started:        s.started.Local().Format("02.01.2006 15:04"),
 		Kiosk:          s.cfg.KioskToken != "",
 		Scoreboard:     s.cfg.ScoreboardToken != "",
+		Fobs:           s.fobs != nil,
 		BootstrapAdmin: s.cfg.BootstrapAdmin,
 		Metrics:        s.cfg.MetricsAddr != "",
 		PublicBaseURL:  s.cfg.PublicBaseURL,

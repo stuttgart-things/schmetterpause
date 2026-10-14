@@ -611,7 +611,30 @@ h1 {
 	color: var(--fg);
 }
 
-.pin-card, .recovery-card { margin-top: 1.5rem; }
+.pin-card, .recovery-card, .fob-card { margin-top: 1.5rem; }
+
+/* One row per linked fob: what it is on the left, the way to remove it on the
+   right, wrapping under each other on a phone. */
+.fob-list {
+	list-style: none;
+	margin: 0 0 1rem;
+	padding: 0;
+}
+
+.fob-list li {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.5rem 1rem;
+	align-items: center;
+	justify-content: space-between;
+	padding: 0.5rem 0;
+	border-bottom: 1px solid var(--line);
+}
+
+.fob-list .muted {
+	display: block;
+	font-size: 0.85rem;
+}
 
 /* The way out, under your own name. One row where it fits: the button and the
    sentence naming its price belong together, and on a phone the sentence

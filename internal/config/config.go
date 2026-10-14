@@ -100,6 +100,14 @@ type Config struct {
 	// agrees, so holding this token buys the ability to propose a match, not
 	// to change the ranking.
 	ScoreboardToken string
+	// RFIDUIDKey keys the hash a fob is stored under (docs/adr/0025). Empty
+	// by default, and then fobs are off: no resolve route, no "Fob koppeln"
+	// on the profile, and one log line at start saying so.
+	//
+	// A key rather than a plain hash, because a UID is four to seven bytes and
+	// an unkeyed hash over that is a lookup table away from the UID itself.
+	// Changing it unlinks every fob, which loses nothing but the links.
+	RFIDUIDKey []byte
 	// BootstrapAdmin names the player who gets the admin flag at startup, by
 	// display name. Empty by default, and then nothing is granted.
 	//
@@ -216,6 +224,8 @@ func Load() (Config, error) {
 
 	cfg.ScoreboardToken = env("SCOREBOARD_TOKEN", "")
 
+	cfg.RFIDUIDKey = []byte(env("RFID_UID_KEY", ""))
+
 	cfg.BootstrapAdmin = env("BOOTSTRAP_ADMIN", "")
 
 	if raw := env("PUBLIC_BASE_URL", ""); raw != "" {
@@ -252,6 +262,11 @@ func (c Config) ValidateForServe() error {
 	case len(c.SessionKey) < minSessionKeyLen:
 		return fmt.Errorf("%sSESSION_KEY is %d characters, at least %d are required",
 			envPrefix, len(c.SessionKey), minSessionKeyLen)
+	// Optional, but a short one is refused rather than used: the key is all
+	// that stands between a stored hash and the UID it came from.
+	case len(c.RFIDUIDKey) > 0 && len(c.RFIDUIDKey) < minSessionKeyLen:
+		return fmt.Errorf("%sRFID_UID_KEY is %d characters, at least %d are required",
+			envPrefix, len(c.RFIDUIDKey), minSessionKeyLen)
 	}
 	return nil
 }
