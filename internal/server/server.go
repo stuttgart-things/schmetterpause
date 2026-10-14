@@ -20,6 +20,7 @@ import (
 	"github.com/stuttgart-things/schmetterpause/internal/metrics"
 	"github.com/stuttgart-things/schmetterpause/internal/ratelimit"
 	"github.com/stuttgart-things/schmetterpause/internal/repository"
+	"github.com/stuttgart-things/schmetterpause/internal/zaehlwerk"
 )
 
 // Server bundles configuration, dependencies and routing.
@@ -40,6 +41,9 @@ type Server struct {
 	// fobs is nil unless SP_RFID_UID_KEY is set, and then there is no resolve
 	// route and no "Fob koppeln" (docs/adr/0025).
 	fobs *auth.Fobs
+	// tables is nil unless SP_ZAEHLWERK_URL and SP_SCOREBOARD_TOKEN are both
+	// set, and then there is no /table page (docs/adr/0026).
+	tables *zaehlwerk.Client
 
 	// The two halves of the brake on guessing at a credential. One alone is
 	// not a limit: per player, somebody walks the roster; per address,
@@ -50,6 +54,8 @@ type Server struct {
 	// there is only one secret: no player half carries the weight here, so
 	// this half has to.
 	kioskByAddress *ratelimit.Limiter
+	// The brake on pressing "Hier anmelden" over and over, per player.
+	tableByPlayer *ratelimit.Limiter
 }
 
 // Build is what this binary can say about itself, set at link time.
@@ -73,11 +79,20 @@ func New(cfg config.Config, store repository.Store, log *slog.Logger, a auth.Ses
 		signInByPlayer:  ratelimit.New(signInPlayerPolicy),
 		signInByAddress: ratelimit.New(signInAddressPolicy),
 		kioskByAddress:  ratelimit.New(kioskPolicy),
+		tableByPlayer:   ratelimit.New(tablePolicy),
 	}
 	if len(cfg.RFIDUIDKey) > 0 {
 		s.fobs = auth.NewFobs(store, cfg.RFIDUIDKey)
 	} else {
 		log.Info("fobs are off: SP_RFID_UID_KEY is not set")
+	}
+	// The one call this application makes to the Zählwerk, over the address
+	// the start page already reads the live score from and with the token
+	// both sides already share (docs/adr/0026).
+	if cfg.ZaehlwerkURL != "" && cfg.ScoreboardToken != "" {
+		s.tables = zaehlwerk.New(cfg.ZaehlwerkURL, cfg.ScoreboardToken)
+	} else {
+		log.Info("table check-in by phone is off: it needs SP_ZAEHLWERK_URL and SP_SCOREBOARD_TOKEN")
 	}
 	if cfg.MetricsAddr != "" {
 		s.metrics = metrics.New(build.Version,
@@ -215,6 +230,14 @@ func (s *Server) routes() http.Handler {
 	page.Handle("POST /tournaments/{id}/edit",
 		auth.RequirePlayer(http.HandlerFunc(s.handleEditTournament)))
 	page.HandleFunc("GET /qr", s.handleQRSheet)
+	// Checking in at a half with the phone (docs/adr/0026). The page is open
+	// to anybody, because it has to tell a stranger to sign in first; the
+	// POST that checks in is for a player only. Absent without the Zählwerk.
+	if s.tables != nil {
+		page.HandleFunc("GET /table/{half}", s.handleTablePage)
+		page.Handle("POST /table/{half}", auth.RequirePlayer(http.HandlerFunc(s.handleTableCheckin)))
+		page.HandleFunc("GET /qr/table", s.handleTableSheet)
+	}
 	page.HandleFunc("GET /rules", s.handleRulesSheet)
 	// Who may act for other people (docs/adr/0008). Behind the flag itself:
 	// the list is the record of who holds power over other people's records,

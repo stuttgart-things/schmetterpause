@@ -73,7 +73,10 @@ services:
       # Empty by default, and then the start page shows no running score.
       # Set it to a Zählwerk's address, e.g. SP_ZAEHLWERK_URL=http://localhost:8081
       # task up; the browser connects to it directly, so that Zählwerk has to
-      # list this app's origin in its ALLOWED_ORIGINS (#188).
+      # list this app's origin in its ALLOWED_ORIGINS (#188). With
+      # SP_SCOREBOARD_TOKEN set as well, the app also calls it itself for phone
+      # check-in at the table (docs/adr/0026); from inside this container
+      # localhost is the container, so use an address both can reach.
       SP_ZAEHLWERK_URL: ${SP_ZAEHLWERK_URL:-}
       # SP_PUBLIC_BASE_URL is deliberately unset: the QR sheet reads the
       # address off the request, which is right wherever the application is

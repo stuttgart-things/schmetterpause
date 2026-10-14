@@ -169,6 +169,9 @@ type QRSheetView struct {
 	Path string
 	// Size is the viewBox side length in modules, quiet zone included.
 	Size int
+	// TableSheet links the sheet with one code per half, which exists only
+	// while table check-in is on (docs/adr/0026).
+	TableSheet bool
 }
 
 // RulesSheetView is the printable sheet of house rules.
@@ -1548,4 +1551,49 @@ type FobRow struct {
 	LinkedAt string
 	// LastUsed is empty for a fob that has not been used since linking.
 	LastUsed string
+}
+
+// TableView is the page a player's phone opens from the QR code at one half
+// of the table (docs/adr/0026).
+type TableView struct {
+	Header HeaderView
+	// Half is "left" or "right", for the form's address.
+	Half string
+	// HalfLabel names the half in the page's words: "linke Seite".
+	HalfLabel string
+	// SignedIn is false for a phone nobody is recognised on. The page then
+	// sends them to sign in first, and has no button.
+	SignedIn bool
+	// Observer is a signed-in player who does not play (docs/adr/0022). The
+	// page says why there is no button.
+	Observer bool
+	Panel    TablePanelView
+}
+
+// TablePanelView is the part of the table page the button replaces.
+type TablePanelView struct {
+	Half      string
+	HalfLabel string
+	// Result is what the last press did, in the page's words. Empty before
+	// the first press.
+	Result string
+	// OK picks the colour of Result: done, or not.
+	OK bool
+	// Left and Right are who holds each half now, as the Zählwerk said.
+	Left  string
+	Right string
+}
+
+// TableSheetView is the printable sheet with one QR code per half.
+type TableSheetView struct {
+	Header HeaderView
+	Codes  []TableCode
+}
+
+// TableCode is one half's code on the sheet.
+type TableCode struct {
+	Label  string
+	Target string
+	Path   string
+	Size   int
 }

@@ -50,6 +50,9 @@ templ QRSheet(v QRSheetView) {
 			// whoever prints one is standing at the printer for both.
 			<p class="sheet-back no-print">
 				<a href="/rules">Zu den Regeln</a>
+				if v.TableSheet {
+					<a href="/qr/table">Codes für die Tischseiten</a>
+				}
 				<a href="/">Zurück zur Startseite</a>
 			</p>
 		</article>
