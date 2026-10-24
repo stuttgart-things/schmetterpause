@@ -3,6 +3,7 @@ package seed_test
 import (
 	"context"
 	"errors"
+	"fmt"
 	"os"
 	"testing"
 	"time"
@@ -290,4 +291,131 @@ func ratingsAfterSeed(ctx context.Context, t *testing.T, store *postgres.Store) 
 		ratings[p.DisplayName] = p.TTR
 	}
 	return ratings
+}
+
+// TestThePongFixtureWritesTheEightBotsAndTheirObserver is the contract with
+// zaehlwerk-pong: its PONG_PLAYER_SKILL gives a strength by display name, so
+// the names are checked one by one, and Pong has to be an observer, because
+// that is how GET /api/operators offers it as the operator (docs/adr/0027).
+func TestThePongFixtureWritesTheEightBotsAndTheirObserver(t *testing.T) {
+	store, ctx := newStore(t)
+
+	summary, err := seed.RunFixture(ctx, store, seed.FixturePong, reference)
+	if err != nil {
+		t.Fatalf("RunFixture(pong): %v", err)
+	}
+	if summary.Fixture != seed.FixturePong {
+		t.Errorf("Summary.Fixture = %q, want %q", summary.Fixture, seed.FixturePong)
+	}
+	if summary.Players != 9 || summary.Observers != 1 {
+		t.Errorf("Summary reports %d players and %d observers, want 9 and 1", summary.Players, summary.Observers)
+	}
+
+	playing, err := store.Players().Playing(ctx)
+	if err != nil {
+		t.Fatalf("Playing(): %v", err)
+	}
+	want := []string{"Ada", "Bert", "Cleo", "Dino", "Emil", "Frida", "Gero", "Hanna"}
+	got := make(map[string]int, len(playing))
+	for _, p := range playing {
+		got[p.DisplayName]++
+		// Everybody on the same rating, so whatever order the ranking ends up
+		// in is the rating's doing.
+		if p.TTR != domain.DefaultTTR {
+			t.Errorf("%s starts on %d, want %d", p.DisplayName, p.TTR, domain.DefaultTTR)
+		}
+	}
+	if len(playing) != len(want) {
+		t.Errorf("%d players play, want exactly the %d bots", len(playing), len(want))
+	}
+	for _, name := range want {
+		if got[name] != 1 {
+			t.Errorf("the bot %s is there %d times, want once", name, got[name])
+		}
+	}
+
+	everybody, err := store.Players().List(ctx)
+	if err != nil {
+		t.Fatalf("List(): %v", err)
+	}
+	var observers []string
+	for _, p := range everybody {
+		if p.IsObserver {
+			observers = append(observers, p.DisplayName)
+		}
+	}
+	if len(observers) != 1 || observers[0] != "Pong" {
+		t.Errorf("the observers are %q, want exactly [Pong]", observers)
+	}
+
+	// No results and no tournament: the league fills itself.
+	matches, err := store.Matches().Recent(ctx, 10)
+	if err != nil {
+		t.Fatalf("Recent(): %v", err)
+	}
+	if len(matches) != 0 {
+		t.Errorf("the pong fixture wrote %d matches, want none", len(matches))
+	}
+	tours, err := store.Tournaments().List(ctx, 10)
+	if err != nil {
+		t.Fatalf("Tournaments().List(): %v", err)
+	}
+	if len(tours) != 0 {
+		t.Errorf("the pong fixture opened %d tournaments, want none", len(tours))
+	}
+}
+
+// TestThePongFixtureRefusesADatabaseThatIsInUse is the same safety story as
+// the demo's: a sandbox starts empty, and an office database is not one.
+func TestThePongFixtureRefusesADatabaseThatIsInUse(t *testing.T) {
+	store, ctx := newStore(t)
+
+	if _, err := store.Players().Create(ctx, "Anna", 1000); err != nil {
+		t.Fatalf("Create(): %v", err)
+	}
+
+	_, err := seed.RunFixture(ctx, store, seed.FixturePong, reference)
+	if !errors.Is(err, seed.ErrNotEmpty) {
+		t.Fatalf("RunFixture(pong) = %v, want ErrNotEmpty", err)
+	}
+
+	count, err := store.Players().Count(ctx)
+	if err != nil {
+		t.Fatalf("Count(): %v", err)
+	}
+	if count != 1 {
+		t.Errorf("the refused run left %d players behind, want the 1 that was there", count)
+	}
+}
+
+// TestThePongFixtureIsDeterministic: two sandboxes seeded from the same
+// commit hold the same accounts on the same ratings with the same flags.
+func TestThePongFixtureIsDeterministic(t *testing.T) {
+	store, ctx := newStore(t)
+
+	names := func() []string {
+		t.Helper()
+		if _, err := seed.RunFixture(ctx, store, seed.FixturePong, reference); err != nil {
+			t.Fatalf("RunFixture(pong): %v", err)
+		}
+		players, err := store.Players().List(ctx)
+		if err != nil {
+			t.Fatalf("List(): %v", err)
+		}
+		out := make([]string, 0, len(players))
+		for _, p := range players {
+			out = append(out, fmt.Sprintf("%s/%d/%t", p.DisplayName, p.TTR, p.IsObserver))
+		}
+		return out
+	}
+
+	first := names()
+	if err := postgres.TruncateAll(ctx, store); err != nil {
+		t.Fatalf("TruncateAll(): %v", err)
+	}
+	second := names()
+
+	if fmt.Sprint(first) != fmt.Sprint(second) {
+		t.Errorf("two runs wrote %v and %v", first, second)
+	}
 }
