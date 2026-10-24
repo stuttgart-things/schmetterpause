@@ -139,6 +139,15 @@ type Config struct {
 	// application's origin in its ALLOWED_ORIGINS. Schmetterpause never
 	// calls it and carries no events (ADR-0002 is not touched).
 	ZaehlwerkURL string
+	// SeedFixture is what "schmetterpause seed" writes, as given: "demo" or
+	// "pong" (docs/adr/0027). Empty when unset, and then the seed package
+	// picks its default, demo — the default lives with the fixtures, so the
+	// two names are spelled in one place.
+	//
+	// Read here and not checked here: only seed uses it, so a typo in it must
+	// not stop serve. The seed command refuses an unknown name before it
+	// touches the database (seed.ParseFixture).
+	SeedFixture string
 }
 
 // Load reads the configuration from the environment and validates it.
@@ -227,6 +236,8 @@ func Load() (Config, error) {
 	cfg.RFIDUIDKey = []byte(env("RFID_UID_KEY", ""))
 
 	cfg.BootstrapAdmin = env("BOOTSTRAP_ADMIN", "")
+
+	cfg.SeedFixture = env("SEED_FIXTURE", "")
 
 	if raw := env("PUBLIC_BASE_URL", ""); raw != "" {
 		base, err := parseBaseURL("PUBLIC_BASE_URL", raw)
