@@ -880,6 +880,7 @@ tasks:
         vars: { SERVICES: db }
       # Refuses a database that already has players, so this cannot be run
       # over an evening's results by accident — see internal/seed.
+      # SP_SEED_FIXTURE=pong task seed writes the sandbox's bots instead.
       - go run ./cmd/schmetterpause seed
 
   migrate:status:

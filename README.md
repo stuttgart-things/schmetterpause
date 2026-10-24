@@ -38,6 +38,7 @@ generierten Teile des Pipeline-Moduls.
 ```sh
 task up        # Compose-Umgebung starten (App + Postgres)
 task seed      # Demo-Spieler und -Ergebnisse, damit die Seiten nicht leer sind
+               # (SP_SEED_FIXTURE=pong: die acht Bots und den Beobachter Pong)
 task run       # App lokal gegen die Compose-Datenbank, ohne Container
 task ci        # lint, test, build, verify — identisch zur Pipeline
 task office:setup # .env für einen Abend an der Platte
