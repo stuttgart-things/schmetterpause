@@ -36,3 +36,4 @@ festlegt, steht hier mit den Alternativen, die dabei verworfen wurden. Eine
 | 0025 | [Ein Fob ist eine Identität, gekoppelt nur im Fenster](0025-fob-als-identitaet.md) | accepted | 2026-10-14 |
 | 0026 | [Anmeldung am Tisch mit dem Handy, über einen QR-Code pro Seite](0026-anmeldung-am-tisch-mit-dem-handy.md) | accepted | 2026-10-14 |
 | 0027 | [Eine Sandbox, in der Pong spielt, wertet sofort](0027-sandbox-mit-pong-wertet-sofort.md) | proposed — Entwurf, nicht entschieden | 2026-10-24 |
+| 0028 | [Turnierspiele kommen über das Zählwerk](0028-turniere-ueber-das-zaehlwerk.md) | proposed — Entwurf, nicht entschieden | 2026-10-24 |
