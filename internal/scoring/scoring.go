@@ -302,6 +302,22 @@ func settle(ctx context.Context, tx repository.Store, m domain.Match, at time.Ti
 	}, nil
 }
 
+// SettleRecorded settles a match the caller has just created as pending in
+// tx, with nobody confirming it. It is for the Zählwerk's results on a
+// deployment that counts them at once (SP_SCOREBOARD_SETTLE=immediate,
+// docs/adr/0027): the second half of Record, for a caller that writes its own
+// row because the row carries what Record does not take — the check-in ids of
+// docs/adr/0024.
+//
+// at is when the result counted. The caller owns the transaction, as for
+// settle.
+func SettleRecorded(ctx context.Context, tx repository.Store, m domain.Match, at time.Time) (Settlement, error) {
+	if m.Status != domain.MatchPending {
+		return Settlement{}, fmt.Errorf("match %s is %s: %w", m.ID, m.Status, ErrNotPending)
+	}
+	return settle(ctx, tx, m, at)
+}
+
 // ratedMatch answers whether this match moves ratings.
 //
 // A match outside a tournament always does — casual play is what the rating
