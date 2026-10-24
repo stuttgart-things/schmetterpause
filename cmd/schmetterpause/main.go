@@ -53,9 +53,9 @@ Usage:
   schmetterpause migrate up       apply pending migrations
   schmetterpause migrate down     roll back the last migration (local only)
   schmetterpause migrate status   show the migration state
-  schmetterpause seed             fill an EMPTY database with a demo field
-                                  (preview environments and screenshots; it
-                                  refuses a database that has players)
+  schmetterpause seed             fill an EMPTY database with a fixture
+                                  (SP_SEED_FIXTURE; it refuses a database
+                                  that has players)
   schmetterpause healthcheck      probe own readiness (for container health checks)
   schmetterpause version          print the version
 
@@ -85,6 +85,10 @@ Configuration comes exclusively from environment variables:
                         the running score from; unset shows none. With
                         SP_SCOREBOARD_TOKEN also /table/left and /table/right,
                         where a phone checks in at a half (docs/adr/0026)
+  SP_SEED_FIXTURE       what seed writes: "demo" (default; players, results
+                        and a tournament for previews and screenshots) or
+                        "pong" (eight bot players and the observer Pong for
+                        the sandbox, docs/adr/0027); anything else is refused
 `
 
 func main() {
@@ -110,7 +114,7 @@ func run(ctx context.Context, args []string) error {
 	case "migrate":
 		return migrate(ctx, args[1:])
 	case "seed":
-		return seedDemo(ctx)
+		return seedDatabase(ctx)
 	case "healthcheck":
 		return healthcheck(ctx)
 	case "version":
@@ -195,9 +199,10 @@ func migrate(ctx context.Context, args []string) error {
 	}
 }
 
-// seedDemo fills an empty database with a demo field.
+// seedDatabase fills an empty database with the fixture SP_SEED_FIXTURE names,
+// the demo field unless it names another.
 //
-// Its consumer is a preview environment (issue #82), which is otherwise a join
+// The demo field's consumer is a preview environment (issue #82), which is otherwise a join
 // form and an empty ranking — nothing a reviewer can look at to judge a change
 // to the standings, the match list or a profile page.
 //
@@ -208,10 +213,18 @@ func migrate(ctx context.Context, args []string) error {
 //
 // The refusal to touch a database that already has players lives in the seed
 // package, so it holds wherever this is called from.
-func seedDemo(ctx context.Context) error {
+func seedDatabase(ctx context.Context) error {
 	cfg, err := config.Load()
 	if err != nil {
 		return err
+	}
+
+	// Before the database: an unknown name is a mistake in the Job, and it
+	// should fail as one rather than after a wait for a database it will
+	// never write to.
+	fixture, err := seed.ParseFixture(cfg.SeedFixture)
+	if err != nil {
+		return fmt.Errorf("SP_SEED_FIXTURE: %w", err)
 	}
 
 	log := newLogger(cfg.LogLevel)
@@ -229,19 +242,22 @@ func seedDemo(ctx context.Context) error {
 		return err
 	}
 
-	summary, err := seed.Run(ctx, store, time.Now())
+	summary, err := seed.RunFixture(ctx, store, fixture, time.Now())
 	if err != nil {
 		// An already-populated database is the expected answer on a re-run —
 		// a Job that restarts must not turn it into a failed pod.
 		if errors.Is(err, seed.ErrNotEmpty) {
-			log.InfoContext(ctx, "nothing seeded, the database is in use", "reason", err)
+			log.InfoContext(ctx, "nothing seeded, the database is in use",
+				"fixture", fixture, "reason", err)
 			return nil
 		}
 		return err
 	}
 
-	log.InfoContext(ctx, "seeded a demo field",
+	log.InfoContext(ctx, "seeded a fixture",
+		"fixture", summary.Fixture,
 		"players", summary.Players,
+		"observers", summary.Observers,
 		"confirmed", summary.Confirmed,
 		"pending", summary.Pending,
 		"disputed", summary.Disputed,

@@ -11,7 +11,7 @@ when the office got its first admin; the record is at the end.
 | Flag | What it means | Who sets it |
 | --- | --- | --- |
 | `is_admin` | May act for other people under `/admin` | `SP_BOOTSTRAP_ADMIN` at start |
-| `is_observer` | Does not play | An admin under `/admin` |
+| `is_observer` | Does not play | An admin under `/admin`, or `schmetterpause seed` with `SP_SEED_FIXTURE=pong` for the sandbox's `Pong` |
 
 An account may hold either, both or neither. The office's own admin,
 `timoboll`, holds both: it corrects results and never shows up in the ranking.
