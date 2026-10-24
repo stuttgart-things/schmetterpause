@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"crypto/subtle"
 	"encoding/json"
 	"errors"
@@ -14,9 +15,11 @@ import (
 
 	"github.com/stuttgart-things/schmetterpause/internal/auth"
 	"github.com/stuttgart-things/schmetterpause/internal/checkin"
+	"github.com/stuttgart-things/schmetterpause/internal/config"
 	"github.com/stuttgart-things/schmetterpause/internal/domain"
 	"github.com/stuttgart-things/schmetterpause/internal/match"
 	"github.com/stuttgart-things/schmetterpause/internal/repository"
+	"github.com/stuttgart-things/schmetterpause/internal/scoring"
 )
 
 // The only JSON this application speaks, and the only place it may grow.
@@ -277,21 +280,31 @@ func (s *Server) handleAPIResults(w http.ResponseWriter, r *http.Request) {
 
 	playedAt, sets := body.playedAt(), matchSets(result)
 
-	created, err := s.store.Matches().Create(r.Context(), domain.Match{
-		HomeID:      body.HomeID,
-		AwayID:      body.AwayID,
-		BestOf:      result.Mode.BestOf,
-		PointsToWin: result.Mode.PointsToWin,
-		// Pending, not settled. The reporter is a third party, so scoring.load
-		// leaves BOTH players able to confirm — the only path in this
-		// application where that is true.
-		Status:     domain.MatchPending,
-		ReportedBy: body.OperatorID,
-		PlayedAt:   playedAt,
-		EnteredVia: domain.EnteredViaScoreboard,
-		// A tournament game has a place in a draw, and who hands that out is
-		// its own question. docs/adr/0015 postpones it by name.
-		Sets: sets,
+	var created domain.Match
+	err := s.store.InTx(r.Context(), func(tx repository.Store) error {
+		var err error
+		created, err = tx.Matches().Create(r.Context(), domain.Match{
+			HomeID:      body.HomeID,
+			AwayID:      body.AwayID,
+			BestOf:      result.Mode.BestOf,
+			PointsToWin: result.Mode.PointsToWin,
+			// Pending, not settled, unless this deployment counts the
+			// Zählwerk's results at once (below). The reporter is a third
+			// party, so scoring.load leaves BOTH players able to confirm —
+			// the only path in this application where that is true.
+			Status:     domain.MatchPending,
+			ReportedBy: body.OperatorID,
+			PlayedAt:   playedAt,
+			EnteredVia: domain.EnteredViaScoreboard,
+			// A tournament game has a place in a draw, and who hands that
+			// out is its own question. docs/adr/0015 postpones it by name.
+			Sets: sets,
+		})
+		if err != nil {
+			return err
+		}
+		created, err = s.settleScoreboard(r.Context(), tx, created)
+		return err
 	})
 	if errors.Is(err, domain.ErrObserver) {
 		// The list this application hands out has no observers in it, so a
@@ -306,7 +319,7 @@ func (s *Server) handleAPIResults(w http.ResponseWriter, r *http.Request) {
 	}
 
 	s.log.InfoContext(r.Context(), "scoreboard result recorded",
-		"match_id", created.ID, "operator_id", body.OperatorID)
+		"match_id", created.ID, "operator_id", body.OperatorID, "status", created.Status)
 
 	s.writeJSON(w, r, http.StatusCreated, struct {
 		MatchID uuid.UUID          `json:"match_id"`
@@ -350,7 +363,8 @@ func (s *Server) recordCheckedInResult(w http.ResponseWriter, r *http.Request, b
 			// Pending, as on the operator path (docs/adr/0015). Nobody
 			// reported it, so scoring.load lets either player confirm.
 			// Counting it at once is the auto-accept question, which
-			// docs/adr/0024 leaves to its own decision.
+			// docs/adr/0024 leaves to its own decision; a deployment can
+			// answer it for itself with SP_SCOREBOARD_SETTLE (docs/adr/0027).
 			Status:        domain.MatchPending,
 			ReportedBy:    uuid.Nil,
 			PlayedAt:      body.playedAt(),
@@ -359,6 +373,10 @@ func (s *Server) recordCheckedInResult(w http.ResponseWriter, r *http.Request, b
 			AwayCheckinID: &body.AwayCheckinID,
 			Sets:          matchSets(result),
 		})
+		if err != nil {
+			return err
+		}
+		created, err = s.settleScoreboard(r.Context(), tx, created)
 		return err
 	})
 
@@ -389,13 +407,32 @@ func (s *Server) recordCheckedInResult(w http.ResponseWriter, r *http.Request, b
 	}
 
 	s.log.InfoContext(r.Context(), "checked-in result recorded",
-		"match_id", created.ID,
+		"match_id", created.ID, "status", created.Status,
 		"home_checkin_id", body.HomeCheckinID, "away_checkin_id", body.AwayCheckinID)
 
 	s.writeJSON(w, r, http.StatusCreated, struct {
 		MatchID uuid.UUID          `json:"match_id"`
 		Status  domain.MatchStatus `json:"status"`
 	}{MatchID: created.ID, Status: created.Status})
+}
+
+// settleScoreboard counts a result from the Zählwerk at once when this
+// deployment says so (SP_SCOREBOARD_SETTLE=immediate, docs/adr/0027), inside
+// the transaction that created it, so a failure leaves no match behind that is
+// neither pending nor rated. Otherwise it leaves the match pending, which is
+// docs/adr/0015.
+//
+// Only the timing changes: entered_via and reported_by are what the path wrote,
+// so the row still says it came from the Zählwerk and who, if anybody, watched.
+func (s *Server) settleScoreboard(ctx context.Context, tx repository.Store, m domain.Match) (domain.Match, error) {
+	if s.cfg.ScoreboardSettle != config.SettleImmediate {
+		return m, nil
+	}
+	settlement, err := scoring.SettleRecorded(ctx, tx, m, time.Now())
+	if err != nil {
+		return domain.Match{}, fmt.Errorf("settle the scoreboard result at once: %w", err)
+	}
+	return settlement.Match, nil
 }
 
 // playedAt is when the sender says the match ended, or now.
