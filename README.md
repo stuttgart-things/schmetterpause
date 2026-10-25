@@ -79,6 +79,9 @@ ohnehin ausgecheckt haben.
 - `docs/adr/` — Architekturentscheidungen samt verworfener Alternativen. Der
   Index unter `docs/adr/index.md` wird generiert: `task docs:index`.
 - `docs/turnier-vor-ort.md` — ein Abend an der Platte mit einem Laptop für alle.
+- [Die Tischtennis-Landschaft](https://stuttgart-things.github.io/harvester/docs/edge/landscape/) in harvester — wie
+  Schmetterpause mit Zählwerk, der Edge-Box, dem Router und den Geräten an der
+  Platte zusammenhängt, mit Ports, Ist-Stand und Zielbild.
 
 Eine Änderung, die einem ADR widerspricht, braucht ein neues ADR mit
 `supersedes`-Verweis.
