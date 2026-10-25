@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.19.0](https://github.com/stuttgart-things/schmetterpause/compare/v0.18.0...v0.19.0) (2026-10-25)
+
+
+### Features
+
+* **api:** take tournament results from the Zählwerk ([#349](https://github.com/stuttgart-things/schmetterpause/issues/349)) ([e7a9a4b](https://github.com/stuttgart-things/schmetterpause/commit/e7a9a4b7e83b3bb98d2775a05a1da81f1c8858a6))
+
 ## [0.18.0](https://github.com/stuttgart-things/schmetterpause/compare/v0.17.0...v0.18.0) (2026-10-24)
 
 
