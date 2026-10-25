@@ -85,6 +85,8 @@ func TestScoreboardRoutesDoNotExistWithoutTheToken(t *testing.T) {
 		{http.MethodGet, "/api/players"},
 		{http.MethodGet, "/api/operators"},
 		{http.MethodPost, "/api/results"},
+		{http.MethodGet, "/api/tournaments"},
+		{http.MethodGet, "/api/tournaments/" + uuid.NewString() + "/pairings"},
 	} {
 		req := httptest.NewRequest(tc.method, tc.path, nil)
 		req.Header.Set("Authorization", "Bearer anything")

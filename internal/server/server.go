@@ -162,6 +162,8 @@ func (s *Server) routes() http.Handler {
 		mux.HandleFunc("GET /api/players", s.handleAPIPlayers)
 		mux.HandleFunc("GET /api/operators", s.handleAPIOperators)
 		mux.HandleFunc("POST /api/results", s.handleAPIResults)
+		mux.HandleFunc("GET /api/tournaments", s.handleAPITournaments)
+		mux.HandleFunc("GET /api/tournaments/{id}/pairings", s.handleAPIPairings)
 		// Only with a key as well: without one there is nothing to hash a
 		// UID with, and the route does not exist (docs/adr/0025).
 		if s.fobs != nil {
