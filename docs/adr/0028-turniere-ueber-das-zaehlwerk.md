@@ -45,15 +45,19 @@ die Kiosk und Handy schon haben.**
 
 - **`GET /api/tournaments`** listet die offenen Turniere: `id`, `name`,
   `best_of`, `points_to_win`, `side_a`, `side_b`, `rated`, die Zahl der Spiele
-  insgesamt und die der gespielten. Geschlossene fehlen: Ein Zählwerk hat mit
-  ihnen nichts mehr zu tun.
+  insgesamt und die der gespielten, und `created_at`. Das älteste steht vorn:
+  Wer sie der Reihe nach abarbeitet, nimmt das, das am längsten wartet.
+  Geschlossene fehlen: Ein Zählwerk hat mit ihnen nichts mehr zu tun.
 - **`GET /api/tournaments/{id}/pairings`** listet die **offenen** Plätze in der
   Reihenfolge des Spielplans: `round`, `home_id`, `away_id` und die zwei
   Anzeigenamen. `home` ist Seite A (ADR-0013), und das ist die linke
   Tischhälfte des Zählwerks (zaehlwerk ADR-0005). Ein Platz ist offen, solange
   kein Ergebnis darin steht, gleich in welchem Status: ein wartendes Ergebnis
-  belegt ihn, wie bei `checkSlot`. Das Finale erscheint erst, wenn die Tabelle
-  es festlegt, und dann als letzte Runde.
+  belegt ihn, wie bei `checkSlot`. Das Finale erscheint erst, wenn jedes
+  Gruppenspiel bestätigt ist und die Tabelle die besten zwei trennt, und dann
+  als letzte Runde. Dieselbe Bedingung gilt dann auch am Kiosk: Bisher nahm
+  `checkSlot` ein Finale schon an, sobald zwei vorn lagen, obwohl die
+  Turnierseite es da noch nicht zeigte.
 - **Berechnet, nicht gespeichert.** Die offenen Plätze sind
   `tournament.Draw` minus die belegten, plus `tournament.Final`, wenn es
   feststeht. Das wird eine reine Funktion im Paket `tournament`, und
@@ -72,7 +76,9 @@ die Kiosk und Handy schon haben.**
   Turnier offen, beide im Feld, Paarung in dieser Runde, Platz frei, beim
   Finale die zwei aus der Tabelle. Eine Absage ist `409`, wenn der Platz schon
   belegt ist (das Zählwerk wiederholt dann ein Ergebnis, das angekommen ist),
-  sonst `422` mit dem deutschen Satz, den `checkSlot` liefert.
+  sonst `422`. Den Grund liefert dieselbe Prüfung als Fehlerwert; Kiosk und
+  Handy zeigen ihn als deutschen Satz, `/api` auf Englisch wie jede andere
+  Absage dort, weil der Leser ein Programm und sein Log ist.
 - **Der Modus muss der des Turniers sein.** Anders als am Kiosk wird er nicht
   überschrieben, sondern verglichen: Weichen `best_of` oder `points_to_win`
   ab, ist das `422`. Das Zählwerk hat den Modus aus `GET /api/tournaments`
