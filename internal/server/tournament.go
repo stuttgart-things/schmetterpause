@@ -17,6 +17,7 @@ import (
 	"github.com/stuttgart-things/schmetterpause/internal/auth"
 	"github.com/stuttgart-things/schmetterpause/internal/domain"
 	"github.com/stuttgart-things/schmetterpause/internal/match"
+	"github.com/stuttgart-things/schmetterpause/internal/repository"
 	"github.com/stuttgart-things/schmetterpause/internal/scoring"
 	"github.com/stuttgart-things/schmetterpause/internal/templates"
 	"github.com/stuttgart-things/schmetterpause/internal/tournament"
@@ -851,53 +852,53 @@ func roundFrom(r *http.Request) int {
 // result could be filed as the first leg — two matches in one slot and an
 // empty slot beside it. The draw is recomputed rather than looked up, which is
 // the same property ADR-0009 relies on everywhere else: it is a function of
-// the stored order.
+// the stored order. The check itself is tournament.CheckPlace, which the
+// Zählwerk's results go through too (docs/adr/0028).
 func (s *Server) checkSlot(ctx context.Context, tour domain.Tournament,
 	home, away uuid.UUID, round int,
 ) string {
-	legs := tour.Format.Legs()
-	groupRounds := tournament.GroupRounds(len(tour.Players), legs)
-
-	booked, err := s.store.Tournaments().Matches(ctx, tour.ID)
-	if err != nil {
+	err := checkPlace(ctx, s.store, tour, home, away, round)
+	switch {
+	case err == nil:
+		return ""
+	// One result per slot. The form disappears once a slot is filled, but
+	// the form is not the guard — two results in one round would both count
+	// in the table, and the second would be invisible in the schedule
+	// because only one can be shown there.
+	case errors.Is(err, tournament.ErrPlaceFilled):
+		return "Für diese Paarung steht in dieser Runde schon ein Ergebnis."
+	case errors.Is(err, tournament.ErrFinalUndecided):
+		return "Das Finale steht noch nicht fest."
+	case errors.Is(err, tournament.ErrNotTheFinalists):
+		return "Diese beiden spielen das Finale nicht."
+	case errors.Is(err, tournament.ErrNotInDraw):
+		return "Diese Paarung steht in dieser Runde nicht im Spielplan."
+	default:
 		s.log.ErrorContext(ctx, "loading the tournament's matches failed", "error", err)
 		return "Das hat gerade nicht geklappt."
 	}
+}
 
-	// One result per slot. The form disappears once a slot is filled, but the
-	// form is not the guard — two results in one round would both count in
-	// the table, and the second would be invisible in the schedule because
-	// only one can be shown there.
-	for _, m := range booked {
-		if slotOf(m) == (slot{round: round, pair: pairKey(home, away)}) {
-			return "Für diese Paarung steht in dieser Runde schon ein Ergebnis."
-		}
+// checkPlace runs tournament.CheckPlace against what is booked in store, which
+// is a transaction where the caller has one.
+func checkPlace(ctx context.Context, store repository.Store, tour domain.Tournament,
+	home, away uuid.UUID, round int,
+) error {
+	booked, err := store.Tournaments().Matches(ctx, tour.ID)
+	if err != nil {
+		return fmt.Errorf("matches of tournament %s: %w", tour.ID, err)
 	}
+	return tournament.CheckPlace(fieldOf(tour), booked, home, away, round)
+}
 
-	if round == groupRounds+1 && tour.WithFinal {
-		// The final's participants are derived too, so they are checked the
-		// same way: recompute the table and ask who it named.
-		pairing, ok := tournament.Final(
-			tournament.Table(tour.Players, booked, groupRounds, scoringOf(tour)))
-		if !ok {
-			return "Das Finale steht noch nicht fest."
-		}
-		if pairKey(pairing.Home, pairing.Away) != pairKey(home, away) {
-			return "Diese beiden spielen das Finale nicht."
-		}
-		return ""
+// fieldOf is what of a tournament decides its places.
+func fieldOf(tour domain.Tournament) tournament.Field {
+	return tournament.Field{
+		Players:   tour.Players,
+		Legs:      tour.Format.Legs(),
+		WithFinal: tour.WithFinal,
+		Scoring:   scoringOf(tour),
 	}
-	for _, r := range tournament.Draw(tour.Players, legs) {
-		if r.No != round {
-			continue
-		}
-		for _, p := range r.Pairings {
-			if pairKey(p.Home, p.Away) == pairKey(home, away) {
-				return ""
-			}
-		}
-	}
-	return "Diese Paarung steht in dieser Runde nicht im Spielplan."
 }
 
 // tournamentEntry is a tournament a result is being booked into, or nil when
