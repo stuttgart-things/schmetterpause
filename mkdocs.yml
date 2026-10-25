@@ -78,6 +78,7 @@ nav:
       - ADR-0025 Fob als Identität: adr/0025-fob-als-identitaet.md
       - ADR-0026 Anmeldung am Tisch mit dem Handy: adr/0026-anmeldung-am-tisch-mit-dem-handy.md
       - ADR-0027 Sandbox mit Pong wertet sofort: adr/0027-sandbox-mit-pong-wertet-sofort.md
+      - ADR-0028 Turniere über das Zählwerk: adr/0028-turniere-ueber-das-zaehlwerk.md
   - Betrieb:
       - Plattform-Voraussetzungen: platform.md
       - Deployment ohne GitOps: deployment.md
