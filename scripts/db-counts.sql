@@ -19,6 +19,7 @@ union all select 'tournament_players', count(*) from tournament_players
 union all select 'kiosk_grants', count(*) from kiosk_grants
 union all select 'checkins', count(*) from checkins
 union all select 'fob_link_window', count(*) from fob_link_window
+union all select 'player_avatars', count(*) from player_avatars
 union all select 'goose max version', max(version_id) from goose_db_version where is_applied
 order by 1;
 select 'matches ' || status, count(*) from matches group by status order by 1;

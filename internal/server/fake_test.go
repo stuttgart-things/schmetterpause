@@ -10,6 +10,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/stuttgart-things/schmetterpause/internal/avatar"
 	"github.com/stuttgart-things/schmetterpause/internal/domain"
 	"github.com/stuttgart-things/schmetterpause/internal/repository"
 )
@@ -31,6 +32,7 @@ type memStore struct {
 	matches     *memMatches
 	history     *memHistory
 	tournaments *memTournaments
+	avatars     *memAvatars
 	pingErr     error
 }
 
@@ -48,6 +50,7 @@ func newMemStore() *memStore {
 		matches:     matches,
 		history:     history,
 		tournaments: &memTournaments{matches: matches, players: players},
+		avatars:     &memAvatars{players: players},
 	}
 	matches.players = players
 	// What a delete reaches, wired after construction because these point
@@ -57,6 +60,7 @@ func newMemStore() *memStore {
 	players.history = history
 	players.tournaments = store.tournaments
 	players.kiosks = store.kiosks
+	players.avatars = store.avatars
 	return store
 }
 
@@ -72,6 +76,7 @@ func (m *memStore) FobWindow() repository.FobWindowRepository    { return m.fobW
 func (m *memStore) Matches() repository.MatchRepository          { return m.matches }
 func (m *memStore) TTRHistory() repository.TTRHistoryRepository  { return m.history }
 func (m *memStore) Tournaments() repository.TournamentRepository { return m.tournaments }
+func (m *memStore) Avatars() repository.AvatarRepository         { return m.avatars }
 
 // InTx runs fn against the same store. There is no rollback here, which is
 // fine for handler tests — that transactions actually hold is covered against
@@ -94,6 +99,7 @@ type memPlayers struct {
 	history     *memHistory
 	tournaments *memTournaments
 	kiosks      *memKioskGrants
+	avatars     *memAvatars
 	mu          sync.Mutex
 	rows        []domain.Player
 }
@@ -177,6 +183,11 @@ func (p *memPlayers) Delete(_ context.Context, id uuid.UUID) error {
 			}
 		}
 		p.kiosks.mu.Unlock()
+	}
+	if p.avatars != nil {
+		p.avatars.mu.Lock()
+		delete(p.avatars.rows, id)
+		p.avatars.mu.Unlock()
 	}
 
 	p.rows = append(p.rows[:idx], p.rows[idx+1:]...)
@@ -1214,6 +1225,45 @@ func (c *memCheckins) all() []domain.Checkin {
 
 // memFobWindow mirrors the one-row table: at most one window, replaced only
 // once expired or by the player who holds it.
+// memAvatars mirrors player_avatars: one figure per player, keys stored as
+// given, gone with the player (see memPlayers.Delete).
+type memAvatars struct {
+	players *memPlayers
+	mu      sync.Mutex
+	rows    map[uuid.UUID]avatar.Avatar
+}
+
+func (a *memAvatars) Get(_ context.Context, playerID uuid.UUID) (avatar.Avatar, error) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	got, ok := a.rows[playerID]
+	if !ok {
+		return avatar.Avatar{}, fmt.Errorf("avatar of player %s: %w", playerID, domain.ErrNotFound)
+	}
+	return got, nil
+}
+
+// Put refuses a player who does not exist, as the foreign key does.
+func (a *memAvatars) Put(ctx context.Context, playerID uuid.UUID, av avatar.Avatar) error {
+	if _, err := a.players.ByID(ctx, playerID); err != nil {
+		return fmt.Errorf("avatar of player %s: %w", playerID, domain.ErrNotFound)
+	}
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	if a.rows == nil {
+		a.rows = map[uuid.UUID]avatar.Avatar{}
+	}
+	a.rows[playerID] = av
+	return nil
+}
+
+func (a *memAvatars) Delete(_ context.Context, playerID uuid.UUID) error {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	delete(a.rows, playerID)
+	return nil
+}
+
 type memFobWindow struct {
 	mu     sync.Mutex
 	window *domain.FobWindow

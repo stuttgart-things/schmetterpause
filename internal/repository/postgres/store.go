@@ -120,6 +120,9 @@ func (s *Store) Tournaments() repository.TournamentRepository { return tournamen
 // TTRHistory returns the rating history repository.
 func (s *Store) TTRHistory() repository.TTRHistoryRepository { return ttrHistoryRepo{s.q} }
 
+// Avatars returns the repository of the figures players have assembled.
+func (s *Store) Avatars() repository.AvatarRepository { return avatarRepo{s.q} }
+
 // uniqueViolation is the SQLSTATE Postgres reports for a broken unique
 // constraint. Kept here so no caller has to know it.
 const uniqueViolation = "23505"
