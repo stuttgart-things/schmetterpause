@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stuttgart-things/schmetterpause/internal/avatar"
 	"github.com/stuttgart-things/schmetterpause/internal/domain"
 	"github.com/stuttgart-things/schmetterpause/internal/repository/postgres"
 	"github.com/stuttgart-things/schmetterpause/internal/seed"
@@ -417,5 +418,56 @@ func TestThePongFixtureIsDeterministic(t *testing.T) {
 
 	if fmt.Sprint(first) != fmt.Sprint(second) {
 		t.Errorf("two runs wrote %v and %v", first, second)
+	}
+}
+
+// TestSeededPlayersWearTheirFigures: a preview should show what figures look
+// like once people have chosen (docs/adr/0029), and show the same ones every
+// time. Every player of the demo field and every bot gets the next figure
+// from the fixture's own seeded sequence; Pong, the observer, gets none.
+func TestSeededPlayersWearTheirFigures(t *testing.T) {
+	for _, fixture := range []seed.Fixture{seed.FixtureDemo, seed.FixturePong} {
+		t.Run(string(fixture), func(t *testing.T) {
+			store, ctx := newStore(t)
+			if _, err := seed.RunFixture(ctx, store, fixture, reference); err != nil {
+				t.Fatalf("RunFixture(): %v", err)
+			}
+			players, err := store.Players().List(ctx)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			worn := map[avatar.Avatar]int{}
+			dressed := 0
+			for _, p := range players {
+				a, err := store.Avatars().Get(ctx, p.ID)
+				if p.IsObserver {
+					if !errors.Is(err, domain.ErrNotFound) {
+						t.Errorf("observer %s wears a figure: %+v, %v", p.DisplayName, a, err)
+					}
+					continue
+				}
+				if err != nil {
+					t.Fatalf("%s has no figure: %v", p.DisplayName, err)
+				}
+				if err := avatar.Validate(a); err != nil {
+					t.Errorf("%s wears an invalid figure: %v", p.DisplayName, err)
+				}
+				worn[a]++
+				dressed++
+			}
+
+			// The same figures as the fixture's sequence rolls, in whatever
+			// order List returns the players.
+			figures := seed.Figures(fixture)
+			for range dressed {
+				worn[avatar.Random(figures)]--
+			}
+			for a, n := range worn {
+				if n != 0 {
+					t.Errorf("figure %+v worn %+d times more than the sequence rolls it", a, n)
+				}
+			}
+		})
 	}
 }
