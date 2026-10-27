@@ -1,13 +1,15 @@
 # ADR-0029: Spieler gestalten ihre Figur selbst
 
-- **Status:** proposed — Entwurf, nicht entschieden
+- **Status:** accepted
 - **Datum:** 2026-10-27
 - **Betrifft:** Datenmodell, Oberfläche
 - **Bezug:** ersetzt die Ableitung der Schlägerfarbe aus der Spieler-ID
   (`templates.PaddleClass`, Issue #64) für Spieler, die selbst gewählt haben.
   Hebt die Grenze „Avatare pro Person“ in `docs/maskottchen-briefing.md` auf.
   Betrifft auch stuttgart-things/zaehlwerk, das die Schlägerfarbe heute mit
-  derselben Formel nachrechnet (`internal/ui/render.go`, `blade`).
+  derselben Formel nachrechnet (`internal/ui/render.go`, `blade`). Die
+  Zählwerk-Seite, Gesichter im Stream und die Figuren auf dessen Bildschirm,
+  ist stuttgart-things/zaehlwerk#195.
 
 ## Kontext
 
