@@ -132,11 +132,13 @@ Animation, ein zweites Maskottchen, alles was die Grafik aus einer externen
 Quelle nachlädt.
 
 Avatare pro Person standen hier früher auch. Seit ADR-0029 gehören sie dazu:
-Jeder Spieler stellt sich seine Figur aus Fell, Kopfschmuck, Schläger, Griff,
-Gesicht und Schmuck selbst zusammen. Die Format- und Farbregeln oben gelten
-für diese Teile genauso. Die Grenze „kein trauriger Ausdruck“ gilt nur für das
-Maskottchen, das die App selbst zeigt, nicht für eine Figur, die ein Spieler
-für sich wählt.
+Jeder Spieler stellt sich seine Figur aus Fell, Kopfschmuck, Schläger, Griff
+und Schmuck selbst zusammen. Die Format- und Farbregeln oben gelten für diese
+Teile genauso. Das Gesicht wählt niemand: Neben einem laufenden Match bestimmt
+es das Zählwerk aus dem Spielstand, sonst ist es neutral. Ein trauriger
+Ausdruck ist dort ein kurzer Moment nach einem verlorenen Satz, nicht das, was
+nach dem Match stehen bleibt. ADR-0029 begründet die Abweichung von der Regel
+oben.
 
 ## Die Teile unter `web/static/img/sthings/`
 
@@ -168,5 +170,6 @@ kommen aus CSS-Variablen, die Standardwerte sind die der Zeichnung:
 Konturen (`#080808`), Augenweiß (`#f8f8f8`) und die Materialfarben des Schmucks
 sind fest. Wer ein neues Teil zeichnet, prüft es so wie oben beschrieben bei
 28 px und in Graustufen. Bei 28 px sind `neutral`, `skeptical`, `angry` und
-`sad` heute schwer auseinanderzuhalten. Das stört nicht, solange jeder Spieler
-sein Gesicht selbst wählt und es nicht als Signal dient.
+`sad` heute schwer auseinanderzuhalten. Das stört nicht, weil Gesichter nur neben
+einem laufenden Match wechseln, und dort ist die Figur groß. In der Kopfzeile
+ist sie immer neutral.
