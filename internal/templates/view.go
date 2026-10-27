@@ -690,12 +690,14 @@ type ProfileView struct {
 	// of its blade (docs/adr/0029).
 	Figure      string
 	FigureBlade string
-	DisplayName string
-	TTR         int
-	Rank        int
-	Shared      bool
-	Played      int
-	Won, Lost   int
+	// FigureEditor is set on the reader's own profile only.
+	FigureEditor *FigureEditorView
+	DisplayName  string
+	TTR          int
+	Rank         int
+	Shared       bool
+	Played       int
+	Won, Lost    int
 	// Delta is the last rating change; HasDelta is false before the first
 	// confirmed match, where "±0" would claim something that never happened.
 	Delta    int
@@ -1607,4 +1609,36 @@ type TableCode struct {
 	Target string
 	Path   string
 	Size   int
+}
+
+// FigureEditorView is the editor on a player's own profile (docs/adr/0029).
+type FigureEditorView struct {
+	// Preview is the figure the form describes, as inline SVG.
+	Preview string
+	// Parts is one group of choices per part, in the order they are shown.
+	Parts []FigurePart
+	// What just happened, for the line under the buttons. At most one.
+	Saved  bool
+	Reset  bool
+	Rolled bool
+	Error  string
+}
+
+// FigurePart is one part of the figure and its choices.
+type FigurePart struct {
+	// Name is the form field, Label what a player reads above it.
+	Name    string
+	Label   string
+	Options []FigureOption
+}
+
+// FigureOption is one choice. Hex is the colour of its swatch, empty for a
+// choice that is not a colour (a piece of bling) or that takes the fur's
+// (SameAsFur).
+type FigureOption struct {
+	Key       string
+	Name      string
+	Hex       string
+	SameAsFur bool
+	Checked   bool
 }

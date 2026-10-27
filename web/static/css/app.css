@@ -611,7 +611,7 @@ h1 {
 	color: var(--fg);
 }
 
-.pin-card, .recovery-card, .fob-card { margin-top: 1.5rem; }
+.pin-card, .recovery-card, .fob-card, .figure-card { margin-top: 1.5rem; }
 
 /* One row per linked fob: what it is on the left, the way to remove it on the
    right, wrapping under each other on a phone. */
@@ -2002,3 +2002,61 @@ tr.self td { background: color-mix(in srgb, var(--accent) 8%, transparent); }
 }
 
 .match-filter button { margin-top: 0; }
+
+/* --- Figur-Editor ------------------------------------------------------- */
+
+/* The figure beside its choices on a wide screen, above them on a phone.
+   Not sticky there: pinned to the top it floated over the pills it was
+   meant to show the result of, and covered their names. */
+.figure-layout {
+	display: grid;
+	grid-template-columns: minmax(8rem, 12rem) minmax(0, 1fr);
+	gap: 1.25rem;
+	align-items: start;
+}
+
+@media (max-width: 34rem) {
+	.figure-layout { grid-template-columns: minmax(0, 1fr); }
+	.figure-preview { width: 9rem; margin: 0 auto; }
+}
+
+.figure-preview {
+	background: var(--panel);
+	border-radius: 8px;
+	padding: 0.5rem;
+}
+
+.figure-preview svg { display: block; width: 100%; height: auto; }
+
+.figure-parts { display: grid; gap: 1rem; min-width: 0; }
+
+/* Same shape as the tournament's field: the choices wrap as pills, the
+   question sits above them in the labels' mono. */
+.figure-part { display: flex; flex-wrap: wrap; gap: 0.4rem; border: 0; padding: 0; margin: 0; }
+
+.figure-part legend {
+	width: 100%;
+	padding: 0 0 0.4rem;
+	font-family: var(--font-mono);
+	font-size: 0.72rem;
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+	color: var(--muted);
+}
+
+/* The colour inside the pill, so the name and the colour are one target. */
+.swatch {
+	display: inline-block;
+	width: 0.9rem;
+	height: 0.9rem;
+	margin-right: 0.45rem;
+	vertical-align: -0.12rem;
+	border-radius: 50%;
+	border: 1px solid var(--line);
+}
+
+/* "Wie das Fell" follows whatever the fur is, so it shows a half of each:
+   not a colour of its own. */
+.swatch-fur { background: linear-gradient(135deg, var(--rank-1) 50%, transparent 50%); }
+
+.figure-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 1.25rem; }

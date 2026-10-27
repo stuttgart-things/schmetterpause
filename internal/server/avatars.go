@@ -10,8 +10,10 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/stuttgart-things/schmetterpause/internal/auth"
 	"github.com/stuttgart-things/schmetterpause/internal/avatar"
 	"github.com/stuttgart-things/schmetterpause/internal/domain"
+	"github.com/stuttgart-things/schmetterpause/internal/templates"
 	"github.com/stuttgart-things/schmetterpause/web"
 )
 
@@ -102,4 +104,119 @@ func writeFigure(w http.ResponseWriter, cache, svg string) {
 	h.Set("X-Content-Type-Options", "nosniff")
 	h.Set("Content-Security-Policy", "default-src 'none'; style-src 'unsafe-inline'")
 	_, _ = w.Write([]byte(svg))
+}
+
+// figureEditorView describes the editor with a checked, its preview rendered.
+func figureEditorView(a avatar.Avatar) templates.FigureEditorView {
+	colours := func(name, label string, palette []avatar.Colour, key string) templates.FigurePart {
+		part := templates.FigurePart{Name: name, Label: label}
+		for _, c := range palette {
+			part.Options = append(part.Options, templates.FigureOption{
+				Key: c.Key, Name: c.Name, Hex: c.Hex,
+				SameAsFur: c.Key == avatar.SameAsFur,
+				Checked:   c.Key == key,
+			})
+		}
+		return part
+	}
+	bling := templates.FigurePart{Name: "bling", Label: "Schmuck"}
+	for _, o := range avatar.Blings {
+		bling.Options = append(bling.Options, templates.FigureOption{Key: o.Key, Name: o.Name, Checked: o.Key == a.Bling})
+	}
+	return templates.FigureEditorView{
+		Preview: figures.Render(a),
+		Parts: []templates.FigurePart{
+			colours("fur", "Fell", avatar.Furs, a.Fur),
+			colours("headdress", "Kopfschmuck", avatar.Headdresses, a.Headdress),
+			colours("handle", "Griff", avatar.Handles, a.Handle),
+			colours("blade", "Schläger", avatar.Blades, a.Blade),
+			bling,
+		},
+	}
+}
+
+// figureFromForm reads the editor's fields. Validated by the caller: an
+// unknown key from a form is a mistake to answer, not to paper over.
+func figureFromForm(r *http.Request) avatar.Avatar {
+	return avatar.Avatar{
+		Fur:       r.FormValue("fur"),
+		Headdress: r.FormValue("headdress"),
+		Handle:    r.FormValue("handle"),
+		Blade:     r.FormValue("blade"),
+		Bling:     r.FormValue("bling"),
+	}
+}
+
+// handleFigurePreview answers every change in the editor with the figure as
+// it would look. Nothing is stored.
+func (s *Server) handleFigurePreview(w http.ResponseWriter, r *http.Request) {
+	a := figureFromForm(r)
+	if err := avatar.Validate(a); err != nil {
+		// Only a hand-made request gets here; the form offers nothing else.
+		// The preview keeps what it showed.
+		w.WriteHeader(http.StatusUnprocessableEntity)
+		return
+	}
+	s.render(w, r, templates.FigurePreview(figures.Render(a)))
+}
+
+// handleSaveFigure stores the editor's figure for the reader, and nobody else:
+// the player comes from the session, never from the form (docs/adr/0029,
+// "Ändern kann jeder nur seine eigene Figur").
+func (s *Server) handleSaveFigure(w http.ResponseWriter, r *http.Request) {
+	self, _ := auth.PlayerID(r.Context())
+	a := figureFromForm(r)
+	if err := avatar.Validate(a); err != nil {
+		view := figureEditorView(s.avatarOf(r.Context(), self))
+		view.Error = "Das ließ sich nicht speichern. Lade die Seite neu und versuch es noch einmal."
+		w.WriteHeader(http.StatusUnprocessableEntity)
+		s.render(w, r, templates.FigureEditor(view))
+		return
+	}
+	if err := s.store.Avatars().Put(r.Context(), self, a); err != nil {
+		s.log.ErrorContext(r.Context(), "storing the figure failed", "player_id", self, "error", err)
+		view := figureEditorView(a)
+		view.Error = "Das hat gerade nicht geklappt. Versuch es noch einmal."
+		w.WriteHeader(http.StatusInternalServerError)
+		s.render(w, r, templates.FigureEditor(view))
+		return
+	}
+	s.log.InfoContext(r.Context(), "figure saved", "player_id", self)
+	s.renderFigureChange(w, r, self, func(v *templates.FigureEditorView) { v.Saved = true })
+}
+
+// handleResetFigure forgets the reader's figure, so they wear the default
+// again. Pressing it twice is still reset.
+func (s *Server) handleResetFigure(w http.ResponseWriter, r *http.Request) {
+	self, _ := auth.PlayerID(r.Context())
+	if err := s.store.Avatars().Delete(r.Context(), self); err != nil {
+		s.log.ErrorContext(r.Context(), "resetting the figure failed", "player_id", self, "error", err)
+		view := figureEditorView(s.avatarOf(r.Context(), self))
+		view.Error = "Das hat gerade nicht geklappt. Versuch es noch einmal."
+		w.WriteHeader(http.StatusInternalServerError)
+		s.render(w, r, templates.FigureEditor(view))
+		return
+	}
+	s.log.InfoContext(r.Context(), "figure reset", "player_id", self)
+	s.renderFigureChange(w, r, self, func(v *templates.FigureEditorView) { v.Reset = true })
+}
+
+// renderFigureChange answers a save or a reset: the editor with what is now
+// stored, and the figure beside the name out of band, so the page agrees with
+// itself without a reload.
+func (s *Server) renderFigureChange(w http.ResponseWriter, r *http.Request, self uuid.UUID, mark func(*templates.FigureEditorView)) {
+	view := figureEditorView(s.avatarOf(r.Context(), self))
+	mark(&view)
+	s.render(w, r, templates.FigureEditor(view))
+	svg, blade := s.pageFigure(r.Context(), self)
+	s.render(w, r, templates.ProfileFigure(svg, blade, true))
+}
+
+// handleRollFigure fills the editor with a random figure. Not stored: "Würfeln"
+// is a suggestion, and "Speichern" is still the one button that keeps it.
+func (s *Server) handleRollFigure(w http.ResponseWriter, r *http.Request) {
+	a := avatar.Random(rand.New(rand.NewPCG(rand.Uint64(), rand.Uint64()))) //nolint:gosec // decoration, not a secret
+	view := figureEditorView(a)
+	view.Rolled = true
+	s.render(w, r, templates.FigureEditor(view))
 }

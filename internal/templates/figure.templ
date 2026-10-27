@@ -1,0 +1,102 @@
+package templates
+
+// FigureEditor is where a player assembles their figure (docs/adr/0029). On
+// their own profile only, under the rating.
+//
+// Every change asks the server for the figure as it would look and puts it
+// in the preview; nothing is stored until "Speichern". HTMX rather than a
+// line of JavaScript, because the server is what knows how a figure is put
+// together (invariant 7).
+templ FigureEditor(v FigureEditorView) {
+	<section id="figure-editor" class="session figure-card">
+		<h2>Deine Figur</h2>
+		<p class="muted">
+			Fell, Kopfschmuck, Griff, Schläger und Schmuck suchst du dir aus. Das
+			Gesicht nicht: Am Zählwerk schaut deine Figur so, wie das Spiel gerade
+			steht.
+		</p>
+		<form hx-post="/figure" hx-target="#figure-editor" hx-swap="outerHTML">
+			<div class="figure-layout">
+				<div id="figure-preview" class="figure-preview">
+					@templ.Raw(v.Preview)
+				</div>
+				// The change trigger sits on the parts rather than on the form,
+				// so the form keeps its own submit for "Speichern".
+				<div
+					class="figure-parts"
+					hx-get="/fragments/figure-preview"
+					hx-trigger="change"
+					hx-include="closest form"
+					hx-target="#figure-preview"
+					hx-swap="innerHTML"
+				>
+					for _, part := range v.Parts {
+						<fieldset class="figure-part">
+							<legend>{ part.Label }</legend>
+							for _, o := range part.Options {
+								<label class="pick">
+									<input type="radio" name={ part.Name } value={ o.Key } checked?={ o.Checked }/>
+									<span>
+										if o.Hex != "" {
+											<i class="swatch" style={ "background:" + o.Hex }></i>
+										} else if o.SameAsFur {
+											<i class="swatch swatch-fur"></i>
+										}
+										{ o.Name }
+									</span>
+								</label>
+							}
+						</fieldset>
+					}
+				</div>
+			</div>
+			<div class="figure-actions">
+				<button type="submit">Speichern</button>
+				<button
+					type="button"
+					class="secondary"
+					hx-get="/fragments/figure-roll"
+					hx-target="#figure-editor"
+					hx-swap="outerHTML"
+				>Würfeln</button>
+				<button
+					type="button"
+					class="secondary"
+					hx-post="/figure/reset"
+					hx-target="#figure-editor"
+					hx-swap="outerHTML"
+				>Zurücksetzen</button>
+			</div>
+			switch {
+				case v.Error != "":
+					<p class="fail" role="alert">{ v.Error }</p>
+				case v.Saved:
+					<p class="ok" role="status">Gespeichert. So sehen dich jetzt alle.</p>
+				case v.Reset:
+					<p class="ok" role="status">Zurückgesetzt auf die Figur, mit der du angefangen hast.</p>
+				case v.Rolled:
+					<p class="muted" role="status">Gewürfelt, noch nicht gespeichert.</p>
+			}
+		</form>
+	</section>
+}
+
+// FigurePreview is the figure as it would look, for the box in the editor.
+templ FigurePreview(svg string) {
+	@templ.Raw(svg)
+}
+
+// ProfileFigure is the figure beside the name on a profile. With an id, so
+// saving in the editor can replace it out of band and the head shows the new
+// figure in the same response.
+templ ProfileFigure(svg, blade string, oob bool) {
+	<span
+		id="profile-figure"
+		class={ "page-mascot", templ.KV(blade, blade != "") }
+		if oob {
+			hx-swap-oob="true"
+		}
+	>
+		@templ.Raw(svg)
+	</span>
+}
