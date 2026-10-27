@@ -76,7 +76,11 @@ templ pageHeadBody(v SessionView) {
 			<p class="muted">Ergebnisse eintragen und sehen, wo du stehst.</p>
 		}
 	</div>
-	@PageMascot(PaddleClass(v.PlayerID))
+	if v.Figure != "" {
+		@PageFigure(v.Figure, v.FigureBlade)
+	} else {
+		@PageMascot(PaddleClass(v.PlayerID))
+	}
 }
 
 // PageMascot is the drawing beside the heading. Decorative and nothing else,
@@ -92,6 +96,16 @@ templ PageMascot(paddle string) {
 	// something matches on the attribute.
 	<span class={ "page-mascot", templ.KV(paddle, paddle != "") }>
 		@templ.Raw(web.Mascot)
+	</span>
+}
+
+// PageFigure is a player's own figure beside the heading, in the same box as
+// PageMascot (docs/adr/0029). templ.Raw for the same reason as there: the
+// markup is avatar.Render's, assembled from parts compiled into this binary
+// and colours from its palettes, never from anything a request carried.
+templ PageFigure(svg, blade string) {
+	<span class={ "page-mascot", templ.KV(blade, blade != "") }>
+		@templ.Raw(svg)
 	</span>
 }
 

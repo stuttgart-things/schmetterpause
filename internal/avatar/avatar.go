@@ -62,6 +62,18 @@ func BladeIndex(playerID string) int {
 	return int(h.Sum32() % uint32(len(Blades)))
 }
 
+// BladeOf is the index of a's blade in Blades, the n of the stylesheet's
+// .paddle-n. False when a carries no blade a palette knows, which is nobody's
+// figure and keeps the drawing's red.
+func BladeOf(a Avatar) (int, bool) {
+	for i, b := range Blades {
+		if b.Key == a.Blade {
+			return i, true
+		}
+	}
+	return 0, false
+}
+
 // Fill replaces every part a does not name, or names with a key that no
 // longer exists, by the player's default. A palette entry that is taken out
 // again is therefore harmless: what was stored falls back rather than

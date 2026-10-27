@@ -50,6 +50,17 @@ func Load(fsys fs.FS, dir string) (*Kit, error) {
 	return k, nil
 }
 
+// MustLoad is Load for the parts compiled into the binary, where a missing
+// one is a build that should never have shipped rather than a condition to
+// handle. The tests load the same parts, so it fails there first.
+func MustLoad(fsys fs.FS, dir string) *Kit {
+	k, err := Load(fsys, dir)
+	if err != nil {
+		panic(err)
+	}
+	return k
+}
+
 // inner is a part without its own <svg> element, so that several parts can
 // share the one Render writes.
 func inner(doc string) (string, error) {

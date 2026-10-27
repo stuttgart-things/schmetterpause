@@ -355,6 +355,7 @@ func (s *Server) signInView(ctx context.Context, selected uuid.UUID) (templates.
 func (s *Server) renderSession(w http.ResponseWriter, r *http.Request, player domain.Player, region templ.Component) {
 	signedIn := auth.WithPlayerID(r.Context(), player.ID)
 	view := templates.SessionView{DisplayName: player.DisplayName, PlayerID: player.ID.String()}
+	view.Figure, view.FigureBlade = s.pageFigure(r.Context(), player.ID)
 
 	table, err := s.standingsView(signedIn)
 	if err != nil {

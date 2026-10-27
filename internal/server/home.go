@@ -259,9 +259,11 @@ func (s *Server) sessionView(ctx context.Context) templates.SessionView {
 			"player_id", id, "error", err)
 		return templates.SessionView{}
 	}
-	return templates.SessionView{
+	view := templates.SessionView{
 		DisplayName: player.DisplayName, PlayerID: player.ID.String(), Observer: player.IsObserver,
 	}
+	view.Figure, view.FigureBlade = s.pageFigure(ctx, player.ID)
+	return view
 }
 
 // validateDisplayName reports whether a name is usable, and why not if it is
