@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.20.0](https://github.com/stuttgart-things/schmetterpause/compare/v0.19.0...v0.20.0) (2026-10-27)
+
+
+### Features
+
+* **avatar:** assemble a player's figure from palettes and parts ([#357](https://github.com/stuttgart-things/schmetterpause/issues/357)) ([937323e](https://github.com/stuttgart-things/schmetterpause/commit/937323e7f36d6a88d5d4c53da31d11399db8dc56))
+* **repository:** store player figures and dress the seeded players ([#358](https://github.com/stuttgart-things/schmetterpause/issues/358)) ([930384a](https://github.com/stuttgart-things/schmetterpause/commit/930384a0025b6bf60df50c81efd2b4fa7ef5f258))
+* **web:** let players edit their figure on their own profile ([#360](https://github.com/stuttgart-things/schmetterpause/issues/360)) ([71203b0](https://github.com/stuttgart-things/schmetterpause/commit/71203b065bbe0ad590b11c3d4863c7363d4b61c2))
+* **web:** show a player's figure beside the heading and serve it as SVG ([#359](https://github.com/stuttgart-things/schmetterpause/issues/359)) ([7524188](https://github.com/stuttgart-things/schmetterpause/commit/752418840a88bccc1c5f330299ce003ce9fe84dc))
+* **web:** show the players' figures beside the live score ([#361](https://github.com/stuttgart-things/schmetterpause/issues/361)) ([d1b12ab](https://github.com/stuttgart-things/schmetterpause/commit/d1b12ab7d8aa37d44cc027c342366540484d72c9))
+
+
+### Refactoring
+
+* **web:** split the mascot into recolourable parts ([#355](https://github.com/stuttgart-things/schmetterpause/issues/355)) ([729a031](https://github.com/stuttgart-things/schmetterpause/commit/729a0318b525c22b9ebffe2a4851be7a5789cb5b))
+
 ## [0.19.0](https://github.com/stuttgart-things/schmetterpause/compare/v0.18.0...v0.19.0) (2026-10-25)
 
 
