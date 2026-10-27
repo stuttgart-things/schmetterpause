@@ -137,3 +137,36 @@ Gesicht und Schmuck selbst zusammen. Die Format- und Farbregeln oben gelten
 für diese Teile genauso. Die Grenze „kein trauriger Ausdruck“ gilt nur für das
 Maskottchen, das die App selbst zeigt, nicht für eine Figur, die ein Spieler
 für sich wählt.
+
+## Die Teile unter `web/static/img/sthings/`
+
+Aus dem Paket „Charakter und Schmuck v5“ sind Einzelteile entstanden, die die
+Regeln oben einhalten: kein `<style>`, kein `stroke`, keine Transformationen,
+keine Clip-Pfade, nur gefüllte Pfade mit `fill-rule="evenodd"`. Alle Teile
+haben `viewBox="0 0 420 420"` und liegen ohne Verschiebung übereinander.
+
+| Datei | Inhalt |
+|---|---|
+| `base.svg` | die Figur ohne Gesicht: Fell, Kopfschmuck, Griff, Schatten, Konturen, Schlägerfläche |
+| `face-*.svg` | `neutral` (das bisherige Gesicht), `happy`, `surprised`, `skeptical`, `angry`, `sad` |
+| `bling-*.svg` | `collar`, `scarab`, `ankh`, `horus-eye`, `chain`, `ruby` |
+
+Gezeichnet wird in dieser Reihenfolge: `base`, dann ein Gesicht, dann
+höchstens ein Schmuckstück. Wo der Schmuck hinter Gesicht oder Hand
+verschwindet, ist er bereits weggeschnitten.
+
+`base` mit `face-neutral` sieht aus wie das bisherige `mascot.svg`. Die Farben
+kommen aus CSS-Variablen, die Standardwerte sind die der Zeichnung:
+
+| Variable | Standard | Fläche |
+|---|---|---|
+| `--fur`, `--fur-dark` | `#f89828`, `#b85818` | Fell und seine Schatten |
+| `--headdress`, `--headdress-dark` | `#f89828`, `#b85818` | farbige Streifen des Kopfschmucks |
+| `--handle`, `--handle-dark` | `#f89828`, `#b85818` | Schlägergriff |
+| `--paddle` | `#c82828` | Schlägerfläche, wie bisher |
+
+Konturen (`#080808`), Augenweiß (`#f8f8f8`) und die Materialfarben des Schmucks
+sind fest. Wer ein neues Teil zeichnet, prüft es so wie oben beschrieben bei
+28 px und in Graustufen. Bei 28 px sind `neutral`, `skeptical`, `angry` und
+`sad` heute schwer auseinanderzuhalten. Das stört nicht, solange jeder Spieler
+sein Gesicht selbst wählt und es nicht als Signal dient.
