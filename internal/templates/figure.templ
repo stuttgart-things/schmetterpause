@@ -67,7 +67,7 @@ templ FigureEditor(v FigureEditorView) {
 					hx-swap="outerHTML"
 				>Zurücksetzen</button>
 			</div>
-			switch {
+			switch  {
 				case v.Error != "":
 					<p class="fail" role="alert">{ v.Error }</p>
 				case v.Saved:
