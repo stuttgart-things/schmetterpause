@@ -6,6 +6,8 @@
 - **Bezug:** ersetzt die Ableitung der Schlägerfarbe aus der Spieler-ID
   (`templates.PaddleClass`, Issue #64) für Spieler, die selbst gewählt haben.
   Hebt die Grenze „Avatare pro Person“ in `docs/maskottchen-briefing.md` auf.
+  Betrifft auch stuttgart-things/zaehlwerk, das die Schlägerfarbe heute mit
+  derselben Formel nachrechnet (`internal/ui/render.go`, `blade`).
 
 ## Kontext
 
@@ -26,19 +28,34 @@ eigenen.
 
 ## Entscheidung
 
-**Jeder Spieler kann seine Figur aus festen Teilen zusammenstellen. Die Wahl
-wird gespeichert. Wer nicht wählt, sieht aus wie bisher.**
+**Jeder Spieler kann seine Figur aus festen Teilen zusammenstellen und sie
+jederzeit wieder ändern. Die Wahl wird gespeichert. Wer nicht wählt, sieht aus
+wie bisher. Demo-Spieler bekommen eine Figur aus dem Zufall.**
 
 ### Was wählbar ist
 
 | Teil | Auswahl |
 |---|---|
-| Fell | Palette |
-| Kopfschmuck | Palette |
-| Schlägerfläche | Palette, die sieben heutigen Farben plus das Rot der Zeichnung |
-| Griff | Palette |
+| Fell | Orange, Ingwer, Zimt, Gold, Sand, Creme, Weiß, Schoko |
+| Kopfschmuck | wie Fell, Gold, Lapis, Türkis, Smaragd, Rubin, Elfenbein, Silber |
+| Schlägerfläche | die sieben heutigen Farben, in derselben Reihenfolge |
+| Griff | wie Fell, Holz hell, Holz dunkel, Rot, Blau, Grün, Elfenbein |
 | Gesicht | neutral, fröhlich, überrascht, skeptisch, wütend, traurig |
 | Schmuck | keiner oder eins der sechs Stücke |
+
+Das sind 131.712 mögliche Figuren. Die Farbwerte stehen in `internal/avatar`
+und `app.css`. Gemessen wird wie bei den Schlägerfarben mit dE76:
+
+- **Fell** hält mindestens 38 zu jeder Schlägerfarbe, damit der Schläger nicht
+  im Fell verschwindet, und mindestens 56 zum Grund der Seite. Grau fällt
+  heraus, es liegt 11 neben „Stahl“. Der Schatten wird aus der Fellfarbe mit
+  demselben Schritt abgeleitet, den die Zeichnung von Orange zu Braun geht.
+- **Kopfschmuck** hält mindestens 74 zur Kontur, weil sich farbige und
+  schwarze Streifen abwechseln. **Griff** hält mindestens 58 zur Kontur.
+- **Schlägerfläche** bleibt bei den sieben Farben von heute. Das Rot der
+  Zeichnung ist nicht wählbar: Es liegt 26 neben der Farbe für Verlust, und die
+  Schlägerfarbe hält 37 Abstand zu allem, was in der App etwas bedeutet. Rot
+  bleibt das Zeichen für „niemand erkannt“.
 
 1. **Paletten, kein freier Farbwähler.** Jede Farbe ist eine CSS-Klasse in
    `app.css`, so wie heute `.paddle-0` bis `.paddle-6`. Dadurch lässt sich der
@@ -54,10 +71,61 @@ wird gespeichert. Wer nicht wählt, sieht aus wie bisher.**
    gibt es also nicht nur für Turniersieger. Wenn das später gewünscht ist,
    braucht es eine Herleitung aus den Turnierdaten und ein eigenes ADR.
 
+### Ändern
+
+Der Editor auf dem eigenen Profil ist jederzeit erreichbar. Eine Änderung
+überschreibt die Zeile in `player_avatars`, eine Historie gibt es nicht. Ein
+Knopf „Zurücksetzen“ löscht die Zeile, und die Figur fällt auf den Standard aus
+der ID zurück. Ändern kann jeder nur seine eigene Figur. ADR-0008 regelt, wer
+für andere handeln darf, und Aussehen gehört nicht dazu.
+
+### Zufall
+
+`avatar.Random(rng)` würfelt aus jeder Palette, jedem Gesicht und jedem
+Schmuckstück gleichverteilt. Genutzt wird es an drei Stellen:
+
+1. **Im Editor** gibt es einen Knopf „Würfeln“. Er füllt das Formular mit
+   einer Zufallsfigur, gespeichert wird erst mit „Speichern“.
+2. **Das Demo-Feld** (`schmetterpause seed`, Preview-Umgebungen) legt für jeden
+   Spieler eine Zufallsfigur an. Der Generator ist mit dem Seed des Feldes
+   initialisiert, damit zwei Läufe dieselben Figuren ergeben und Screenshots
+   vergleichbar bleiben.
+3. **Für das Zählwerk ohne Spieler**, also für Demo-Matches wie `Pong A`
+   gegen `Pong B` (zaehlwerk ADR-0008). Siehe unten.
+
+### Zählwerk
+
+Das Zählwerk zeigt beim Spielstand heute das Maskottchen mit einer
+Schlägerfarbe. Die rechnet es aus der Spieler-ID nach, mit derselben
+FNV-Formel wie `PaddleClass`. Sobald Spieler selbst wählen, wäre diese
+Nachrechnung falsch. Das Zählwerk soll stattdessen die Figur zeigen, die der
+Spieler hier gebaut hat, sofern die Spieler aus Schmetterpause kommen.
+
+Dafür bekommt die bestehende, per Token geschützte API zwei Routen:
+
+- `GET /api/players/{id}/avatar.svg` liefert die fertig zusammengesetzte Figur
+  eines Spielers. Die Farben stehen als CSS-Variablen auf dem `<svg>`-Element,
+  also braucht das Zählwerk kein eigenes CSS und keine eigenen Teile. Es bettet
+  die Datei serverseitig inline ein, so wie heute sein `mascot.svg`.
+- `GET /api/avatars/random.svg` liefert eine Zufallsfigur für Demo-Matches. Sie
+  ändert sich bei jedem Aufruf, so wie heute die zufällige Schlägerfarbe im
+  Zählwerk.
+
+`GET /api/players` bekommt zusätzlich das Feld `paddle` mit der Schlägerfarbe
+als Hex-Wert. Damit kann das Zählwerk seine Schiedsrichterschnur färben, ohne
+die Figur zu laden.
+
+Die Teile selbst gehen nicht ins Zählwerk. Eine einzige Quelle für die Figur
+heißt, dass eine neue Palettenfarbe nur hier eingetragen wird. Ohne
+`SCHMETTERPAUSE_URL` oder wenn die Route nicht antwortet, bleibt das Zählwerk
+bei seinem eigenen Maskottchen. Was es dort umbaut, entscheidet ein eigenes ADR
+im Zählwerk-Repository.
+
 ### Wo die Figur erscheint
 
-Nur dort, wo heute die Schlägerfarbe des Spielers erscheint: in der Kopfzeile
-der Startseite und auf dem Profil. Rangliste, Matchliste, Turnierseiten und
+In Schmetterpause nur dort, wo heute die Schlägerfarbe des Spielers erscheint:
+in der Kopfzeile der Startseite und auf dem Profil. Dazu kommt der Spielstand
+im Zählwerk, siehe oben. Rangliste, Matchliste, Turnierseiten und
 Kiosk bleiben, wie sie sind. Die Seiten mit festen Farben (`PaddleKiosk`,
 `PaddleSheet`, …) zeigen weiter das Standard-Maskottchen.
 
@@ -95,12 +163,13 @@ die Regeln aus `docs/maskottchen-briefing.md` ein: keine `<style>`-Blöcke, kein
 `stroke`, nur gefüllte Pfade, Farben über CSS-Variablen. Die Schlägerfläche
 behält `fill="var(--paddle, #c82828)"`.
 
-### Bearbeiten
+### Editor
 
 Auf dem eigenen Profil. Ein Formular mit Auswahlfeldern pro Teil. Jede Änderung
 schickt HTMX an den Server, und der antwortet mit der neu zusammengesetzten
-Figur als Fragment. Erst „Speichern“ schreibt in die Datenbank. Dafür braucht
-es kein handgeschriebenes JavaScript (Invariante 7).
+Figur als Fragment. „Würfeln“ ist derselbe Weg mit einer Zufallsfigur. Erst
+„Speichern“ schreibt in die Datenbank. Dafür braucht es kein handgeschriebenes
+JavaScript (Invariante 7).
 
 ## Konsequenzen
 
@@ -110,6 +179,9 @@ es kein handgeschriebenes JavaScript (Invariante 7).
   und der Aushang unter `/qr` zeigt ohnehin nur das Standard-Maskottchen.
 - Werden zwei Spieler zusammengeführt (ADR-0017), behält der verbleibende
   seine Figur, und die Zeile des anderen fällt mit ihm weg.
+- Die Schlägerfarbe wird zum ersten Mal zu einer Angabe, die ein anderer
+  Dienst lesen muss, statt sie nachzurechnen. Bis das Zählwerk umgestellt ist,
+  zeigt es für Spieler mit eigener Wahl die alte, berechnete Farbe.
 - Die Prüfungen aus dem Briefing gelten für jedes neue Teil: Bei 28 px muss es
   erkennbar sein, und in Graustufen müssen sich die Gesichter unterscheiden.
 - Eine neue Palettenfarbe ist eine Zeile CSS und ein Eintrag in
