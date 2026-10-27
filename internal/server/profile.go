@@ -128,6 +128,8 @@ func (s *Server) handleProfile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	view.Figure, view.FigureBlade = s.pageFigure(r.Context(), id)
+
 	// The access section is the reader's own business and nobody else's, so
 	// it is decided here rather than in the template.
 	if self, ok := auth.PlayerID(r.Context()); ok && self == id {

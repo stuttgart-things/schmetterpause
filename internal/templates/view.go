@@ -244,9 +244,15 @@ func (v LiveView) Enabled() bool { return v.StreamURL != "" }
 type SessionView struct {
 	// DisplayName is set once a player is recognised.
 	DisplayName string
-	// PlayerID is what the mascot's blade colour is derived from. Empty
-	// before anybody is recognised, which leaves the blade red.
+	// PlayerID is whose session this is. Empty before anybody is
+	// recognised.
 	PlayerID string
+	// Figure is the recognised player's figure as inline SVG, and
+	// FigureBlade the paddle-n class of the blade it wears (docs/adr/0029).
+	// Empty before anybody is recognised, and the page then shows the
+	// mascot as drawn, with its red blade.
+	Figure      string
+	FigureBlade string
 	// Observer is a recognised player who does not play (docs/adr/0022), so
 	// the start page offers them no result entry.
 	Observer bool
@@ -678,8 +684,12 @@ func (r StandingRow) Ranked() bool { return r.Rank > 0 }
 // ProfileView is one player's page.
 type ProfileView struct {
 	Header HeaderView
-	// ID is whose page this is, and what their blade colour comes from.
-	ID          string
+	// ID is whose page this is.
+	ID string
+	// Figure is their figure as inline SVG, FigureBlade the paddle-n class
+	// of its blade (docs/adr/0029).
+	Figure      string
+	FigureBlade string
 	DisplayName string
 	TTR         int
 	Rank        int
@@ -729,15 +739,16 @@ const (
 	PaddleRules     = "paddle-6" // Stahl
 )
 
-// PaddleClass is the blade colour a player's mascot carries, as a class the
-// stylesheet resolves to a --paddle value.
+// PaddleClass is the blade colour a player's mascot carries until they choose
+// one, as a class the stylesheet resolves to a --paddle value.
 //
-// Derived from the id rather than stored: no field, no picker, no migration,
-// and the same colour on every device and after every restart. The cost is
-// that nobody can choose theirs, and that in a group of seven two players will
-// already share one. Which is why the colour is never the only thing telling
-// them apart — the name is always beside it, and the sheet at /qr prints in
-// black and white.
+// Derived from the id: the same colour on every device and after every
+// restart, for everybody who never opens the figure editor. Since
+// docs/adr/0029 a player can choose, and avatar.Default derives the same
+// blade so nobody changed colour the day choosing arrived; a test holds the
+// two together. In a group of seven two players already share a blade, which
+// is why the colour is never the only thing telling them apart — the name is
+// always beside it, and the sheet at /qr prints in black and white.
 //
 // Empty for a browser nobody is recognised in: no player, no colour, and the
 // blade keeps the red it is drawn in.
