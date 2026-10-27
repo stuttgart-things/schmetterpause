@@ -276,3 +276,70 @@ func TestRFIDUIDKey(t *testing.T) {
 		})
 	}
 }
+
+// TestAnUnknownSeedFixtureDoesNotStopServe holds the split SeedFixture's
+// comment describes: the name is read here and refused by the seed command,
+// so a typo in it costs the seed Job and not the server.
+func TestAnUnknownSeedFixtureDoesNotStopServe(t *testing.T) {
+	t.Setenv("SP_DATABASE_URL", "postgres://user:pw@db:5432/schmetterpause")
+	t.Setenv("SP_SESSION_KEY", testKey)
+	t.Setenv("SP_SEED_FIXTURE", " pnog ")
+
+	cfg, err := config.Load()
+	if err != nil {
+		t.Fatalf("Load() with an unknown SP_SEED_FIXTURE: %v", err)
+	}
+	if err := cfg.ValidateForServe(); err != nil {
+		t.Fatalf("ValidateForServe() with an unknown SP_SEED_FIXTURE: %v", err)
+	}
+	if cfg.SeedFixture != "pnog" {
+		t.Errorf("SeedFixture = %q, want the trimmed value \"pnog\"", cfg.SeedFixture)
+	}
+}
+
+func TestAnUnsetSeedFixtureIsEmpty(t *testing.T) {
+	t.Setenv("SP_DATABASE_URL", "postgres://user:pw@db:5432/schmetterpause")
+
+	cfg, err := config.Load()
+	if err != nil {
+		t.Fatalf("Load(): %v", err)
+	}
+	if cfg.SeedFixture != "" {
+		t.Errorf("SeedFixture = %q, want empty so the seed package picks its default", cfg.SeedFixture)
+	}
+}
+
+// docs/adr/0027: pending unless a deployment says otherwise, which is
+// docs/adr/0015 for every deployment that never heard of the variable.
+func TestScoreboardResultsArePendingUnlessTheDeploymentSaysOtherwise(t *testing.T) {
+	t.Setenv("SP_DATABASE_URL", "postgres://user:pw@db:5432/schmetterpause")
+	t.Setenv("SP_SCOREBOARD_SETTLE", "")
+
+	cfg, err := config.Load()
+	if err != nil {
+		t.Fatalf("Load(): %v", err)
+	}
+	if cfg.ScoreboardSettle != config.SettlePending {
+		t.Errorf("ScoreboardSettle = %q, want pending", cfg.ScoreboardSettle)
+	}
+
+	t.Setenv("SP_SCOREBOARD_SETTLE", "immediate")
+	if cfg, err = config.Load(); err != nil {
+		t.Fatalf("Load(): %v", err)
+	}
+	if cfg.ScoreboardSettle != config.SettleImmediate {
+		t.Errorf("ScoreboardSettle = %q, want immediate", cfg.ScoreboardSettle)
+	}
+}
+
+// A misspelt value would otherwise leave a sandbox collecting results nobody
+// ever confirms, and say nothing.
+func TestAnUnknownScoreboardSettleStopsTheStart(t *testing.T) {
+	t.Setenv("SP_DATABASE_URL", "postgres://user:pw@db:5432/schmetterpause")
+	t.Setenv("SP_SCOREBOARD_SETTLE", "instant")
+
+	_, err := config.Load()
+	if err == nil || !strings.Contains(err.Error(), "SP_SCOREBOARD_SETTLE") {
+		t.Fatalf("Load() error = %v, want one naming SP_SCOREBOARD_SETTLE", err)
+	}
+}

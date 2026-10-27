@@ -20,6 +20,10 @@
 // preview looks the same, two screenshots of the same commit are identical,
 // and a reviewer comparing two branches is looking at the change rather than
 // at noise.
+//
+// There is a second fixture, pong (fixture.go and pong.go): the bot players a
+// sandbox plays against itself (docs/adr/0027). The same two properties hold
+// for it, and so does the refusal of a database that has players.
 package seed
 
 import (
@@ -48,7 +52,14 @@ var ErrNotEmpty = errors.New("the database already has players")
 
 // Summary is what was written, for the log line and for the tests.
 type Summary struct {
-	Players   int
+	// Fixture is which of the fixtures ran, so the log line of a seed Job
+	// says what it wrote rather than leaving it to be inferred from counts.
+	Fixture Fixture
+	// Players counts everybody created, observers included — it is what the
+	// player table holds afterwards.
+	Players int
+	// Observers is how many of Players do not play (docs/adr/0022).
+	Observers int
 	Confirmed int
 	Pending   int
 	Disputed  int
@@ -151,17 +162,14 @@ var tournamentPlayed = [][][2]int{
 	{{11, 6}, {11, 9}},
 }
 
-// Run writes the fixture. now is the reference the match dates count back
+// Run writes the demo fixture — the one for previews and screenshots, and
+// what RunFixture runs for FixtureDemo. now is the reference the match dates count back
 // from; pass the real clock in the command and a fixed value in a test.
 //
 // It refuses a database that already has players with ErrNotEmpty.
 func Run(ctx context.Context, store repository.Store, now time.Time) (Summary, error) {
-	count, err := store.Players().Count(ctx)
-	if err != nil {
-		return Summary{}, fmt.Errorf("counting the players: %w", err)
-	}
-	if count > 0 {
-		return Summary{}, fmt.Errorf("%w: %d of them", ErrNotEmpty, count)
+	if err := refuseInUse(ctx, store); err != nil {
+		return Summary{}, err
 	}
 
 	ids := make([]uuid.UUID, 0, len(field))
@@ -173,7 +181,7 @@ func Run(ctx context.Context, store repository.Store, now time.Time) (Summary, e
 		ids = append(ids, created.ID)
 	}
 
-	summary := Summary{Players: len(ids)}
+	summary := Summary{Fixture: FixtureDemo, Players: len(ids)}
 
 	for i, r := range results {
 		homeID, awayID := ids[r.home], ids[r.away]
@@ -229,6 +237,20 @@ func Run(ctx context.Context, store repository.Store, now time.Time) (Summary, e
 	summary.Tournaments, summary.TournamentPlayed = 1, played
 
 	return summary, nil
+}
+
+// refuseInUse is the guard every fixture starts with: ErrNotEmpty when the
+// database already has players. One function, so a second fixture cannot
+// quietly come with a weaker idea of "empty" than the first.
+func refuseInUse(ctx context.Context, store repository.Store) error {
+	count, err := store.Players().Count(ctx)
+	if err != nil {
+		return fmt.Errorf("counting the players: %w", err)
+	}
+	if count > 0 {
+		return fmt.Errorf("%w: %d of them", ErrNotEmpty, count)
+	}
+	return nil
 }
 
 // runTournament opens the bracket and plays its first round, and reports how

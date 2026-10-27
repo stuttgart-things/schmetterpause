@@ -131,7 +131,7 @@ davon zu subtil.
 Animation, ein zweites Maskottchen, alles was die Grafik aus einer externen
 Quelle nachlädt.
 
-Avatare pro Person standen hier früher auch. Seit ADR-0027 gehören sie dazu:
+Avatare pro Person standen hier früher auch. Seit ADR-0029 gehören sie dazu:
 Jeder Spieler stellt sich seine Figur aus Fell, Kopfschmuck, Schläger, Griff,
 Gesicht und Schmuck selbst zusammen. Die Format- und Farbregeln oben gelten
 für diese Teile genauso. Die Grenze „kein trauriger Ausdruck“ gilt nur für das

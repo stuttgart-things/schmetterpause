@@ -77,7 +77,9 @@ nav:
       - ADR-0024 Angemeldete Matches ohne Operator: adr/0024-angemeldete-matches-ohne-operator.md
       - ADR-0025 Fob als Identität: adr/0025-fob-als-identitaet.md
       - ADR-0026 Anmeldung am Tisch mit dem Handy: adr/0026-anmeldung-am-tisch-mit-dem-handy.md
-      - ADR-0027 Spieler gestalten ihre Figur selbst: adr/0027-spieler-gestalten-ihren-avatar.md
+      - ADR-0027 Sandbox mit Pong wertet sofort: adr/0027-sandbox-mit-pong-wertet-sofort.md
+      - ADR-0028 Turniere über das Zählwerk: adr/0028-turniere-ueber-das-zaehlwerk.md
+      - ADR-0029 Spieler gestalten ihre Figur selbst: adr/0029-spieler-gestalten-ihren-avatar.md
   - Betrieb:
       - Plattform-Voraussetzungen: platform.md
       - Deployment ohne GitOps: deployment.md

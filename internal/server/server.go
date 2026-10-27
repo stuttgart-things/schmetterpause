@@ -94,6 +94,12 @@ func New(cfg config.Config, store repository.Store, log *slog.Logger, a auth.Ses
 	} else {
 		log.Info("table check-in by phone is off: it needs SP_ZAEHLWERK_URL and SP_SCOREBOARD_TOKEN")
 	}
+	// A warning, so a value copied from the sandbox into the office shows up
+	// in the log: there it would count the Zählwerk's results without
+	// anybody agreeing to them (docs/adr/0027).
+	if cfg.ScoreboardToken != "" && cfg.ScoreboardSettle == config.SettleImmediate {
+		log.Warn("results from the Zählwerk count at once, without confirmation: SP_SCOREBOARD_SETTLE=immediate")
+	}
 	if cfg.MetricsAddr != "" {
 		s.metrics = metrics.New(build.Version,
 			metrics.WithUnsettled(s.unsettledSummary, unsettledQueryTimeout))
@@ -156,6 +162,8 @@ func (s *Server) routes() http.Handler {
 		mux.HandleFunc("GET /api/players", s.handleAPIPlayers)
 		mux.HandleFunc("GET /api/operators", s.handleAPIOperators)
 		mux.HandleFunc("POST /api/results", s.handleAPIResults)
+		mux.HandleFunc("GET /api/tournaments", s.handleAPITournaments)
+		mux.HandleFunc("GET /api/tournaments/{id}/pairings", s.handleAPIPairings)
 		// Only with a key as well: without one there is nothing to hash a
 		// UID with, and the route does not exist (docs/adr/0025).
 		if s.fobs != nil {

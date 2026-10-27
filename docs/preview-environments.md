@@ -76,7 +76,7 @@ below has to be touched to get a preview.
 | `.github/workflows/cleanup-pr-artifacts.yml` | deletes both packages when the pull request closes |
 | `.github/workflows/comment-preview-url.yml` | posts the address, on `labeled` |
 | `kcl/seed.k` | the Job, off unless `config.seedEnabled` |
-| `internal/seed/` | the fixture, behind `schmetterpause seed` |
+| `internal/seed/` | the fixtures, behind `schmetterpause seed` |
 
 **`stuttgart-things/argocd`** — `platforms/schmetterpause-pr-preview/`: an
 `ApplicationSet` whose matrix is (clusters labelled `schmetterpause-pr-preview`)
@@ -119,6 +119,16 @@ consumer. Whether a preview seeds itself is therefore decided where the
 artefact is built — `pr-*` carries the Job, releases do not. The second guard is
 in the binary: `seed` refuses a database that already has players, so there is
 no flag anybody has to pass correctly.
+
+**Which fixture is written is `SP_SEED_FIXTURE`.** `demo`, the default, is the
+field a preview shows: six players, results in every state, an open
+tournament. `pong` is the sandbox's field from docs/adr/0027: the eight bot
+players `Ada` to `Hanna`, no results, and the observer `Pong` that keeps score
+for every sandbox match. Any other value stops the command with an error
+instead of falling back to `demo` — a fallback would fill the database, and the
+guard above would then refuse the corrected run. The preview Job sets nothing
+and so writes `demo`. The bot names are a contract with zaehlwerk-pong's
+`PONG_PLAYER_SKILL`; see `internal/seed/pong.go` before renaming one.
 
 **A Job's pod template is immutable.** A plain Job stops syncing the moment the
 image tag changes, which in a preview is every push. It is an ArgoCD `PostSync`

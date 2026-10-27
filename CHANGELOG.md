@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.19.0](https://github.com/stuttgart-things/schmetterpause/compare/v0.18.0...v0.19.0) (2026-10-25)
+
+
+### Features
+
+* **api:** take tournament results from the Zählwerk ([#349](https://github.com/stuttgart-things/schmetterpause/issues/349)) ([e7a9a4b](https://github.com/stuttgart-things/schmetterpause/commit/e7a9a4b7e83b3bb98d2775a05a1da81f1c8858a6))
+
+## [0.18.0](https://github.com/stuttgart-things/schmetterpause/compare/v0.17.0...v0.18.0) (2026-10-24)
+
+
+### Features
+
+* **api:** choose pending or immediate scoring with SP_SCOREBOARD_SETTLE ([#344](https://github.com/stuttgart-things/schmetterpause/issues/344)) ([2b6040d](https://github.com/stuttgart-things/schmetterpause/commit/2b6040d35a8e76e9572e2ac32a172d451b6b0b55))
+* **seed:** add a pong fixture with bot players and a Pong observer ([#342](https://github.com/stuttgart-things/schmetterpause/issues/342)) ([1fe980c](https://github.com/stuttgart-things/schmetterpause/commit/1fe980c9b079fa2d142571db8394e176aebb86df))
+
 ## [0.17.0](https://github.com/stuttgart-things/schmetterpause/compare/v0.16.0...v0.17.0) (2026-10-14)
 
 

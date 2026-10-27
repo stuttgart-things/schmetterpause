@@ -1,4 +1,4 @@
-# ADR-0027: Spieler gestalten ihre Figur selbst
+# ADR-0029: Spieler gestalten ihre Figur selbst
 
 - **Status:** proposed — Entwurf, nicht entschieden
 - **Datum:** 2026-10-27

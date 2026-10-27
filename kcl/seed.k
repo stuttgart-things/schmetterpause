@@ -1,6 +1,10 @@
 """
 A Job that fills an empty database with a demo field.
 
+It sets no SP_SEED_FIXTURE, so the binary writes its default fixture, "demo".
+The "pong" fixture (eight bot players and the observer Pong, docs/adr/0027)
+exists in the binary but is not rendered by any profile here yet.
+
 For preview environments (issue #82): a fresh Schmetterpause is a join form and
 an empty ranking, so a preview of a change to the standings, the match list or
 a profile page shows nothing a reviewer can judge. The same fixture serves

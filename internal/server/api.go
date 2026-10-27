@@ -1,12 +1,14 @@
 package server
 
 import (
+	"context"
 	"crypto/subtle"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"net/http"
+	"slices"
 	"strings"
 	"time"
 
@@ -14,9 +16,12 @@ import (
 
 	"github.com/stuttgart-things/schmetterpause/internal/auth"
 	"github.com/stuttgart-things/schmetterpause/internal/checkin"
+	"github.com/stuttgart-things/schmetterpause/internal/config"
 	"github.com/stuttgart-things/schmetterpause/internal/domain"
 	"github.com/stuttgart-things/schmetterpause/internal/match"
 	"github.com/stuttgart-things/schmetterpause/internal/repository"
+	"github.com/stuttgart-things/schmetterpause/internal/scoring"
+	"github.com/stuttgart-things/schmetterpause/internal/tournament"
 )
 
 // The only JSON this application speaks, and the only place it may grow.
@@ -30,8 +35,9 @@ import (
 //
 // Players and operators out, one finished result in (with an operator or with
 // two check-ins, docs/adr/0024), and one question about a fob
-// (docs/adr/0025). No updates, no deletes, no listing of matches, and
-// nothing that lets the caller change a rating.
+// (docs/adr/0025). Open tournaments and their open places out, so a result
+// can fill a place in a draw (docs/adr/0028). No updates, no deletes, no
+// listing of matches, and nothing that lets the caller change a rating.
 
 // maxAPIBody bounds what a handler will read. The largest legitimate body is a
 // result with a handful of sets — a few hundred bytes — so this is four orders
@@ -82,6 +88,12 @@ type apiResult struct {
 	// PlayedAt is optional. The Zählwerk knows when the match ended; if it
 	// says nothing, the moment the result arrives is close enough.
 	PlayedAt *time.Time `json:"played_at,omitempty"`
+	// TournamentID and Round name the place in a draw this result fills,
+	// both or neither (docs/adr/0028). The Zählwerk got them from
+	// GET /api/tournaments/{id}/pairings and passes them back unchecked; the
+	// check is here.
+	TournamentID *uuid.UUID `json:"tournament_id,omitempty"`
+	Round        *int       `json:"round,omitempty"`
 }
 
 // apiError is what every refusal on this surface looks like.
@@ -217,6 +229,12 @@ func (s *Server) handleAPIResults(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	tour, status, msg := s.apiTournamentOf(r.Context(), body, result.Mode)
+	if msg != "" {
+		s.apiRefuse(w, r, status, msg)
+		return
+	}
+
 	checkedIn := body.HomeCheckinID != uuid.Nil || body.AwayCheckinID != uuid.Nil
 	if checkedIn && body.OperatorID != uuid.Nil {
 		// Two proofs is a sender that has not decided which path it is on,
@@ -236,7 +254,7 @@ func (s *Server) handleAPIResults(w http.ResponseWriter, r *http.Request) {
 				"home_checkin_id and away_checkin_id must differ")
 			return
 		}
-		s.recordCheckedInResult(w, r, body, result)
+		s.recordCheckedInResult(w, r, body, result, tour)
 		return
 	}
 
@@ -277,26 +295,46 @@ func (s *Server) handleAPIResults(w http.ResponseWriter, r *http.Request) {
 
 	playedAt, sets := body.playedAt(), matchSets(result)
 
-	created, err := s.store.Matches().Create(r.Context(), domain.Match{
-		HomeID:      body.HomeID,
-		AwayID:      body.AwayID,
-		BestOf:      result.Mode.BestOf,
-		PointsToWin: result.Mode.PointsToWin,
-		// Pending, not settled. The reporter is a third party, so scoring.load
-		// leaves BOTH players able to confirm — the only path in this
-		// application where that is true.
-		Status:     domain.MatchPending,
-		ReportedBy: body.OperatorID,
-		PlayedAt:   playedAt,
-		EnteredVia: domain.EnteredViaScoreboard,
-		// A tournament game has a place in a draw, and who hands that out is
-		// its own question. docs/adr/0015 postpones it by name.
-		Sets: sets,
+	var created domain.Match
+	err := s.store.InTx(r.Context(), func(tx repository.Store) error {
+		if err := checkAPIPlace(r.Context(), tx, tour, body); err != nil {
+			return err
+		}
+		var err error
+		created, err = tx.Matches().Create(r.Context(), domain.Match{
+			HomeID:      body.HomeID,
+			AwayID:      body.AwayID,
+			BestOf:      result.Mode.BestOf,
+			PointsToWin: result.Mode.PointsToWin,
+			// Pending, not settled, unless this deployment counts the
+			// Zählwerk's results at once (below). The reporter is a third
+			// party, so scoring.load leaves BOTH players able to confirm —
+			// the only path in this application where that is true.
+			Status:     domain.MatchPending,
+			ReportedBy: body.OperatorID,
+			PlayedAt:   playedAt,
+			EnteredVia: domain.EnteredViaScoreboard,
+			// The place in a draw, when the Zählwerk named one. This
+			// application handed it out and checked it above
+			// (docs/adr/0028).
+			TournamentID:    body.TournamentID,
+			TournamentRound: body.Round,
+			Sets:            sets,
+		})
+		if err != nil {
+			return err
+		}
+		created, err = s.settleScoreboard(r.Context(), tx, created)
+		return err
 	})
 	if errors.Is(err, domain.ErrObserver) {
 		// The list this application hands out has no observers in it, so a
 		// sender that names one holds a list from before the flag.
 		s.apiRefuse(w, r, http.StatusUnprocessableEntity, "an observer cannot be one of the two players")
+		return
+	}
+	if status, msg, ok := placeRefusal(err); ok {
+		s.apiRefuse(w, r, status, msg)
 		return
 	}
 	if err != nil {
@@ -305,8 +343,9 @@ func (s *Server) handleAPIResults(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	s.log.InfoContext(r.Context(), "scoreboard result recorded",
-		"match_id", created.ID, "operator_id", body.OperatorID)
+	s.log.InfoContext(r.Context(), "scoreboard result recorded", append([]any{
+		"match_id", created.ID, "operator_id", body.OperatorID, "status", created.Status,
+	}, body.placeAttrs()...)...)
 
 	s.writeJSON(w, r, http.StatusCreated, struct {
 		MatchID uuid.UUID          `json:"match_id"`
@@ -321,7 +360,9 @@ func (s *Server) handleAPIResults(w http.ResponseWriter, r *http.Request) {
 // The check-ins are read and the match written in one transaction, with the
 // check-in rows locked. Otherwise two copies of the same result — a sender
 // retrying after a lost answer — could both find the check-ins unused.
-func (s *Server) recordCheckedInResult(w http.ResponseWriter, r *http.Request, body apiResult, result match.Result) {
+func (s *Server) recordCheckedInResult(w http.ResponseWriter, r *http.Request,
+	body apiResult, result match.Result, tour *domain.Tournament,
+) {
 	var (
 		created domain.Match
 		missing uuid.UUID
@@ -341,6 +382,9 @@ func (s *Server) recordCheckedInResult(w http.ResponseWriter, r *http.Request, b
 			body.HomeID, body.AwayID, time.Now()); err != nil {
 			return err
 		}
+		if err := checkAPIPlace(r.Context(), tx, tour, body); err != nil {
+			return err
+		}
 
 		created, err = tx.Matches().Create(r.Context(), domain.Match{
 			HomeID:      body.HomeID,
@@ -350,17 +394,29 @@ func (s *Server) recordCheckedInResult(w http.ResponseWriter, r *http.Request, b
 			// Pending, as on the operator path (docs/adr/0015). Nobody
 			// reported it, so scoring.load lets either player confirm.
 			// Counting it at once is the auto-accept question, which
-			// docs/adr/0024 leaves to its own decision.
-			Status:        domain.MatchPending,
-			ReportedBy:    uuid.Nil,
-			PlayedAt:      body.playedAt(),
-			EnteredVia:    domain.EnteredViaCheckin,
-			HomeCheckinID: &body.HomeCheckinID,
-			AwayCheckinID: &body.AwayCheckinID,
-			Sets:          matchSets(result),
+			// docs/adr/0024 leaves to its own decision; a deployment can
+			// answer it for itself with SP_SCOREBOARD_SETTLE (docs/adr/0027).
+			Status:          domain.MatchPending,
+			ReportedBy:      uuid.Nil,
+			PlayedAt:        body.playedAt(),
+			EnteredVia:      domain.EnteredViaCheckin,
+			HomeCheckinID:   &body.HomeCheckinID,
+			AwayCheckinID:   &body.AwayCheckinID,
+			TournamentID:    body.TournamentID,
+			TournamentRound: body.Round,
+			Sets:            matchSets(result),
 		})
+		if err != nil {
+			return err
+		}
+		created, err = s.settleScoreboard(r.Context(), tx, created)
 		return err
 	})
+
+	if status, msg, ok := placeRefusal(err); ok {
+		s.apiRefuse(w, r, status, msg)
+		return
+	}
 
 	var rejection *checkin.Rejection
 	switch {
@@ -388,14 +444,109 @@ func (s *Server) recordCheckedInResult(w http.ResponseWriter, r *http.Request, b
 		return
 	}
 
-	s.log.InfoContext(r.Context(), "checked-in result recorded",
-		"match_id", created.ID,
-		"home_checkin_id", body.HomeCheckinID, "away_checkin_id", body.AwayCheckinID)
+	s.log.InfoContext(r.Context(), "checked-in result recorded", append([]any{
+		"match_id", created.ID, "status", created.Status,
+		"home_checkin_id", body.HomeCheckinID, "away_checkin_id", body.AwayCheckinID,
+	}, body.placeAttrs()...)...)
 
 	s.writeJSON(w, r, http.StatusCreated, struct {
 		MatchID uuid.UUID          `json:"match_id"`
 		Status  domain.MatchStatus `json:"status"`
 	}{MatchID: created.ID, Status: created.Status})
+}
+
+// settleScoreboard counts a result from the Zählwerk at once when this
+// deployment says so (SP_SCOREBOARD_SETTLE=immediate, docs/adr/0027), inside
+// the transaction that created it, so a failure leaves no match behind that is
+// neither pending nor rated. Otherwise it leaves the match pending, which is
+// docs/adr/0015.
+//
+// Only the timing changes: entered_via and reported_by are what the path wrote,
+// so the row still says it came from the Zählwerk and who, if anybody, watched.
+func (s *Server) settleScoreboard(ctx context.Context, tx repository.Store, m domain.Match) (domain.Match, error) {
+	if s.cfg.ScoreboardSettle != config.SettleImmediate {
+		return m, nil
+	}
+	settlement, err := scoring.SettleRecorded(ctx, tx, m, time.Now())
+	if err != nil {
+		return domain.Match{}, fmt.Errorf("settle the scoreboard result at once: %w", err)
+	}
+	return settlement.Match, nil
+}
+
+// apiTournamentOf is the tournament a result names, or nil when it names none.
+// Everything about the place that does not depend on what is booked is
+// checked here, before a transaction is opened; the place itself is checked
+// inside it, by checkAPIPlace.
+//
+// The mode is compared, not overwritten as at the kiosk. There the mode is a
+// form field somebody can leave wrong; here it is what the scorer counted by,
+// and a result in another mode is another game than this draw is played in.
+func (s *Server) apiTournamentOf(ctx context.Context, body apiResult, mode match.Mode) (
+	*domain.Tournament, int, string,
+) {
+	if (body.TournamentID == nil) != (body.Round == nil) {
+		return nil, http.StatusBadRequest, "tournament_id and round go together: send both or neither"
+	}
+	if body.TournamentID == nil {
+		return nil, 0, ""
+	}
+	if *body.Round < 1 {
+		return nil, http.StatusBadRequest, "round counts from 1"
+	}
+
+	tour, err := s.store.Tournaments().ByID(ctx, *body.TournamentID)
+	switch {
+	case errors.Is(err, domain.ErrNotFound):
+		return nil, http.StatusUnprocessableEntity, fmt.Sprintf("no tournament with id %s", *body.TournamentID)
+	case err != nil:
+		s.log.ErrorContext(ctx, "loading a tournament for the api failed", "error", err)
+		return nil, http.StatusInternalServerError, "the result could not be stored"
+	case !tour.Open():
+		return nil, http.StatusUnprocessableEntity, "the tournament is closed"
+	case !slices.Contains(tour.Players, body.HomeID) || !slices.Contains(tour.Players, body.AwayID):
+		return nil, http.StatusUnprocessableEntity, "these two do not play in this tournament"
+	case mode.BestOf != tour.BestOf || mode.PointsToWin != tour.PointsToWin:
+		return nil, http.StatusUnprocessableEntity, fmt.Sprintf(
+			"this tournament is played best of %d to %d", tour.BestOf, tour.PointsToWin)
+	}
+	return &tour, 0, ""
+}
+
+// checkAPIPlace checks the place a result claims, against what the
+// transaction sees booked. The same tournament.CheckPlace as the kiosk and the
+// phone, so the Zählwerk cannot fill a place they could not.
+func checkAPIPlace(ctx context.Context, tx repository.Store, tour *domain.Tournament, body apiResult) error {
+	if tour == nil {
+		return nil
+	}
+	return checkPlace(ctx, tx, *tour, body.HomeID, body.AwayID, *body.Round)
+}
+
+// placeRefusal is how a refused place reads on this surface. A filled place is
+// a conflict: the likeliest sender is the Zählwerk retrying a result that did
+// arrive, or a place entered at the kiosk meanwhile. Anything else about the
+// place is a request that cannot be right.
+func placeRefusal(err error) (int, string, bool) {
+	if errors.Is(err, tournament.ErrPlaceFilled) {
+		return http.StatusConflict, tournament.ErrPlaceFilled.Error(), true
+	}
+	for _, known := range []error{tournament.ErrFinalUndecided, tournament.ErrNotTheFinalists, tournament.ErrNotInDraw} {
+		if errors.Is(err, known) {
+			return http.StatusUnprocessableEntity, known.Error(), true
+		}
+	}
+	return 0, "", false
+}
+
+// placeAttrs is the place a result filled, for its log line: nothing for a
+// result outside a tournament, and the values rather than the pointers the
+// body holds them in.
+func (b apiResult) placeAttrs() []any {
+	if b.TournamentID == nil || b.Round == nil {
+		return nil
+	}
+	return []any{"tournament_id", *b.TournamentID, "round", *b.Round}
 }
 
 // playedAt is when the sender says the match ended, or now.

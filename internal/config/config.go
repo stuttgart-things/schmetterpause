@@ -98,8 +98,13 @@ type Config struct {
 	// at (docs/adr/0015). It does not weaken what the kiosk token protects:
 	// a result entered this way stays pending until one of the two players
 	// agrees, so holding this token buys the ability to propose a match, not
-	// to change the ranking.
+	// to change the ranking — unless ScoreboardSettle says otherwise.
 	ScoreboardToken string
+	// ScoreboardSettle is whether a result through POST /api/results waits
+	// for one of the two players or counts at once (docs/adr/0027).
+	// SettlePending by default, which is docs/adr/0015 unchanged; the Pong
+	// sandbox sets SettleImmediate, because nobody there confirms anything.
+	ScoreboardSettle ScoreboardSettle
 	// RFIDUIDKey keys the hash a fob is stored under (docs/adr/0025). Empty
 	// by default, and then fobs are off: no resolve route, no "Fob koppeln"
 	// on the profile, and one log line at start saying so.
@@ -139,7 +144,29 @@ type Config struct {
 	// application's origin in its ALLOWED_ORIGINS. Schmetterpause never
 	// calls it and carries no events (ADR-0002 is not touched).
 	ZaehlwerkURL string
+	// SeedFixture is what "schmetterpause seed" writes, as given: "demo" or
+	// "pong" (docs/adr/0027). Empty when unset, and then the seed package
+	// picks its default, demo — the default lives with the fixtures, so the
+	// two names are spelled in one place.
+	//
+	// Read here and not checked here: only seed uses it, so a typo in it must
+	// not stop serve. The seed command refuses an unknown name before it
+	// touches the database (seed.ParseFixture).
+	SeedFixture string
 }
+
+// ScoreboardSettle is when a result from the Zählwerk counts.
+type ScoreboardSettle string
+
+const (
+	// SettlePending leaves it waiting for one of the two players, as every
+	// result from the Zählwerk has since docs/adr/0015.
+	SettlePending ScoreboardSettle = "pending"
+	// SettleImmediate counts it at once, as the kiosk does. For the Pong
+	// sandbox (docs/adr/0027); whether the office does it too is the test
+	// phase's decision in docs/adr/0015, not this setting's.
+	SettleImmediate ScoreboardSettle = "immediate"
+)
 
 // Load reads the configuration from the environment and validates it.
 func Load() (Config, error) {
@@ -224,9 +251,22 @@ func Load() (Config, error) {
 
 	cfg.ScoreboardToken = env("SCOREBOARD_TOKEN", "")
 
+	// Refused rather than read as pending: a sandbox that meant immediate
+	// and got pending would collect results nobody ever confirms, and say
+	// nothing about it.
+	switch settle := ScoreboardSettle(env("SCOREBOARD_SETTLE", string(SettlePending))); settle {
+	case SettlePending, SettleImmediate:
+		cfg.ScoreboardSettle = settle
+	default:
+		errs = append(errs, fmt.Errorf("%sSCOREBOARD_SETTLE must be %q or %q, got %q",
+			envPrefix, SettlePending, SettleImmediate, settle))
+	}
+
 	cfg.RFIDUIDKey = []byte(env("RFID_UID_KEY", ""))
 
 	cfg.BootstrapAdmin = env("BOOTSTRAP_ADMIN", "")
+
+	cfg.SeedFixture = env("SEED_FIXTURE", "")
 
 	if raw := env("PUBLIC_BASE_URL", ""); raw != "" {
 		base, err := parseBaseURL("PUBLIC_BASE_URL", raw)
