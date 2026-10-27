@@ -8,6 +8,12 @@
 // needed for the page to work, and it computes nothing. The names come from
 // the stream, the ratings from the page, and the score is written out as it
 // arrives.
+//
+// Beside each name stands that player's figure (docs/adr/0029), fetched once
+// per match from /avatars/{id}.svg, or /avatars/random.svg for a side with
+// nobody behind it, such as a demo match. Which face it shows is the
+// Zählwerk's call, sent as faces in the event; this only sets data-face, and
+// shows the neutral one while the stream carries none.
 (function () {
 	var section = document.getElementById('live');
 	if (!section || !window.EventSource) {
@@ -24,6 +30,9 @@
 	}
 
 	var sides = section.querySelectorAll('.live-side');
+	// Which figure each side shows: a player id, or the match a random one
+	// was rolled for. A new key fetches; the same key only changes the face.
+	var figureKeys = [];
 	var setLine = section.querySelector('.live-set');
 	var source = new EventSource(section.dataset.stream);
 
@@ -57,10 +66,50 @@
 			side.querySelector('.live-sets').textContent = 'Sätze ' + state.sets[i];
 			side.querySelector('.live-points').textContent = state.points[i];
 			side.classList.toggle('live-serving', state.serving === (i === 0 ? 'a' : 'b'));
+			showFigure(side, i, ids[i], state.match_id, event.faces ? event.faces[i] : '');
 		}
 		setLine.textContent = 'Satz ' + state.set_number;
 		section.hidden = false;
 	};
+
+	// showFigure keeps side i's figure in step with the event: fetched when
+	// the player or the match changes, its face set on every event.
+	function showFigure(side, i, id, matchID, face) {
+		var box = side.querySelector('.live-figure');
+		var key = id ? 'player:' + id : 'match:' + matchID;
+		if (figureKeys[i] !== key) {
+			figureKeys[i] = key;
+			box.textContent = '';
+			var url = id ? '/avatars/' + encodeURIComponent(id) + '.svg' : '/avatars/random.svg';
+			fetch(url).then(function (response) {
+				return response.ok ? response.text() : '';
+			}).then(function (svg) {
+				// A later event may have moved the side on while this was
+				// loading; its own fetch will fill the box.
+				if (figureKeys[i] !== key) {
+					return;
+				}
+				// innerHTML for this one string only: it is this
+				// application's own figure, assembled by avatar.Render from
+				// parts in the binary and colours from its palettes, served
+				// from the same origin. Nothing typed at the table is in it.
+				box.innerHTML = svg;
+				setFace(box, side.dataset.face);
+				section.classList.toggle('live-figures', svg !== '');
+			}).catch(function () {
+				// No figure is not worth a word: the score is the point.
+			});
+		}
+		side.dataset.face = face || 'neutral';
+		setFace(box, side.dataset.face);
+	}
+
+	function setFace(box, face) {
+		var svg = box.querySelector('svg');
+		if (svg) {
+			svg.setAttribute('data-face', face);
+		}
+	}
 
 	// A dropped connection leaves a score that is no longer moving, which
 	// reads as the match being stuck. Hidden instead; EventSource reconnects

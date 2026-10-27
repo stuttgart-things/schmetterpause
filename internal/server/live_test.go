@@ -41,6 +41,12 @@ func TestStartPageCarriesTheLiveScoreAndTheRatings(t *testing.T) {
 	if !strings.Contains(body, `<script src="/static/js/live.js" defer>`) {
 		t.Error("the page does not load live.js")
 	}
+	// A box per side for the player's figure, which live.js fills from
+	// /avatars (docs/adr/0029). Hidden from a screen reader: the name
+	// beside it says who it is.
+	if n := strings.Count(body, `<span class="live-figure" aria-hidden="true"></span>`); n != 2 {
+		t.Errorf("%d boxes for a figure, want one per side", n)
+	}
 	// Hidden until an event says a match is running: a page opened between
 	// matches must look like one without the element.
 	if !regexp.MustCompile(`<section[^>]*id="live"[^>]*\shidden`).MatchString(body) {

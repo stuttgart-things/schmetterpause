@@ -51,6 +51,8 @@ templ LiveScore(v LiveView) {
 // player a, which is the handover's home player.
 templ liveSide(i int) {
 	<div class="live-side" data-side={ strconv.Itoa(i) }>
+		// The player's figure, filled by live.js (docs/adr/0029).
+		<span class="live-figure" aria-hidden="true"></span>
 		<span class="live-name"></span>
 		<span class="live-ttr"></span>
 		<span class="live-sets"></span>

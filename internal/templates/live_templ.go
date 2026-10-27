@@ -131,7 +131,7 @@ func liveSide(i int) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "\"><span class=\"live-name\"></span> <span class=\"live-ttr\"></span> <span class=\"live-sets\"></span> <span class=\"live-points\"></span></div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "\"><span class=\"live-figure\" aria-hidden=\"true\"></span> <span class=\"live-name\"></span> <span class=\"live-ttr\"></span> <span class=\"live-sets\"></span> <span class=\"live-points\"></span></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

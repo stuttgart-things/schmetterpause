@@ -1816,6 +1816,22 @@ tr.self td { background: color-mix(in srgb, var(--accent) 8%, transparent); }
 	color: var(--muted);
 }
 
+/* The player's figure above the score (docs/adr/0029). Large enough that the
+   face, which the Zählwerk changes with the game, reads from across the room;
+   empty and taking no room until live.js has fetched it. */
+.live-figure {
+	order: -2;
+	width: min(28vw, 7rem);
+}
+
+.live-figure:empty { display: none; }
+
+/* With figures above the scores, the colon moves down to stay between the
+   numbers. A class live.js sets rather than :has(), as .pick reasons. */
+.live-figures .live-sep { margin-top: min(28vw, 7rem); }
+
+.live-figure svg { display: block; width: 100%; height: auto; }
+
 .live-points {
 	order: -1;
 	font-size: 2.6rem;
