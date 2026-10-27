@@ -69,7 +69,7 @@ func TruncateAll(ctx context.Context, s *Store) error {
 	}
 
 	const q = `truncate ttr_history, match_sets, matches, tournament_players, tournaments,
-		player_credentials, kiosk_grants, checkins, fob_link_window, identities, players cascade`
+		player_credentials, kiosk_grants, checkins, fob_link_window, player_avatars, identities, players cascade`
 
 	if _, err := s.q.Exec(ctx, q); err != nil {
 		return fmt.Errorf("truncate tables: %w", err)

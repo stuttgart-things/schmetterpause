@@ -11,6 +11,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/stuttgart-things/schmetterpause/internal/avatar"
 	"github.com/stuttgart-things/schmetterpause/internal/domain"
 )
 
@@ -25,6 +26,7 @@ type Store interface {
 	Matches() MatchRepository
 	Tournaments() TournamentRepository
 	TTRHistory() TTRHistoryRepository
+	Avatars() AvatarRepository
 
 	// InTx runs fn inside a transaction. The Store handed to fn writes on
 	// that same transaction; if fn returns an error, everything rolls back.
@@ -319,4 +321,22 @@ type TTRHistoryRepository interface {
 	// what each one was worth, and asking per match turns one page into one
 	// round trip per row.
 	ForMatches(ctx context.Context, matchIDs []uuid.UUID) ([]domain.TTRChange, error)
+}
+
+// AvatarRepository stores the figure a player has assembled (docs/adr/0029).
+//
+// It stores keys and nothing else. Which keys exist, what a player who has not
+// chosen looks like and how a stored key the code no longer knows falls back
+// is internal/avatar's knowledge; this repository neither validates nor fills.
+type AvatarRepository interface {
+	// Get returns the stored figure, or domain.ErrNotFound for a player who
+	// has not chosen. The caller turns that into avatar.Default.
+	Get(ctx context.Context, playerID uuid.UUID) (avatar.Avatar, error)
+	// Put stores a figure, replacing whatever stood there. There is no
+	// history: the previous figure is gone.
+	Put(ctx context.Context, playerID uuid.UUID, a avatar.Avatar) error
+	// Delete removes the stored figure, so the player falls back to the
+	// default. Deleting what is not there is not an error: "reset" pressed
+	// twice is still reset.
+	Delete(ctx context.Context, playerID uuid.UUID) error
 }

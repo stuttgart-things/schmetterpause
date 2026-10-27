@@ -35,8 +35,8 @@ var pongBots = []string{
 // GET /api/operators, which lists observers.
 const pongOperator = "Pong"
 
-// RunPong writes the pong fixture: the eight bots and the observer Pong, and
-// nothing else — no results and no tournament. The league fills itself, and a
+// RunPong writes the pong fixture: the eight bots with their figures and the
+// observer Pong, and nothing else — no results and no tournament. The league fills itself, and a
 // ranking that starts with everybody on the same rating is the clearest view
 // of whether the rating sorts by strength.
 //
@@ -51,9 +51,17 @@ func RunPong(ctx context.Context, store repository.Store) (Summary, error) {
 
 	summary := Summary{Fixture: FixturePong}
 
+	// The bots get random figures, as the demo players of the Zählwerk do
+	// (docs/adr/0029). Pong, the observer, keeps the default: it never stands
+	// next to a score.
+	figures := Figures(FixturePong)
 	for _, name := range pongBots {
-		if _, err := store.Players().Create(ctx, name, domain.DefaultTTR); err != nil {
+		bot, err := store.Players().Create(ctx, name, domain.DefaultTTR)
+		if err != nil {
 			return Summary{}, fmt.Errorf("creating %s: %w", name, err)
+		}
+		if err := dress(ctx, store, bot.ID, figures); err != nil {
+			return Summary{}, fmt.Errorf("dressing %s: %w", name, err)
 		}
 		summary.Players++
 	}

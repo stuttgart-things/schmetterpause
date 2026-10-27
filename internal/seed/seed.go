@@ -16,8 +16,8 @@
 // consistent-looking numbers into an INSERT. A fixture that can disagree with
 // the code it demonstrates is worse than no fixture.
 //
-// **It is deterministic.** No randomness and no wall clock in the data: every
-// preview looks the same, two screenshots of the same commit are identical,
+// **It is deterministic.** No unseeded randomness and no wall clock in the
+// data: every preview looks the same, two screenshots of the same commit are identical,
 // and a reviewer comparing two branches is looking at the change rather than
 // at noise.
 //
@@ -30,10 +30,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math/rand/v2"
 	"time"
 
 	"github.com/google/uuid"
 
+	"github.com/stuttgart-things/schmetterpause/internal/avatar"
 	"github.com/stuttgart-things/schmetterpause/internal/domain"
 	"github.com/stuttgart-things/schmetterpause/internal/match"
 	"github.com/stuttgart-things/schmetterpause/internal/repository"
@@ -67,6 +69,29 @@ type Summary struct {
 	// TournamentMatches how many of their pairings are already played.
 	Tournaments      int
 	TournamentPlayed int
+}
+
+// Figures is the generator a fixture dresses its players from, in the order
+// it creates them (docs/adr/0029). Random, so a preview shows what figures
+// look like when people have chosen, and seeded, so it shows the same ones
+// every time. The fixture's name is the stream: the demo field and the bots
+// do not wear the same sequence.
+//
+// Exported for the tests, which roll the same sequence to know what to expect.
+func Figures(f Fixture) *rand.Rand {
+	var stream uint64
+	for _, c := range string(f) {
+		stream = stream*31 + uint64(c)
+	}
+	return rand.New(rand.NewPCG(29, stream))
+}
+
+// dress gives a player the next figure from figures.
+func dress(ctx context.Context, store repository.Store, playerID uuid.UUID, figures *rand.Rand) error {
+	if err := store.Avatars().Put(ctx, playerID, avatar.Random(figures)); err != nil {
+		return fmt.Errorf("storing a figure: %w", err)
+	}
+	return nil
 }
 
 // player is one entry of the field.
@@ -173,10 +198,14 @@ func Run(ctx context.Context, store repository.Store, now time.Time) (Summary, e
 	}
 
 	ids := make([]uuid.UUID, 0, len(field))
+	figures := Figures(FixtureDemo)
 	for _, p := range field {
 		created, err := store.Players().Create(ctx, p.name, p.ttr)
 		if err != nil {
 			return Summary{}, fmt.Errorf("creating %s: %w", p.name, err)
+		}
+		if err := dress(ctx, store, created.ID, figures); err != nil {
+			return Summary{}, fmt.Errorf("dressing %s: %w", p.name, err)
 		}
 		ids = append(ids, created.ID)
 	}
