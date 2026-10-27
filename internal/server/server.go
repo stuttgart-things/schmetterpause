@@ -212,6 +212,12 @@ func (s *Server) routes() http.Handler {
 	// POST, never GET. Chat programs follow links to build previews, so a
 	// GET /signout is a URL somebody pastes into Teams that signs people out.
 	page.Handle("POST /signout", auth.RequirePlayer(http.HandlerFunc(s.handleSignOut)))
+	// The figure editor, for your own figure only (docs/adr/0029). The
+	// preview and the dice store nothing; save and reset do.
+	page.Handle("GET /fragments/figure-preview", auth.RequirePlayer(http.HandlerFunc(s.handleFigurePreview)))
+	page.Handle("GET /fragments/figure-roll", auth.RequirePlayer(http.HandlerFunc(s.handleRollFigure)))
+	page.Handle("POST /figure", auth.RequirePlayer(http.HandlerFunc(s.handleSaveFigure)))
+	page.Handle("POST /figure/reset", auth.RequirePlayer(http.HandlerFunc(s.handleResetFigure)))
 	// Linking and removing your own fobs (docs/adr/0025). Absent without
 	// SP_RFID_UID_KEY, like the resolve route, and only ever for yourself.
 	if s.fobs != nil {

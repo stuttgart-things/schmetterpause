@@ -13,7 +13,7 @@ templ Profile(v ProfileView) {
 			<div class="page-greeting">
 				<h1>{ v.DisplayName }</h1>
 			</div>
-			@PageFigure(v.Figure, v.FigureBlade)
+			@ProfileFigure(v.Figure, v.FigureBlade, false)
 		</div>
 		// Right under your own name, where somebody looking for the way out
 		// looks for it (docs/adr/0018).
@@ -58,6 +58,9 @@ templ Profile(v ProfileView) {
 					<li class="chip">{ strconv.Itoa(v.Won) + ":" + strconv.Itoa(v.Lost) }</li>
 				}
 			</ul>
+		}
+		if v.FigureEditor != nil {
+			@FigureEditor(*v.FigureEditor)
 		}
 		if v.IsSelf {
 			// Only on your own page, and low down: this is the drawer people
