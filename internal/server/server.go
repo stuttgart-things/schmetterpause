@@ -177,6 +177,7 @@ func (s *Server) routes() http.Handler {
 	// (docs/adr/0029). Out here with /static for the same reason: the answer
 	// is the same whoever asks, and the Zählwerk asks without a cookie.
 	mux.HandleFunc("GET /avatars/random.svg", s.handleRandomAvatar)
+	mux.HandleFunc("GET /avatars/random.gif", s.handleRandomAvatar)
 	mux.HandleFunc("GET /avatars/{file}", s.handleAvatar)
 
 	// Browsers ask for this whether or not the pages link an icon, and a 404
