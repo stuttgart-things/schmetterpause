@@ -56,6 +56,9 @@ Usage:
   schmetterpause seed             fill an EMPTY database with a fixture
                                   (SP_SEED_FIXTURE; it refuses a database
                                   that has players)
+  schmetterpause dress            give every player who has not chosen a
+                                  figure a random one (the sandbox; a figure
+                                  somebody chose is never replaced)
   schmetterpause healthcheck      probe own readiness (for container health checks)
   schmetterpause version          print the version
 
@@ -118,6 +121,8 @@ func run(ctx context.Context, args []string) error {
 		return migrate(ctx, args[1:])
 	case "seed":
 		return seedDatabase(ctx)
+	case "dress":
+		return dressPlayers(ctx)
 	case "healthcheck":
 		return healthcheck(ctx)
 	case "version":
@@ -266,6 +271,35 @@ func seedDatabase(ctx context.Context) error {
 		"disputed", summary.Disputed,
 		"tournaments", summary.Tournaments,
 		"tournament_played", summary.TournamentPlayed)
+	return nil
+}
+
+// dressPlayers gives every player without a figure a random one
+// (seed.Dress). Like seed it needs the database and nothing else, and it runs
+// after seed in the sandbox's Job: seed fills an empty database and then does
+// nothing, this dresses whoever came later.
+func dressPlayers(ctx context.Context) error {
+	cfg, err := config.Load()
+	if err != nil {
+		return err
+	}
+	log := newLogger(cfg.LogLevel)
+
+	store, err := postgres.Open(ctx, cfg.DatabaseURL)
+	if err != nil {
+		return err
+	}
+	defer store.Close()
+
+	if err := waitForDatabase(ctx, store, cfg.DatabaseConnectTimeout, log); err != nil {
+		return err
+	}
+
+	dressed, err := seed.Dress(ctx, store)
+	if err != nil {
+		return err
+	}
+	log.InfoContext(ctx, "dressed the players who had no figure", "dressed", dressed)
 	return nil
 }
 
