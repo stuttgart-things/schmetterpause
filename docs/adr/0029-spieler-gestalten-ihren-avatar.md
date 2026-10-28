@@ -100,6 +100,12 @@ gleichverteilt. Genutzt wird es an drei Stellen:
    vergleichbar bleiben.
 3. **Für das Zählwerk ohne Spieler**, also für Demo-Matches wie `Pong A`
    gegen `Pong B` (zaehlwerk ADR-0008). Siehe unten.
+4. **`schmetterpause dress`** gibt jedem Spieler ohne Figur nachträglich eine
+   Zufallsfigur, für eine Sandbox, die vor den Figuren befüllt wurde oder in
+   die später jemand Spieler eingetragen hat. Eine gewählte Figur bleibt,
+   Beobachter bleiben beim Standard. Der Generator ist mit der Spieler-ID
+   initialisiert, damit jeder Lauf demselben Spieler dieselbe Figur gibt; ein
+   zweiter Lauf ändert nichts.
 
 ### Zählwerk
 

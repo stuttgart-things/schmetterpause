@@ -471,3 +471,62 @@ func TestSeededPlayersWearTheirFigures(t *testing.T) {
 		})
 	}
 }
+
+// TestDressGivesTheUndressedAFigureAndLeavesTheRestAlone: the repair for a
+// sandbox seeded before figures existed (docs/adr/0029). A player who never
+// chose gets the figure their id rolls; a figure somebody chose stays, and so
+// does an observer's default. Run again, it dresses nobody.
+func TestDressGivesTheUndressedAFigureAndLeavesTheRestAlone(t *testing.T) {
+	store, ctx := newStore(t)
+
+	bare, err := store.Players().Create(ctx, "Bare", domain.DefaultTTR)
+	if err != nil {
+		t.Fatal(err)
+	}
+	chosen, err := store.Players().Create(ctx, "Chosen", domain.DefaultTTR)
+	if err != nil {
+		t.Fatal(err)
+	}
+	own := avatar.Avatar{Fur: avatar.Furs[1].Key, Headdress: avatar.Headdresses[1].Key,
+		Handle: avatar.Handles[1].Key, Blade: avatar.Blades[1].Key, Bling: avatar.Blings[1].Key}
+	if err := store.Avatars().Put(ctx, chosen.ID, own); err != nil {
+		t.Fatal(err)
+	}
+	observer, err := store.Players().Create(ctx, "Pong", domain.DefaultTTR)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := store.Players().SetObserver(ctx, observer.ID, true); err != nil {
+		t.Fatal(err)
+	}
+
+	dressed, err := seed.Dress(ctx, store)
+	if err != nil {
+		t.Fatalf("Dress(): %v", err)
+	}
+	if dressed != 1 {
+		t.Errorf("Dress() dressed %d players, want 1", dressed)
+	}
+
+	got, err := store.Avatars().Get(ctx, bare.ID)
+	if err != nil {
+		t.Fatalf("Bare has no figure: %v", err)
+	}
+	if want := avatar.Random(seed.FiguresFor(bare.ID)); got != want {
+		t.Errorf("Bare wears %+v, want the figure their id rolls, %+v", got, want)
+	}
+	if got, err := store.Avatars().Get(ctx, chosen.ID); err != nil || got != own {
+		t.Errorf("Chosen wears %+v (%v), want the figure they chose, %+v", got, err, own)
+	}
+	if _, err := store.Avatars().Get(ctx, observer.ID); !errors.Is(err, domain.ErrNotFound) {
+		t.Errorf("the observer was dressed: %v", err)
+	}
+
+	again, err := seed.Dress(ctx, store)
+	if err != nil {
+		t.Fatalf("Dress() again: %v", err)
+	}
+	if again != 0 {
+		t.Errorf("a second Dress() dressed %d players, want 0", again)
+	}
+}
