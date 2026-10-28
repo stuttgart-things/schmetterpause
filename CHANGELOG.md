@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.21.0](https://github.com/stuttgart-things/schmetterpause/compare/v0.20.0...v0.21.0) (2026-10-28)
+
+
+### Features
+
+* **avatar:** serve the figures as GIF for the LED panel ([#368](https://github.com/stuttgart-things/schmetterpause/issues/368)) ([4840e0e](https://github.com/stuttgart-things/schmetterpause/commit/4840e0e0da3e575a2209b5a0bbfee0811f1a1c22))
+* **seed:** dress the players who have no figure ([#365](https://github.com/stuttgart-things/schmetterpause/issues/365)) ([95e15ba](https://github.com/stuttgart-things/schmetterpause/commit/95e15ba8e1cd6ae6e81dce74a4241f96231859a4))
+
 ## [0.20.0](https://github.com/stuttgart-things/schmetterpause/compare/v0.19.0...v0.20.0) (2026-10-27)
 
 
