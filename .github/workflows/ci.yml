@@ -70,7 +70,7 @@ jobs:
       - name: Install the Dagger CLI
         run: |
           curl -fsSL https://dl.dagger.io/dagger/install.sh \
-            | DAGGER_VERSION="${DAGGER_VERSION}" BIN_DIR=/usr/local/bin sudo -E sh
+            | sudo env DAGGER_VERSION="${DAGGER_VERSION}" BIN_DIR=/usr/local/bin sh
           dagger version
 
       - name: lint, test, build, verify
@@ -173,7 +173,7 @@ jobs:
       - name: Install the Dagger CLI
         run: |
           curl -fsSL https://dl.dagger.io/dagger/install.sh \
-            | DAGGER_VERSION="${DAGGER_VERSION}" BIN_DIR=/usr/local/bin sudo -E sh
+            | sudo env DAGGER_VERSION="${DAGGER_VERSION}" BIN_DIR=/usr/local/bin sh
           dagger version
 
       - name: Publish to GHCR
@@ -311,7 +311,7 @@ jobs:
       - name: Install the Dagger CLI
         run: |
           curl -fsSL https://dl.dagger.io/dagger/install.sh \
-            | DAGGER_VERSION="${DAGGER_VERSION}" BIN_DIR=/usr/local/bin sudo -E sh
+            | sudo env DAGGER_VERSION="${DAGGER_VERSION}" BIN_DIR=/usr/local/bin sh
           dagger version
 
       - name: Sign the digest, attach the SBOM
@@ -702,7 +702,7 @@ jobs:
       - name: Install the Dagger CLI
         run: |
           curl -fsSL https://dl.dagger.io/dagger/install.sh \
-            | DAGGER_VERSION="${DAGGER_VERSION}" BIN_DIR=/usr/local/bin sudo -E sh
+            | sudo env DAGGER_VERSION="${DAGGER_VERSION}" BIN_DIR=/usr/local/bin sh
           dagger version
 
       - name: Sign the manifest artefact
@@ -788,7 +788,7 @@ jobs:
       - name: Install the Dagger CLI
         run: |
           curl -fsSL https://dl.dagger.io/dagger/install.sh \
-            | DAGGER_VERSION="${DAGGER_VERSION}" BIN_DIR=/usr/local/bin sudo -E sh
+            | sudo env DAGGER_VERSION="${DAGGER_VERSION}" BIN_DIR=/usr/local/bin sh
           dagger version
 
       - name: latest and the version must be one image
@@ -862,7 +862,7 @@ jobs:
       - name: Install the Dagger CLI
         run: |
           curl -fsSL https://dl.dagger.io/dagger/install.sh \
-            | DAGGER_VERSION="${DAGGER_VERSION}" BIN_DIR=/usr/local/bin sudo -E sh
+            | sudo env DAGGER_VERSION="${DAGGER_VERSION}" BIN_DIR=/usr/local/bin sh
           dagger version
 
       - name: Both artefacts are signed by this workflow
@@ -976,7 +976,7 @@ jobs:
       - name: Install the Dagger CLI
         run: |
           curl -fsSL https://dl.dagger.io/dagger/install.sh \
-            | DAGGER_VERSION="${DAGGER_VERSION}" BIN_DIR=/usr/local/bin sudo -E sh
+            | sudo env DAGGER_VERSION="${DAGGER_VERSION}" BIN_DIR=/usr/local/bin sh
           dagger version
 
       - name: The policy refuses and admits what it must
