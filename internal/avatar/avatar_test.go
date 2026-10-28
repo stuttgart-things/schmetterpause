@@ -216,7 +216,9 @@ func TestRenderTakesNothingButPaletteValues(t *testing.T) {
 // strokes, transforms and clip paths in the drawing, because the page and not
 // the file decides how it looks, and a stroke scales differently from the
 // rest at 28 px. The v5 package had all four; this keeps them from coming
-// back with the next part somebody draws.
+// back with the next part somebody draws. The GIF for the LED panel depends
+// on it too: its rasteriser draws filled paths and nothing else
+// (docs/adr/0030).
 func TestPartsFollowTheBriefing(t *testing.T) {
 	entries, err := fs.ReadDir(web.Static, partsDir)
 	if err != nil {

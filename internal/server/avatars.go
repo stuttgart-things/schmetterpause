@@ -60,13 +60,24 @@ func (s *Server) pageFigure(ctx context.Context, playerID uuid.UUID) (svg, blade
 // screen (docs/adr/0029). Which face shows is data-face on the element;
 // ?face= sets it to begin with.
 //
+// As {id}.gif it is the same figure for an LED panel, which renders no SVG
+// (docs/adr/0030): see writeFigureGIF.
+//
 // Public, like the profile the figure is on anyway. Outside the session
 // middleware, like /static: a figure is the same whoever asks, and the
 // Zählwerk asks without a cookie.
 func (s *Server) handleAvatar(w http.ResponseWriter, r *http.Request) {
-	name, ok := strings.CutSuffix(r.PathValue("file"), ".svg")
+	file := r.PathValue("file")
+	name, asGIF := strings.CutSuffix(file, ".gif")
+	if !asGIF {
+		var ok bool
+		if name, ok = strings.CutSuffix(file, ".svg"); !ok {
+			http.NotFound(w, r)
+			return
+		}
+	}
 	id, err := uuid.Parse(name)
-	if !ok || err != nil {
+	if err != nil {
 		http.NotFound(w, r)
 		return
 	}
@@ -80,7 +91,12 @@ func (s *Server) handleAvatar(w http.ResponseWriter, r *http.Request) {
 	// A minute: long enough that a page loading two figures and a reload do
 	// not ask twice, short enough that a changed figure is on the next
 	// match's screen.
-	writeFigure(w, "public, max-age=60", figures.RenderLive(s.avatarOf(r.Context(), id), r.URL.Query().Get("face")))
+	a := s.avatarOf(r.Context(), id)
+	if asGIF {
+		s.writeFigureGIF(w, r, "public, max-age=60", a)
+		return
+	}
+	writeFigure(w, "public, max-age=60", figures.RenderLive(a, r.URL.Query().Get("face")))
 }
 
 // handleRandomAvatar serves a figure rolled for this request, for a match
@@ -88,7 +104,42 @@ func (s *Server) handleAvatar(w http.ResponseWriter, r *http.Request) {
 // Different on every call, as the Zählwerk's random blade has been.
 func (s *Server) handleRandomAvatar(w http.ResponseWriter, r *http.Request) {
 	a := avatar.Random(rand.New(rand.NewPCG(rand.Uint64(), rand.Uint64()))) //nolint:gosec // decoration, not a secret
+	if strings.HasSuffix(r.URL.Path, ".gif") {
+		s.writeFigureGIF(w, r, "no-store", a)
+		return
+	}
 	writeFigure(w, "no-store", figures.RenderLive(a, r.URL.Query().Get("face")))
+}
+
+// writeFigureGIF answers with a as a GIF for an LED panel (docs/adr/0030).
+//
+// ?face= names one face and gets a still of it; an unknown name is the
+// neutral face, as for the SVG. Without it the figure cheers, the loop the
+// panel plays after a won set or match. ?size= is the side in pixels,
+// avatar.DefaultGIFSize unless it says otherwise, and held between the
+// smallest size that still shows a face and the largest one a panel needs.
+func (s *Server) writeFigureGIF(w http.ResponseWriter, r *http.Request, cache string, a avatar.Avatar) {
+	q := r.URL.Query()
+	frames := avatar.Cheer
+	if q.Has("face") {
+		frames = []avatar.Frame{{Face: q.Get("face")}}
+	}
+	size := avatar.DefaultGIFSize
+	if n, err := strconv.Atoi(q.Get("size")); err == nil {
+		size = n
+	}
+
+	b, err := figures.GIF(a, frames, size)
+	if err != nil {
+		s.log.ErrorContext(r.Context(), "drawing a figure as GIF failed", "error", err)
+		http.Error(w, "Die Figur ließ sich nicht zeichnen.", http.StatusInternalServerError)
+		return
+	}
+	h := w.Header()
+	h.Set("Content-Type", "image/gif")
+	h.Set("Cache-Control", cache)
+	h.Set("X-Content-Type-Options", "nosniff")
+	_, _ = w.Write(b)
 }
 
 // writeFigure answers with one figure as an SVG document.

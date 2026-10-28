@@ -38,3 +38,4 @@ festlegt, steht hier mit den Alternativen, die dabei verworfen wurden. Eine
 | 0027 | [Eine Sandbox, in der Pong spielt, wertet sofort](0027-sandbox-mit-pong-wertet-sofort.md) | proposed — Entwurf, nicht entschieden | 2026-10-24 |
 | 0028 | [Turnierspiele kommen über das Zählwerk](0028-turniere-ueber-das-zaehlwerk.md) | proposed — Entwurf, nicht entschieden | 2026-10-24 |
 | 0029 | [Spieler gestalten ihre Figur selbst](0029-spieler-gestalten-ihren-avatar.md) | accepted | 2026-10-27 |
+| 0030 | [Die Figuren gibt es auch als GIF, für das LED-Panel](0030-figuren-als-gif-fuer-das-led-panel.md) | proposed — Entwurf, nicht entschieden | 2026-10-28 |

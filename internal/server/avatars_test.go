@@ -2,6 +2,7 @@ package server_test
 
 import (
 	"context"
+	"image/gif"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -289,5 +290,60 @@ func TestTheEditorNeedsAPlayer(t *testing.T) {
 		if rec.Code < 400 {
 			t.Errorf("status = %d without a player, want a refusal", rec.Code)
 		}
+	}
+}
+
+// TestTheFigureAsGIF: the same figure for an LED panel, which renders no SVG
+// (docs/adr/0030). Without a face it cheers, with one it is a still, and the
+// size is held to what a panel can use.
+func TestTheFigureAsGIF(t *testing.T) {
+	h, store, _, _ := twoBrowsers(t)
+	id := opponentID(t, store, "Anna")
+	if err := store.Avatars().Put(context.Background(), uuid.MustParse(id), chosen); err != nil {
+		t.Fatal(err)
+	}
+
+	rec := get(t, h, "/avatars/"+id+".gif")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200", rec.Code)
+	}
+	if got := rec.Header().Get("Content-Type"); got != "image/gif" {
+		t.Errorf("Content-Type = %q", got)
+	}
+	g, err := gif.DecodeAll(rec.Body)
+	if err != nil {
+		t.Fatalf("not a GIF: %v", err)
+	}
+	if len(g.Image) != len(avatar.Cheer) {
+		t.Errorf("%d frames, want the cheer's %d", len(g.Image), len(avatar.Cheer))
+	}
+	if got := g.Image[0].Bounds().Dx(); got != avatar.DefaultGIFSize {
+		t.Errorf("%d pixels wide, want %d", got, avatar.DefaultGIFSize)
+	}
+	// Anna's fur, #f2e3c6, is in the picture: it is her figure.
+	anna := false
+	for _, c := range g.Image[0].Palette {
+		if r, gr, b, _ := c.RGBA(); r>>8 == 0xf2 && gr>>8 == 0xe3 && b>>8 == 0xc6 {
+			anna = true
+		}
+	}
+	if !anna {
+		t.Error("Anna's fur is not in the GIF's colours")
+	}
+
+	still, err := gif.DecodeAll(get(t, h, "/avatars/"+id+".gif?face=happy&size=32").Body)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(still.Image) != 1 || still.Image[0].Bounds().Dx() != 32 {
+		t.Errorf("?face=happy&size=32: %d frames of %v, want one of 32", len(still.Image), still.Image[0].Bounds())
+	}
+
+	if rec := get(t, h, "/avatars/"+uuid.NewString()+".gif"); rec.Code != http.StatusNotFound {
+		t.Errorf("nobody's GIF: status = %d, want 404", rec.Code)
+	}
+	rnd := get(t, h, "/avatars/random.gif")
+	if rnd.Code != http.StatusOK || rnd.Header().Get("Cache-Control") != "no-store" {
+		t.Errorf("random.gif: status %d, Cache-Control %q", rnd.Code, rnd.Header().Get("Cache-Control"))
 	}
 }
