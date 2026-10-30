@@ -1,6 +1,6 @@
 # ADR-0030: Die Figuren gibt es auch als GIF, für das LED-Panel
 
-- **Status:** proposed — Entwurf, nicht entschieden
+- **Status:** accepted
 - **Datum:** 2026-10-28
 - **Betrifft:** Oberfläche, Abhängigkeiten
 - **Bezug:** ergänzt ADR-0029 um ein zweites Format derselben Figur. Issue
