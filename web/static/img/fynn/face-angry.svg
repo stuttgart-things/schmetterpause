@@ -1,0 +1,20 @@
+<svg viewBox="0 0 420 420" xmlns="http://www.w3.org/2000/svg">
+<g class="sthings-face" data-face="angry">
+  <path fill="#080808" d="M 126 156 L 192 178 L 188 188 L 124 168 Z"/>
+  <path fill="#080808" d="M 294 156 L 228 178 L 232 188 L 296 168 Z"/>
+  <ellipse fill="#080808" cx="160" cy="194" rx="30" ry="33"/>
+  <ellipse fill="#f8f8f8" cx="160" cy="194" rx="24" ry="27"/>
+  <ellipse fill="#080808" cx="163" cy="198" rx="8" ry="11"/>
+  <circle fill="#f8f8f8" cx="165.8" cy="193.1" r="3.4"/>
+  <path fill="#080808" d="M 126 162 L 194 186 L 194 160 Z"/>
+  <ellipse fill="#080808" cx="260" cy="194" rx="30" ry="33"/>
+  <ellipse fill="#f8f8f8" cx="260" cy="194" rx="24" ry="27"/>
+  <ellipse fill="#080808" cx="257" cy="198" rx="8" ry="11"/>
+  <circle fill="#f8f8f8" cx="259.8" cy="193.1" r="3.4"/>
+  <path fill="#080808" d="M 294 162 L 226 186 L 226 160 Z"/>
+  <path fill="#080808" d="M180 256 Q210 248 240 256 L238 284 Q210 278 182 284 Z"/>
+  <path fill="#f8f8f8" d="M188 262 Q210 256 232 262 L231 270 Q210 266 189 270 Z"/>
+  <path fill="#080808" d="M203 260 L206 260 L206 270 L203 270 Z"/>
+  <path fill="#080808" d="M214 260 L217 260 L217 270 L214 270 Z"/>
+</g>
+</svg>

@@ -111,9 +111,9 @@ var Faces = []Option{
 const NoCharacter = ""
 
 // Characters is the animals a player can be. The mascot comes first and is
-// the default. The others come from the character creator package (v4) and
-// are a trial: one face only, no bling, and the fur is theirs, as drawn.
-// Headdress, handle and blade take the palettes below, as on the mascot.
+// the default. The others are a trial (feat/poc-fynn): every face the mascot
+// has, no bling, and the fur is theirs, as drawn. Headdress, handle and blade
+// take the palettes below, as on the mascot.
 var Characters = []Option{
 	{NoCharacter, "sthings"},
 	{"fynn", "Fynn"},

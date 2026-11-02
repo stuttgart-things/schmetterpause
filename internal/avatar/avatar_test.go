@@ -182,27 +182,50 @@ func TestRenderEveryBling(t *testing.T) {
 
 // TestRenderFynn: another animal takes headdress, handle and blade from the
 // palettes and nothing else. "Same as the fur" leaves a surface as drawn,
-// and neither faces nor bling reach it.
+// and bling does not reach it. It wears its own neutral face on a page.
 func TestRenderFynn(t *testing.T) {
 	k := kit(t)
 	svg := k.Render(avatar.Avatar{Character: "fynn", Fur: "white", Headdress: "lapis",
 		Handle: avatar.SameAsFur, Blade: "pink", Bling: "chain"})
 	for _, want := range []string{`data-character="fynn"`, `style="--headdress:#3783e6;--paddle:#d64f9c"`,
-		"var(--paddle, #c82828)", "var(--handle, "} {
+		"var(--paddle, #c82828)", "var(--handle, ", `<g class="sthings-face" data-face="neutral">`} {
 		if !strings.Contains(svg, want) {
 			t.Errorf("Fynn lacks %s", want)
 		}
 	}
-	for _, unwanted := range []string{"--fur", "--handle:", "sthings-face", "sthings-bling"} {
+	for _, unwanted := range []string{"--fur:", "--handle:", "sthings-bling", "<style"} {
 		if strings.Contains(svg, unwanted) {
 			t.Errorf("Fynn carries %s", unwanted)
 		}
 	}
-	if strings.Count(svg, "<svg") != 1 {
-		t.Error("the base's own <svg> element leaked into the figure")
+	if n := strings.Count(svg, `class="sthings-face"`); n != 1 {
+		t.Errorf("%d faces on Fynn's page figure, want the neutral one only", n)
 	}
-	if live := k.RenderLive(avatar.Avatar{Character: "fynn"}, "happy"); !strings.Contains(live, `data-face="happy"`) {
-		t.Error("RenderLive drops data-face for Fynn; a client switching it would find nothing to set")
+	if strings.Count(svg, "<svg") != 1 {
+		t.Error("the parts' own <svg> elements leaked into the figure")
+	}
+}
+
+// TestRenderLiveSwitchesFynnsFaces: next to a running match Fynn changes face
+// the way the mascot does, by data-face alone, so the Zählwerk treats both
+// the same.
+func TestRenderLiveSwitchesFynnsFaces(t *testing.T) {
+	k := kit(t)
+	svg := k.RenderLive(avatar.Avatar{Character: "fynn"}, "surprised")
+	if !strings.Contains(svg, `class="sthings" data-character="fynn" data-face="surprised"`) {
+		t.Errorf("the requested face is not picked: %.200s", svg)
+	}
+	for _, f := range avatar.Faces {
+		if !strings.Contains(svg, `<g class="sthings-face" data-face="`+f.Key+`">`) {
+			t.Errorf("Fynn's face %q missing", f.Key)
+		}
+	}
+	if !strings.Contains(svg, `.sthings[data-face="surprised"] .sthings-face[data-face="surprised"]{display:inline}`) {
+		t.Error("no rule shows the faces")
+	}
+	// Fynn's faces are his own, not the mascot's.
+	if mascot := k.RenderLive(avatar.Avatar{}, "surprised"); mascot[strings.Index(mascot, "<style"):] == svg[strings.Index(svg, "<style"):] {
+		t.Error("Fynn wears the mascot's faces")
 	}
 }
 
