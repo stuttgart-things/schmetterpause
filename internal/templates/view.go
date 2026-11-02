@@ -1618,8 +1618,8 @@ type FigureEditorView struct {
 	// Animal is the choice of character. Changing it redraws the whole
 	// editor, not only the preview, because which parts apply depends on it.
 	Animal FigurePart
-	// OwnFur is true for a character that brings its own fur and face and
-	// wears no bling, which the copy above the form says.
+	// OwnFur is true for a character that brings its own fur and wears no
+	// bling, which the copy above the form says.
 	OwnFur bool
 	// Parts is one group of choices per part, in the order they are shown.
 	Parts []FigurePart

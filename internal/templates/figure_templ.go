@@ -41,7 +41,7 @@ func FigureEditor(v FigureEditorView) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		if v.OwnFur {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "<p class=\"muted\">Fynn ist neu und zum Ausprobieren da. Fell und Gesicht bringt er mit, Schmuck trägt er noch keinen. Stirnband, Griff und Schläger suchst du dir aus.</p>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "<p class=\"muted\">Fynn ist neu und zum Ausprobieren da. Sein Fell bringt er mit, Schmuck trägt er noch keinen. Stirnband, Griff und Schläger suchst du dir aus, das Gesicht nicht: Am Zählwerk schaut er so, wie das Spiel gerade steht.</p>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
