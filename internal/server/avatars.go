@@ -158,15 +158,24 @@ func writeFigure(w http.ResponseWriter, cache, svg string) {
 }
 
 // figureEditorView describes the editor with a checked, its preview rendered.
+//
+// A character other than the mascot brings its own fur and wears no bling:
+// those parts are hidden rather than offered and ignored, and "same as the
+// fur" reads "as drawn", which is what it does there (avatar.renderCharacter).
 func figureEditorView(a avatar.Avatar) templates.FigureEditorView {
+	ownFur := a.Character != avatar.NoCharacter
 	colours := func(name, label string, palette []avatar.Colour, key string) templates.FigurePart {
 		part := templates.FigurePart{Name: name, Label: label}
 		for _, c := range palette {
-			part.Options = append(part.Options, templates.FigureOption{
+			o := templates.FigureOption{
 				Key: c.Key, Name: c.Name, Hex: c.Hex,
 				SameAsFur: c.Key == avatar.SameAsFur,
 				Checked:   c.Key == key,
-			})
+			}
+			if o.SameAsFur && ownFur {
+				o.Name, o.SameAsFur = "Wie gezeichnet", false
+			}
+			part.Options = append(part.Options, o)
 		}
 		return part
 	}
@@ -177,15 +186,24 @@ func figureEditorView(a avatar.Avatar) templates.FigureEditorView {
 		}
 		return part
 	}
+	fur := colours("fur", "Fell", avatar.Furs, a.Fur)
+	fur.Hidden = ownFur
+	headdress := colours("headdress", "Kopfschmuck", avatar.Headdresses, a.Headdress)
+	if ownFur {
+		headdress.Label = "Stirnband"
+	}
+	bling := options("bling", "Schmuck", avatar.Blings, a.Bling)
+	bling.Hidden = ownFur
 	return templates.FigureEditorView{
 		Preview: figures.Render(a),
+		Animal:  options("animal", "Figur", avatar.Characters, a.Character),
+		OwnFur:  ownFur,
 		Parts: []templates.FigurePart{
-			options("animal", "Figur", avatar.Characters, a.Character),
-			colours("fur", "Fell", avatar.Furs, a.Fur),
-			colours("headdress", "Kopfschmuck", avatar.Headdresses, a.Headdress),
+			fur,
+			headdress,
 			colours("handle", "Griff", avatar.Handles, a.Handle),
 			colours("blade", "Schläger", avatar.Blades, a.Blade),
-			options("bling", "Schmuck", avatar.Blings, a.Bling),
+			bling,
 		},
 	}
 }
@@ -214,6 +232,19 @@ func (s *Server) handleFigurePreview(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.render(w, r, templates.FigurePreview(figures.Render(a)))
+}
+
+// handleFigureEditor redraws the editor for the figure the form describes,
+// when the animal changes: which parts are offered depends on it. Nothing is
+// stored.
+func (s *Server) handleFigureEditor(w http.ResponseWriter, r *http.Request) {
+	a := figureFromForm(r)
+	if err := avatar.Validate(a); err != nil {
+		// Only a hand-made request gets here; the form offers nothing else.
+		w.WriteHeader(http.StatusUnprocessableEntity)
+		return
+	}
+	s.render(w, r, templates.FigureEditor(figureEditorView(a)))
 }
 
 // handleSaveFigure stores the editor's figure for the reader, and nobody else:

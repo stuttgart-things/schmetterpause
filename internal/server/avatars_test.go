@@ -151,7 +151,7 @@ func TestARandomFigureIsNotCached(t *testing.T) {
 
 func figureForm(a avatar.Avatar) url.Values {
 	return url.Values{
-		"fur": {a.Fur}, "headdress": {a.Headdress}, "handle": {a.Handle},
+		"animal": {a.Character}, "fur": {a.Fur}, "headdress": {a.Headdress}, "handle": {a.Handle},
 		"blade": {a.Blade}, "bling": {a.Bling},
 	}
 }
@@ -286,6 +286,7 @@ func TestTheEditorNeedsAPlayer(t *testing.T) {
 		postAs(t, h, "/figure", nil, figureForm(chosen)),
 		postAs(t, h, "/figure/reset", nil, url.Values{}),
 		fragment(t, h, "/fragments/figure-roll", nil),
+		fragment(t, h, "/fragments/figure-editor?"+figureForm(chosen).Encode(), nil),
 	} {
 		if rec.Code < 400 {
 			t.Errorf("status = %d without a player, want a refusal", rec.Code)
