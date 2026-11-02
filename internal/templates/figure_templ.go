@@ -36,7 +36,7 @@ func FigureEditor(v FigureEditorView) templ.Component {
 			templ_7745c5c3_Var1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<section id=\"figure-editor\" class=\"session figure-card\"><h2>Deine Figur</h2><p class=\"muted\">Fell, Kopfschmuck, Griff, Schläger und Schmuck suchst du dir aus. Das Gesicht nicht: Am Zählwerk schaut deine Figur so, wie das Spiel gerade steht.</p><form hx-post=\"/figure\" hx-target=\"#figure-editor\" hx-swap=\"outerHTML\"><div class=\"figure-layout\"><div id=\"figure-preview\" class=\"figure-preview\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<section id=\"figure-editor\" class=\"session figure-card\"><h2>Deine Figur</h2><p class=\"muted\">Fell, Kopfschmuck, Griff, Schläger und Schmuck suchst du dir aus. Das Gesicht nicht: Am Zählwerk schaut deine Figur so, wie das Spiel gerade steht.</p><p class=\"muted\">Neu zum Ausprobieren: Fynn. Er bringt sein eigenes Fell und sein eigenes Gesicht mit, Schmuck trägt er noch keinen.</p><form hx-post=\"/figure\" hx-target=\"#figure-editor\" hx-swap=\"outerHTML\"><div class=\"figure-layout\"><div id=\"figure-preview\" class=\"figure-preview\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -56,7 +56,7 @@ func FigureEditor(v FigureEditorView) templ.Component {
 			var templ_7745c5c3_Var2 string
 			templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.JoinStringErrs(part.Label)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `figure.templ`, Line: 35, Col: 27}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `figure.templ`, Line: 39, Col: 27}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var2))
 			if templ_7745c5c3_Err != nil {
@@ -74,7 +74,7 @@ func FigureEditor(v FigureEditorView) templ.Component {
 				var templ_7745c5c3_Var3 string
 				templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.ResolveAttributeValue(part.Name)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `figure.templ`, Line: 38, Col: 45}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `figure.templ`, Line: 42, Col: 45}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var3)
 				if templ_7745c5c3_Err != nil {
@@ -87,7 +87,7 @@ func FigureEditor(v FigureEditorView) templ.Component {
 				var templ_7745c5c3_Var4 string
 				templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.ResolveAttributeValue(o.Key)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `figure.templ`, Line: 38, Col: 61}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `figure.templ`, Line: 42, Col: 61}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var4)
 				if templ_7745c5c3_Err != nil {
@@ -115,7 +115,7 @@ func FigureEditor(v FigureEditorView) templ.Component {
 					var templ_7745c5c3_Var5 string
 					templ_7745c5c3_Var5, templ_7745c5c3_Err = templruntime.SanitizeStyleAttributeValues("background:" + o.Hex)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `figure.templ`, Line: 41, Col: 58}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `figure.templ`, Line: 45, Col: 58}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 					if templ_7745c5c3_Err != nil {
@@ -134,7 +134,7 @@ func FigureEditor(v FigureEditorView) templ.Component {
 				var templ_7745c5c3_Var6 string
 				templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(o.Name)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `figure.templ`, Line: 45, Col: 18}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `figure.templ`, Line: 49, Col: 18}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 				if templ_7745c5c3_Err != nil {
@@ -150,7 +150,7 @@ func FigureEditor(v FigureEditorView) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 15, "</div></div><div class=\"figure-actions\"><button type=\"submit\">Speichern</button> <button type=\"button\" class=\"secondary\" hx-get=\"/fragments/figure-roll\" hx-target=\"#figure-editor\" hx-swap=\"outerHTML\">Würfeln</button> <button type=\"button\" class=\"secondary\" hx-post=\"/figure/reset\" hx-target=\"#figure-editor\" hx-swap=\"outerHTML\">Zurücksetzen</button></div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 15, "</div></div><div class=\"figure-actions\"><button type=\"submit\">Speichern</button> <button type=\"button\" class=\"secondary\" hx-get=\"/fragments/figure-roll\" hx-include=\"closest form\" hx-target=\"#figure-editor\" hx-swap=\"outerHTML\">Würfeln</button> <button type=\"button\" class=\"secondary\" hx-post=\"/figure/reset\" hx-target=\"#figure-editor\" hx-swap=\"outerHTML\">Zurücksetzen</button></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -163,7 +163,7 @@ func FigureEditor(v FigureEditorView) templ.Component {
 			var templ_7745c5c3_Var7 string
 			templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(v.Error)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `figure.templ`, Line: 72, Col: 43}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `figure.templ`, Line: 77, Col: 43}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
 			if templ_7745c5c3_Err != nil {

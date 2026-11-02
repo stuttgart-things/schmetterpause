@@ -15,6 +15,10 @@ templ FigureEditor(v FigureEditorView) {
 			Gesicht nicht: Am Zählwerk schaut deine Figur so, wie das Spiel gerade
 			steht.
 		</p>
+		<p class="muted">
+			Neu zum Ausprobieren: Fynn. Er bringt sein eigenes Fell und sein eigenes
+			Gesicht mit, Schmuck trägt er noch keinen.
+		</p>
 		<form hx-post="/figure" hx-target="#figure-editor" hx-swap="outerHTML">
 			<div class="figure-layout">
 				<div id="figure-preview" class="figure-preview">
@@ -56,6 +60,7 @@ templ FigureEditor(v FigureEditorView) {
 					type="button"
 					class="secondary"
 					hx-get="/fragments/figure-roll"
+					hx-include="closest form"
 					hx-target="#figure-editor"
 					hx-swap="outerHTML"
 				>Würfeln</button>
