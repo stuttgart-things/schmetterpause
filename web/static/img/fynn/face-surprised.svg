@@ -1,0 +1,16 @@
+<svg viewBox="0 0 420 420" xmlns="http://www.w3.org/2000/svg">
+<g class="sthings-face" data-face="surprised">
+  <path fill="#080808" d="M 132 152 Q 158 132 186 148 L 184 156 Q 158 142 134 160 Z"/>
+  <path fill="#080808" d="M 288 152 Q 262 132 234 148 L 236 156 Q 262 142 286 160 Z"/>
+  <ellipse fill="#080808" cx="160" cy="190" rx="33" ry="36"/>
+  <ellipse fill="#f8f8f8" cx="160" cy="190" rx="27" ry="30"/>
+  <ellipse fill="#080808" cx="160" cy="190" rx="8" ry="10"/>
+  <circle fill="#f8f8f8" cx="162.8" cy="185.5" r="3.4"/>
+  <ellipse fill="#080808" cx="260" cy="190" rx="33" ry="36"/>
+  <ellipse fill="#f8f8f8" cx="260" cy="190" rx="27" ry="30"/>
+  <ellipse fill="#080808" cx="260" cy="190" rx="8" ry="10"/>
+  <circle fill="#f8f8f8" cx="262.8" cy="185.5" r="3.4"/>
+  <ellipse fill="#080808" cx="210" cy="272" rx="15" ry="20"/>
+  <ellipse fill="#a3122a" cx="210" cy="275" rx="8" ry="12"/>
+</g>
+</svg>

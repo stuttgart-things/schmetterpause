@@ -1,0 +1,13 @@
+<svg viewBox="0 0 420 420" xmlns="http://www.w3.org/2000/svg">
+<g class="sthings-face" data-face="happy">
+  <path fill="#080808" d="M 132 164 Q 158 144 186 158 L 184 166 Q 158 154 134 172 Z"/>
+  <path fill="#080808" d="M 288 158 Q 262 138 234 152 L 236 160 Q 262 148 286 166 Z"/>
+  <path fill="#080808" d="M 130 202 Q 160 170 190 202 L 183 209 Q 160 186 137 209 Z"/>
+  <ellipse fill="#080808" cx="260" cy="194" rx="30" ry="34"/>
+  <ellipse fill="#f8f8f8" cx="260" cy="194" rx="24" ry="28"/>
+  <ellipse fill="#080808" cx="262" cy="194" rx="10" ry="16"/>
+  <circle fill="#f8f8f8" cx="265.5" cy="186.8" r="4.2"/>
+  <path fill="#080808" d="M176 252 Q210 258 244 252 Q240 296 210 298 Q180 296 176 252 Z"/>
+  <path fill="#e8577a" d="M192 280 Q210 270 228 280 Q222 292 210 293 Q198 292 192 280 Z"/>
+</g>
+</svg>

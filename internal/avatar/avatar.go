@@ -24,6 +24,9 @@ import (
 // value is not a valid figure; Default is the figure of somebody who has not
 // chosen.
 type Avatar struct {
+	// Character is which animal wears the colours: NoCharacter is the
+	// mascot, sthings, everything else a key of Characters.
+	Character string
 	Fur       string
 	Headdress string
 	Handle    string
@@ -41,6 +44,7 @@ var ErrUnknown = errors.New("avatar: unknown choice")
 // An empty id is nobody, and nobody keeps the drawing's red: Blade is empty.
 func Default(playerID string) Avatar {
 	a := Avatar{
+		Character: NoCharacter,
 		Fur:       Furs[0].Key,
 		Headdress: SameAsFur,
 		Handle:    SameAsFur,
@@ -80,6 +84,9 @@ func BladeOf(a Avatar) (int, bool) {
 // breaking the page (docs/adr/0029).
 func Fill(a Avatar, playerID string) Avatar {
 	d := Default(playerID)
+	if !hasOption(Characters, a.Character) {
+		a.Character = d.Character
+	}
 	if _, ok := findColour(Furs, a.Fur); !ok {
 		a.Fur = d.Fur
 	}
@@ -107,6 +114,7 @@ func Validate(a Avatar) error {
 		key  string
 		ok   bool
 	}{
+		{"character", a.Character, hasOption(Characters, a.Character)},
 		{"fur", a.Fur, has(Furs, a.Fur)},
 		{"headdress", a.Headdress, has(Headdresses, a.Headdress)},
 		{"handle", a.Handle, has(Handles, a.Handle)},
@@ -129,8 +137,13 @@ func has(p []Colour, key string) bool {
 // Random rolls every part uniformly. The caller owns the generator: the demo
 // field seeds it so two runs dress the same players the same way, the dice
 // button in the editor and zaehlwerk's demo matches do not.
+//
+// The character is not rolled: it is always the mascot. Rolling it would
+// dress the demo field differently from one release to the next, and while
+// the second character is a trial (feat/poc-fynn), the dice keep to colours.
 func Random(r *rand.Rand) Avatar {
 	return Avatar{
+		Character: NoCharacter,
 		Fur:       Furs[r.IntN(len(Furs))].Key,
 		Headdress: Headdresses[r.IntN(len(Headdresses))].Key,
 		Handle:    Handles[r.IntN(len(Handles))].Key,

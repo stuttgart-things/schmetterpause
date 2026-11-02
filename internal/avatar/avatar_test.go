@@ -5,6 +5,7 @@ import (
 	"io/fs"
 	"math"
 	"math/rand/v2"
+	"path"
 	"regexp"
 	"strconv"
 	"strings"
@@ -87,7 +88,7 @@ func TestDefaultForNobodyKeepsTheRedBlade(t *testing.T) {
 // one part, not the whole figure (docs/adr/0029).
 func TestFillFallsBackPerPart(t *testing.T) {
 	id := uuid.NewString()
-	got := avatar.Fill(avatar.Avatar{Fur: "white", Headdress: "plaid", Handle: "red", Blade: "pink", Bling: "crown"}, id)
+	got := avatar.Fill(avatar.Avatar{Character: "dragon", Fur: "white", Headdress: "plaid", Handle: "red", Blade: "pink", Bling: "crown"}, id)
 	want := avatar.Avatar{Fur: "white", Headdress: avatar.SameAsFur, Handle: "red", Blade: "pink", Bling: avatar.NoBling}
 	if got != want {
 		t.Errorf("Fill = %+v, want %+v", got, want)
@@ -96,6 +97,11 @@ func TestFillFallsBackPerPart(t *testing.T) {
 
 func TestValidateRejectsAnUnknownKey(t *testing.T) {
 	a := avatar.Default(uuid.NewString())
+	a.Character = "dragon"
+	if err := avatar.Validate(a); !errors.Is(err, avatar.ErrUnknown) {
+		t.Errorf("Validate(character dragon) = %v, want ErrUnknown", err)
+	}
+	a = avatar.Default(uuid.NewString())
 	a.Fur = "grey"
 	if err := avatar.Validate(a); !errors.Is(err, avatar.ErrUnknown) {
 		t.Errorf("Validate(fur grey) = %v, want ErrUnknown", err)
@@ -174,6 +180,55 @@ func TestRenderEveryBling(t *testing.T) {
 	}
 }
 
+// TestRenderFynn: another animal takes headdress, handle and blade from the
+// palettes and nothing else. "Same as the fur" leaves a surface as drawn,
+// and bling does not reach it. It wears its own neutral face on a page.
+func TestRenderFynn(t *testing.T) {
+	k := kit(t)
+	svg := k.Render(avatar.Avatar{Character: "fynn", Fur: "white", Headdress: "lapis",
+		Handle: avatar.SameAsFur, Blade: "pink", Bling: "chain"})
+	for _, want := range []string{`data-character="fynn"`, `style="--headdress:#3783e6;--paddle:#d64f9c"`,
+		"var(--paddle, #c82828)", "var(--handle, ", `<g class="sthings-face" data-face="neutral">`} {
+		if !strings.Contains(svg, want) {
+			t.Errorf("Fynn lacks %s", want)
+		}
+	}
+	for _, unwanted := range []string{"--fur:", "--handle:", "sthings-bling", "<style"} {
+		if strings.Contains(svg, unwanted) {
+			t.Errorf("Fynn carries %s", unwanted)
+		}
+	}
+	if n := strings.Count(svg, `class="sthings-face"`); n != 1 {
+		t.Errorf("%d faces on Fynn's page figure, want the neutral one only", n)
+	}
+	if strings.Count(svg, "<svg") != 1 {
+		t.Error("the parts' own <svg> elements leaked into the figure")
+	}
+}
+
+// TestRenderLiveSwitchesFynnsFaces: next to a running match Fynn changes face
+// the way the mascot does, by data-face alone, so the Zählwerk treats both
+// the same.
+func TestRenderLiveSwitchesFynnsFaces(t *testing.T) {
+	k := kit(t)
+	svg := k.RenderLive(avatar.Avatar{Character: "fynn"}, "surprised")
+	if !strings.Contains(svg, `class="sthings" data-character="fynn" data-face="surprised"`) {
+		t.Errorf("the requested face is not picked: %.200s", svg)
+	}
+	for _, f := range avatar.Faces {
+		if !strings.Contains(svg, `<g class="sthings-face" data-face="`+f.Key+`">`) {
+			t.Errorf("Fynn's face %q missing", f.Key)
+		}
+	}
+	if !strings.Contains(svg, `.sthings[data-face="surprised"] .sthings-face[data-face="surprised"]{display:inline}`) {
+		t.Error("no rule shows the faces")
+	}
+	// Fynn's faces are his own, not the mascot's.
+	if mascot := k.RenderLive(avatar.Avatar{}, "surprised"); mascot[strings.Index(mascot, "<style"):] == svg[strings.Index(svg, "<style"):] {
+		t.Error("Fynn wears the mascot's faces")
+	}
+}
+
 // TestRenderLiveCarriesEveryFace: the figure next to a running match switches
 // its face by attribute alone, so every face has to be in it, with the
 // requested one picked.
@@ -219,24 +274,35 @@ func TestRenderTakesNothingButPaletteValues(t *testing.T) {
 // back with the next part somebody draws. The GIF for the LED panel depends
 // on it too: its rasteriser draws filled paths and nothing else
 // (docs/adr/0030).
+//
+// Every other character's directory is held to the same rules.
 func TestPartsFollowTheBriefing(t *testing.T) {
-	entries, err := fs.ReadDir(web.Static, partsDir)
-	if err != nil {
-		t.Fatal(err)
+	dirs := []string{partsDir}
+	for _, c := range avatar.Characters {
+		if c.Key != avatar.NoCharacter {
+			dirs = append(dirs, path.Join(path.Dir(partsDir), c.Key))
+		}
 	}
 	forbidden := []string{"<style", "style=", "stroke", "transform", "clip-path", "<mask", "<image", "<text", "Gradient", "filter"}
-	for _, e := range entries {
-		b, err := fs.ReadFile(web.Static, partsDir+"/"+e.Name())
+	for _, dir := range dirs {
+		entries, err := fs.ReadDir(web.Static, dir)
 		if err != nil {
 			t.Fatal(err)
 		}
-		for _, f := range forbidden {
-			if strings.Contains(string(b), f) {
-				t.Errorf("%s contains %q", e.Name(), f)
+		for _, e := range entries {
+			name := dir + "/" + e.Name()
+			b, err := fs.ReadFile(web.Static, name)
+			if err != nil {
+				t.Fatal(err)
 			}
-		}
-		if !strings.Contains(string(b), `viewBox="0 0 420 420"`) {
-			t.Errorf("%s is not on the 420 viewBox", e.Name())
+			for _, f := range forbidden {
+				if strings.Contains(string(b), f) {
+					t.Errorf("%s contains %q", name, f)
+				}
+			}
+			if !strings.Contains(string(b), `viewBox="0 0 420 420"`) {
+				t.Errorf("%s is not on the 420 viewBox", name)
+			}
 		}
 	}
 }

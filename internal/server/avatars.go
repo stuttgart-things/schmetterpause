@@ -158,27 +158,49 @@ func writeFigure(w http.ResponseWriter, cache, svg string) {
 }
 
 // figureEditorView describes the editor with a checked, its preview rendered.
+//
+// A character other than the mascot brings its own fur and wears no bling:
+// those parts are hidden rather than offered and ignored, and "same as the
+// fur" reads "as drawn", which is what it does there (avatar.renderCharacter).
 func figureEditorView(a avatar.Avatar) templates.FigureEditorView {
+	ownFur := a.Character != avatar.NoCharacter
 	colours := func(name, label string, palette []avatar.Colour, key string) templates.FigurePart {
 		part := templates.FigurePart{Name: name, Label: label}
 		for _, c := range palette {
-			part.Options = append(part.Options, templates.FigureOption{
+			o := templates.FigureOption{
 				Key: c.Key, Name: c.Name, Hex: c.Hex,
 				SameAsFur: c.Key == avatar.SameAsFur,
 				Checked:   c.Key == key,
-			})
+			}
+			if o.SameAsFur && ownFur {
+				o.Name, o.SameAsFur = "Wie gezeichnet", false
+			}
+			part.Options = append(part.Options, o)
 		}
 		return part
 	}
-	bling := templates.FigurePart{Name: "bling", Label: "Schmuck"}
-	for _, o := range avatar.Blings {
-		bling.Options = append(bling.Options, templates.FigureOption{Key: o.Key, Name: o.Name, Checked: o.Key == a.Bling})
+	options := func(name, label string, list []avatar.Option, key string) templates.FigurePart {
+		part := templates.FigurePart{Name: name, Label: label}
+		for _, o := range list {
+			part.Options = append(part.Options, templates.FigureOption{Key: o.Key, Name: o.Name, Checked: o.Key == key})
+		}
+		return part
 	}
+	fur := colours("fur", "Fell", avatar.Furs, a.Fur)
+	fur.Hidden = ownFur
+	headdress := colours("headdress", "Kopfschmuck", avatar.Headdresses, a.Headdress)
+	if ownFur {
+		headdress.Label = "Stirnband"
+	}
+	bling := options("bling", "Schmuck", avatar.Blings, a.Bling)
+	bling.Hidden = ownFur
 	return templates.FigureEditorView{
 		Preview: figures.Render(a),
+		Animal:  options("animal", "Figur", avatar.Characters, a.Character),
+		OwnFur:  ownFur,
 		Parts: []templates.FigurePart{
-			colours("fur", "Fell", avatar.Furs, a.Fur),
-			colours("headdress", "Kopfschmuck", avatar.Headdresses, a.Headdress),
+			fur,
+			headdress,
 			colours("handle", "Griff", avatar.Handles, a.Handle),
 			colours("blade", "Schläger", avatar.Blades, a.Blade),
 			bling,
@@ -190,6 +212,7 @@ func figureEditorView(a avatar.Avatar) templates.FigureEditorView {
 // unknown key from a form is a mistake to answer, not to paper over.
 func figureFromForm(r *http.Request) avatar.Avatar {
 	return avatar.Avatar{
+		Character: r.FormValue("animal"),
 		Fur:       r.FormValue("fur"),
 		Headdress: r.FormValue("headdress"),
 		Handle:    r.FormValue("handle"),
@@ -209,6 +232,19 @@ func (s *Server) handleFigurePreview(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.render(w, r, templates.FigurePreview(figures.Render(a)))
+}
+
+// handleFigureEditor redraws the editor for the figure the form describes,
+// when the animal changes: which parts are offered depends on it. Nothing is
+// stored.
+func (s *Server) handleFigureEditor(w http.ResponseWriter, r *http.Request) {
+	a := figureFromForm(r)
+	if err := avatar.Validate(a); err != nil {
+		// Only a hand-made request gets here; the form offers nothing else.
+		w.WriteHeader(http.StatusUnprocessableEntity)
+		return
+	}
+	s.render(w, r, templates.FigureEditor(figureEditorView(a)))
 }
 
 // handleSaveFigure stores the editor's figure for the reader, and nobody else:
@@ -263,10 +299,12 @@ func (s *Server) renderFigureChange(w http.ResponseWriter, r *http.Request, self
 	s.render(w, r, templates.ProfileFigure(svg, blade, true))
 }
 
-// handleRollFigure fills the editor with a random figure. Not stored: "Würfeln"
-// is a suggestion, and "Speichern" is still the one button that keeps it.
+// handleRollFigure fills the editor with random colours. Not stored: "Würfeln"
+// is a suggestion, and "Speichern" is still the one button that keeps it. The
+// animal the form shows stays; the dice roll colours, not who wears them.
 func (s *Server) handleRollFigure(w http.ResponseWriter, r *http.Request) {
 	a := avatar.Random(rand.New(rand.NewPCG(rand.Uint64(), rand.Uint64()))) //nolint:gosec // decoration, not a secret
+	a.Character = avatar.Fill(avatar.Avatar{Character: r.FormValue("animal")}, "").Character
 	view := figureEditorView(a)
 	view.Rolled = true
 	s.render(w, r, templates.FigureEditor(view))

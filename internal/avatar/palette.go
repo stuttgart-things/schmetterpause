@@ -106,6 +106,19 @@ var Faces = []Option{
 	{"sad", "Traurig"},
 }
 
+// NoCharacter is the key for the mascot, sthings: empty, like NoBling, so a
+// row stored before there was a choice of character is the mascot.
+const NoCharacter = ""
+
+// Characters is the animals a player can be. The mascot comes first and is
+// the default. The others are a trial (feat/poc-fynn): every face the mascot
+// has, no bling, and the fur is theirs, as drawn. Headdress, handle and blade
+// take the palettes below, as on the mascot.
+var Characters = []Option{
+	{NoCharacter, "sthings"},
+	{"fynn", "Fynn"},
+}
+
 // NoBling is the key for wearing nothing.
 const NoBling = ""
 

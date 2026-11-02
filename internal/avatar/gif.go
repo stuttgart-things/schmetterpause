@@ -50,7 +50,7 @@ func (k *Kit) RenderFlat(a Avatar, face string) string {
 	if !hasOption(Faces, face) {
 		face = Faces[0].Key
 	}
-	svg := k.render(a, "", k.faces[face])
+	svg := k.render(a, "", face)
 
 	props := map[string]string{}
 	if m := styleAttr.FindStringSubmatch(svg); m != nil {

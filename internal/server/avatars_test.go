@@ -151,7 +151,7 @@ func TestARandomFigureIsNotCached(t *testing.T) {
 
 func figureForm(a avatar.Avatar) url.Values {
 	return url.Values{
-		"fur": {a.Fur}, "headdress": {a.Headdress}, "handle": {a.Handle},
+		"animal": {a.Character}, "fur": {a.Fur}, "headdress": {a.Headdress}, "handle": {a.Handle},
 		"blade": {a.Blade}, "bling": {a.Bling},
 	}
 }
@@ -267,6 +267,57 @@ func TestResetFallsBackToTheDefault(t *testing.T) {
 	}
 }
 
+// TestChoosingFynnRedrawsTheEditor: another animal brings its own fur and
+// wears no bling, so the editor stops offering both, but keeps them as hidden
+// fields: switching back to the mascot finds them where they were. Nothing
+// is stored on the way.
+//
+// It also guards #374's first try at hiding a part, a `continue` in a templ
+// loop: templ has no such statement, printed the word on the page and went on
+// to render the part it was meant to skip. Only the rendered markup shows it.
+func TestChoosingFynnRedrawsTheEditor(t *testing.T) {
+	h, store, anna, _ := twoBrowsers(t)
+
+	fynn := chosen
+	fynn.Character = "fynn"
+	rec := fragment(t, h, "/fragments/figure-editor?"+figureForm(fynn).Encode(), anna)
+	body := rec.Body.String()
+	if rec.Code != http.StatusOK || !strings.Contains(body, `data-character="fynn"`) {
+		t.Fatalf("status %d: %.200s", rec.Code, body)
+	}
+	for _, want := range []string{
+		`<input type="hidden" name="fur" value="cream">`,
+		`<input type="hidden" name="bling" value="chain">`,
+		"Stirnband", "Wie gezeichnet",
+	} {
+		if !strings.Contains(body, want) {
+			t.Errorf("the editor for Fynn lacks %s", want)
+		}
+	}
+	for _, unwanted := range []string{`type="radio" name="fur"`, `type="radio" name="bling"`, "Wie das Fell", "continue"} {
+		if strings.Contains(body, unwanted) {
+			t.Errorf("the editor for Fynn still carries %q", unwanted)
+		}
+	}
+
+	back := fragment(t, h, "/fragments/figure-editor?"+figureForm(chosen).Encode(), anna).Body.String()
+	if !strings.Contains(back, `type="radio" name="fur" value="cream" checked`) {
+		t.Error("back on the mascot, the fur chosen before is gone")
+	}
+	if strings.Contains(back, `type="hidden"`) {
+		t.Error("the mascot's editor hides a part")
+	}
+	if _, err := store.Avatars().Get(context.Background(), uuid.MustParse(opponentID(t, store, "Anna"))); err == nil {
+		t.Error("redrawing the editor stored a figure")
+	}
+
+	bad := figureForm(chosen)
+	bad.Set("animal", "dragon")
+	if rec := fragment(t, h, "/fragments/figure-editor?"+bad.Encode(), anna); rec.Code != http.StatusUnprocessableEntity {
+		t.Errorf("an unknown animal: status %d, want 422", rec.Code)
+	}
+}
+
 func TestRollingSuggestsWithoutStoring(t *testing.T) {
 	h, store, anna, _ := twoBrowsers(t)
 
@@ -286,6 +337,7 @@ func TestTheEditorNeedsAPlayer(t *testing.T) {
 		postAs(t, h, "/figure", nil, figureForm(chosen)),
 		postAs(t, h, "/figure/reset", nil, url.Values{}),
 		fragment(t, h, "/fragments/figure-roll", nil),
+		fragment(t, h, "/fragments/figure-editor?"+figureForm(chosen).Encode(), nil),
 	} {
 		if rec.Code < 400 {
 			t.Errorf("status = %d without a player, want a refusal", rec.Code)

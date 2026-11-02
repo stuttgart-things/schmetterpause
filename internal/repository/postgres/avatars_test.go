@@ -25,7 +25,7 @@ func TestAvatarRepository(t *testing.T) {
 		t.Errorf("Get() before choosing = %v, want domain.ErrNotFound", err)
 	}
 
-	first := avatar.Avatar{Fur: "cream", Headdress: "lapis", Handle: "wood-dark", Blade: "pink", Bling: "chain"}
+	first := avatar.Avatar{Character: "fynn", Fur: "cream", Headdress: "lapis", Handle: "wood-dark", Blade: "pink", Bling: "chain"}
 	if err := avatars.Put(ctx, anna.ID, first); err != nil {
 		t.Fatalf("Put() = %v", err)
 	}
@@ -33,7 +33,8 @@ func TestAvatarRepository(t *testing.T) {
 		t.Errorf("Get() = %+v, %v; want %+v", got, err, first)
 	}
 
-	// A change replaces the row, bling taken off included.
+	// A change replaces the row, bling taken off and back to the mascot
+	// included.
 	second := avatar.Avatar{Fur: "white", Headdress: avatar.SameAsFur, Handle: "red", Blade: "steel", Bling: avatar.NoBling}
 	if err := avatars.Put(ctx, anna.ID, second); err != nil {
 		t.Fatalf("Put() again = %v", err)

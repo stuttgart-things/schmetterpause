@@ -1615,6 +1615,12 @@ type TableCode struct {
 type FigureEditorView struct {
 	// Preview is the figure the form describes, as inline SVG.
 	Preview string
+	// Animal is the choice of character. Changing it redraws the whole
+	// editor, not only the preview, because which parts apply depends on it.
+	Animal FigurePart
+	// OwnFur is true for a character that brings its own fur and wears no
+	// bling, which the copy above the form says.
+	OwnFur bool
 	// Parts is one group of choices per part, in the order they are shown.
 	Parts []FigurePart
 	// What just happened, for the line under the buttons. At most one.
@@ -1630,6 +1636,20 @@ type FigurePart struct {
 	Name    string
 	Label   string
 	Options []FigureOption
+	// Hidden is a part the chosen character does not wear. It is not shown,
+	// but its choice travels along as a hidden field, so switching back to
+	// the mascot finds it where it was.
+	Hidden bool
+}
+
+// Choice is the key of the checked option, empty if none is.
+func (p FigurePart) Choice() string {
+	for _, o := range p.Options {
+		if o.Checked {
+			return o.Key
+		}
+	}
+	return ""
 }
 
 // FigureOption is one choice. Hex is the colour of its swatch, empty for a

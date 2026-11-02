@@ -35,6 +35,29 @@ func TestRenderFlatNeedsNoCSS(t *testing.T) {
 	}
 }
 
+// TestFynnRastersWithoutCSS: the second character goes through the same
+// flat figure and GIF as the mascot (docs/adr/0030).
+func TestFynnRastersWithoutCSS(t *testing.T) {
+	k := kit(t)
+	a := avatar.Avatar{Character: "fynn", Headdress: "emerald", Handle: "blue", Blade: "steel"}
+	svg := k.RenderFlat(a, "neutral")
+	if strings.Contains(svg, "var(") || strings.Contains(svg, "<style") {
+		t.Errorf("the flat Fynn still needs CSS")
+	}
+	for _, hex := range []string{"#35b567", "#2f6fd0", "#8c8f9c"} {
+		if !strings.Contains(svg, hex) {
+			t.Errorf("the flat Fynn lacks the chosen %s", hex)
+		}
+	}
+	b, err := k.GIF(a, avatar.Cheer, avatar.DefaultGIFSize)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := gif.DecodeAll(bytes.NewReader(b)); err != nil {
+		t.Fatalf("not a GIF: %v", err)
+	}
+}
+
 // TestTheGIFIsTheFigureCheering: the loop the panel plays, every frame the
 // size asked for, in the figure's own colours.
 func TestTheGIFIsTheFigureCheering(t *testing.T) {
