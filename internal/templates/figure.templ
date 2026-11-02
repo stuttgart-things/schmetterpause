@@ -28,57 +28,64 @@ templ FigureEditor(v FigureEditorView) {
 				<div id="figure-preview" class="figure-preview">
 					@templ.Raw(v.Preview)
 				</div>
-				// The animal sits outside the parts, so its change does not also
-				// ask for a preview: it redraws the whole editor, because which
-				// parts apply depends on it.
-				<fieldset
-					class="figure-part"
-					hx-get="/fragments/figure-editor"
-					hx-trigger="change"
-					hx-include="closest form"
-					hx-target="#figure-editor"
-					hx-swap="outerHTML"
-				>
-					<legend>{ v.Animal.Label }</legend>
-					for _, o := range v.Animal.Options {
-						<label class="pick">
-							<input type="radio" name={ v.Animal.Name } value={ o.Key } checked?={ o.Checked }/>
-							<span>{ o.Name }</span>
-						</label>
-					}
-				</fieldset>
-				// The change trigger sits on the parts rather than on the form,
-				// so the form keeps its own submit for "Speichern".
-				<div
-					class="figure-parts"
-					hx-get="/fragments/figure-preview"
-					hx-trigger="change"
-					hx-include="closest form"
-					hx-target="#figure-preview"
-					hx-swap="innerHTML"
-				>
-					for _, part := range v.Parts {
-						if part.Hidden {
-							<input type="hidden" name={ part.Name } value={ part.Choice() }/>
-							continue
+				// One column beside the preview for the animal and the parts,
+				// as the layout's grid has two. figure-parts for the gap between
+				// them and the min-width that keeps the column from overflowing.
+				<div class="figure-parts">
+					// The animal sits outside the parts, so its change does not also
+					// ask for a preview: it redraws the whole editor, because which
+					// parts apply depends on it.
+					<fieldset
+						class="figure-part"
+						hx-get="/fragments/figure-editor"
+						hx-trigger="change"
+						hx-include="closest form"
+						hx-target="#figure-editor"
+						hx-swap="outerHTML"
+					>
+						<legend>{ v.Animal.Label }</legend>
+						for _, o := range v.Animal.Options {
+							<label class="pick">
+								<input type="radio" name={ v.Animal.Name } value={ o.Key } checked?={ o.Checked }/>
+								<span>{ o.Name }</span>
+							</label>
 						}
-						<fieldset class="figure-part">
-							<legend>{ part.Label }</legend>
-							for _, o := range part.Options {
-								<label class="pick">
-									<input type="radio" name={ part.Name } value={ o.Key } checked?={ o.Checked }/>
-									<span>
-										if o.Hex != "" {
-											<i class="swatch" style={ "background:" + o.Hex }></i>
-										} else if o.SameAsFur {
-											<i class="swatch swatch-fur"></i>
-										}
-										{ o.Name }
-									</span>
-								</label>
+					</fieldset>
+					// The change trigger sits on the parts rather than on the form,
+					// so the form keeps its own submit for "Speichern".
+					<div
+						class="figure-parts"
+						hx-get="/fragments/figure-preview"
+						hx-trigger="change"
+						hx-include="closest form"
+						hx-target="#figure-preview"
+						hx-swap="innerHTML"
+					>
+						for _, part := range v.Parts {
+							// templ has no continue: a word in a loop is text, and it
+							// would print and go on to render the part.
+							if part.Hidden {
+								<input type="hidden" name={ part.Name } value={ part.Choice() }/>
+							} else {
+								<fieldset class="figure-part">
+									<legend>{ part.Label }</legend>
+									for _, o := range part.Options {
+										<label class="pick">
+											<input type="radio" name={ part.Name } value={ o.Key } checked?={ o.Checked }/>
+											<span>
+												if o.Hex != "" {
+													<i class="swatch" style={ "background:" + o.Hex }></i>
+												} else if o.SameAsFur {
+													<i class="swatch swatch-fur"></i>
+												}
+												{ o.Name }
+											</span>
+										</label>
+									}
+								</fieldset>
 							}
-						</fieldset>
-					}
+						}
+					</div>
 				</div>
 			</div>
 			<div class="figure-actions">
