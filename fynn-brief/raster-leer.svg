@@ -1,0 +1,38 @@
+<svg viewBox="0 0 420 420" width="420" height="420" xmlns="http://www.w3.org/2000/svg">
+  <!-- Vorlage zum Zeichnen. Nicht abgeben: Raster, Zielbereiche und Beschriftung sind nur Hilfslinien. -->
+  <rect id="hintergrund" width="420" height="420" fill="#ffffff"/>
+  <g id="raster" stroke="#000000" stroke-opacity="0.08">
+    <line x1="42" y1="0" x2="42" y2="420"/>
+    <line x1="0" y1="42" x2="420" y2="42"/>
+    <line x1="84" y1="0" x2="84" y2="420"/>
+    <line x1="0" y1="84" x2="420" y2="84"/>
+    <line x1="126" y1="0" x2="126" y2="420"/>
+    <line x1="0" y1="126" x2="420" y2="126"/>
+    <line x1="168" y1="0" x2="168" y2="420"/>
+    <line x1="0" y1="168" x2="420" y2="168"/>
+    <line x1="210" y1="0" x2="210" y2="420"/>
+    <line x1="0" y1="210" x2="420" y2="210"/>
+    <line x1="252" y1="0" x2="252" y2="420"/>
+    <line x1="0" y1="252" x2="420" y2="252"/>
+    <line x1="294" y1="0" x2="294" y2="420"/>
+    <line x1="0" y1="294" x2="420" y2="294"/>
+    <line x1="336" y1="0" x2="336" y2="420"/>
+    <line x1="0" y1="336" x2="420" y2="336"/>
+    <line x1="378" y1="0" x2="378" y2="420"/>
+    <line x1="0" y1="378" x2="420" y2="378"/>
+  </g>
+  <g id="zielbereiche" fill="none" stroke-width="2.5" font-family="sans-serif">
+    <line x1="0" y1="185" x2="420" y2="185" stroke="#0a6cff" stroke-dasharray="8 6"/>
+    <text x="6" y="180" font-size="14" fill="#0a6cff" stroke="none">Augenlinie y≈185</text>
+    <line x1="65" y1="60" x2="65" y2="420" stroke="#00a36c" stroke-dasharray="8 6"/>
+    <line x1="376" y1="60" x2="376" y2="420" stroke="#00a36c" stroke-dasharray="8 6"/>
+    <text x="70" y="410" font-size="14" fill="#00a36c" stroke="none">Kopfbreite x 65–376</text>
+    <rect x="125" y="135" width="158" height="129" stroke="#ff7a00"/>
+    <text x="128" y="280" font-size="13" fill="#ff7a00" stroke="none">Gesicht</text>
+    <rect x="283" y="161" width="130" height="135" stroke="#d6006e"/>
+    <text x="300" y="155" font-size="13" fill="#d6006e" stroke="none">Blatt</text>
+    <rect x="300" y="285" width="62" height="108" stroke="#7a3cff"/>
+    <text x="366" y="340" font-size="13" fill="#7a3cff" stroke="none">Griff</text>
+  </g>
+  <rect x="0.5" y="0.5" width="419" height="419" fill="none" stroke="#999999"/>
+</svg>
