@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.21.1](https://github.com/stuttgart-things/schmetterpause/compare/v0.21.0...v0.21.1) (2026-11-03)
+
+
+### Bug Fixes
+
+* **deps:** update module github.com/jackc/pgx/v5 to v5.12.0 ([#372](https://github.com/stuttgart-things/schmetterpause/issues/372)) ([eea8053](https://github.com/stuttgart-things/schmetterpause/commit/eea8053ccb4e37c7b38ea1bf200ce52a3086ccff))
+
 ## [0.21.0](https://github.com/stuttgart-things/schmetterpause/compare/v0.20.0...v0.21.0) (2026-10-28)
 
 
