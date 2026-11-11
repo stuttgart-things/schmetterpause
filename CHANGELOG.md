@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.22.0](https://github.com/stuttgart-things/schmetterpause/compare/v0.21.0...v0.22.0) (2026-11-11)
+
+
+### Features
+
+* **avatar:** offer Blecki with jewellery alongside sthings ([#381](https://github.com/stuttgart-things/schmetterpause/issues/381)) ([784dc44](https://github.com/stuttgart-things/schmetterpause/commit/784dc44c498e796bffb44c2fca33b5edc50741fa))
+
+
+### Bug Fixes
+
+* **deps:** update module github.com/jackc/pgx/v5 to v5.12.0 ([#372](https://github.com/stuttgart-things/schmetterpause/issues/372)) ([eea8053](https://github.com/stuttgart-things/schmetterpause/commit/eea8053ccb4e37c7b38ea1bf200ce52a3086ccff))
+
 ## [0.21.0](https://github.com/stuttgart-things/schmetterpause/compare/v0.20.0...v0.21.0) (2026-10-28)
 
 
