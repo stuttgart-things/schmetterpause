@@ -4,6 +4,7 @@ package main
 
 import (
 	"bytes"
+	"encoding/csv"
 	"flag"
 	"fmt"
 	"image"
@@ -11,8 +12,10 @@ import (
 	"image/draw"
 	"image/gif"
 	"image/png"
+	"math"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/srwiley/oksvg"
@@ -34,7 +37,15 @@ type sample struct {
 func main() {
 	key := flag.String("character", "vex", "character key")
 	out := flag.String("out", "docs/avatar-check/vex", "output directory")
+	accessories := flag.Bool("accessories-only", false, "export only the blecki accessory acceptance matrix")
 	flag.Parse()
+	if *accessories {
+		if err := accessoryReview(*key, *out); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+		return
+	}
 	if err := run(*key, *out); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
@@ -110,7 +121,7 @@ func run(key, out string) error {
 			}
 		}
 		for _, size := range []int{28, 64, 192} {
-			if err = sheet(collection, jewellery, 10, size, bg.colour, key+" | jewellery | "+bg.name, filepath.Join(out, fmt.Sprintf("jewellery-%d-%s.png", size, bg.name))); err != nil {
+			if err = sheet(collection, jewellery, len(avatar.BlingPalette(key))*2, size, bg.colour, key+" | jewellery | "+bg.name, filepath.Join(out, fmt.Sprintf("jewellery-%d-%s.png", size, bg.name))); err != nil {
 				return err
 			}
 		}
@@ -219,7 +230,7 @@ func run(key, out string) error {
 		}
 	}
 
-	note := `# Blecki acceptance review
+	note := `# blecki acceptance review
 
 Regenerate from the repository root:
 
@@ -227,13 +238,13 @@ sh
 go run ./scripts/avatar_review.go -character vex -out docs/avatar-check/vex
 
 
-The storage key and folder remain vex; the public name is Blecki.
+The storage key and folder remain vex; the public name is blecki.
 
 - Expressions: all six faces, all four coats, at native 192, 64 and 28 px.
-- Jewellery: all five slot options, neutral and angry, all four coats,
+- Jewellery: both slot options (none and ball), neutral and angry, all four coats,
   at native 192, 64 and 28 px.
 - Grips: all seven handle choices, all four coats, at 192 px.
-- Jewellery/blades: all four pieces against every coat and blade colour.
+- Jewellery/blades: both accessories against every coat and blade colour.
 - Every sheet is exported on navy (#0a0a12) and pure black.
 - Black 64 px sheets use the actual GIF palette quantisation.
 - Individual SVGs/GIFs, the production cheer loop and a six-face review loop
@@ -246,11 +257,15 @@ All fixed jewellery colours retain a filled black outline across the four
 coats. No palette colours were silently changed. The blade head coordinates
 remain identical to the accepted workshop revision.
 
-At 28 px the moon and tooth reduce to approximately one or two light pixels;
-their shapes cannot be reliably identified. The captain C is not readable at
-that size either. They are rendered consistently at every size as requested,
-without special hiding or substitutions. Their small-size design needs user
-review. The bandana remains a more distinct red accent.
+Ball colours are white (default), orange and yellow with calculated shadows.
+The ball's geometry and contour-derived anchor are unchanged. The focused
+review includes all colour/blade combinations and a fill-contrast CSV.
+Orange on light-blue, steel and petrol needs particular review at 28 px/LED;
+the unchanged black ring helps, but does not establish physical LED contrast.
+
+Only the table-tennis ball remains as blecki's optional accessory. Towel,
+captain band and neck pieces are retired. Old keys fall back to no jewellery.
+The active ball geometry and all base/face/material paths remain unchanged.
 
 Physical LED contrast is still unverified: these are software previews,
 not photographs of a real panel. In particular, dark wood and moss on black
@@ -274,7 +289,8 @@ func sheet(c *avatar.Collection, samples []sample, cols, size int, bg color.RGBA
 	}
 	label(8, 18, title)
 	for i, s := range samples {
-		icon, err := oksvg.ReadIconStream(strings.NewReader(c.RenderFlat(s.a, s.face)), oksvg.StrictErrorMode)
+		svg := c.RenderFlat(s.a, s.face)
+		icon, err := oksvg.ReadIconStream(strings.NewReader(svg), oksvg.StrictErrorMode)
 		if err != nil {
 			return err
 		}
@@ -310,4 +326,139 @@ func sheet(c *avatar.Collection, samples []sample, cols, size int, bg color.RGBA
 		return err
 	}
 	return closeErr
+}
+
+// accessoryReview exports the focused placement matrix without refreshing
+// older face/material acceptance artefacts from another review.
+func accessoryReview(key, out string) error {
+	if key != "vex" {
+		return fmt.Errorf("accessory placement review requires blecki")
+	}
+	c, err := avatar.LoadCollection(web.Static, "static/img")
+	if err != nil {
+		return err
+	}
+	if err = os.MkdirAll(out, 0755); err != nil {
+		return err
+	}
+	palette := append([]avatar.Colour{{Key: "", Name: "Original"}}, avatar.FurPalette(key)...)
+	var samples []sample
+	for _, coat := range palette {
+		for _, bling := range avatar.BlingPalette(key) {
+			for _, face := range []string{"neutral", "angry"} {
+				a := avatar.DefaultForCharacter(key, "")
+				a.Fur = coat.Key
+				a.Bling = bling.Key
+				a.Blade = "light-blue"
+				label := bling.Key
+				if label == "" {
+					label = "none"
+				}
+				fur := coat.Key
+				if fur == "" {
+					fur = "original"
+				}
+				samples = append(samples, sample{fur + " / " + label + " / " + face, a, face})
+			}
+		}
+	}
+	for _, bg := range []struct {
+		name   string
+		colour color.RGBA
+	}{{"app", color.RGBA{10, 10, 18, 255}}, {"black", color.RGBA{0, 0, 0, 255}}} {
+		var balls []sample
+		for _, coat := range palette {
+			for _, face := range []string{"neutral", "angry"} {
+				for _, tone := range avatar.BallColors {
+					for _, blade := range avatar.Blades {
+						a := avatar.DefaultForCharacter(key, "")
+						a.Fur = coat.Key
+						a.Bling = "ball"
+						a.BallColor = tone.Key
+						a.Blade = blade.Key
+						fur := coat.Key
+						if fur == "" {
+							fur = "original"
+						}
+						toneName := tone.Key
+						if toneName == "" {
+							toneName = "white"
+						}
+						balls = append(balls, sample{fur + " " + toneName + " / " + blade.Key + " / " + face, a, face})
+					}
+				}
+			}
+		}
+		for _, size := range []int{192, 64, 28} {
+			ballName := fmt.Sprintf("ball-blades-%d-%s.png", size, bg.name)
+			if err = sheet(c, balls, 7, size, bg.colour, fmt.Sprintf("blecki | ball / blade colours | %d px | %s", size, bg.name), filepath.Join(out, ballName)); err != nil {
+				return err
+			}
+			name := fmt.Sprintf("accessories-%d-%s.png", size, bg.name)
+			if err = sheet(c, samples, len(avatar.BlingPalette(key))*2, size, bg.colour, fmt.Sprintf("blecki | accessories | %d px | %s", size, bg.name), filepath.Join(out, name)); err != nil {
+				return err
+			}
+		}
+	}
+	if err = writeBallContrast(out); err != nil {
+		return err
+	}
+	fmt.Println("Accessory matrix exported to", out)
+	return nil
+}
+
+// Fill-only ratios are a diagnostic; the unchanged black outline adds separation.
+func writeBallContrast(out string) error {
+	var data bytes.Buffer
+	var err error
+	w := csv.NewWriter(&data)
+	if err = w.Write([]string{"ball", "blade", "fill_luminance_ratio", "review"}); err != nil {
+		return err
+	}
+	luminance := func(hex string) (float64, error) {
+		n, err := strconv.ParseUint(strings.TrimPrefix(hex, "#"), 16, 32)
+		if err != nil {
+			return 0, err
+		}
+		values := []float64{float64((n>>16)&255) / 255, float64((n>>8)&255) / 255, float64(n&255) / 255}
+		for i, v := range values {
+			if v <= .04045 {
+				values[i] = v / 12.92
+			} else {
+				values[i] = math.Pow((v+.055)/1.055, 2.4)
+			}
+		}
+		return .2126*values[0] + .7152*values[1] + .0722*values[2], nil
+	}
+	for _, ball := range avatar.BallColors {
+		for _, blade := range avatar.Blades {
+			a, err := luminance(ball.Hex)
+			if err != nil {
+				return err
+			}
+			b, err := luminance(blade.Hex)
+			if err != nil {
+				return err
+			}
+			ratio := (max(a, b) + .05) / (min(a, b) + .05)
+			note := "outline retained"
+			if ratio < 1.5 {
+				note = "low fill contrast: inspect 28px and real LED"
+			} else if ratio < 2.1 {
+				note = "inspect small-size outline"
+			}
+			key := ball.Key
+			if key == "" {
+				key = "white"
+			}
+			if err = w.Write([]string{key, blade.Key, fmt.Sprintf("%.2f", ratio), note}); err != nil {
+				return err
+			}
+		}
+	}
+	w.Flush()
+	if err = w.Error(); err != nil {
+		return err
+	}
+	return os.WriteFile(filepath.Join(out, "ball-colour-contrast.csv"), data.Bytes(), 0644)
 }
