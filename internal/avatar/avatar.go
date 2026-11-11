@@ -96,7 +96,7 @@ func Fill(a Avatar, playerID string) Avatar {
 	if _, ok := findColour(Blades, a.Blade); !ok {
 		a.Blade = d.Blade
 	}
-	if !hasOption(Blings, a.Bling) || a.Character != "" {
+	if !hasOption(BlingPalette(a.Character), a.Bling) {
 		a.Bling = d.Bling
 	}
 	return a
@@ -117,7 +117,7 @@ func Validate(a Avatar) error {
 		{"headdress", a.Headdress, has(Headdresses, a.Headdress)},
 		{"handle", a.Handle, has(Handles, a.Handle)},
 		{"blade", a.Blade, has(Blades, a.Blade)},
-		{"bling", a.Bling, hasOption(Blings, a.Bling) && (a.Character == "" || a.Bling == NoBling)},
+		{"bling", a.Bling, hasOption(BlingPalette(a.Character), a.Bling)},
 	}
 	for _, c := range checks {
 		if !c.ok {
@@ -144,10 +144,9 @@ func Random(r *rand.Rand) Avatar {
 		Headdress: Headdresses[r.IntN(len(Headdresses))].Key,
 		Handle:    Handles[r.IntN(len(Handles))].Key,
 		Blade:     Blades[r.IntN(len(Blades))].Key,
-		Bling:     Blings[r.IntN(len(Blings))].Key,
+		Bling:     BlingPalette(key)[r.IntN(len(BlingPalette(key)))].Key,
 	}
 	if a.Character != "" {
-		a.Bling = NoBling
 		if r.IntN(len(palette)+1) == 0 {
 			a.Fur = ""
 		}

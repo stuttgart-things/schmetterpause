@@ -33,7 +33,7 @@ type sample struct {
 
 func main() {
 	key := flag.String("character", "vex", "character key")
-	out := flag.String("out", "/tmp/vex-review", "output directory")
+	out := flag.String("out", "docs/avatar-check/vex", "output directory")
 	flag.Parse()
 	if err := run(*key, *out); err != nil {
 		fmt.Fprintln(os.Stderr, err)
@@ -63,9 +63,14 @@ func run(key, out string) error {
 		name   string
 		colour color.RGBA
 	}{{"app", color.RGBA{10, 10, 18, 255}}, {"black", color.RGBA{0, 0, 0, 255}}}
+	palette := append([]avatar.Colour{{Key: "", Name: "original"}}, avatar.FurPalette(key)...)
 	var expressions []sample
-	for _, f := range avatar.Faces {
-		expressions = append(expressions, sample{f.Key, a, f.Key})
+	for _, coat := range palette {
+		for _, f := range avatar.Faces {
+			b := a
+			b.Fur = coat.Key
+			expressions = append(expressions, sample{coat.Name + " / " + f.Key, b, f.Key})
+		}
 	}
 	for _, bg := range backgrounds {
 		for _, size := range []int{28, 64, 192} {
@@ -75,7 +80,6 @@ func run(key, out string) error {
 			}
 		}
 		var colours []sample
-		palette := append([]avatar.Colour{{Key: "", Name: "original"}}, avatar.FurPalette(key)...)
 		for _, f := range []string{"neutral", "angry"} {
 			for _, c := range palette {
 				b := a
@@ -88,6 +92,54 @@ func run(key, out string) error {
 			}
 		}
 		if err = sheet(collection, colours, len(palette), 144, bg.colour, key+" | body alternatives | "+bg.name, filepath.Join(out, "colours-"+bg.name+".png")); err != nil {
+			return err
+		}
+		var jewellery []sample
+		for _, coat := range palette {
+			for _, bling := range avatar.BlingPalette(key) {
+				for _, face := range []string{"neutral", "angry"} {
+					b := a
+					b.Fur = coat.Key
+					b.Bling = bling.Key
+					label := bling.Key
+					if label == "" {
+						label = "none"
+					}
+					jewellery = append(jewellery, sample{coat.Name + " / " + label + " / " + face, b, face})
+				}
+			}
+		}
+		for _, size := range []int{28, 64, 192} {
+			if err = sheet(collection, jewellery, 10, size, bg.colour, key+" | jewellery | "+bg.name, filepath.Join(out, fmt.Sprintf("jewellery-%d-%s.png", size, bg.name))); err != nil {
+				return err
+			}
+		}
+		var grips []sample
+		for _, coat := range palette {
+			for _, handle := range avatar.Handles {
+				b := a
+				b.Fur = coat.Key
+				b.Handle = handle.Key
+				grips = append(grips, sample{coat.Name + " / " + handle.Name, b, "neutral"})
+			}
+		}
+		if err = sheet(collection, grips, len(avatar.Handles), 192, bg.colour, key+" | grips | "+bg.name, filepath.Join(out, "grips-"+bg.name+".png")); err != nil {
+			return err
+		}
+		// Check fixed jewellery against every paddle colour as well as every coat.
+		var contrasts []sample
+		for _, coat := range palette {
+			for _, bling := range avatar.BlingPalette(key)[1:] {
+				for _, blade := range avatar.Blades {
+					b := a
+					b.Fur = coat.Key
+					b.Bling = bling.Key
+					b.Blade = blade.Key
+					contrasts = append(contrasts, sample{coat.Name + " / " + bling.Key + " / " + blade.Key, b, "neutral"})
+				}
+			}
+		}
+		if err = sheet(collection, contrasts, len(avatar.Blades), 96, bg.colour, key+" | fixed colour contrast | "+bg.name, filepath.Join(out, "jewellery-blades-"+bg.name+".png")); err != nil {
 			return err
 		}
 		var materials []sample
@@ -167,26 +219,42 @@ func run(key, out string) error {
 		}
 	}
 
-	note := `# Avatar review
+	note := `# Blecki acceptance review
 
-Expression sheets contain the whole figure at the stated native pixel size,
-including the 28 px header and 64 px LED format. The 192 px sheets show details.
-Backgrounds are the app page (#0a0a12) and black (#000000). The 64 px black
-expressions use the actual GIF palette quantisation. Other sheets follow the
-SVG rasteriser. These are software previews, not photographs of the panel.
+Regenerate from the repository root:
 
-Body alternatives labelled [review] remain provisional. Inspect neutral and
-angry before accepting them. Handle and blade sheets retain all available
-choices, including dark wood, moss and orchid. Their real-panel contrast is
-still to be checked. The exported SVGs resolve every palette variable and
-contain only one expression each.
+sh
+go run ./scripts/avatar_review.go -character vex -out docs/avatar-check/vex
 
-The -cheer.gif uses the production cheer sequence. The -all-faces.gif is a
-review loop in neutral/happy/surprised/skeptical/angry/sad order. Individual
-GIFs use the same 64 px renderer as /avatars/{id}.gif?face=... . Files ending
-in -256.gif are enlarged review versions. Combination
-sheets isolate steel/original-grey and ivory/pale-paw, plus moss/petrol with
-dark wood. These comparisons do not change the permitted palettes.
+
+The storage key and folder remain vex; the public name is Blecki.
+
+- Expressions: all six faces, all four coats, at native 192, 64 and 28 px.
+- Jewellery: all five slot options, neutral and angry, all four coats,
+  at native 192, 64 and 28 px.
+- Grips: all seven handle choices, all four coats, at 192 px.
+- Jewellery/blades: all four pieces against every coat and blade colour.
+- Every sheet is exported on navy (#0a0a12) and pure black.
+- Black 64 px sheets use the actual GIF palette quantisation.
+- Individual SVGs/GIFs, the production cheer loop and a six-face review loop
+  are included. The review loop does not change game-controlled expressions.
+
+## Observations and remaining review
+
+The enlarged grip distinguishes red, dark wood and ivory at profile size.
+All fixed jewellery colours retain a filled black outline across the four
+coats. No palette colours were silently changed. The blade head coordinates
+remain identical to the accepted workshop revision.
+
+At 28 px the moon and tooth reduce to approximately one or two light pixels;
+their shapes cannot be reliably identified. The captain C is not readable at
+that size either. They are rendered consistently at every size as requested,
+without special hiding or substitutions. Their small-size design needs user
+review. The bandana remains a more distinct red accent.
+
+Physical LED contrast is still unverified: these are software previews,
+not photographs of a real panel. In particular, dark wood and moss on black
+should be checked on the device. No runtime hides jewellery automatically.
 `
 	if err = os.WriteFile(filepath.Join(out, "README.md"), []byte(note), 0644); err != nil {
 		return err

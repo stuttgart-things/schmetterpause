@@ -172,7 +172,7 @@ func figureEditorView(a avatar.Avatar) templates.FigureEditorView {
 		return part
 	}
 	bling := templates.FigurePart{Name: "bling", Label: "Schmuck"}
-	for _, o := range avatar.Blings {
+	for _, o := range avatar.BlingPalette(a.Character) {
 		bling.Options = append(bling.Options, templates.FigureOption{Key: o.Key, Name: o.Name, Checked: o.Key == a.Bling})
 	}
 	fur := colours("fur", "Grundfarbe", avatar.FurPalette(a.Character), a.Fur)
@@ -198,11 +198,15 @@ func figureEditorView(a avatar.Avatar) templates.FigureEditorView {
 	}
 	if a.Character == "vex" {
 		parts = append(parts[:1], parts[2:]...)
+		parts = append(parts, bling)
 	}
 	view := templates.FigureEditorView{Preview: figures.Render(a), Parts: parts, NoHeaddress: a.Character == "vex", Expressions: figureExpressionsView(a)}
 	for _, ch := range avatar.Characters {
 		thumbnail := avatar.DefaultForCharacter(ch.Key, "")
 		thumbnail.Blade = avatar.Blades[0].Key
+		if ch.Key == a.Character {
+			thumbnail = a
+		}
 		view.Characters = append(view.Characters, templates.FigureCharacter{
 			Key: ch.Key, Name: ch.Name, Checked: ch.Key == a.Character,
 			Preview: figures.Render(thumbnail),
@@ -250,6 +254,7 @@ func (s *Server) handleFigurePreview(w http.ResponseWriter, r *http.Request) {
 	}
 	s.render(w, r, templates.FigurePreview(figures.Render(a)))
 	s.render(w, r, templates.FigureExpressions(figureExpressionsView(a), true))
+	s.render(w, r, templates.FigureSelectedThumbnail(figures.Render(a), a.Character))
 }
 
 // handleFigureCharacter changes the suggestion, without storing it. Each

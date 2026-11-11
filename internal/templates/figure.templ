@@ -11,8 +11,7 @@ templ FigureEditor(v FigureEditorView) {
 	<section id="figure-editor" class="session figure-card">
 		<h2>Deine Figur</h2>
 		<p class="muted">
-			Du wählst deine Figur, ihre Farben und den Schläger. Schmuck gibt es
-			zusätzlich für sthings. Das Gesicht folgt dem Spielstand am Zählwerk.
+			Du wählst deine Figur, ihre Farben und den Schläger. Dazu kannst du Schmuck wählen. Das Gesicht folgt dem Spielstand am Zählwerk.
 		</p>
 		<form hx-post="/figure" hx-target="#figure-editor" hx-swap="outerHTML" hx-sync="this:replace">
 			if v.NoHeaddress {
@@ -31,7 +30,7 @@ templ FigureEditor(v FigureEditorView) {
 				for _, ch := range v.Characters {
 					<label class="pick character-pick">
 						<input id={ "character-" + ch.Key } type="radio" name="character" value={ ch.Key } checked?={ ch.Checked }/>
-						<span><span class="character-thumbnail">@templ.Raw(ch.Preview)</span>{ ch.Name }</span>
+						<span><span id={ "character-thumbnail-" + ch.Key } class="character-thumbnail">@templ.Raw(ch.Preview)</span>{ ch.Name }</span>
 					</label>
 				}
 			</fieldset>
@@ -143,4 +142,9 @@ templ ProfileFigure(svg, blade string, oob bool) {
 	>
 		@templ.Raw(svg)
 	</span>
+}
+
+// Update only the selected thumbnail after a material or jewellery change.
+templ FigureSelectedThumbnail(svg, key string) {
+	<span id={ "character-thumbnail-" + key } class="character-thumbnail" hx-swap-oob="true">@templ.Raw(svg)</span>
 }

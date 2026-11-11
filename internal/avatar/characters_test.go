@@ -58,7 +58,7 @@ func TestCharacterChoicesAndFallbacks(t *testing.T) {
 	if !errors.Is(avatar.Validate(bad), avatar.ErrUnknown) {
 		t.Error("unknown submitted character accepted")
 	}
-	bad = avatar.DefaultForCharacter("pip", "anna")
+	bad = avatar.DefaultForCharacter("vex", "anna")
 	bad.Bling = "chain"
 	if !errors.Is(avatar.Validate(bad), avatar.ErrUnknown) {
 		t.Error("ill-fitting jewellery accepted")
@@ -125,9 +125,9 @@ func TestCollectionRejectsAnIncompleteCharacter(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	delete(files, "static/img/pip/face-happy.svg")
-	if _, err := avatar.LoadCollection(files, "static/img"); err == nil || !strings.Contains(err.Error(), "Pip") {
-		t.Errorf("missing Pip expression: %v", err)
+	delete(files, "static/img/vex/face-happy.svg")
+	if _, err := avatar.LoadCollection(files, "static/img"); err == nil || !strings.Contains(err.Error(), "Blecki") {
+		t.Errorf("missing Blecki expression: %v", err)
 	}
 }
 
@@ -136,7 +136,7 @@ func TestRemovedCharactersCannotBeSelected(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, key := range []string{"fynn", "chomp"} {
+	for _, key := range []string{"fynn", "chomp", "pogo", "pip", "kiki"} {
 		t.Run(key, func(t *testing.T) {
 			a := avatar.Avatar{Character: key, Headdress: avatar.SameAsFur, Handle: avatar.SameAsFur, Blade: "pink"}
 			if !errors.Is(avatar.Validate(a), avatar.ErrUnknown) {

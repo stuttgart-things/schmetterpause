@@ -6,6 +6,7 @@ import (
 	"path"
 )
 
+// Character defines one drawing and its original materials.
 // The empty key is sthings so every existing row and omitted form field keeps
 // the original figure (ADR-0031).
 type Character struct {
@@ -13,12 +14,10 @@ type Character struct {
 	Fur, Headdress, Handle string
 }
 
+// Characters is the release catalogue, shared by rendering, forms and random rolls.
 var Characters = []Character{
 	{"", "sthings", "#f89828", "#f89828", "#f89828"},
-	{"pogo", "Pogo", "#fff7f4", "#db37cf", "#ffb438"},
-	{"pip", "Pip", "#233c87", "#d742c5", "#efa31b"},
-	{"vex", "Vex", "#817d93", "#dd359a", "#f4a62b"},
-	{"kiki", "Kiki", "#fcf8f5", "#c83bda", "#ef8fc0"},
+	{"vex", "Blecki", "#817d93", "#dd359a", "#f4a62b"},
 }
 
 func character(key string) (Character, bool) {
@@ -45,6 +44,7 @@ func DefaultForCharacter(key, playerID string) Avatar {
 // accidentally inherit the old mascot's face or jewellery.
 type Collection struct{ kits map[string]*Kit }
 
+// LoadCollection reads all complete kits in the release catalogue.
 func LoadCollection(fsys fs.FS, dir string) (*Collection, error) {
 	c := &Collection{kits: map[string]*Kit{}}
 	for _, ch := range Characters {
@@ -52,7 +52,7 @@ func LoadCollection(fsys fs.FS, dir string) (*Collection, error) {
 		if folder == "" {
 			folder = "sthings"
 		}
-		k, err := load(fsys, path.Join(dir, folder), ch.Key == "")
+		k, err := load(fsys, path.Join(dir, folder), BlingPalette(ch.Key))
 		if err != nil {
 			return nil, fmt.Errorf("load character %s: %w", ch.Name, err)
 		}
@@ -62,6 +62,7 @@ func LoadCollection(fsys fs.FS, dir string) (*Collection, error) {
 	return c, nil
 }
 
+// MustLoadCollection loads embedded assets or stops on an incomplete build.
 func MustLoadCollection(fsys fs.FS, dir string) *Collection {
 	c, err := LoadCollection(fsys, dir)
 	if err != nil {
@@ -76,9 +77,17 @@ func (c *Collection) kit(a Avatar) *Kit {
 	}
 	return c.kits[""]
 }
-func (c *Collection) Render(a Avatar) string                  { return c.kit(a).Render(a) }
+
+// Render draws the selected character with its neutral expression.
+func (c *Collection) Render(a Avatar) string { return c.kit(a).Render(a) }
+
+// RenderFace draws one expression for a comparison preview.
 func (c *Collection) RenderFace(a Avatar, face string) string { return c.kit(a).RenderFace(a, face) }
+
+// RenderLive includes every game-controlled expression.
 func (c *Collection) RenderLive(a Avatar, face string) string { return c.kit(a).RenderLive(a, face) }
+
+// GIF renders the selected character using the shared LED animation pipeline.
 func (c *Collection) GIF(a Avatar, frames []Frame, size int) ([]byte, error) {
 	return c.kit(a).GIF(a, frames, size)
 }

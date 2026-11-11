@@ -81,6 +81,7 @@ nav:
       - ADR-0028 Turniere über das Zählwerk: adr/0028-turniere-ueber-das-zaehlwerk.md
       - ADR-0029 Spieler gestalten ihre Figur selbst: adr/0029-spieler-gestalten-ihren-avatar.md
       - ADR-0030 Die Figuren gibt es auch als GIF: adr/0030-figuren-als-gif-fuer-das-led-panel.md
+      - ADR-0031 Spieler wählen ihre Spielfigur: adr/0031-mehrere-spielfiguren.md
   - Betrieb:
       - Plattform-Voraussetzungen: platform.md
       - Deployment ohne GitOps: deployment.md

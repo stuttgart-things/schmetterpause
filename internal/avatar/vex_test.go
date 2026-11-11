@@ -17,10 +17,10 @@ func TestVexPaletteIsAppliedToStoredSubmittedAndRandomFigures(t *testing.T) {
 	for _, c := range FurPalette("vex") {
 		got = append(got, c.Key)
 	}
-	if !reflect.DeepEqual(got, []string{"cinnamon", "sand", "white", "chocolate"}) {
+	if !reflect.DeepEqual(got, []string{"sand", "white", "chocolate"}) {
 		t.Fatalf("Vex palette: %v", got)
 	}
-	for _, key := range []string{"orange", "ginger", "gold", "cream"} {
+	for _, key := range []string{"orange", "ginger", "cinnamon", "gold", "cream"} {
 		a := DefaultForCharacter("vex", "anna")
 		a.Fur = key
 		if !errors.Is(Validate(a), ErrUnknown) {
@@ -271,5 +271,86 @@ func TestVexNegativeLidAnglesAreDistinct(t *testing.T) {
 				t.Errorf("skeptical right lid must be horizontal: %d", right)
 			}
 		}
+	}
+}
+
+func TestBleckiJewelleryUsesOneCharacterSpecificSlot(t *testing.T) {
+	c, err := LoadCollection(web.Static, "static/img")
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []string{"", "bandana", "captain", "moon", "wolf-tooth"}
+	if len(Characters) != 2 || Characters[1].Name != "Blecki" {
+		t.Fatal("release must offer sthings and Blecki only")
+	}
+	for i, b := range BlingPalette("vex") {
+		if b.Key != want[i] {
+			t.Errorf("jewellery order: %s", b.Key)
+		}
+		a := DefaultForCharacter("vex", "anna")
+		a.Bling = b.Key
+		if err := Validate(a); err != nil {
+			t.Fatal(err)
+		}
+		if Fill(a, "anna") != a {
+			t.Fatal("Fill drops Blecki jewellery")
+		}
+		svg := c.Render(a)
+		if b.Key != "" {
+			at := strings.Index(svg, `data-bling="`+b.Key+`"`)
+			if at < 0 || at > strings.Index(svg, `class="sthings-face"`) {
+				t.Error("jewellery must precede face")
+			}
+			a.Character = ""
+			if Validate(a) == nil || Fill(a, "anna").Bling != "" {
+				t.Error("Blecki jewellery leaks to sthings")
+			}
+		}
+	}
+	seen := map[string]bool{}
+	rng := rand.New(rand.NewPCG(44, 66))
+	for range 3000 {
+		a := Random(rng)
+		if a.Character == "vex" {
+			seen[a.Bling] = true
+			if a.Fur == "cinnamon" {
+				t.Fatal("roll chose cinnamon")
+			}
+		}
+	}
+	if len(seen) != 5 {
+		t.Errorf("roll misses jewellery options: %v", seen)
+	}
+}
+
+func TestBleckiGripHasVisibleColourBeyondPaw(t *testing.T) {
+	c, err := LoadCollection(web.Static, "static/img")
+	if err != nil {
+		t.Fatal(err)
+	}
+	a := DefaultForCharacter("vex", "")
+	a.Handle = "red"
+	img, err := rasterise(c.RenderFlat(a, "neutral"), 420)
+	if err != nil {
+		t.Fatal(err)
+	}
+	count := 0
+	box := image.Rectangle{}
+	for y := 375; y < 420; y++ {
+		for x := 200; x < 265; x++ {
+			v := img.RGBAAt(x, y)
+			if v.R == 200 && v.G == 40 && v.B == 40 {
+				count++
+				r := image.Rect(x, y, x+1, y+1)
+				if box.Empty() {
+					box = r
+				} else {
+					box = box.Union(r)
+				}
+			}
+		}
+	}
+	if count < 300 || box.Dx() < 30 || box.Dy() < 18 {
+		t.Errorf("exposed colour too small: %d pixels in %v", count, box)
 	}
 }

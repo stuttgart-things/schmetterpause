@@ -23,10 +23,10 @@ type Kit struct {
 // piece of bling without its file is an error here, at startup, rather than
 // a figure with a hole in it on somebody's profile.
 func Load(fsys fs.FS, dir string) (*Kit, error) {
-	return load(fsys, dir, true)
+	return load(fsys, dir, Blings)
 }
 
-func load(fsys fs.FS, dir string, jewellery bool) (*Kit, error) {
+func load(fsys fs.FS, dir string, jewellery []Option) (*Kit, error) {
 	read := func(name string) (string, error) {
 		b, err := fs.ReadFile(fsys, path.Join(dir, name+".svg"))
 		if err != nil {
@@ -44,8 +44,8 @@ func load(fsys fs.FS, dir string, jewellery bool) (*Kit, error) {
 			return nil, err
 		}
 	}
-	for _, b := range Blings {
-		if !jewellery || b.Key == NoBling {
+	for _, b := range jewellery {
+		if b.Key == NoBling {
 			continue
 		}
 		if k.blings[b.Key], err = read("bling-" + b.Key); err != nil {
@@ -185,8 +185,13 @@ func (k *Kit) render(a Avatar, face, faces string) string {
 	b.WriteString(strings.TrimSuffix(style.String(), ";"))
 	b.WriteString(`">`)
 	b.WriteString(k.base)
-	b.WriteString(faces)
-	b.WriteString(k.blings[a.Bling])
+	if k.character.Key == "vex" {
+		b.WriteString(k.blings[a.Bling])
+		b.WriteString(faces)
+	} else {
+		b.WriteString(faces)
+		b.WriteString(k.blings[a.Bling])
+	}
 	b.WriteString(`</svg>`)
 	return b.String()
 }

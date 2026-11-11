@@ -135,7 +135,7 @@ func TestRandomIsRepeatableAndReachesEverything(t *testing.T) {
 		}
 	}
 	want := len(avatar.Furs) + len(avatar.Headdresses) + len(avatar.Handles) +
-		len(avatar.Blades) + len(avatar.Blings) + len(avatar.Characters) + 1
+		len(avatar.Blades) + len(avatar.Blings) + len(avatar.BleckiBlings) - 1 + len(avatar.Characters) + 1
 	if len(seen) != want {
 		t.Errorf("3000 rolls reached %d choices, want all %d", len(seen), want)
 	}
@@ -318,12 +318,17 @@ func TestCharacterDeliveries(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if len(entries) != 7 {
-				t.Fatalf("%s has %d files, want base and six faces", ch.Name, len(entries))
+			if len(entries) != 7+len(avatar.BlingPalette(ch.Key))-1 {
+				t.Fatalf("%s has %d files, want base, six faces and jewellery", ch.Name, len(entries))
 			}
 			names := []string{"base"}
 			for _, f := range avatar.Faces {
 				names = append(names, "face-"+f.Key)
+			}
+			for _, b := range avatar.BlingPalette(ch.Key) {
+				if b.Key != avatar.NoBling {
+					names = append(names, "bling-"+b.Key)
+				}
 			}
 			for _, name := range names {
 				t.Run(name, func(t *testing.T) {
@@ -336,7 +341,7 @@ func TestCharacterDeliveries(t *testing.T) {
 					depth, faceDepth := 0, 0
 					for {
 						tok, err := dec.Token()
-						if err == io.EOF {
+						if errors.Is(err, io.EOF) {
 							break
 						}
 						if err != nil {
@@ -358,7 +363,9 @@ func TestCharacterDeliveries(t *testing.T) {
 							case "g":
 								groups++
 								faceDepth = depth
-								if name == "base" || attrs["class"] != "sthings-face" || attrs["data-face"] != strings.TrimPrefix(name, "face-") {
+								validFace := strings.HasPrefix(name, "face-") && attrs["class"] == "sthings-face" && attrs["data-face"] == strings.TrimPrefix(name, "face-")
+								validBling := strings.HasPrefix(name, "bling-") && attrs["class"] == "sthings-bling" && attrs["data-bling"] == strings.TrimPrefix(name, "bling-")
+								if !validFace && !validBling {
 									t.Error("invalid face group")
 								}
 							case "path", "circle", "ellipse":
@@ -375,7 +382,7 @@ func TestCharacterDeliveries(t *testing.T) {
 							for k := range attrs {
 								allowed := k == "fill" || k == "fill-rule" ||
 									(el.Name.Local == "svg" && (k == "viewBox" || k == "xmlns")) ||
-									(el.Name.Local == "g" && (k == "class" || k == "data-face")) ||
+									(el.Name.Local == "g" && (k == "class" || k == "data-face" || k == "data-bling")) ||
 									(el.Name.Local == "path" && k == "d") ||
 									(el.Name.Local == "circle" && (k == "cx" || k == "cy" || k == "r")) ||
 									(el.Name.Local == "ellipse" && (k == "cx" || k == "cy" || k == "rx" || k == "ry"))

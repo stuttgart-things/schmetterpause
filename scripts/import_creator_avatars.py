@@ -314,8 +314,8 @@ def vex_brows(state):
             257, 187, 315, 187, -1, 12.5
         )
     if state == "surprised":
-        return vex_brow(149, 155, 214, 153, -12, 11.5) + vex_brow(
-            256, 155, 316, 155, -11, 11.5
+        return vex_brow(149, 155, 214, 153, -12, 13) + vex_brow(
+            256, 155, 316, 155, -11, 13
         )
     return ""
 
@@ -408,13 +408,18 @@ def convert_vex(source, target):
             blank.append(("ink", INK, nose))
         else:
             blank.append((r, f, p))
-    shaft = shape("M307 331 L323 345 L258 416 L242 401Z")
-    shaft_colour = shape("M311 337 L317 343 L254 409 L248 403Z")
+    # A round-ended grip leaves a full 18-unit colour band beyond the paw.
+    shaft = shape("M315 338 L237 417")
+    shaft.stroke(28, pathops.LineCap.ROUND_CAP, pathops.LineJoin.ROUND_JOIN, 4)
+    shaft.convertConicsToQuads(0.01)
+    shaft_colour = shape("M315 338 L237 417")
+    shaft_colour.stroke(18, pathops.LineCap.ROUND_CAP, pathops.LineJoin.ROUND_JOIN, 4)
+    shaft_colour.convertConicsToQuads(0.01)
     blank.append(("ink", INK, transformed(shaft, rotation)))
     blank.append(("paddle-handle", "#e79a48", transformed(shaft_colour, rotation)))
     for stripe in (
         "M300 346 L313 358 L309 363 L296 351Z",
-        "M254 394 L265 404 L261 409 L250 399Z",
+        "M243 405 L258 419 L253 424 L238 410Z",
     ):
         blank.append(("ink", INK, transformed(shape(stripe), rotation)))
     blade = transformed(
@@ -438,6 +443,63 @@ def convert_vex(source, target):
         )
 
     save("base", "".join(svgpath(p, colour(r, f)) for r, f, p in blank))
+    jewellery = {
+        "bandana": (
+            paint(
+                "M176 314 Q205 324 237 314 L253 322 L245 337 L234 332 L214 366 Q208 372 202 363 L179 337 L166 341 L160 332Z"
+            )
+            + paint(
+                "M178 321 Q205 333 234 321 L240 329 L208 358 L181 331 L167 335 L168 330Z",
+                "#e43c43",
+            )
+            + paint("M238 319 L249 323 L243 331 L237 328Z", "#e43c43")
+        ),
+        "captain": (
+            paint("M126 319 Q140 311 156 320 L157 353 Q142 363 126 353Z")
+            + paint("M132 324 Q141 320 150 325 L151 349 Q142 354 132 349Z", "#f8cf55")
+            + paint(
+                "M146 328 C133 324 131 349 146 346 L146 340 C139 345 138 332 146 334Z"
+            )
+        ),
+        "moon": (
+            paint(
+                "M179 314 Q209 338 239 314 L242 321 Q226 336 214 341 L214 346 L204 346 L204 341 Q187 333 176 321Z"
+            )
+            + paint(
+                "M221 342 C192 333 188 373 214 376 Q229 375 232 361 C212 371 204 350 221 342Z"
+            )
+            + paint(
+                "M212 348 C196 347 198 370 214 370 Q220 369 223 366 C212 365 207 357 212 348Z",
+                "#f8d86e",
+            )
+        ),
+        "wolf-tooth": (
+            paint(
+                "M179 314 Q209 338 239 314 L242 321 Q225 337 214 341 L214 347 L204 347 L204 341 Q186 332 176 321Z"
+            )
+            + paint(
+                "M199 341 Q210 336 221 343 L221 353 Q218 368 208 376 Q198 370 196 355Z"
+            )
+            + paint(
+                "M204 346 Q211 343 216 347 L216 353 Q214 363 208 368 Q202 363 202 354Z",
+                "#f2ead8",
+            )
+        ),
+    }
+    for key, body in jewellery.items():
+        if key != "captain":
+            # Keep the neck pieces on the light chest, above the crossed paws.
+            import xml.etree.ElementTree as ET
+
+            neck = Transform().translate(0, 314).scale(1, 0.65).translate(0, -314)
+            body = "".join(
+                svgpath(transformed(shape(el.get("d")), neck), el.get("fill"))
+                for el in ET.fromstring("<svg>" + body + "</svg>")
+            )
+        save(
+            "bling-" + key,
+            f'<g class="sthings-bling" data-bling="{key}">\n' + body + "</g>\n",
+        )
     neutral_region = op(
         rect(145, 160, 219, 237), rect(252, 162, 319, 233), pathops.PathOp.UNION
     )
@@ -543,5 +605,5 @@ if __name__ == "__main__":
     parser.add_argument("source", type=Path)
     parser.add_argument("--target", type=Path, default=Path("web/static/img"))
     args = parser.parse_args()
-    for name in SPECS:
+    for name in ("vex",):
         convert(args.source, name, args.target / name)

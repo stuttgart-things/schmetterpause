@@ -11,7 +11,10 @@
 
 ## Entscheidung
 
-Neben sthings stehen Pogo, Pip, Vex und Kiki zur Auswahl. Die
+Für den Release stehen sthings und Blecki zur Auswahl. Blecki behält den
+bestehenden gespeicherten Schlüssel `vex`. Pogo, Pip und Kiki werden auf den
+Branches `feat/pogo-fine-tuning`, `feat/pip-fine-tuning` und
+`feat/kiki-fine-tuning` weiterbearbeitet und sind im Release nicht enthalten. Die
 Auswahl wird mit den Farben in `player_avatars` gespeichert. Die additive
 Spalte `character` hat den Standardwert `''`, der sthings bedeutet. Bestehende
 Zeilen, ausgelassene Formularfelder und unbekannte gespeicherte Figuren
@@ -22,12 +25,14 @@ nur einen Vorschlag mit den Originalmaterialien der neuen Figur; die
 Schlägerfarbe bleibt erhalten. Erst Speichern ändert die eigene Figur.
 Grundfarbe, Kopfschmuck, Griff und Schläger lassen sich mit den bestehenden
 Paletten ändern. Die Grundfarben dürfen je Figur eingeschränkt werden;
-Vex schließt Orange, Ingwer, Gold und Creme aus. Neue Figuren haben zusätzlich ihre Originalgrundfarbe;
+Blecki bietet nur Original, Sand, Weiß und Schoko an; auch gespeichertes Zimt
+fällt beim Lesen auf Original zurück. Neue Figuren haben zusätzlich ihre Originalgrundfarbe;
 Kopfschmuck und Griff können ebenfalls auf ihre Originalfarbe zurückfallen.
 Die Materialfarben für Schnauze, Augen, Ohren und ähnliche Details bleiben
-fest. sthings behält seine bisherigen Farben und Schmuckstücke. Die
-Schmuckstücke sind auf sthings zugeschnitten und werden anderen Figuren
-weder angeboten noch aufgesetzt.
+fest. sthings behält seine bisherigen Farben und Schmuckstücke. Blecki hat ebenfalls genau einen Schmuck-Slot: Kein Schmuck, Halstuch,
+Kapitänsbinde, Mond-Anhänger oder Wolfszahn-Kette. Die Listen und SVGs sind je
+Figur getrennt; sthings behält seine bestehenden Stücke und seine Ebenenfolge.
+Bleckis Schmuck liegt nach der Basis und vor dem Gesicht.
 
 Jede Figur besitzt eine eigene Basis und dieselben sechs vollständigen
 Gesichter. Das Gesicht bleibt vom Spiel bestimmt. SVG und GIF, Profile,
@@ -35,7 +40,9 @@ Kopfzeile, Live-Spielstand und Zufallsfiguren verwenden denselben Katalog.
 Die öffentlichen Avatar-Adressen ändern sich nicht. Zufall wählt auch die
 Figur; unbekannte gespeicherte Schlüssel fallen pro Teil zurück. Auch die
 entfernten Figuren Fynn und Chomp werden wie unbekannte Schlüssel behandelt:
-Sie sind nicht mehr wählbar, vorhandene Auswahlen zeigen sthings.
+Sie sind nicht mehr wählbar, vorhandene Auswahlen zeigen sthings. Dasselbe
+gilt im Release für die drei Figuren in Bearbeitung. Die gespeicherten Werte
+werden dabei nicht überschrieben, damit ihre spätere Rückkehr möglich bleibt.
 
 ## Zeichnungen und technische Grenzen
 

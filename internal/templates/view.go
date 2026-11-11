@@ -1658,6 +1658,7 @@ type FigureExpressionsView struct {
 	Faces         []FigureExpression
 }
 
+// FigureExpression is one read-only expression preview.
 type FigureExpression struct {
 	Key, Name, Preview string
 }
