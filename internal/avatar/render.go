@@ -173,6 +173,11 @@ func (k *Kit) render(a Avatar, face, faces string) string {
 		prop("paddle", blade.Hex)
 	}
 
+	if k.character.Key == "vex" && a.Bling == "ball" {
+		ball := BallTone(a.BallColor)
+		prop("ball", ball.Hex)
+		prop("ball-shadow", ball.Shade)
+	}
 	var b strings.Builder
 	b.WriteString(`<svg viewBox="0 0 420 420" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" class="sthings"`)
 	if k.character.Key != "" {

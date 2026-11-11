@@ -1,0 +1,22 @@
+ball,blade,fill_luminance_ratio,review
+white,light-blue,2.45,outline retained
+white,blue,4.59,outline retained
+white,petrol,3.21,outline retained
+white,moss,4.60,outline retained
+white,pink,3.62,outline retained
+white,orchid,3.42,outline retained
+white,steel,3.03,outline retained
+orange,light-blue,1.10,low fill contrast: inspect 28px and real LED
+orange,blue,2.07,inspect small-size outline
+orange,petrol,1.45,low fill contrast: inspect 28px and real LED
+orange,moss,2.07,inspect small-size outline
+orange,pink,1.63,inspect small-size outline
+orange,orchid,1.54,inspect small-size outline
+orange,steel,1.37,low fill contrast: inspect 28px and real LED
+yellow,light-blue,2.00,inspect small-size outline
+yellow,blue,3.76,outline retained
+yellow,petrol,2.63,outline retained
+yellow,moss,3.77,outline retained
+yellow,pink,2.97,outline retained
+yellow,orchid,2.80,outline retained
+yellow,steel,2.48,outline retained

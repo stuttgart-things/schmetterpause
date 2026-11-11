@@ -111,3 +111,24 @@ func TestAvatarRepositoryKeepsCharacterAndOriginalMaterials(t *testing.T) {
 		t.Errorf("unknown character was not preserved: %+v, %v", got, err)
 	}
 }
+
+func TestAvatarBallColourRoundTrip(t *testing.T) {
+	store, ctx := newStore(t)
+	p, err := store.Players().Create(ctx, "Ball colours", domain.DefaultTTR)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, bling := range []string{"ball", "towel", ""} {
+		for _, key := range []string{"", "orange", "yellow", "obsolete"} {
+			a := avatar.DefaultForCharacter("vex", p.ID.String())
+			a.Bling = bling
+			a.BallColor = key
+			if err := store.Avatars().Put(ctx, p.ID, a); err != nil {
+				t.Fatal(err)
+			}
+			if got, err := store.Avatars().Get(ctx, p.ID); err != nil || got != a {
+				t.Errorf("round trip %+v: %v", got, err)
+			}
+		}
+	}
+}

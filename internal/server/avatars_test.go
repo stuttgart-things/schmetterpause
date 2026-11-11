@@ -153,7 +153,7 @@ func TestARandomFigureIsNotCached(t *testing.T) {
 func figureForm(a avatar.Avatar) url.Values {
 	return url.Values{
 		"fur": {a.Fur}, "headdress": {a.Headdress}, "handle": {a.Handle},
-		"blade": {a.Blade}, "bling": {a.Bling},
+		"blade": {a.Blade}, "bling": {a.Bling}, "ballColor": {a.BallColor},
 	}
 }
 
@@ -630,7 +630,110 @@ func TestBleckiJewelleryPersistsPreviewsAndResets(t *testing.T) {
 	if !strings.Contains(profile, `name="fur" value="" checked`) || strings.Contains(profile, `name="fur" value="cinnamon"`) {
 		t.Error("stored cinnamon does not show Original")
 	}
-	if !strings.Contains(profile, "Blecki") || strings.Contains(profile, ">Vex<") || strings.Contains(profile, `value="pip"`) || strings.Contains(profile, `value="pogo"`) || strings.Contains(profile, `value="kiki"`) {
+	if !strings.Contains(profile, "blecki") || strings.Contains(profile, ">Vex<") || strings.Contains(profile, `value="pip"`) || strings.Contains(profile, `value="pogo"`) || strings.Contains(profile, `value="kiki"`) {
 		t.Error("release character selection is wrong")
+	}
+}
+
+func TestBleckiRetiredAccessoriesAreHiddenRejectedAndReadSafely(t *testing.T) {
+	h, store, anna, _ := twoBrowsers(t)
+	id := uuid.MustParse(opponentID(t, store, "Anna"))
+	for _, key := range []string{"towel", "captain", "bandana", "moon", "wolf-tooth"} {
+		a := avatar.DefaultForCharacter("vex", id.String())
+		a.Bling = key
+		if err := store.Avatars().Put(context.Background(), id, a); err != nil {
+			t.Fatal(err)
+		}
+		body := fragment(t, h, "/players/"+id.String(), anna).Body.String()
+		for _, retired := range []string{"towel", "captain", "bandana", "moon", "wolf-tooth"} {
+			if strings.Contains(body, `name="bling" value="`+retired+`"`) || strings.Contains(body, `data-bling="`+retired+`"`) {
+				t.Errorf("retired %s remains visible", retired)
+			}
+		}
+		if !strings.Contains(body, `name="bling" value="" checked`) || !strings.Contains(body, `name="bling" value="ball"`) {
+			t.Error("expected none and ball choices")
+		}
+		q := figureForm(a)
+		q.Set("character", "vex")
+		if r := fragment(t, h, "/fragments/figure-preview?"+q.Encode(), anna); r.Code != http.StatusUnprocessableEntity {
+			t.Errorf("retired preview %s: %d", key, r.Code)
+		}
+		if r := postAs(t, h, "/figure", anna, q); r.Code != http.StatusUnprocessableEntity {
+			t.Errorf("retired save %s: %d", key, r.Code)
+		}
+		if got, err := store.Avatars().Get(context.Background(), id); err != nil || got != a {
+			t.Error("reading/rejecting retired accessory mutated stored data")
+		}
+	}
+}
+
+func TestBleckiBallColourControlPersistenceAndFallback(t *testing.T) {
+	h, store, anna, _ := twoBrowsers(t)
+	id := uuid.MustParse(opponentID(t, store, "Anna"))
+	for _, bling := range []string{"", "ball"} {
+		a := avatar.DefaultForCharacter("vex", id.String())
+		a.Bling = bling
+		a.BallColor = "orange"
+		q := figureForm(a)
+		q.Set("character", "vex")
+		r := fragment(t, h, "/fragments/figure-preview?"+q.Encode(), anna)
+		if r.Code != 200 {
+			t.Fatal(r.Code)
+		}
+		body := r.Body.String()
+		visible := strings.Contains(body, "<legend>Ballfarbe</legend>")
+		if visible != (bling == "ball") {
+			t.Errorf("ball colour control visibility for %q", bling)
+		}
+		if !strings.Contains(body, `id="figure-ball-color"`) || !strings.Contains(body, `hx-swap-oob="true"`) {
+			t.Error("accessory changes must refresh the control")
+		}
+		if bling != "ball" && !strings.Contains(body, `type="hidden" name="ballColor" value="orange"`) {
+			t.Error("dormant colour is lost")
+		}
+		if r := postAs(t, h, "/figure", anna, q); r.Code != 200 {
+			t.Fatal(r.Code)
+		}
+		if got, err := store.Avatars().Get(context.Background(), id); err != nil || got.BallColor != "orange" || got.Bling != bling {
+			t.Errorf("save colour: %+v %v", got, err)
+		}
+	}
+	for _, key := range []string{"", "orange", "yellow", "invalid"} {
+		a := avatar.DefaultForCharacter("vex", id.String())
+		a.Bling = "ball"
+		a.BallColor = key
+		q := figureForm(a)
+		q.Set("character", "vex")
+		if r := postAs(t, h, "/figure", anna, q); r.Code != 200 {
+			t.Fatal(r.Code)
+		}
+		got, err := store.Avatars().Get(context.Background(), id)
+		if err != nil || got.BallColor != avatar.NormalizeBallColor(key) {
+			t.Errorf("colour fallback: %+v %v", got, err)
+		}
+		body := get(t, h, "/avatars/"+id.String()+".svg").Body.String()
+		if !strings.Contains(body, "--ball:"+avatar.BallTone(key).Hex) {
+			t.Error("saved colour missing from public SVG")
+		}
+	}
+	stale := avatar.DefaultForCharacter("vex", id.String())
+	stale.Bling = "ball"
+	stale.BallColor = "obsolete"
+	if err := store.Avatars().Put(context.Background(), id, stale); err != nil {
+		t.Fatal(err)
+	}
+	body := fragment(t, h, "/players/"+id.String(), anna).Body.String()
+	if !strings.Contains(body, `name="ballColor" value="" checked`) {
+		t.Error("stale stored colour does not show white")
+	}
+	if got, err := store.Avatars().Get(context.Background(), id); err != nil || got != stale {
+		t.Error("read rewrites stale colour")
+	}
+	if r := postAs(t, h, "/figure/reset", anna, nil); r.Code != 200 {
+		t.Fatal(r.Code)
+	}
+	body = fragment(t, h, "/players/"+id.String(), anna).Body.String()
+	if strings.Contains(body, "<legend>Ballfarbe</legend>") {
+		t.Error("reset must hide ball colours")
 	}
 }

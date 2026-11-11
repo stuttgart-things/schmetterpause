@@ -200,7 +200,7 @@ func figureEditorView(a avatar.Avatar) templates.FigureEditorView {
 		parts = append(parts[:1], parts[2:]...)
 		parts = append(parts, bling)
 	}
-	view := templates.FigureEditorView{Preview: figures.Render(a), Parts: parts, NoHeaddress: a.Character == "vex", Expressions: figureExpressionsView(a)}
+	view := templates.FigureEditorView{Preview: figures.Render(a), Parts: parts, NoHeaddress: a.Character == "vex", Expressions: figureExpressionsView(a), BallColor: figureBallColorView(a)}
 	for _, ch := range avatar.Characters {
 		thumbnail := avatar.DefaultForCharacter(ch.Key, "")
 		thumbnail.Blade = avatar.Blades[0].Key
@@ -239,6 +239,7 @@ func figureFromForm(r *http.Request) avatar.Avatar {
 		Handle:    r.FormValue("handle"),
 		Blade:     r.FormValue("blade"),
 		Bling:     r.FormValue("bling"),
+		BallColor: avatar.NormalizeBallColor(r.FormValue("ballColor")),
 	}
 }
 
@@ -255,6 +256,7 @@ func (s *Server) handleFigurePreview(w http.ResponseWriter, r *http.Request) {
 	s.render(w, r, templates.FigurePreview(figures.Render(a)))
 	s.render(w, r, templates.FigureExpressions(figureExpressionsView(a), true))
 	s.render(w, r, templates.FigureSelectedThumbnail(figures.Render(a), a.Character))
+	s.render(w, r, templates.FigureBallColor(figureBallColorView(a), true))
 }
 
 // handleFigureCharacter changes the suggestion, without storing it. Each
@@ -343,4 +345,12 @@ func (s *Server) handleRollFigure(w http.ResponseWriter, r *http.Request) {
 	view := figureEditorView(a)
 	view.Rolled = true
 	s.render(w, r, templates.FigureEditor(view))
+}
+
+func figureBallColorView(a avatar.Avatar) templates.FigureBallColorView {
+	v := templates.FigureBallColorView{Active: a.Character == "vex" && a.Bling == "ball", Value: avatar.NormalizeBallColor(a.BallColor)}
+	for _, c := range avatar.BallColors {
+		v.Options = append(v.Options, templates.FigureOption{Key: c.Key, Name: c.Name, Hex: c.Hex, Checked: c.Key == v.Value})
+	}
+	return v
 }

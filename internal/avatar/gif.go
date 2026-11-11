@@ -99,6 +99,18 @@ func (k *Kit) GIF(a Avatar, frames []Frame, size int) ([]byte, error) {
 	for i, f := range frames {
 		flats[i] = k.RenderFlat(a, f.Face)
 	}
+	// New blecki accessory colours must not recolour antialiased coat edges.
+	// Keep the original quantisation wherever the accessory changes no pixel.
+	var baseFlats []string
+	if k.character.Key == "vex" && k.blings[a.Bling] != "" {
+		plain := a
+		plain.Bling = NoBling
+		baseFlats = make([]string, len(frames))
+		for i, f := range frames {
+			baseFlats[i] = k.RenderFlat(plain, f.Face)
+		}
+	}
+	basePal := paletteOf(baseFlats)
 	pal := paletteOf(flats)
 
 	anim := &gif.GIF{LoopCount: 0}
@@ -109,6 +121,21 @@ func (k *Kit) GIF(a Avatar, frames []Frame, size int) ([]byte, error) {
 		}
 		p := image.NewPaletted(img.Bounds(), pal)
 		draw.Draw(p, p.Bounds(), img, image.Point{}, draw.Src)
+		if baseFlats != nil {
+			plain, err := rasterise(baseFlats[i], size)
+			if err != nil {
+				return nil, err
+			}
+			quantised := image.NewPaletted(plain.Bounds(), basePal)
+			draw.Draw(quantised, quantised.Bounds(), plain, image.Point{}, draw.Src)
+			for y := 0; y < size; y++ {
+				for x := 0; x < size; x++ {
+					if img.RGBAAt(x, y) == plain.RGBAAt(x, y) {
+						p.Set(x, y, quantised.At(x, y))
+					}
+				}
+			}
+		}
 		anim.Image = append(anim.Image, p)
 		anim.Delay = append(anim.Delay, f.Delay)
 	}

@@ -376,7 +376,7 @@ func TestCharacterDeliveries(t *testing.T) {
 							default:
 								t.Errorf("unexpected element %s", el.Name.Local)
 							}
-							if fill, ok := attrs["fill"]; ok && !regexp.MustCompile(`^(#[0-9a-fA-F]{6}|var\(--(?:fur|fur-dark|headdress|headdress-dark|handle|handle-dark|paddle), #[0-9a-fA-F]{6}\))$`).MatchString(fill) {
+							if fill, ok := attrs["fill"]; ok && !regexp.MustCompile(`^(#[0-9a-fA-F]{6}|var\(--(?:fur|fur-dark|headdress|headdress-dark|handle|handle-dark|paddle|ball|ball-shadow), #[0-9a-fA-F]{6}\))$`).MatchString(fill) {
 								t.Errorf("invalid material fill %q", fill)
 							}
 							for k := range attrs {

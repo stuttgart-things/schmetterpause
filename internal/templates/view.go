@@ -1613,6 +1613,7 @@ type TableCode struct {
 
 // FigureEditorView is the editor on a player's own profile (docs/adr/0029).
 type FigureEditorView struct {
+	BallColor   FigureBallColorView
 	Characters  []FigureCharacter
 	Expressions FigureExpressionsView
 	NoHeaddress bool
@@ -1661,4 +1662,11 @@ type FigureExpressionsView struct {
 // FigureExpression is one read-only expression preview.
 type FigureExpression struct {
 	Key, Name, Preview string
+}
+
+// FigureBallColorView retains a dormant colour while hiding its control.
+type FigureBallColorView struct {
+	Active  bool
+	Value   string
+	Options []FigureOption
 }

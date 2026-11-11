@@ -11,7 +11,7 @@
 
 ## Entscheidung
 
-Für den Release stehen sthings und Blecki zur Auswahl. Blecki behält den
+Für den Release stehen sthings und blecki zur Auswahl. blecki behält den
 bestehenden gespeicherten Schlüssel `vex`. Pogo, Pip und Kiki werden auf den
 Branches `feat/pogo-fine-tuning`, `feat/pip-fine-tuning` und
 `feat/kiki-fine-tuning` weiterbearbeitet und sind im Release nicht enthalten. Die
@@ -25,14 +25,26 @@ nur einen Vorschlag mit den Originalmaterialien der neuen Figur; die
 Schlägerfarbe bleibt erhalten. Erst Speichern ändert die eigene Figur.
 Grundfarbe, Kopfschmuck, Griff und Schläger lassen sich mit den bestehenden
 Paletten ändern. Die Grundfarben dürfen je Figur eingeschränkt werden;
-Blecki bietet nur Original, Sand, Weiß und Schoko an; auch gespeichertes Zimt
+blecki bietet nur Original, Sand, Weiß und Schoko an; auch gespeichertes Zimt
 fällt beim Lesen auf Original zurück. Neue Figuren haben zusätzlich ihre Originalgrundfarbe;
 Kopfschmuck und Griff können ebenfalls auf ihre Originalfarbe zurückfallen.
 Die Materialfarben für Schnauze, Augen, Ohren und ähnliche Details bleiben
-fest. sthings behält seine bisherigen Farben und Schmuckstücke. Blecki hat ebenfalls genau einen Schmuck-Slot: Kein Schmuck, Halstuch,
-Kapitänsbinde, Mond-Anhänger oder Wolfszahn-Kette. Die Listen und SVGs sind je
+fest. sthings behält seine bisherigen Farben und Schmuckstücke. blecki hat ebenfalls genau einen Schmuck-Slot: Kein Schmuck,
+oder Tischtennisball. Handtuch, Kapitänsbinde, Halstuch, Mond-Anhänger und
+Wolfszahn-Kette entfallen nach der Platzierungsprüfung; gespeicherte Schlüssel
+fallen auf Kein Schmuck zurück. Die Listen und SVGs sind je
 Figur getrennt; sthings behält seine bestehenden Stücke und seine Ebenenfolge.
-Bleckis Schmuck liegt nach der Basis und vor dem Gesicht.
+bleckis Schmuck liegt nach der Basis und vor dem Gesicht.
+
+Beim Tischtennisball erscheint zusätzlich die Ballfarbe: Weiß, Orange oder
+Gelb. Die additive Spalte `ball_color` speichert diese Wahl unabhängig vom
+Schmuckstück. Der Standard `''` bedeutet Weiß; fehlende oder unbekannte Werte
+fallen auf Weiß zurück. Andere Schmuckstücke ignorieren die Farbe, behalten
+aber eine gültige gespeicherte Wahl. Würfeln wählt bei einem Ball auch dessen
+Farbe; Zurücksetzen löscht die Wahl und beginnt wieder mit Weiß. Ballfläche
+und aus ihr berechneter Schatten werden gemeinsam gefärbt, ohne die Geometrie
+oder die bestehenden Materialpaletten zu ändern.
+
 
 Jede Figur besitzt eine eigene Basis und dieselben sechs vollständigen
 Gesichter. Das Gesicht bleibt vom Spiel bestimmt. SVG und GIF, Profile,

@@ -1,7 +1,7 @@
 package avatar
 
 // FurPalette is the selectable main surface for a character. The original
-// material of new characters is the separate empty key. Blecki keeps cool or
+// material of new characters is the separate empty key. blecki keeps cool or
 // muted wolf tones; the remaining alternatives are subject to visual review.
 func FurPalette(characterKey string) []Colour {
 	if characterKey != "vex" {
@@ -24,10 +24,7 @@ func validFur(characterKey, key string) bool {
 // BleckiBlings uses the existing single stored slot, with its own drawing kit.
 var BleckiBlings = []Option{
 	{NoBling, "Kein Schmuck"},
-	{"bandana", "Halstuch"},
-	{"captain", "Kapitänsbinde"},
-	{"moon", "Mond-Anhänger"},
-	{"wolf-tooth", "Wolfszahn-Kette"},
+	{"ball", "Tischtennisball"},
 }
 
 // BlingPalette returns the jewellery drawn for this character’s single slot.

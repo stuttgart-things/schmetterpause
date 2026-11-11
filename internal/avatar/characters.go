@@ -17,7 +17,7 @@ type Character struct {
 // Characters is the release catalogue, shared by rendering, forms and random rolls.
 var Characters = []Character{
 	{"", "sthings", "#f89828", "#f89828", "#f89828"},
-	{"vex", "Blecki", "#817d93", "#dd359a", "#f4a62b"},
+	{"vex", "blecki", "#817d93", "#dd359a", "#f4a62b"},
 }
 
 func character(key string) (Character, bool) {

@@ -30,6 +30,7 @@ type Avatar struct {
 	Handle    string
 	Blade     string
 	Bling     string
+	BallColor string
 }
 
 // ErrUnknown is returned by Validate for a key no palette has.
@@ -83,6 +84,7 @@ func Fill(a Avatar, playerID string) Avatar {
 	if _, ok := character(a.Character); !ok {
 		a.Character = ""
 	}
+	a.BallColor = NormalizeBallColor(a.BallColor)
 	d := DefaultForCharacter(a.Character, playerID)
 	if !validFur(a.Character, a.Fur) {
 		a.Fur = d.Fur
@@ -145,6 +147,9 @@ func Random(r *rand.Rand) Avatar {
 		Handle:    Handles[r.IntN(len(Handles))].Key,
 		Blade:     Blades[r.IntN(len(Blades))].Key,
 		Bling:     BlingPalette(key)[r.IntN(len(BlingPalette(key)))].Key,
+	}
+	if a.Character == "vex" && a.Bling == "ball" {
+		a.BallColor = BallColors[r.IntN(len(BallColors))].Key
 	}
 	if a.Character != "" {
 		if r.IntN(len(palette)+1) == 0 {
