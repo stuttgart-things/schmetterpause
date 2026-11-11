@@ -1613,6 +1613,9 @@ type TableCode struct {
 
 // FigureEditorView is the editor on a player's own profile (docs/adr/0029).
 type FigureEditorView struct {
+	Characters  []FigureCharacter
+	Expressions FigureExpressionsView
+	NoHeaddress bool
 	// Preview is the figure the form describes, as inline SVG.
 	Preview string
 	// Parts is one group of choices per part, in the order they are shown.
@@ -1641,4 +1644,21 @@ type FigureOption struct {
 	Hex       string
 	SameAsFur bool
 	Checked   bool
+}
+
+// FigureCharacter is a complete drawing offered by the editor.
+type FigureCharacter struct {
+	Key, Name, Preview string
+	Checked            bool
+}
+
+// FigureExpressionsView compares the six game expressions for one suggestion.
+type FigureExpressionsView struct {
+	CharacterName string
+	Faces         []FigureExpression
+}
+
+// FigureExpression is one read-only expression preview.
+type FigureExpression struct {
+	Key, Name, Preview string
 }

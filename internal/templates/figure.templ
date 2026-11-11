@@ -11,11 +11,30 @@ templ FigureEditor(v FigureEditorView) {
 	<section id="figure-editor" class="session figure-card">
 		<h2>Deine Figur</h2>
 		<p class="muted">
-			Fell, Kopfschmuck, Griff, Schläger und Schmuck suchst du dir aus. Das
-			Gesicht nicht: Am Zählwerk schaut deine Figur so, wie das Spiel gerade
-			steht.
+			Du wählst deine Figur, ihre Farben und den Schläger. Dazu kannst du Schmuck wählen. Das Gesicht folgt dem Spielstand am Zählwerk.
 		</p>
-		<form hx-post="/figure" hx-target="#figure-editor" hx-swap="outerHTML">
+		<form hx-post="/figure" hx-target="#figure-editor" hx-swap="outerHTML" hx-sync="this:replace">
+			if v.NoHeaddress {
+				<input type="hidden" name="headdress" value="fur"/>
+			}
+			<fieldset
+				class="figure-part character-picker"
+				hx-get="/fragments/figure-character"
+				hx-sync="closest form:replace"
+				hx-trigger="change"
+				hx-include="closest form"
+				hx-target="#figure-editor"
+				hx-swap="outerHTML"
+			>
+				<legend>Deine Spielfigur</legend>
+				for _, ch := range v.Characters {
+					<label class="pick character-pick">
+						<input id={ "character-" + ch.Key } type="radio" name="character" value={ ch.Key } checked?={ ch.Checked }/>
+						<span><span id={ "character-thumbnail-" + ch.Key } class="character-thumbnail">@templ.Raw(ch.Preview)</span>{ ch.Name }</span>
+					</label>
+				}
+			</fieldset>
+			@FigureExpressions(v.Expressions, false)
 			<div class="figure-layout">
 				<div id="figure-preview" class="figure-preview">
 					@templ.Raw(v.Preview)
@@ -25,6 +44,7 @@ templ FigureEditor(v FigureEditorView) {
 				<div
 					class="figure-parts"
 					hx-get="/fragments/figure-preview"
+					hx-sync="closest form:replace"
 					hx-trigger="change"
 					hx-include="closest form"
 					hx-target="#figure-preview"
@@ -86,6 +106,29 @@ templ FigurePreview(svg string) {
 	@templ.Raw(svg)
 }
 
+// FigureExpressions is a read-only gallery, also updated out of band when
+// colours change in the editor. Each preview contains exactly one face.
+templ FigureExpressions(v FigureExpressionsView, oob bool) {
+	<section
+		id="figure-expressions"
+		class="figure-expressions"
+		if oob {
+			hx-swap-oob="true"
+		}
+	>
+		<h3>Gesichtsausdrücke: { v.CharacterName }</h3>
+		<p class="muted">Mit deinen aktuellen Farben. Im Spiel bestimmt der Spielstand den Ausdruck.</p>
+		<div class="face-grid">
+			for _, f := range v.Faces {
+				<figure class="face-preview" data-expression={ f.Key }>
+					@templ.Raw(f.Preview)
+					<figcaption>{ f.Name }</figcaption>
+				</figure>
+			}
+		</div>
+	</section>
+}
+
 // ProfileFigure is the figure beside the name on a profile. With an id, so
 // saving in the editor can replace it out of band and the head shows the new
 // figure in the same response.
@@ -99,4 +142,9 @@ templ ProfileFigure(svg, blade string, oob bool) {
 	>
 		@templ.Raw(svg)
 	</span>
+}
+
+// Update only the selected thumbnail after a material or jewellery change.
+templ FigureSelectedThumbnail(svg, key string) {
+	<span id={ "character-thumbnail-" + key } class="character-thumbnail" hx-swap-oob="true">@templ.Raw(svg)</span>
 }

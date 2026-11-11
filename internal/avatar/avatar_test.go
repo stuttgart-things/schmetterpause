@@ -1,7 +1,9 @@
 package avatar_test
 
 import (
+	"encoding/xml"
 	"errors"
+	"io"
 	"io/fs"
 	"math"
 	"math/rand/v2"
@@ -128,12 +130,12 @@ func TestRandomIsRepeatableAndReachesEverything(t *testing.T) {
 			t.Fatalf("Random produced an invalid figure: %v", err)
 		}
 		for _, k := range []string{"fur:" + a[i].Fur, "head:" + a[i].Headdress, "handle:" + a[i].Handle,
-			"blade:" + a[i].Blade, "bling:" + a[i].Bling} {
+			"blade:" + a[i].Blade, "bling:" + a[i].Bling, "character:" + a[i].Character} {
 			seen[k] = true
 		}
 	}
 	want := len(avatar.Furs) + len(avatar.Headdresses) + len(avatar.Handles) +
-		len(avatar.Blades) + len(avatar.Blings)
+		len(avatar.Blades) + len(avatar.Blings) + len(avatar.BleckiBlings) - 1 + len(avatar.Characters) + 1
 	if len(seen) != want {
 		t.Errorf("3000 rolls reached %d choices, want all %d", len(seen), want)
 	}
@@ -220,23 +222,30 @@ func TestRenderTakesNothingButPaletteValues(t *testing.T) {
 // on it too: its rasteriser draws filled paths and nothing else
 // (docs/adr/0030).
 func TestPartsFollowTheBriefing(t *testing.T) {
-	entries, err := fs.ReadDir(web.Static, partsDir)
-	if err != nil {
-		t.Fatal(err)
-	}
-	forbidden := []string{"<style", "style=", "stroke", "transform", "clip-path", "<mask", "<image", "<text", "Gradient", "filter"}
-	for _, e := range entries {
-		b, err := fs.ReadFile(web.Static, partsDir+"/"+e.Name())
+	for _, ch := range avatar.Characters {
+		folder := ch.Key
+		if folder == "" {
+			folder = "sthings"
+		}
+		partsDir := "static/img/" + folder
+		entries, err := fs.ReadDir(web.Static, partsDir)
 		if err != nil {
 			t.Fatal(err)
 		}
-		for _, f := range forbidden {
-			if strings.Contains(string(b), f) {
-				t.Errorf("%s contains %q", e.Name(), f)
+		forbidden := []string{"<style", "style=", "stroke", "transform", "clip-path", "<mask", "<image", "<text", "Gradient", "filter"}
+		for _, e := range entries {
+			b, err := fs.ReadFile(web.Static, partsDir+"/"+e.Name())
+			if err != nil {
+				t.Fatal(err)
 			}
-		}
-		if !strings.Contains(string(b), `viewBox="0 0 420 420"`) {
-			t.Errorf("%s is not on the 420 viewBox", e.Name())
+			for _, f := range forbidden {
+				if strings.Contains(string(b), f) {
+					t.Errorf("%s contains %q", e.Name(), f)
+				}
+			}
+			if !strings.Contains(string(b), `viewBox="0 0 420 420"`) {
+				t.Errorf("%s is not on the 420 viewBox", e.Name())
+			}
 		}
 	}
 }
@@ -295,4 +304,109 @@ func lab(hex string) (l, a, b float64) {
 		return 7.787*t + 16.0/116
 	}
 	return 116*f(y) - 16, 500 * (f(x) - f(y)), 200 * (f(y) - f(z))
+}
+
+// Every new drawing has the same self-contained, safe SVG contract.
+func TestCharacterDeliveries(t *testing.T) {
+	for _, ch := range avatar.Characters {
+		if ch.Key == "" {
+			continue
+		}
+		t.Run(ch.Name, func(t *testing.T) {
+			dir := "static/img/" + ch.Key
+			entries, err := fs.ReadDir(web.Static, dir)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if len(entries) != 7+len(avatar.BlingPalette(ch.Key))-1 {
+				t.Fatalf("%s has %d files, want base, six faces and jewellery", ch.Name, len(entries))
+			}
+			names := []string{"base"}
+			for _, f := range avatar.Faces {
+				names = append(names, "face-"+f.Key)
+			}
+			for _, b := range avatar.BlingPalette(ch.Key) {
+				if b.Key != avatar.NoBling {
+					names = append(names, "bling-"+b.Key)
+				}
+			}
+			for _, name := range names {
+				t.Run(name, func(t *testing.T) {
+					b, err := fs.ReadFile(web.Static, dir+"/"+name+".svg")
+					if err != nil {
+						t.Fatal(err)
+					}
+					dec := xml.NewDecoder(strings.NewReader(string(b)))
+					groups, roots, shapes := 0, 0, 0
+					depth, faceDepth := 0, 0
+					for {
+						tok, err := dec.Token()
+						if errors.Is(err, io.EOF) {
+							break
+						}
+						if err != nil {
+							t.Fatal(err)
+						}
+						switch el := tok.(type) {
+						case xml.StartElement:
+							depth++
+							attrs := map[string]string{}
+							for _, a := range el.Attr {
+								attrs[a.Name.Local] = a.Value
+							}
+							switch el.Name.Local {
+							case "svg":
+								roots++
+								if depth != 1 || attrs["viewBox"] != "0 0 420 420" {
+									t.Error("invalid SVG root")
+								}
+							case "g":
+								groups++
+								faceDepth = depth
+								validFace := strings.HasPrefix(name, "face-") && attrs["class"] == "sthings-face" && attrs["data-face"] == strings.TrimPrefix(name, "face-")
+								validBling := strings.HasPrefix(name, "bling-") && attrs["class"] == "sthings-bling" && attrs["data-bling"] == strings.TrimPrefix(name, "bling-")
+								if !validFace && !validBling {
+									t.Error("invalid face group")
+								}
+							case "path", "circle", "ellipse":
+								shapes++
+								if name != "base" && faceDepth == 0 {
+									t.Error("shape outside face group")
+								}
+							default:
+								t.Errorf("unexpected element %s", el.Name.Local)
+							}
+							if fill, ok := attrs["fill"]; ok && !regexp.MustCompile(`^(#[0-9a-fA-F]{6}|var\(--(?:fur|fur-dark|headdress|headdress-dark|handle|handle-dark|paddle), #[0-9a-fA-F]{6}\))$`).MatchString(fill) {
+								t.Errorf("invalid material fill %q", fill)
+							}
+							for k := range attrs {
+								allowed := k == "fill" || k == "fill-rule" ||
+									(el.Name.Local == "svg" && (k == "viewBox" || k == "xmlns")) ||
+									(el.Name.Local == "g" && (k == "class" || k == "data-face" || k == "data-bling")) ||
+									(el.Name.Local == "path" && k == "d") ||
+									(el.Name.Local == "circle" && (k == "cx" || k == "cy" || k == "r")) ||
+									(el.Name.Local == "ellipse" && (k == "cx" || k == "cy" || k == "rx" || k == "ry"))
+								if !allowed {
+									t.Errorf("unexpected attribute %s", k)
+								}
+							}
+						case xml.EndElement:
+							if el.Name.Local == "g" {
+								faceDepth = 0
+							}
+							depth--
+						}
+					}
+					wantGroups := 1
+					if name == "base" {
+						wantGroups = 0
+					}
+					if roots != 1 || groups != wantGroups || shapes == 0 {
+						t.Errorf("roots=%d groups=%d shapes=%d", roots, groups, shapes)
+					}
+				})
+			}
+
+		})
+	}
 }

@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -345,5 +346,291 @@ func TestTheFigureAsGIF(t *testing.T) {
 	rnd := get(t, h, "/avatars/random.gif")
 	if rnd.Code != http.StatusOK || rnd.Header().Get("Cache-Control") != "no-store" {
 		t.Errorf("random.gif: status %d, Cache-Control %q", rnd.Code, rnd.Header().Get("Cache-Control"))
+	}
+}
+
+func TestCharacterSwitchDoesNotStoreAndResetsMaterials(t *testing.T) {
+	h, store, anna, _ := twoBrowsers(t)
+	id := uuid.MustParse(opponentID(t, store, "Anna"))
+	for _, ch := range avatar.Characters {
+		t.Run(ch.Name, func(t *testing.T) {
+			q := url.Values{"character": {ch.Key}, "blade": {"pink"}, "fur": {"white"}, "bling": {"chain"}}
+			rec := fragment(t, h, "/fragments/figure-character?"+q.Encode(), anna)
+			if rec.Code != http.StatusOK {
+				t.Fatalf("status %d: %s", rec.Code, rec.Body.String())
+			}
+			body := rec.Body.String()
+			if !strings.Contains(body, `name="character" value="`+ch.Key+`" checked`) {
+				t.Error("new character is not selected")
+			}
+			if !strings.Contains(body, `name="blade" value="pink" checked`) {
+				t.Error("switch lost blade colour")
+			}
+			if ch.Key != "" {
+				if !strings.Contains(body, `name="fur" value="" checked`) {
+					t.Error("new character did not use original materials")
+				}
+				if strings.Contains(body, `name="bling" value="chain"`) {
+					t.Error("new character offers jewellery drawn for sthings")
+				}
+			}
+			if _, err := store.Avatars().Get(context.Background(), id); err == nil {
+				t.Error("switch stored a suggestion")
+			}
+		})
+	}
+	if rec := fragment(t, h, "/fragments/figure-character?character=unknown&blade=pink", anna); rec.Code != http.StatusUnprocessableEntity {
+		t.Errorf("unknown character: %d", rec.Code)
+	}
+	if rec := get(t, h, "/fragments/figure-character?character=pip&blade=pink"); rec.Code < 400 {
+		t.Errorf("anonymous switch: %d", rec.Code)
+	}
+}
+
+func TestSavedCharactersReachProfileSVGAndGIF(t *testing.T) {
+	h, store, anna, _ := twoBrowsers(t)
+	id := uuid.MustParse(opponentID(t, store, "Anna"))
+	for _, ch := range avatar.Characters {
+		t.Run(ch.Name, func(t *testing.T) {
+			a := avatar.DefaultForCharacter(ch.Key, id.String())
+			a.Blade = "pink"
+			form := figureForm(a)
+			form.Set("character", a.Character)
+			rec := postAs(t, h, "/figure", anna, form)
+			if rec.Code != http.StatusOK {
+				t.Fatalf("save: %d: %s", rec.Code, rec.Body.String())
+			}
+			if got, err := store.Avatars().Get(context.Background(), id); err != nil || got != a {
+				t.Fatalf("saved %+v, %v; want %+v", got, err, a)
+			}
+			svg := get(t, h, "/avatars/"+id.String()+".svg?face=happy").Body.String()
+			if ch.Key != "" && !strings.Contains(svg, `data-character="`+ch.Key+`"`) {
+				t.Error("SVG serves the wrong character")
+			}
+			if strings.Count(svg, `class="sthings-face"`) != 6 {
+				t.Error("live SVG lost expressions")
+			}
+			profile := fragment(t, h, "/players/"+id.String(), anna).Body.String()
+			start := strings.Index(profile, `id="profile-figure"`)
+			if start < 0 {
+				t.Fatal("no profile figure")
+			}
+			end := strings.Index(profile[start:], "</svg>")
+			if end < 0 {
+				t.Fatal("no profile figure")
+			}
+			if ch.Key != "" && !strings.Contains(profile[start:start+end], `data-character="`+ch.Key+`"`) {
+				t.Error("profile serves the wrong character")
+			}
+			g, err := gif.DecodeAll(get(t, h, "/avatars/"+id.String()+".gif").Body)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if len(g.Image) != len(avatar.Cheer) {
+				t.Error("GIF lost cheer frames")
+			}
+		})
+	}
+	bad := figureForm(chosen)
+	bad.Set("character", `unknown"><script>`)
+	if rec := postAs(t, h, "/figure", anna, bad); rec.Code != http.StatusUnprocessableEntity {
+		t.Errorf("invalid character save: %d", rec.Code)
+	}
+}
+
+func TestExpressionGalleryFollowsUnsavedCharacterAndColours(t *testing.T) {
+	h, store, anna, bodo := twoBrowsers(t)
+	id := uuid.MustParse(opponentID(t, store, "Anna"))
+	stored := avatar.Default(id.String())
+	if err := store.Avatars().Put(context.Background(), id, stored); err != nil {
+		t.Fatal(err)
+	}
+	check := func(t *testing.T, body, character string) {
+		t.Helper()
+		start := strings.Index(body, `id="figure-expressions"`)
+		if start < 0 {
+			t.Fatal("expression gallery missing")
+		}
+		end := strings.Index(body[start:], "</section>")
+		if end < 0 {
+			t.Fatal("unclosed expression gallery")
+		}
+		gallery := body[start : start+end]
+		cards := regexp.MustCompile(`(?s)<figure[^>]*data-expression="([^"]+)"[^>]*>(.*?)</figure>`).FindAllStringSubmatch(gallery, -1)
+		if len(cards) != len(avatar.Faces) {
+			t.Fatalf("%d previews, want six", len(cards))
+		}
+		for i, card := range cards {
+			face := avatar.Faces[i]
+			if card[1] != face.Key || !strings.Contains(card[2], face.Name) {
+				t.Errorf("wrong expression label: %s", card[1])
+			}
+			if strings.Count(card[2], `class="sthings-face"`) != 1 || !strings.Contains(card[2], `<g class="sthings-face" data-face="`+face.Key+`"`) {
+				t.Errorf("%s does not show exactly its own face", face.Key)
+			}
+			if character != "" && !strings.Contains(card[2], `data-character="`+character+`"`) {
+				t.Errorf("%s shows the wrong character", face.Key)
+			}
+		}
+	}
+	own := fragment(t, h, "/players/"+id.String(), anna).Body.String()
+	check(t, own, "")
+	if strings.Contains(fragment(t, h, "/players/"+id.String(), bodo).Body.String(), `id="figure-expressions"`) || strings.Contains(get(t, h, "/players/"+id.String()).Body.String(), `id="figure-expressions"`) {
+		t.Error("private editor gallery is visible on somebody else's profile")
+	}
+	for _, ch := range avatar.Characters {
+		t.Run(ch.Name, func(t *testing.T) {
+			q := url.Values{"character": {ch.Key}, "blade": {"pink"}}
+			switched := fragment(t, h, "/fragments/figure-character?"+q.Encode(), anna)
+			if switched.Code != http.StatusOK {
+				t.Fatalf("switch: %d", switched.Code)
+			}
+			check(t, switched.Body.String(), ch.Key)
+			a := avatar.DefaultForCharacter(ch.Key, id.String())
+			a.Fur = "white"
+			a.Handle = "blue"
+			a.Headdress = "lapis"
+			a.Blade = "pink"
+			q = figureForm(a)
+			q.Set("character", ch.Key)
+			q.Set("face", "angry")
+			rec := fragment(t, h, "/fragments/figure-preview?"+q.Encode(), anna)
+			if rec.Code != http.StatusOK {
+				t.Fatalf("preview: %d", rec.Code)
+			}
+			body := rec.Body.String()
+			check(t, body, ch.Key)
+			if !strings.Contains(body, `hx-swap-oob="true"`) {
+				t.Error("colour preview does not refresh the gallery")
+			}
+			for _, colour := range []string{"--fur:#f7f5f0", "--handle:#2f6fd0", "--paddle:#d64f9c"} {
+				if strings.Count(body, colour) != 8 {
+					t.Errorf("%s was not applied to main preview, selected thumbnail and six expressions", colour)
+				}
+			}
+			if got, err := store.Avatars().Get(context.Background(), id); err != nil || got != stored {
+				t.Errorf("gallery changed the saved figure: %+v, %v", got, err)
+			}
+		})
+	}
+}
+
+func TestVexPaletteOptionsAndRequestsAreRestricted(t *testing.T) {
+	h, store, anna, _ := twoBrowsers(t)
+	id := uuid.MustParse(opponentID(t, store, "Anna"))
+	banned := []string{"orange", "ginger", "cinnamon", "gold", "cream"}
+	rec := fragment(t, h, "/fragments/figure-character?character=vex&blade=pink", anna)
+	body := rec.Body.String()
+	if rec.Code != http.StatusOK {
+		t.Fatal(rec.Code)
+	}
+	for _, key := range banned {
+		if strings.Contains(body, `name="fur" value="`+key+`"`) {
+			t.Errorf("Vex still offers %s", key)
+		}
+	}
+	for _, key := range []string{"", "sand", "white", "chocolate"} {
+		if !strings.Contains(body, `name="fur" value="`+key+`"`) {
+			t.Errorf("Vex lost provisional/original coat %q", key)
+		}
+	}
+	for _, key := range banned {
+		a := avatar.DefaultForCharacter("vex", id.String())
+		a.Fur = key
+		form := figureForm(a)
+		form.Set("character", "vex")
+		if r := postAs(t, h, "/figure", anna, form); r.Code != http.StatusUnprocessableEntity {
+			t.Errorf("saving Vex %s: %d", key, r.Code)
+		}
+		if r := fragment(t, h, "/fragments/figure-preview?"+form.Encode(), anna); r.Code != http.StatusUnprocessableEntity {
+			t.Errorf("previewing Vex %s: %d", key, r.Code)
+		}
+	}
+	if _, err := store.Avatars().Get(context.Background(), id); err == nil {
+		t.Error("forbidden palette request stored a figure")
+	}
+	// Reads of stale persisted colours fall back visually, without rewriting data.
+	stale := avatar.DefaultForCharacter("vex", id.String())
+	stale.Fur = "ginger"
+	if err := store.Avatars().Put(context.Background(), id, stale); err != nil {
+		t.Fatal(err)
+	}
+	profile := fragment(t, h, "/players/"+id.String(), anna).Body.String()
+	if !strings.Contains(profile, `name="fur" value="" checked`) {
+		t.Error("stored ginger Vex did not fall back to original grey")
+	}
+	if strings.Contains(profile, "--fur:#d9622b") {
+		t.Error("a stale ginger coat reached the preview")
+	}
+	if got, err := store.Avatars().Get(context.Background(), id); err != nil || got != stale {
+		t.Error("read mutated persisted choices")
+	}
+	for _, ch := range avatar.Characters {
+		if ch.Key == "vex" {
+			continue
+		}
+		other := fragment(t, h, "/fragments/figure-character?character="+ch.Key+"&blade=pink", anna).Body.String()
+		for _, key := range banned {
+			if !strings.Contains(other, `name="fur" value="`+key+`"`) {
+				t.Errorf("%s lost %s", ch.Name, key)
+			}
+		}
+	}
+}
+
+func TestBleckiJewelleryPersistsPreviewsAndResets(t *testing.T) {
+	h, store, anna, _ := twoBrowsers(t)
+	id := uuid.MustParse(opponentID(t, store, "Anna"))
+	for _, bling := range avatar.BlingPalette("vex") {
+		a := avatar.DefaultForCharacter("vex", id.String())
+		a.Fur = "white"
+		a.Handle = "red"
+		a.Blade = "pink"
+		a.Bling = bling.Key
+		q := figureForm(a)
+		q.Set("character", "vex")
+		preview := fragment(t, h, "/fragments/figure-preview?"+q.Encode(), anna)
+		if preview.Code != 200 {
+			t.Fatalf("preview %s: %d", bling.Key, preview.Code)
+		}
+		if !strings.Contains(preview.Body.String(), `id="character-thumbnail-vex"`) {
+			t.Error("selected thumbnail is not refreshed")
+		}
+		if r := postAs(t, h, "/figure", anna, q); r.Code != 200 {
+			t.Fatalf("save %s: %d", bling.Key, r.Code)
+		}
+		if got, err := store.Avatars().Get(context.Background(), id); err != nil || got != a {
+			t.Fatalf("stored %+v: %v", got, err)
+		}
+		profile := fragment(t, h, "/players/"+id.String(), anna).Body.String()
+		thumb := regexp.MustCompile(`(?s)<span id="character-thumbnail-vex"[^>]*>(.*?)</span>`).FindStringSubmatch(profile)
+		if len(thumb) < 2 || !strings.Contains(thumb[1], "--fur:#f7f5f0") || !strings.Contains(thumb[1], "--handle:#c82828") || !strings.Contains(thumb[1], "--paddle:#d64f9c") {
+			t.Fatal("selected thumbnail lost stored colours")
+		}
+		svg := get(t, h, "/avatars/"+id.String()+".svg").Body.String()
+		if bling.Key != "" && (!strings.Contains(thumb[1], `data-bling="`+bling.Key+`"`) || !strings.Contains(svg, `data-bling="`+bling.Key+`"`)) {
+			t.Error("jewellery missing from thumbnail or public SVG")
+		}
+		if r := get(t, h, "/avatars/"+id.String()+".gif?face=angry"); r.Code != 200 {
+			t.Error("jewellery breaks LED rendering")
+		}
+	}
+	if r := postAs(t, h, "/figure/reset", anna, nil); r.Code != 200 {
+		t.Fatal(r.Code)
+	}
+	if _, err := store.Avatars().Get(context.Background(), id); err == nil {
+		t.Error("reset kept jewellery")
+	}
+	stale := avatar.DefaultForCharacter("vex", id.String())
+	stale.Fur = "cinnamon"
+	if err := store.Avatars().Put(context.Background(), id, stale); err != nil {
+		t.Fatal(err)
+	}
+	profile := fragment(t, h, "/players/"+id.String(), anna).Body.String()
+	if !strings.Contains(profile, `name="fur" value="" checked`) || strings.Contains(profile, `name="fur" value="cinnamon"`) {
+		t.Error("stored cinnamon does not show Original")
+	}
+	if !strings.Contains(profile, "Blecki") || strings.Contains(profile, ">Vex<") || strings.Contains(profile, `value="pip"`) || strings.Contains(profile, `value="pogo"`) || strings.Contains(profile, `value="kiki"`) {
+		t.Error("release character selection is wrong")
 	}
 }

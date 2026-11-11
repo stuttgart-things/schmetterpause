@@ -2076,3 +2076,37 @@ tr.self td { background: color-mix(in srgb, var(--accent) 8%, transparent); }
 .swatch-fur { background: linear-gradient(135deg, var(--rank-1) 50%, transparent 50%); }
 
 .figure-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 1.25rem; }
+
+/* Complete figures are choices rather than colour swatches. */
+.character-picker { margin-bottom: 1.25rem; gap: 0.5rem; }
+.character-pick { flex: 0 1 5rem; }
+.character-pick > span {
+ display: flex;
+ flex-direction: column;
+ align-items: center;
+ gap: 0.4rem;
+ width: 100%;
+ padding: 0.5rem;
+ border-radius: 8px;
+ text-align: center;
+}
+.character-thumbnail { display: block; width: 3.75rem; height: 3.75rem; }
+.character-thumbnail svg { display: block; width: 100%; height: 100%; }
+
+/* Expressions are a comparison gallery, not another saved avatar choice. */
+.figure-expressions { margin: 0 0 1.5rem; }
+.figure-expressions h3 { margin: 0 0 0.5rem; font-size: 1.1rem; }
+.figure-expressions > p { margin: 0 0 0.75rem; }
+.face-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.75rem; }
+.face-preview {
+ margin: 0;
+ padding: 0.75rem;
+ background: var(--panel);
+ border: 1px solid var(--line);
+ border-radius: 8px;
+}
+.face-preview > svg { display: block; width: 100%; height: auto; }
+.face-preview figcaption { margin-top: 0.5rem; text-align: center; font-size: 0.9rem; }
+@media (max-width: 34rem) {
+ .face-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}

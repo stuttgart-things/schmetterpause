@@ -17,10 +17,10 @@ import (
 	"github.com/stuttgart-things/schmetterpause/web"
 )
 
-// figures is the drawn parts of every player's figure (docs/adr/0029). Read
-// once from the binary; avatar.MustLoad panics on a missing part, which the
+// figures holds every complete drawing (ADR-0031). Read once from the
+// binary; loading panics on a missing part, which the
 // avatar tests reach first.
-var figures = avatar.MustLoad(web.Static, "static/img/sthings")
+var figures = avatar.MustLoadCollection(web.Static, "static/img")
 
 // avatarOf is the figure a player wears: what they stored, with every part
 // they did not store or that no longer exists filled from their default. A
@@ -159,6 +159,7 @@ func writeFigure(w http.ResponseWriter, cache, svg string) {
 
 // figureEditorView describes the editor with a checked, its preview rendered.
 func figureEditorView(a avatar.Avatar) templates.FigureEditorView {
+	a = avatar.Fill(a, "")
 	colours := func(name, label string, palette []avatar.Colour, key string) templates.FigurePart {
 		part := templates.FigurePart{Name: name, Label: label}
 		for _, c := range palette {
@@ -171,25 +172,68 @@ func figureEditorView(a avatar.Avatar) templates.FigureEditorView {
 		return part
 	}
 	bling := templates.FigurePart{Name: "bling", Label: "Schmuck"}
-	for _, o := range avatar.Blings {
+	for _, o := range avatar.BlingPalette(a.Character) {
 		bling.Options = append(bling.Options, templates.FigureOption{Key: o.Key, Name: o.Name, Checked: o.Key == a.Bling})
 	}
-	return templates.FigureEditorView{
-		Preview: figures.Render(a),
-		Parts: []templates.FigurePart{
-			colours("fur", "Fell", avatar.Furs, a.Fur),
-			colours("headdress", "Kopfschmuck", avatar.Headdresses, a.Headdress),
-			colours("handle", "Griff", avatar.Handles, a.Handle),
-			colours("blade", "Schläger", avatar.Blades, a.Blade),
-			bling,
-		},
+	fur := colours("fur", "Grundfarbe", avatar.FurPalette(a.Character), a.Fur)
+	head := colours("headdress", "Kopfschmuck", avatar.Headdresses, a.Headdress)
+	handle := colours("handle", "Griff", avatar.Handles, a.Handle)
+	parts := []templates.FigurePart{fur, head, handle, colours("blade", "Schläger", avatar.Blades, a.Blade)}
+	if a.Character == "" {
+		parts[0].Label = "Fell"
+		parts = append(parts, bling)
+	} else {
+		var definition avatar.Character
+		for _, ch := range avatar.Characters {
+			if ch.Key == a.Character {
+				definition = ch
+			}
+		}
+		parts[0].Options = append([]templates.FigureOption{{Key: "", Name: "Original", Hex: definition.Fur, Checked: a.Fur == ""}}, parts[0].Options...)
+		for i, original := range map[int]string{1: definition.Headdress, 2: definition.Handle} {
+			parts[i].Options[0].Name = "Original"
+			parts[i].Options[0].Hex = original
+			parts[i].Options[0].SameAsFur = false
+		}
 	}
+	if a.Character == "vex" {
+		parts = append(parts[:1], parts[2:]...)
+		parts = append(parts, bling)
+	}
+	view := templates.FigureEditorView{Preview: figures.Render(a), Parts: parts, NoHeaddress: a.Character == "vex", Expressions: figureExpressionsView(a)}
+	for _, ch := range avatar.Characters {
+		thumbnail := avatar.DefaultForCharacter(ch.Key, "")
+		thumbnail.Blade = avatar.Blades[0].Key
+		if ch.Key == a.Character {
+			thumbnail = a
+		}
+		view.Characters = append(view.Characters, templates.FigureCharacter{
+			Key: ch.Key, Name: ch.Name, Checked: ch.Key == a.Character,
+			Preview: figures.Render(thumbnail),
+		})
+	}
+	return view
+}
+
+func figureExpressionsView(a avatar.Avatar) templates.FigureExpressionsView {
+	a = avatar.Fill(a, "")
+	view := templates.FigureExpressionsView{}
+	for _, ch := range avatar.Characters {
+		if ch.Key == a.Character {
+			view.CharacterName = ch.Name
+		}
+	}
+	for _, f := range avatar.Faces {
+		view.Faces = append(view.Faces, templates.FigureExpression{Key: f.Key, Name: f.Name, Preview: figures.RenderFace(a, f.Key)})
+	}
+	return view
 }
 
 // figureFromForm reads the editor's fields. Validated by the caller: an
 // unknown key from a form is a mistake to answer, not to paper over.
 func figureFromForm(r *http.Request) avatar.Avatar {
 	return avatar.Avatar{
+		Character: r.FormValue("character"),
 		Fur:       r.FormValue("fur"),
 		Headdress: r.FormValue("headdress"),
 		Handle:    r.FormValue("handle"),
@@ -209,6 +253,35 @@ func (s *Server) handleFigurePreview(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.render(w, r, templates.FigurePreview(figures.Render(a)))
+	s.render(w, r, templates.FigureExpressions(figureExpressionsView(a), true))
+	s.render(w, r, templates.FigureSelectedThumbnail(figures.Render(a), a.Character))
+}
+
+// handleFigureCharacter changes the suggestion, without storing it. Each
+// drawing starts with its original materials; the chosen blade is retained.
+func (s *Server) handleFigureCharacter(w http.ResponseWriter, r *http.Request) {
+	key := r.FormValue("character")
+	known := false
+	for _, ch := range avatar.Characters {
+		if ch.Key == key {
+			known = true
+		}
+	}
+	if !known {
+		w.WriteHeader(http.StatusUnprocessableEntity)
+		return
+	}
+	a := avatar.DefaultForCharacter(key, "")
+	a.Blade = r.FormValue("blade")
+	// A missing blade is possible only in a hand-made request.
+	if a.Blade == "" {
+		a.Blade = avatar.Blades[0].Key
+	}
+	if err := avatar.Validate(a); err != nil {
+		w.WriteHeader(http.StatusUnprocessableEntity)
+		return
+	}
+	s.render(w, r, templates.FigureEditor(figureEditorView(a)))
 }
 
 // handleSaveFigure stores the editor's figure for the reader, and nobody else:

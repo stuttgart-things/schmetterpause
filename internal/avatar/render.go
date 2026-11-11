@@ -13,15 +13,20 @@ import (
 // own: they live under web/static/img/sthings, where they are also served,
 // and an embed cannot reach outside its package's directory.
 type Kit struct {
-	base   string
-	faces  map[string]string
-	blings map[string]string
+	character Character
+	base      string
+	faces     map[string]string
+	blings    map[string]string
 }
 
 // Load reads every part the option lists name from dir in fsys. A face or a
 // piece of bling without its file is an error here, at startup, rather than
 // a figure with a hole in it on somebody's profile.
 func Load(fsys fs.FS, dir string) (*Kit, error) {
+	return load(fsys, dir, Blings)
+}
+
+func load(fsys fs.FS, dir string, jewellery []Option) (*Kit, error) {
 	read := func(name string) (string, error) {
 		b, err := fs.ReadFile(fsys, path.Join(dir, name+".svg"))
 		if err != nil {
@@ -29,7 +34,7 @@ func Load(fsys fs.FS, dir string) (*Kit, error) {
 		}
 		return inner(string(b))
 	}
-	k := &Kit{faces: map[string]string{}, blings: map[string]string{}}
+	k := &Kit{character: Characters[0], faces: map[string]string{}, blings: map[string]string{}}
 	var err error
 	if k.base, err = read("base"); err != nil {
 		return nil, err
@@ -39,7 +44,7 @@ func Load(fsys fs.FS, dir string) (*Kit, error) {
 			return nil, err
 		}
 	}
-	for _, b := range Blings {
+	for _, b := range jewellery {
 		if b.Key == NoBling {
 			continue
 		}
@@ -92,6 +97,15 @@ func (k *Kit) Render(a Avatar) string {
 	return k.render(a, "", k.faces[Faces[0].Key])
 }
 
+// RenderFace renders a single expression for the editor's comparison gallery.
+// It does not change the neutral face used by Render or the live face state.
+func (k *Kit) RenderFace(a Avatar, face string) string {
+	if !hasOption(Faces, face) {
+		face = Faces[0].Key
+	}
+	return k.render(a, face, k.faces[face])
+}
+
 // RenderLive is the figure with every face, for standing next to a running
 // match. data-face on the element picks the one that shows; a client switches
 // it by setting that attribute and nothing else, so a face change on every
@@ -121,6 +135,7 @@ func (k *Kit) RenderLive(a Avatar, face string) string {
 }
 
 func (k *Kit) render(a Avatar, face, faces string) string {
+	a.Character = k.character.Key
 	a = Fill(a, "")
 	fur, _ := findColour(Furs, a.Fur)
 	head, _ := findColour(Headdresses, a.Headdress)
@@ -130,18 +145,39 @@ func (k *Kit) render(a Avatar, face, faces string) string {
 	prop := func(name, value string) {
 		fmt.Fprintf(&style, "--%s:%s;", name, value)
 	}
-	prop("fur", fur.Hex)
-	prop("fur-dark", fur.Shade)
-	prop("headdress", orFur(head.Hex, fur.Hex))
-	prop("headdress-dark", orFur(head.Shade, fur.Shade))
-	prop("handle", orFur(handle.Hex, fur.Hex))
-	prop("handle-dark", orFur(handle.Shade, fur.Shade))
+	if fur.Hex != "" {
+		prop("fur", fur.Hex)
+		prop("fur-dark", fur.Shade)
+	}
+	headDefault, handleDefault := fur.Hex, fur.Hex
+	if k.character.Key != "" {
+		headDefault, handleDefault = k.character.Headdress, k.character.Handle
+	}
+	prop("headdress", orFur(head.Hex, headDefault))
+	headShade := head.Shade
+	if k.character.Key == "" {
+		headShade = orFur(headShade, fur.Shade)
+	}
+	if headShade != "" {
+		prop("headdress-dark", headShade)
+	}
+	prop("handle", orFur(handle.Hex, handleDefault))
+	handleShade := handle.Shade
+	if k.character.Key == "" {
+		handleShade = orFur(handleShade, fur.Shade)
+	}
+	if handleShade != "" {
+		prop("handle-dark", handleShade)
+	}
 	if blade, ok := findColour(Blades, a.Blade); ok {
 		prop("paddle", blade.Hex)
 	}
 
 	var b strings.Builder
 	b.WriteString(`<svg viewBox="0 0 420 420" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" class="sthings"`)
+	if k.character.Key != "" {
+		fmt.Fprintf(&b, ` data-character="%s"`, k.character.Key)
+	}
 	if face != "" {
 		fmt.Fprintf(&b, ` data-face="%s"`, face)
 	}
@@ -149,8 +185,13 @@ func (k *Kit) render(a Avatar, face, faces string) string {
 	b.WriteString(strings.TrimSuffix(style.String(), ";"))
 	b.WriteString(`">`)
 	b.WriteString(k.base)
-	b.WriteString(faces)
-	b.WriteString(k.blings[a.Bling])
+	if k.character.Key == "vex" {
+		b.WriteString(k.blings[a.Bling])
+		b.WriteString(faces)
+	} else {
+		b.WriteString(faces)
+		b.WriteString(k.blings[a.Bling])
+	}
 	b.WriteString(`</svg>`)
 	return b.String()
 }
