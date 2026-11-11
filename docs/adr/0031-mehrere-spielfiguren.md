@@ -1,0 +1,62 @@
+# ADR-0031: Spieler wählen ihre Spielfigur
+
+- **Status:** accepted
+- **Datum:** 2026-11-11
+- **Betrifft:** Datenmodell, Oberfläche, SVG-Assets
+- **Supersedes:** ADR-0029 hinsichtlich der Beschränkung auf eine Figur und
+  der für alle Figuren gemeinsamen Schmuckauswahl. Alle übrigen Regeln aus
+  ADR-0029 und das GIF-Format aus ADR-0030 bleiben bestehen.
+- **Bezug:** Issue #375; anschließender Auftrag, die weiteren Figuren aus dem
+  Tischtennis Character Creator v4 wählbar einzubauen.
+
+## Entscheidung
+
+Neben sthings stehen Pogo, Pip, Vex und Kiki zur Auswahl. Die
+Auswahl wird mit den Farben in `player_avatars` gespeichert. Die additive
+Spalte `character` hat den Standardwert `''`, der sthings bedeutet. Bestehende
+Zeilen, ausgelassene Formularfelder und unbekannte gespeicherte Figuren
+bleiben dadurch bei sthings. Zurücksetzen löscht wie bisher die eigene Wahl.
+
+Der Editor zeigt die Figuren mit Vorschaubildern. Ein Wechsel lädt zunächst
+nur einen Vorschlag mit den Originalmaterialien der neuen Figur; die
+Schlägerfarbe bleibt erhalten. Erst Speichern ändert die eigene Figur.
+Grundfarbe, Kopfschmuck, Griff und Schläger lassen sich mit den bestehenden
+Paletten ändern. Die Grundfarben dürfen je Figur eingeschränkt werden;
+Vex schließt Orange, Ingwer, Gold und Creme aus. Neue Figuren haben zusätzlich ihre Originalgrundfarbe;
+Kopfschmuck und Griff können ebenfalls auf ihre Originalfarbe zurückfallen.
+Die Materialfarben für Schnauze, Augen, Ohren und ähnliche Details bleiben
+fest. sthings behält seine bisherigen Farben und Schmuckstücke. Die
+Schmuckstücke sind auf sthings zugeschnitten und werden anderen Figuren
+weder angeboten noch aufgesetzt.
+
+Jede Figur besitzt eine eigene Basis und dieselben sechs vollständigen
+Gesichter. Das Gesicht bleibt vom Spiel bestimmt. SVG und GIF, Profile,
+Kopfzeile, Live-Spielstand und Zufallsfiguren verwenden denselben Katalog.
+Die öffentlichen Avatar-Adressen ändern sich nicht. Zufall wählt auch die
+Figur; unbekannte gespeicherte Schlüssel fallen pro Teil zurück. Auch die
+entfernten Figuren Fynn und Chomp werden wie unbekannte Schlüssel behandelt:
+Sie sind nicht mehr wählbar, vorhandene Auswahlen zeigen sthings.
+
+## Zeichnungen und technische Grenzen
+
+Die Tiere behalten die Proportionen und die Ansicht ihrer
+Originalzeichnungen. Ihre Gesichtsteile werden herausgelöst und für die sechs
+Spielausdrücke ergänzt. Die Ursprungspfade werden bei der Aufbereitung auf
+`0 0 420 420` gebracht, Transformationen in die Koordinaten eingerechnet und
+CSS-Klassen durch Materialfüllungen ersetzt.
+
+Die ausgelieferten SVG-Teile enthalten weiterhin nur gefüllte Vektorformen,
+keine Skripte, externen Referenzen, Stile, Striche, Masken oder Filter.
+`class="sthings"` und die Gesichtsgruppen bleiben als bestehende Schnittstelle
+zum Zählwerk erhalten; `data-character` kennzeichnet neue Figuren.
+Die Bibliothek zum Importieren gehört nur zum Entwicklungswerkzeug, nicht
+ins Anwendungs-Binary oder Container-Image.
+
+## Konsequenzen
+
+- Ein neues Tier braucht vollständige, aufeinander abgestimmte Zeichnungen,
+  einen Katalogeintrag und Tests für SVG, Gesichtswechsel und GIF.
+- Alte Nutzer müssen nichts auswählen und verändern ihr Aussehen nicht.
+- Kein zusätzliches JavaScript: Auswahl und Vorschau bleiben HTMX-Formulare.
+- Die Anwendung prüft Figuren-, Farb- und Schmuckschlüssel. Die Datenbank
+  speichert auch unbekannte Schlüssel für einen weiterhin möglichen Rückfall.

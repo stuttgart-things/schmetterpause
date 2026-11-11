@@ -24,6 +24,7 @@ import (
 // value is not a valid figure; Default is the figure of somebody who has not
 // chosen.
 type Avatar struct {
+	Character string
 	Fur       string
 	Headdress string
 	Handle    string
@@ -79,8 +80,11 @@ func BladeOf(a Avatar) (int, bool) {
 // again is therefore harmless: what was stored falls back rather than
 // breaking the page (docs/adr/0029).
 func Fill(a Avatar, playerID string) Avatar {
-	d := Default(playerID)
-	if _, ok := findColour(Furs, a.Fur); !ok {
+	if _, ok := character(a.Character); !ok {
+		a.Character = ""
+	}
+	d := DefaultForCharacter(a.Character, playerID)
+	if !validFur(a.Character, a.Fur) {
 		a.Fur = d.Fur
 	}
 	if _, ok := findColour(Headdresses, a.Headdress); !ok {
@@ -92,7 +96,7 @@ func Fill(a Avatar, playerID string) Avatar {
 	if _, ok := findColour(Blades, a.Blade); !ok {
 		a.Blade = d.Blade
 	}
-	if !hasOption(Blings, a.Bling) {
+	if !hasOption(Blings, a.Bling) || a.Character != "" {
 		a.Bling = d.Bling
 	}
 	return a
@@ -102,16 +106,18 @@ func Fill(a Avatar, playerID string) Avatar {
 // for what a player submits, where an unknown key is a mistake to answer
 // rather than something to paper over as Fill does for stored values.
 func Validate(a Avatar) error {
+	_, knownCharacter := character(a.Character)
 	checks := []struct {
 		part string
 		key  string
 		ok   bool
 	}{
-		{"fur", a.Fur, has(Furs, a.Fur)},
+		{"character", a.Character, knownCharacter},
+		{"fur", a.Fur, validFur(a.Character, a.Fur)},
 		{"headdress", a.Headdress, has(Headdresses, a.Headdress)},
 		{"handle", a.Handle, has(Handles, a.Handle)},
 		{"blade", a.Blade, has(Blades, a.Blade)},
-		{"bling", a.Bling, hasOption(Blings, a.Bling)},
+		{"bling", a.Bling, hasOption(Blings, a.Bling) && (a.Character == "" || a.Bling == NoBling)},
 	}
 	for _, c := range checks {
 		if !c.ok {
@@ -130,11 +136,21 @@ func has(p []Colour, key string) bool {
 // field seeds it so two runs dress the same players the same way, the dice
 // button in the editor and zaehlwerk's demo matches do not.
 func Random(r *rand.Rand) Avatar {
-	return Avatar{
-		Fur:       Furs[r.IntN(len(Furs))].Key,
+	key := Characters[r.IntN(len(Characters))].Key
+	palette := FurPalette(key)
+	a := Avatar{
+		Character: key,
+		Fur:       palette[r.IntN(len(palette))].Key,
 		Headdress: Headdresses[r.IntN(len(Headdresses))].Key,
 		Handle:    Handles[r.IntN(len(Handles))].Key,
 		Blade:     Blades[r.IntN(len(Blades))].Key,
 		Bling:     Blings[r.IntN(len(Blings))].Key,
 	}
+	if a.Character != "" {
+		a.Bling = NoBling
+		if r.IntN(len(palette)+1) == 0 {
+			a.Fur = ""
+		}
+	}
+	return a
 }

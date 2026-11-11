@@ -215,6 +215,7 @@ func (s *Server) routes() http.Handler {
 	page.Handle("POST /signout", auth.RequirePlayer(http.HandlerFunc(s.handleSignOut)))
 	// The figure editor, for your own figure only (docs/adr/0029). The
 	// preview and the dice store nothing; save and reset do.
+	page.Handle("GET /fragments/figure-character", auth.RequirePlayer(http.HandlerFunc(s.handleFigureCharacter)))
 	page.Handle("GET /fragments/figure-preview", auth.RequirePlayer(http.HandlerFunc(s.handleFigurePreview)))
 	page.Handle("GET /fragments/figure-roll", auth.RequirePlayer(http.HandlerFunc(s.handleRollFigure)))
 	page.Handle("POST /figure", auth.RequirePlayer(http.HandlerFunc(s.handleSaveFigure)))

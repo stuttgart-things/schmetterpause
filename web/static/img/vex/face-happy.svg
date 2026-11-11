@@ -1,0 +1,9 @@
+<svg viewBox="0 0 420 420" xmlns="http://www.w3.org/2000/svg">
+  <g class="sthings-face" data-face="happy">
+  <path fill="#080808" fill-rule="evenodd" d="M150 206C161.6 179 202.4 179 214 206Q217 213 208 215C197.3 199 166.7 199 156 215Q147 213 150 206Z"/>
+  <path fill="#080808" fill-rule="evenodd" d="M258 207C267.6 180 302.4 180 312 207Q315 214 306 216C298.05 200 271.95 200 264 216Q255 214 258 207Z"/>
+  <path fill="#080808" fill-rule="evenodd" d="M193 251Q224 272 259 258Q251 289 225 291Q201 287 193 251Z"/>
+  <path fill="#f8f8f8" fill-rule="evenodd" d="M202 260 215 265 211 277 202 260Z"/>
+  <path fill="#fa557d" fill-rule="evenodd" d="M215 284Q226 272 240 282Q230 291 215 284Z"/>
+  </g>
+</svg>

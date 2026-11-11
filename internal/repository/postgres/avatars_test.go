@@ -86,3 +86,28 @@ func TestAvatarRepositoryKeepsUnknownKeys(t *testing.T) {
 		t.Errorf("Get() = %+v, %v; want the stored keys untouched", got, err)
 	}
 }
+
+func TestAvatarRepositoryKeepsCharacterAndOriginalMaterials(t *testing.T) {
+	store, ctx := newStore(t)
+	player, err := store.Players().Create(ctx, "Figure picker", domain.DefaultTTR)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, ch := range avatar.Characters {
+		a := avatar.DefaultForCharacter(ch.Key, player.ID.String())
+		if err := store.Avatars().Put(ctx, player.ID, a); err != nil {
+			t.Fatal(err)
+		}
+		if got, err := store.Avatars().Get(ctx, player.ID); err != nil || got != a {
+			t.Errorf("%s: got %+v, %v; want %+v", ch.Name, got, err, a)
+		}
+	}
+	stale := avatar.Default(player.ID.String())
+	stale.Character = "retired"
+	if err := store.Avatars().Put(ctx, player.ID, stale); err != nil {
+		t.Fatal(err)
+	}
+	if got, err := store.Avatars().Get(ctx, player.ID); err != nil || got != stale {
+		t.Errorf("unknown character was not preserved: %+v, %v", got, err)
+	}
+}
