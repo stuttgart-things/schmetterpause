@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.23.0](https://github.com/stuttgart-things/schmetterpause/compare/v0.22.0...v0.23.0) (2026-11-11)
+
+
+### Features
+
+* **avatar:** offer lowercase blecki with a selectable ball colour ([#383](https://github.com/stuttgart-things/schmetterpause/issues/383)) ([8a7c1c1](https://github.com/stuttgart-things/schmetterpause/commit/8a7c1c18233994151ae6747ea9035a7669159530))
+
 ## [0.22.0](https://github.com/stuttgart-things/schmetterpause/compare/v0.21.0...v0.22.0) (2026-11-11)
 
 
