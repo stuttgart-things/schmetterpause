@@ -126,8 +126,8 @@ func TestCollectionRejectsAnIncompleteCharacter(t *testing.T) {
 		t.Fatal(err)
 	}
 	delete(files, "static/img/vex/face-happy.svg")
-	if _, err := avatar.LoadCollection(files, "static/img"); err == nil || !strings.Contains(err.Error(), "Blecki") {
-		t.Errorf("missing Blecki expression: %v", err)
+	if _, err := avatar.LoadCollection(files, "static/img"); err == nil || !strings.Contains(err.Error(), "blecki") {
+		t.Errorf("missing blecki expression: %v", err)
 	}
 }
 

@@ -68,6 +68,7 @@ templ FigureEditor(v FigureEditorView) {
 							}
 						</fieldset>
 					}
+					@FigureBallColor(v.BallColor, false)
 				</div>
 			</div>
 			<div class="figure-actions">
@@ -147,4 +148,25 @@ templ ProfileFigure(svg, blade string, oob bool) {
 // Update only the selected thumbnail after a material or jewellery change.
 templ FigureSelectedThumbnail(svg, key string) {
 	<span id={ "character-thumbnail-" + key } class="character-thumbnail" hx-swap-oob="true">@templ.Raw(svg)</span>
+}
+
+// FigureBallColor swaps out of band when the accessory changes.
+templ FigureBallColor(v FigureBallColorView, oob bool) {
+	<div
+		id="figure-ball-color"
+		if oob {
+			hx-swap-oob="true"
+		}
+	>
+		if v.Active {
+			<fieldset class="figure-part">
+				<legend>Ballfarbe</legend>
+				for _,o:= range v.Options {
+					<label class="pick"><input type="radio" name="ballColor" value={ o.Key } checked?={ o.Checked }/><span><i class="swatch" style={ "background:" + o.Hex }></i>{ o.Name }</span></label>
+				}
+			</fieldset>
+		} else {
+			<input type="hidden" name="ballColor" value={ v.Value }/>
+		}
+	</div>
 }

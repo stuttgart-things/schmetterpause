@@ -1,8 +1,11 @@
 package avatar
 
 import (
+	"bytes"
+	"encoding/xml"
 	"errors"
 	"image"
+	"image/gif"
 	"io/fs"
 	"math/rand/v2"
 	"reflect"
@@ -279,9 +282,9 @@ func TestBleckiJewelleryUsesOneCharacterSpecificSlot(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := []string{"", "bandana", "captain", "moon", "wolf-tooth"}
-	if len(Characters) != 2 || Characters[1].Name != "Blecki" {
-		t.Fatal("release must offer sthings and Blecki only")
+	want := []string{"", "ball"}
+	if len(Characters) != 2 || Characters[1].Name != "blecki" {
+		t.Fatal("release must offer sthings and blecki only")
 	}
 	for i, b := range BlingPalette("vex") {
 		if b.Key != want[i] {
@@ -293,7 +296,7 @@ func TestBleckiJewelleryUsesOneCharacterSpecificSlot(t *testing.T) {
 			t.Fatal(err)
 		}
 		if Fill(a, "anna") != a {
-			t.Fatal("Fill drops Blecki jewellery")
+			t.Fatal("Fill drops blecki jewellery")
 		}
 		svg := c.Render(a)
 		if b.Key != "" {
@@ -303,7 +306,7 @@ func TestBleckiJewelleryUsesOneCharacterSpecificSlot(t *testing.T) {
 			}
 			a.Character = ""
 			if Validate(a) == nil || Fill(a, "anna").Bling != "" {
-				t.Error("Blecki jewellery leaks to sthings")
+				t.Error("blecki jewellery leaks to sthings")
 			}
 		}
 	}
@@ -318,7 +321,7 @@ func TestBleckiJewelleryUsesOneCharacterSpecificSlot(t *testing.T) {
 			}
 		}
 	}
-	if len(seen) != 5 {
+	if len(seen) != len(want) {
 		t.Errorf("roll misses jewellery options: %v", seen)
 	}
 }
@@ -352,5 +355,191 @@ func TestBleckiGripHasVisibleColourBeyondPaw(t *testing.T) {
 	}
 	if count < 300 || box.Dx() < 30 || box.Dy() < 18 {
 		t.Errorf("exposed colour too small: %d pixels in %v", count, box)
+	}
+}
+
+func TestBleckiRetiredAccessoriesFallBackWithoutChangingMaterials(t *testing.T) {
+	c, err := LoadCollection(web.Static, "static/img")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, key := range []string{"towel", "captain", "bandana", "moon", "wolf-tooth"} {
+		a := DefaultForCharacter("vex", "anna")
+		a.Fur = "white"
+		a.Handle = "red"
+		a.Blade = "pink"
+		a.Bling = key
+		if !errors.Is(Validate(a), ErrUnknown) {
+			t.Errorf("retired %s can be saved", key)
+		}
+		want := a
+		want.Bling = NoBling
+		if got := Fill(a, "anna"); got != want {
+			t.Errorf("retired %s changed other choices: %+v", key, got)
+		}
+		if c.Render(a) != c.Render(want) {
+			t.Errorf("retired %s still renders", key)
+		}
+		if _, err := fs.Stat(web.Static, "static/img/vex/bling-"+key+".svg"); !errors.Is(err, fs.ErrNotExist) {
+			t.Errorf("retired %s still shipped", key)
+		}
+	}
+}
+
+func TestBleckiNewAccessoryPlacement(t *testing.T) {
+	read := func(name string) *image.RGBA {
+		t.Helper()
+		b, err := fs.ReadFile(web.Static, "static/img/vex/"+name+".svg")
+		if err != nil {
+			t.Fatal(err)
+		}
+		img, err := rasterise(varRef.ReplaceAllString(string(b), "$2"), 420)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return img
+	}
+	base, err := fs.ReadFile(web.Static, "static/img/vex/base.svg")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var drawing struct {
+		Paths []struct {
+			D    string `xml:"d,attr"`
+			Fill string `xml:"fill,attr"`
+		} `xml:"path"`
+	}
+	if err = xml.Unmarshal(base, &drawing); err != nil {
+		t.Fatal(err)
+	}
+	mask := func(indices ...int) *image.RGBA {
+		t.Helper()
+		s := `<svg viewBox="0 0 420 420">`
+		for _, i := range indices {
+			s += `<path fill="#f8f8f8" d="` + drawing.Paths[i].D + `"/>`
+		}
+		img, err := rasterise(s+`</svg>`, 420)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return img
+	}
+	blade := mask(21)
+	fg := func(img *image.RGBA, x, y int) bool { v := img.RGBAAt(x, y); return v.R >= 4 || v.G >= 4 || v.B >= 4 }
+	t.Run("ball", func(t *testing.T) {
+		ball := read("bling-ball")
+		box := image.Rectangle{}
+		for y := 0; y < 420; y++ {
+			for x := 0; x < 420; x++ {
+				if !fg(ball, x, y) {
+					continue
+				}
+				r := image.Rect(x, y, x+1, y+1)
+				if box.Empty() {
+					box = r
+				} else {
+					box = box.Union(r)
+				}
+				for dy := -8; dy <= 8; dy++ {
+					for dx := -8; dx <= 8; dx++ {
+						if dx*dx+dy*dy <= 64 && blade.RGBAAt(x+dx, y+dy).R < 128 {
+							t.Fatalf("ball has less than 8 units blade margin at %d,%d", x, y)
+						}
+					}
+				}
+			}
+		}
+		if box.Dx() < 34 || box.Dx() > 38 || box.Dy() < 34 || box.Dy() > 38 {
+			t.Errorf("ball diameter %v", box)
+		}
+		if box.Min.X < 345 || box.Max.Y > 345 {
+			t.Errorf("ball is not in upper outer quadrant: %v", box)
+		}
+	})
+}
+
+func TestBleckiBallVisibleOnEveryBladeAtLEDAndHeaderSizes(t *testing.T) {
+	c, err := LoadCollection(web.Static, "static/img")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, blade := range Blades {
+		for _, size := range []int{28, 64} {
+			a := DefaultForCharacter("vex", "")
+			a.Blade = blade.Key
+			before, err := rasterise(c.RenderFlat(a, "neutral"), size)
+			if err != nil {
+				t.Fatal(err)
+			}
+			a.Bling = "ball"
+			after, err := rasterise(c.RenderFlat(a, "neutral"), size)
+			if err != nil {
+				t.Fatal(err)
+			}
+			white := 0
+			for y := 0; y < size; y++ {
+				for x := 0; x < size; x++ {
+					p := after.RGBAAt(x, y)
+					q := before.RGBAAt(x, y)
+					if p.R > 180 && p.G > 180 && p.B > 180 && p != q {
+						white++
+					}
+				}
+			}
+			if white < 1 {
+				t.Errorf("ball invisible on %s at %d px", blade.Key, size)
+			}
+		}
+	}
+}
+
+func TestBleckiAccessoriesDoNotRecolourUntouchedGIFPixels(t *testing.T) {
+	c, err := LoadCollection(web.Static, "static/img")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, coat := range []string{"", "sand", "white", "chocolate"} {
+		for _, key := range []string{"ball"} {
+			a := DefaultForCharacter("vex", "")
+			a.Fur = coat
+			a.Blade = "light-blue"
+			plain, err := rasterise(c.RenderFlat(a, "neutral"), 64)
+			if err != nil {
+				t.Fatal(err)
+			}
+			plainData, err := c.GIF(a, []Frame{{Face: "neutral"}}, 64)
+			if err != nil {
+				t.Fatal(err)
+			}
+			before, err := gif.Decode(bytes.NewReader(plainData))
+			if err != nil {
+				t.Fatal(err)
+			}
+			a.Bling = key
+			dressed, err := rasterise(c.RenderFlat(a, "neutral"), 64)
+			if err != nil {
+				t.Fatal(err)
+			}
+			data, err := c.GIF(a, []Frame{{Face: "neutral"}}, 64)
+			if err != nil {
+				t.Fatal(err)
+			}
+			after, err := gif.Decode(bytes.NewReader(data))
+			if err != nil {
+				t.Fatal(err)
+			}
+			for y := 0; y < 64; y++ {
+				for x := 0; x < 64; x++ {
+					if plain.RGBAAt(x, y) != dressed.RGBAAt(x, y) {
+						continue
+					}
+					ar, ag, ab, aa := after.At(x, y).RGBA()
+					br, bg, bb, ba := before.At(x, y).RGBA()
+					if ar != br || ag != bg || ab != bb || aa != ba {
+						t.Fatalf("%s/%s recolours untouched pixel %d,%d", coat, key, x, y)
+					}
+				}
+			}
+		}
 	}
 }

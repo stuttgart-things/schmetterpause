@@ -343,6 +343,33 @@ def vex_mouth(state):
     raise ValueError(state)
 
 
+# Fractional coordinates within the unchanged coloured blade's bounding box.
+# This places the ball in its upper outer quadrant, away from the face.
+RACKET_BALL_ANCHOR = (0.65, 0.39)
+RACKET_BALL_RADIUS = 18
+
+
+def racket_ball(blade):
+    x1, y1, x2, y2 = blade.bounds
+    u, v = RACKET_BALL_ANCHOR
+    cx, cy = x1 + u * (x2 - x1), y1 + v * (y2 - y1)
+    return (
+        svgpath(
+            op(
+                ellipse(cx, cy, RACKET_BALL_RADIUS, RACKET_BALL_RADIUS),
+                ellipse(cx, cy, 14, 14),
+                pathops.PathOp.DIFFERENCE,
+            ),
+            INK,
+        )
+        + svgpath(ellipse(cx, cy, 14, 14), "var(--ball, #f8f8f8)")
+        + paint(
+            f"M{cx+9} {cy-5} C{cx+16} {cy+6} {cx+5} {cy+16} {cx-5} {cy+10} C{cx+5} {cy+11} {cx+10} {cy+4} {cx+9} {cy-5}Z",
+            "var(--ball-shadow, #d9d9d9)",
+        )
+    )
+
+
 def convert_vex(source, target):
     original = creator_svg.paths(source, "vex")
     native_visible = visible(original)
@@ -443,59 +470,10 @@ def convert_vex(source, target):
         )
 
     save("base", "".join(svgpath(p, colour(r, f)) for r, f, p in blank))
-    jewellery = {
-        "bandana": (
-            paint(
-                "M176 314 Q205 324 237 314 L253 322 L245 337 L234 332 L214 366 Q208 372 202 363 L179 337 L166 341 L160 332Z"
-            )
-            + paint(
-                "M178 321 Q205 333 234 321 L240 329 L208 358 L181 331 L167 335 L168 330Z",
-                "#e43c43",
-            )
-            + paint("M238 319 L249 323 L243 331 L237 328Z", "#e43c43")
-        ),
-        "captain": (
-            paint("M126 319 Q140 311 156 320 L157 353 Q142 363 126 353Z")
-            + paint("M132 324 Q141 320 150 325 L151 349 Q142 354 132 349Z", "#f8cf55")
-            + paint(
-                "M146 328 C133 324 131 349 146 346 L146 340 C139 345 138 332 146 334Z"
-            )
-        ),
-        "moon": (
-            paint(
-                "M179 314 Q209 338 239 314 L242 321 Q226 336 214 341 L214 346 L204 346 L204 341 Q187 333 176 321Z"
-            )
-            + paint(
-                "M221 342 C192 333 188 373 214 376 Q229 375 232 361 C212 371 204 350 221 342Z"
-            )
-            + paint(
-                "M212 348 C196 347 198 370 214 370 Q220 369 223 366 C212 365 207 357 212 348Z",
-                "#f8d86e",
-            )
-        ),
-        "wolf-tooth": (
-            paint(
-                "M179 314 Q209 338 239 314 L242 321 Q225 337 214 341 L214 347 L204 347 L204 341 Q186 332 176 321Z"
-            )
-            + paint(
-                "M199 341 Q210 336 221 343 L221 353 Q218 368 208 376 Q198 370 196 355Z"
-            )
-            + paint(
-                "M204 346 Q211 343 216 347 L216 353 Q214 363 208 368 Q202 363 202 354Z",
-                "#f2ead8",
-            )
-        ),
-    }
-    for key, body in jewellery.items():
-        if key != "captain":
-            # Keep the neck pieces on the light chest, above the crossed paws.
-            import xml.etree.ElementTree as ET
-
-            neck = Transform().translate(0, 314).scale(1, 0.65).translate(0, -314)
-            body = "".join(
-                svgpath(transformed(shape(el.get("d")), neck), el.get("fill"))
-                for el in ET.fromstring("<svg>" + body + "</svg>")
-            )
+    # Removed choices keep read-time fallback semantics, without stale assets.
+    for key in ("towel", "captain", "bandana", "moon", "wolf-tooth"):
+        (target / ("bling-" + key + ".svg")).unlink(missing_ok=True)
+    for key, body in {"ball": racket_ball(blade)}.items():
         save(
             "bling-" + key,
             f'<g class="sthings-bling" data-bling="{key}">\n' + body + "</g>\n",
