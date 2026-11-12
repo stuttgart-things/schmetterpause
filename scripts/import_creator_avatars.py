@@ -3,7 +3,7 @@
 
 Usage: python scripts/import_creator_avatars.py /path/to/creator/assets/characters
 Development dependencies: fonttools and skia-pathops. No runtime dependency.
-Only the four accepted Creator characters are imported.
+The release importer emits blecki and Pip; other workshop converters stay available.
 """
 
 import argparse
@@ -28,15 +28,6 @@ SPECS = {
         remove={"eye-highlight", "tongue"},
         native="happy",
         background="#1e1d2e",
-    ),
-    "pip": dict(
-        eyes=[(146, 219, 21, 21), (260, 190, 19, 23)],
-        mouth=(213, 240),
-        regions=[(110, 174, 181, 247), (227, 145, 287, 225), (177, 205, 250, 267)],
-        holes={("muzzle", 0): {1, 2}},
-        remove={"eye-pupil", "eye-highlight", "beak", "beak-shadow"},
-        native="neutral",
-        background="#fff6f3",
     ),
     "vex": None,  # Native eye-frame repair and expression builder below.
     "kiki": dict(
@@ -166,49 +157,6 @@ def brows(spec, expression):
     return s
 
 
-def pip_eye(cx, cy, rx, ry, expression, index):
-    """Penguin eyes: white sclera, glossy pupil and tapered upper lid."""
-    if expression == "happy":
-        return eye(cx, cy, rx, ry, expression, "#fff6f3")
-    s = oval(cx, cy, rx, ry, INK) + oval(cx, cy, rx - 4, ry - 4, WHITE)
-    s += oval(cx, cy + (7 if expression == "sad" else 3), rx * 0.55, ry * 0.64, INK)
-    if expression == "angry":
-        left, right = (-8, 5) if index == 0 else (5, -8)
-    elif expression == "sad":
-        left, right = (5, -7) if index == 0 else (-7, 5)
-    elif expression == "skeptical" and index == 1:
-        left, right = 1, 1
-    else:
-        left, right = -ry + 3, -ry + 3
-    if expression in ["angry", "sad", "skeptical"]:
-        s += paint(
-            f"M{cx-rx-1} {cy-ry-2} H{cx+rx+1} V{cy+right} L{cx-rx-1} {cy+left}Z",
-            "#fff6f3",
-        )
-    # The highlight stays inside the visible pupil, including half-open eyes.
-    s += oval(cx - 3, cy + (9 if expression == "sad" else 7), 3, 3.5, WHITE)
-    s += paint(
-        f"M{cx-rx-2} {cy+left-3} Q{cx} {cy+(left+right)/2-5} {cx+rx+2} {cy+right-3} L{cx+rx-1} {cy+right+4} Q{cx} {cy+(left+right)/2+1} {cx-rx-2} {cy+left-3}Z"
-    )
-    return s
-
-
-def pip_brows(expression):
-    if expression == "surprised":
-        return paint("M124 191 Q146 177 168 191 Q146 184 124 191Z") + paint(
-            "M241 160 Q260 146 279 160 Q260 153 241 160Z"
-        )
-    if expression == "skeptical":
-        return paint("M124 192 Q146 169 168 191 Q147 181 124 192Z") + paint(
-            "M241 163 Q260 159 279 165 Q260 172 241 163Z"
-        )
-    if expression == "sad":
-        return paint("M124 196 Q147 190 168 178 Q158 196 124 196Z") + paint(
-            "M240 151 Q259 170 280 177 Q253 177 240 151Z"
-        )
-    return brows(SPECS["pip"], expression)
-
-
 def visible(scene):
     result = []
     covered = pathops.Path()
@@ -220,14 +168,6 @@ def visible(scene):
 
 def mouth(name, spec, expression, original):
     x, y = spec["mouth"]
-    if name == "pip":
-        beak = [(r, f, p) for r, f, p in original if r in ["beak", "beak-shadow"]]
-        outline = pathops.Path()
-        outline.addPath(beak[0][2])
-        outline.stroke(6, pathops.LineCap.ROUND_CAP, pathops.LineJoin.ROUND_JOIN, 4)
-        return svgpath(outline, INK) + "".join(
-            svgpath(p, colour(r, f)) for r, f, p in beak
-        )
     if name == "kiki":
         nose = "".join(svgpath(p, colour(r, f)) for r, f, p in original if r == "nose")
     else:
@@ -543,7 +483,251 @@ def convert_vex(source, target):
         )
 
 
+# Fixed native anchors on the unchanged, slightly tilted head.
+PIP_EYES = ((146, 219, 22, 23), (260, 190, 22, 23))
+PIP_GRIP_PIVOT = (283, 375)
+PIP_FUR = "#2f4ea8"
+
+
+def pip_eye(cx, cy, rx, ry, state, index):
+    if state == "happy":
+        return paint(
+            f"M{cx-rx} {cy+5} Q{cx} {cy-28} {cx+rx} {cy+5} Q{cx} {cy-5} {cx-rx} {cy+5}Z"
+        )
+    if state == "surprised":
+        rx *= 1.08
+        ry *= 1.08
+    outer, inner = ellipse(cx, cy, rx, ry), ellipse(cx, cy, rx - 4, ry - 4)
+    if state == "angry":
+        ends = (-10, 3) if index == 0 else (3, -10)
+    elif state == "sad":
+        ends = (3, -10) if index == 0 else (-10, 3)
+    elif state == "skeptical":
+        ends = (-19, -19) if index == 0 else (-2, -2)
+    elif state == "neutral":
+        ends = (-15, -10) if index == 0 else (-10, -15)
+    else:
+        ends = None
+    s = ""
+    if ends:
+        yl, yr = (cy + ends[0], cy + ends[1])
+        below = shape(f"M{cx-rx-2} {yl} L{cx+rx+2} {yr} V{cy+ry+2} H{cx-rx-2}Z")
+        s += svgpath(op(outer, below, pathops.PathOp.DIFFERENCE), "#fff6f3")
+        outer = op(outer, below, pathops.PathOp.INTERSECTION)
+        inner = op(inner, below, pathops.PathOp.INTERSECTION)
+    s += svgpath(outer, INK) + svgpath(inner, WHITE)
+    py = cy + (10 if state == "sad" else 6)
+    pupil = ellipse(cx - 1, py, 10, 11)
+    highlight = ellipse(cx - 4, py - 3, 3.2, 3.6)
+    s += svgpath(op(pupil, inner, pathops.PathOp.INTERSECTION), INK)
+    s += svgpath(op(highlight, inner, pathops.PathOp.INTERSECTION), WHITE)
+    if ends:
+        s += vex_brow(cx - rx, yl, cx + rx, yr, 0, 11)
+    else:
+        s += vex_brow(cx - rx + 1, cy - ry + 6, cx + rx - 1, cy - ry + 6, -8, 11)
+    return s
+
+
+def pip_brows(state):
+    if state == "angry":
+        return vex_brow(121, 178, 169, 202, 0, 13) + vex_brow(236, 172, 284, 148, 0, 13)
+    if state == "sad":
+        return vex_brow(121, 194, 169, 175, 0, 12) + vex_brow(236, 145, 284, 164, 0, 12)
+    if state == "skeptical":
+        return vex_brow(121, 187, 170, 187, -18, 13) + vex_brow(
+            236, 158, 284, 158, 0, 12
+        )
+    if state == "surprised":
+        return vex_brow(121, 184, 170, 184, -14, 13) + vex_brow(
+            236, 155, 284, 155, -14, 13
+        )
+    return ""
+
+
+def pip_beak(state):
+    # Each variant stays within 55–67 by 44–54 units (native 61 by 49).
+    if state == "happy":
+        outer = "M183 237 Q201 218 215 211 Q231 215 244 232 Q236 259 214 263 Q193 259 183 237Z"
+        upper = "M188 235 Q203 220 215 216 Q228 220 239 232 Q215 241 188 235Z"
+        lower = "M192 249 Q216 260 237 245 Q225 260 214 259 Q200 257 192 249Z"
+        return (
+            paint(outer)
+            + paint(
+                "M188 237 Q216 233 239 234 Q232 255 214 258 Q198 255 188 237Z",
+                "#ad3f58",
+            )
+            + paint(upper, "#f59a08")
+            + paint(lower, "#e28b13")
+            + oval(215, 250, 11, 4, "#fa7894")
+        )
+    if state == "surprised":
+        return (
+            paint(
+                "M183 237 Q189 216 214 210 Q240 216 244 235 Q241 258 215 264 Q190 260 183 237Z"
+            )
+            + paint(
+                "M188 236 Q197 221 214 215 Q230 220 239 234 Q217 243 188 236Z",
+                "#f59a08",
+            )
+            + paint(
+                "M191 239 Q214 232 237 238 Q237 255 215 259 Q196 255 191 239Z",
+                "#94364e",
+            )
+            + paint(
+                "M196 254 Q215 258 233 252 Q226 260 215 260 Q204 259 196 254Z",
+                "#e28b13",
+            )
+        )
+    if state == "skeptical":
+        outer = "M182 238 Q199 219 216 211 Q230 219 246 237 Q232 257 214 260 Q194 254 182 238Z"
+        top = "M187 237 Q203 222 216 216 Q230 224 241 236 Q219 246 187 237Z"
+        seam = "M187 238 Q216 250 241 237 Q218 257 187 238Z"
+    elif state == "angry":
+        outer = "M183 237 Q200 216 214 214 Q230 219 244 237 Q231 249 214 258 Q193 250 183 237Z"
+        top = "M188 236 Q203 220 214 219 Q227 224 239 236 L215 241Z"
+        seam = "M188 238 L239 237 Q219 249 188 238Z"
+    elif state == "sad":
+        outer = "M184 232 Q201 212 214 211 Q232 218 244 235 Q231 255 213 261 Q195 250 184 232Z"
+        top = "M189 232 Q203 218 214 216 Q230 225 239 234 Q218 239 189 232Z"
+        seam = "M189 234 Q218 244 239 236 Q221 251 189 234Z"
+    else:
+        outer = "M183 237 Q200 218 214 210 Q232 215 244 232 Q233 252 214 259 Q194 254 183 237Z"
+        top = "M188 235 Q202 222 214 215 Q228 220 239 232 Q216 245 188 235Z"
+        seam = "M188 237 Q215 250 239 234 Q220 256 188 237Z"
+    return paint(outer) + paint(top, "#f59a08") + paint(seam, "#b5690b")
+
+
+def convert_pip(source, target):
+    original = creator_svg.paths(source, "pip")
+
+    def transformed(p, t):
+        out = pathops.Path()
+        p.draw(TransformPen(out.getPen(), t))
+        return out
+
+    def outlined(p, w):
+        border = pathops.Path(p)
+        border.stroke(w, pathops.LineCap.ROUND_CAP, pathops.LineJoin.ROUND_JOIN, 4)
+        border.convertConicsToQuads(0.01)
+        return op(p, border, pathops.PathOp.UNION)
+
+    rotation = (
+        Transform()
+        .translate(*PIP_GRIP_PIVOT)
+        .rotate(math.radians(18))
+        .translate(-PIP_GRIP_PIVOT[0], -PIP_GRIP_PIVOT[1])
+    )
+    shrink = Transform().translate(334, 283).scale(0.9).translate(-334, -283)
+    blade = transformed(
+        transformed(transformed(original[48][2], shrink), rotation),
+        Transform().translate(0, 34),
+    )
+    cut = rect(268, 220, 420, 420)
+    # Equipment was fused into the silhouette. Restore the right cheek first,
+    # without changing the upper head, torso or headband contours.
+    cheek = shape(
+        "M318 198 Q341 218 339 240 Q337 268 307 286 Q281 307 250 314 L247 301 Q285 291 301 270 Q322 247 318 223Z"
+    )
+    cheek_white = shape(
+        "M273 208 Q310 195 328 216 Q339 244 310 270 Q281 299 251 306 L245 290 Q264 265 267 241Z"
+    )
+    blank = []
+    for i, (role, fill, p) in enumerate(original):
+        if i in {8, 46, 48, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61}:
+            continue
+        if i == 0:
+            p = op(p, cut, pathops.PathOp.DIFFERENCE)
+        if i == 43:
+            clean = pathops.Path()
+            clean.addPath(list(p.contours)[0])
+            p = clean
+            # Close the native beak cut-out with the same facial surface.
+            p = op(p, ellipse(213, 236, 39, 33), pathops.PathOp.UNION)
+        if role == "body":
+            fill = PIP_FUR
+        if role == "shadow":
+            # Preserve each source shadow path, with the selected coat shade.
+            role, fill = "pip-shadow", "var(--fur-dark, #213777)"
+        blank.append((role, fill, p))
+        if i == 0:
+            blank.append(("ink", INK, cheek))
+        if i == 43:
+            blank.append(("muzzle", "#fff6f3", cheek_white))
+    body_parts = list(blank)
+    blank = []
+    # Racket, grip and gripping flipper are rebuilt as one separate assembly.
+    shaft = shape("M336 337 L263 407")
+    shaft.stroke(19, pathops.LineCap.ROUND_CAP, pathops.LineJoin.ROUND_JOIN, 4)
+    shaft.convertConicsToQuads(0.01)
+    blank.append(("ink", INK, outlined(shaft, 10)))
+    blank.append(("paddle-handle", "#efa31b", shaft))
+    for d in [
+        "M320 344 L333 357 L329 362 L316 349Z",
+        "M270 392 L283 405 L279 410 L266 397Z",
+    ]:
+        blank.append(("ink", INK, shape(d)))
+    blade_parts = [("ink", INK, outlined(blade, 13)), ("paddle-face", "#df3b9a", blade)]
+    blank.extend(blade_parts)
+    paw = transformed(original[8][2], rotation)
+    blank.append(("ink", INK, outlined(paw, 11)))
+    blank.append(("body", PIP_FUR, paw))
+    target.mkdir(parents=True, exist_ok=True)
+
+    def save(name, body):
+        (target / (name + ".svg")).write_text(
+            '<svg viewBox="0 0 420 420" xmlns="http://www.w3.org/2000/svg">\n'
+            + body
+            + "</svg>\n"
+        )
+
+    # Assert a true 12-unit path-space gap, including the filled outline.
+    head = op(original[0][2], cut, pathops.PathOp.DIFFERENCE)
+    head = op(
+        op(head, cheek, pathops.PathOp.UNION),
+        rect(0, 0, 420, 315),
+        pathops.PathOp.INTERSECTION,
+    )
+    assert (
+        op(outlined(head, 24), outlined(blade, 13), pathops.PathOp.INTERSECTION).area
+        < 0.001
+    ), "Pip racket/head gap below 12"
+
+    def paths(parts):
+        return "".join(svgpath(p, colour(r, f)) for r, f, p in parts)
+
+    # Named groups make the raster clearance test independent of path ordering.
+    equipment = (
+        paths(blank[:4])
+        + '<g data-pip-part="blade">'
+        + paths(blade_parts)
+        + "</g>"
+        + paths(blank[6:])
+    )
+    save(
+        "base",
+        '<g data-pip-part="body">'
+        + paths(body_parts)
+        + '</g><g data-pip-part="racket">'
+        + equipment
+        + "</g>",
+    )
+    for face in FACES:
+        body = (
+            "".join(pip_eye(*anchor, face, i) for i, anchor in enumerate(PIP_EYES))
+            + pip_brows(face)
+            + '<g data-pip-part="beak">'
+            + pip_beak(face)
+            + "</g>"
+        )
+        save(
+            "face-" + face,
+            f'<g class="sthings-face" data-face="{face}">\n' + body + "</g>\n",
+        )
+
+
 def convert(source, name, target):
+    if name == "pip":
+        return convert_pip(source, target)
     if name == "vex":
         return convert_vex(source, target)
     spec = SPECS[name]
@@ -566,8 +750,6 @@ def convert(source, name, target):
                     clean.addPath(c)
             p = clean
         blank.append((role, fill, p))
-    if name == "pip":
-        blank.append(("muzzle", "#fff6f3", ellipse(213, 236, 34, 30)))
     region = rect(*spec["regions"][0])
     for b in spec["regions"][1:]:
         region = op(region, rect(*b), pathops.PathOp.UNION)
@@ -603,14 +785,8 @@ def convert(source, name, target):
                 eye_expression = (
                     "neutral" if face == "skeptical" and index == 0 else face
                 )
-                body += (
-                    pip_eye(cx, cy, rx, ry, face, index)
-                    if name == "pip"
-                    else eye(cx, cy, rx, ry, eye_expression, bg)
-                )
-            body += (pip_brows(face) if name == "pip" else brows(spec, face)) + mouth(
-                name, spec, face, original
-            )
+                body += eye(cx, cy, rx, ry, eye_expression, bg)
+            body += brows(spec, face) + mouth(name, spec, face, original)
         # Clip the re-drawn features to the same interior face areas. Native ears,
         # cheeks, headbands and paddle contours remain untouched.
         import xml.etree.ElementTree as ET

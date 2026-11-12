@@ -180,28 +180,68 @@ saving/reset and stale stored choices.
 
 ## Pip review
 
-Pip is a penguin restored from `feat/pip-fine-tuning`; no other workshop
-characters are enabled. Its base, native Neutral expression and Happy expression
-retain the Creator design. The other eyes use visible sclerae, glossy pupils and
-filled upper lids. Skeptical has an open left eye, a raised brow and a horizontal
-right lid; Angry lids slope inwards; Sad lids slope outwards with a downward gaze.
-The beak remains the native filled shape across expressions.
+Pip retains the Creator penguin's pose, torso, head proportions and headband.
+Only the gripping assembly and the previously occluded right cheek are rebuilt.
+`PIP_EYES` fixes both eyes to their native centres (146,219 and 260,190), with
+22 by 23 radii. Open eyes use white sclerae, large round pupils, highlights,
+white lids and pointed black lid edges of the same construction as blecki.
+Angry lids descend towards the nose, sad lids outwards, and skeptical is
+asymmetric. Happy uses filled crescent eyes at least 10 units thick.
 
-The initial body palette is Original (navy), Sand and Chocolate. Pale coats are
-excluded to preserve the white face/bib separation. Palette removal falls back
-to Original for stored Pip profiles. Headband, handle and blade palettes remain
-shared. Pip has no jewellery control or jewellery assets. Existing persistence,
-reset, random selection, live expression previews and avatar SVG/GIF endpoints
-are reused without a database migration.
+Every face has its own beak in a `data-pip-part="beak"` group. The base has
+no beak. Six variations remain within ten percent of the native 61 by 49
+bounds: closed neutral, pink open happy, red open surprised, sideways skeptical,
+compressed angry and drooping sad. Runtime tests check ownership, unique
+geometry and raster bounds.
 
-Reproduce the PNG sheets and GIFs through the runtime renderer:
+`PIP_GRIP_PIVOT` is (283,375). The paddle is rotated 18 degrees clockwise,
+scaled to 90 percent and lowered 34 units; all coordinates are baked into
+filled paths. The generator asserts a 12-unit gap using path boolean operations
+on expanded head and blade outlines, and a Go raster test independently checks
+the visible head against the blade. Grip stripes and gripping flipper follow
+the new assembly. Other avatars' assets remain unchanged.
+
+Pip's original navy is **#2f4ea8**, lighter than #233c87 to keep the coat visible
+on black without losing its blue character. Alternatives are **Grau #8793a5**
+(cool medium grey, shade #5a6678) and **Blaugrau #587e9b** (muted blue-grey,
+shade #38556e). Sand and Chocolate now fall back to Original. Pip's headband
+excludes Lapis; old values fall back to the original pink. Both palette
+restrictions apply to validation, preview, rendering and random generation.
+Other figures retain the shared palettes. Handle/blade choices are unchanged.
+Pip has no jewellery. Persistence uses the existing fields; no migration.
+
+Reproduce all PNGs and GIFs through the runtime renderer:
 
 ```sh
 go run ./scripts/avatar_review.go -character pip -out docs/avatar-check/pip
 ```
 
-Open `docs/avatar-check/pip/index.html` to compare expressions at 192, 64 and
-28 pixels on navy and black, material choices, the 64-pixel animation and a
-larger viewing copy. Physical LED-panel contrast and the aesthetic acceptance
-of Sand/Chocolate remain manual checks. The dark native coat has reduced
-silhouette contrast against black; eyes, bib and headband remain visible.
+Open `docs/avatar-check/pip/index.html`. It includes all six expressions and
+three coats at 192, 64 and 28 pixels on navy and black; `critical-64-black.png`
+contains the requested eleven critical combinations. Black 64-pixel previews
+use the runtime GIF quantisation. Labels use embedded Go Regular, which
+supports German umlauts without host fonts. Native-size expression rows,
+material sheets, headband sheets and GIFs are also included.
+
+Review notes: Steel blade on Grey and Blue grip on original navy have low
+surface-colour separation. Black outlines and the new paddle gap help, but
+don't guarantee physical LED readability. Blue blade on navy/blue-grey shares
+a hue family but remains separated geometrically. Ivory and Silver headbands
+remain visible through their black border, though Ivory approaches the white
+face in brightness. Dark wood is a small coloured grip area at 28 pixels.
+No critical combination has been recoloured automatically. A real LED-panel
+check and aesthetic approval remain outstanding.
+
+An opt-in browser test runs against normal handlers with disposable test
+players (no external database or stored user sessions):
+
+```sh
+SP_RUN_PIP_BROWSER=1 SP_PLAYWRIGHT_MODULE=/path/to/playwright \
+SP_PREVIEW_BROWSER_BINARY=/path/to/chrome \
+go test ./internal/server -run TestPipBrowser -count=1 -v
+```
+
+It checks palettes, previews, selected thumbnails, saving/reloading, SVG/GIF
+endpoints, mobile layout and reset, then runs the existing blecki browser
+regression against the same disposable server. Set `SP_PREVIEW_SCREENSHOT_DIR` to export
+desktop and mobile editor captures.

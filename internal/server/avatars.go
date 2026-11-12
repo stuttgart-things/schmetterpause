@@ -176,7 +176,7 @@ func figureEditorView(a avatar.Avatar) templates.FigureEditorView {
 		bling.Options = append(bling.Options, templates.FigureOption{Key: o.Key, Name: o.Name, Checked: o.Key == a.Bling})
 	}
 	fur := colours("fur", "Grundfarbe", avatar.FurPalette(a.Character), a.Fur)
-	head := colours("headdress", "Kopfschmuck", avatar.Headdresses, a.Headdress)
+	head := colours("headdress", "Kopfschmuck", avatar.HeaddressPalette(a.Character), a.Headdress)
 	handle := colours("handle", "Griff", avatar.Handles, a.Handle)
 	parts := []templates.FigurePart{fur, head, handle, colours("blade", "Schläger", avatar.Blades, a.Blade)}
 	if a.Character == "" {

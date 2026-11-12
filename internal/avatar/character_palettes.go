@@ -5,13 +5,7 @@ package avatar
 // muted wolf tones; the remaining alternatives are subject to visual review.
 func FurPalette(characterKey string) []Colour {
 	if characterKey == "pip" {
-		var palette []Colour
-		for _, c := range Furs {
-			if c.Key == "sand" || c.Key == "chocolate" {
-				palette = append(palette, c)
-			}
-		}
-		return palette
+		return PipFurs
 	}
 	if characterKey != "vex" {
 		return Furs
@@ -45,4 +39,24 @@ func BlingPalette(characterKey string) []Option {
 		return Blings
 	}
 	return []Option{{NoBling, "Kein Schmuck"}}
+}
+
+// PipFurs keep the face/bib distinct and the coat visible on a black panel.
+var PipFurs = []Colour{
+	{"grey", "Grau", "#8793a5", "#5a6678"},
+	{"blue-grey", "Blaugrau", "#587e9b", "#38556e"},
+}
+
+// HeaddressPalette retains shared colours except Pip's navy-adjacent Lapis.
+func HeaddressPalette(characterKey string) []Colour {
+	if characterKey != "pip" {
+		return Headdresses
+	}
+	var palette []Colour
+	for _, c := range Headdresses {
+		if c.Key != "lapis" {
+			palette = append(palette, c)
+		}
+	}
+	return palette
 }

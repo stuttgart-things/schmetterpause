@@ -134,7 +134,7 @@ func TestRandomIsRepeatableAndReachesEverything(t *testing.T) {
 			seen[k] = true
 		}
 	}
-	want := len(avatar.Furs) + len(avatar.Headdresses) + len(avatar.Handles) +
+	want := len(avatar.Furs) + len(avatar.PipFurs) + len(avatar.Headdresses) + len(avatar.Handles) +
 		len(avatar.Blades) + len(avatar.Blings) + len(avatar.BleckiBlings) - 1 + len(avatar.Characters) + 1
 	if len(seen) != want {
 		t.Errorf("3000 rolls reached %d choices, want all %d", len(seen), want)
@@ -362,10 +362,15 @@ func TestCharacterDeliveries(t *testing.T) {
 								}
 							case "g":
 								groups++
-								faceDepth = depth
 								validFace := strings.HasPrefix(name, "face-") && attrs["class"] == "sthings-face" && attrs["data-face"] == strings.TrimPrefix(name, "face-")
 								validBling := strings.HasPrefix(name, "bling-") && attrs["class"] == "sthings-bling" && attrs["data-bling"] == strings.TrimPrefix(name, "bling-")
-								if !validFace && !validBling {
+								validPipPart := ch.Key == "pip" && ((name == "base" && depth == 2 && (attrs["data-pip-part"] == "body" || attrs["data-pip-part"] == "racket")) ||
+									(name == "base" && depth == 3 && attrs["data-pip-part"] == "blade") ||
+									(strings.HasPrefix(name, "face-") && depth == 3 && faceDepth == 2 && attrs["data-pip-part"] == "beak"))
+								if validFace || validBling {
+									faceDepth = depth
+								}
+								if !validFace && !validBling && !validPipPart {
 									t.Error("invalid face group")
 								}
 							case "path", "circle", "ellipse":
@@ -382,7 +387,7 @@ func TestCharacterDeliveries(t *testing.T) {
 							for k := range attrs {
 								allowed := k == "fill" || k == "fill-rule" ||
 									(el.Name.Local == "svg" && (k == "viewBox" || k == "xmlns")) ||
-									(el.Name.Local == "g" && (k == "class" || k == "data-face" || k == "data-bling")) ||
+									(el.Name.Local == "g" && (k == "class" || k == "data-face" || k == "data-bling" || (ch.Key == "pip" && k == "data-pip-part"))) ||
 									(el.Name.Local == "path" && k == "d") ||
 									(el.Name.Local == "circle" && (k == "cx" || k == "cy" || k == "r")) ||
 									(el.Name.Local == "ellipse" && (k == "cx" || k == "cy" || k == "rx" || k == "ry"))
@@ -391,7 +396,7 @@ func TestCharacterDeliveries(t *testing.T) {
 								}
 							}
 						case xml.EndElement:
-							if el.Name.Local == "g" {
+							if el.Name.Local == "g" && depth == faceDepth {
 								faceDepth = 0
 							}
 							depth--
@@ -400,6 +405,13 @@ func TestCharacterDeliveries(t *testing.T) {
 					wantGroups := 1
 					if name == "base" {
 						wantGroups = 0
+					}
+					if ch.Key == "pip" {
+						if name == "base" {
+							wantGroups = 3
+						} else if strings.HasPrefix(name, "face-") {
+							wantGroups = 2
+						}
 					}
 					if roots != 1 || groups != wantGroups || shapes == 0 {
 						t.Errorf("roots=%d groups=%d shapes=%d", roots, groups, shapes)

@@ -39,7 +39,10 @@ func TestRenderFlatNeedsNoCSS(t *testing.T) {
 // size asked for, in the figure's own colours.
 func TestTheGIFIsTheFigureCheering(t *testing.T) {
 	k := kit(t)
-	a := avatar.Random(newRand(7))
+	a := avatar.Fill(avatar.Random(newRand(7)), "")
+	// This test exercises the legacy kit, independently of random character selection.
+	a.Character = ""
+	a = avatar.Fill(a, "")
 	b, err := k.GIF(a, avatar.Cheer, avatar.DefaultGIFSize)
 	if err != nil {
 		t.Fatal(err)

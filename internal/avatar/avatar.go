@@ -89,7 +89,7 @@ func Fill(a Avatar, playerID string) Avatar {
 	if !validFur(a.Character, a.Fur) {
 		a.Fur = d.Fur
 	}
-	if _, ok := findColour(Headdresses, a.Headdress); !ok {
+	if _, ok := findColour(HeaddressPalette(a.Character), a.Headdress); !ok {
 		a.Headdress = d.Headdress
 	}
 	if _, ok := findColour(Handles, a.Handle); !ok {
@@ -116,7 +116,7 @@ func Validate(a Avatar) error {
 	}{
 		{"character", a.Character, knownCharacter},
 		{"fur", a.Fur, validFur(a.Character, a.Fur)},
-		{"headdress", a.Headdress, has(Headdresses, a.Headdress)},
+		{"headdress", a.Headdress, has(HeaddressPalette(a.Character), a.Headdress)},
 		{"handle", a.Handle, has(Handles, a.Handle)},
 		{"blade", a.Blade, has(Blades, a.Blade)},
 		{"bling", a.Bling, hasOption(BlingPalette(a.Character), a.Bling)},
@@ -140,10 +140,11 @@ func has(p []Colour, key string) bool {
 func Random(r *rand.Rand) Avatar {
 	key := Characters[r.IntN(len(Characters))].Key
 	palette := FurPalette(key)
+	heads := HeaddressPalette(key)
 	a := Avatar{
 		Character: key,
 		Fur:       palette[r.IntN(len(palette))].Key,
-		Headdress: Headdresses[r.IntN(len(Headdresses))].Key,
+		Headdress: heads[r.IntN(len(heads))].Key,
 		Handle:    Handles[r.IntN(len(Handles))].Key,
 		Blade:     Blades[r.IntN(len(Blades))].Key,
 		Bling:     BlingPalette(key)[r.IntN(len(BlingPalette(key)))].Key,

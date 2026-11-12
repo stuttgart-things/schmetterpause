@@ -21,7 +21,8 @@ import (
 	"github.com/srwiley/oksvg"
 	"github.com/srwiley/rasterx"
 	"golang.org/x/image/font"
-	"golang.org/x/image/font/basicfont"
+	"golang.org/x/image/font/gofont/goregular"
+	"golang.org/x/image/font/opentype"
 	"golang.org/x/image/math/fixed"
 
 	"github.com/stuttgart-things/schmetterpause/internal/avatar"
@@ -74,15 +75,60 @@ func run(key, out string) error {
 		name   string
 		colour color.RGBA
 	}{{"app", color.RGBA{10, 10, 18, 255}}, {"black", color.RGBA{0, 0, 0, 255}}}
-	palette := append([]avatar.Colour{{Key: "", Name: "original"}}, avatar.FurPalette(key)...)
+	palette := append([]avatar.Colour{{Key: "", Name: "Original"}}, avatar.FurPalette(key)...)
+	if key == "pip" {
+		var row []sample
+		for _, f := range avatar.Faces {
+			row = append(row, sample{f.Name, a, f.Key})
+		}
+		for _, size := range []int{64, 28} {
+			if err = sheet(collection, row, 6, size, color.RGBA{0, 0, 0, 255}, "Pip | original | black", filepath.Join(out, fmt.Sprintf("expressions-row-%d-black.png", size))); err != nil {
+				return err
+			}
+		}
+	}
 	var expressions []sample
 	for _, coat := range palette {
 		for _, f := range avatar.Faces {
 			b := a
 			b.Fur = coat.Key
-			expressions = append(expressions, sample{coat.Name + " / " + f.Key, b, f.Key})
+			expressions = append(expressions, sample{coat.Name + " / " + f.Name, b, f.Key})
 		}
 	}
+	if key == "pip" {
+		var critical []sample
+		for _, coat := range palette {
+			for _, head := range []string{"ivory", "silver"} {
+				b := a
+				b.Fur, b.Headdress = coat.Key, head
+				critical = append(critical, sample{coat.Name + " / Stirnband " + map[string]string{"ivory": "Elfenbein", "silver": "Silber"}[head], b, "neutral"})
+			}
+		}
+		for _, grip := range []string{"blue", "wood-dark"} {
+			b := a
+			b.Handle = grip
+			critical = append(critical, sample{"Original / Griff " + map[string]string{"blue": "Blau", "wood-dark": "Holz dunkel"}[grip], b, "neutral"})
+		}
+		for _, pair := range [][2]string{{"", "blue"}, {"blue-grey", "blue"}, {"grey", "steel"}} {
+			b := a
+			b.Fur, b.Blade = pair[0], pair[1]
+			coat := pair[0]
+			if coat == "" {
+				coat = "Original"
+			}
+			if coat == "grey" {
+				coat = "Grau"
+			}
+			if coat == "blue-grey" {
+				coat = "Blaugrau"
+			}
+			critical = append(critical, sample{coat + " / Schläger " + map[string]string{"blue": "Blau", "steel": "Stahl"}[pair[1]], b, "neutral"})
+		}
+		if err = sheet(collection, critical, 4, 64, color.RGBA{0, 0, 0, 255}, "Pip | kritische Kombinationen | 64 px", filepath.Join(out, "critical-64-black.png")); err != nil {
+			return err
+		}
+	}
+
 	for _, bg := range backgrounds {
 		for _, size := range []int{28, 64, 192} {
 			name := fmt.Sprintf("expressions-%d-%s.png", size, bg.name)
@@ -157,13 +203,13 @@ func run(key, out string) error {
 		if key == "pip" {
 			var headbands []sample
 			for _, coat := range palette {
-				for _, head := range avatar.Headdresses {
+				for _, head := range avatar.HeaddressPalette(key) {
 					b := a
 					b.Fur, b.Headdress = coat.Key, head.Key
 					headbands = append(headbands, sample{coat.Name + " / " + head.Name, b, "neutral"})
 				}
 			}
-			if err = sheet(collection, headbands, len(avatar.Headdresses), 144, bg.colour, key+" | headbands | "+bg.name, filepath.Join(out, "headbands-"+bg.name+".png")); err != nil {
+			if err = sheet(collection, headbands, len(avatar.HeaddressPalette(key)), 144, bg.colour, key+" | headbands | "+bg.name, filepath.Join(out, "headbands-"+bg.name+".png")); err != nil {
 				return err
 			}
 		}
@@ -285,12 +331,29 @@ Physical LED contrast is still unverified: these are software previews,
 not photographs of a real panel. In particular, dark wood and moss on black
 should be checked on the device. No runtime hides jewellery automatically.
 `
+	if key == "pip" {
+		note = "# Pip acceptance review\n\nRegenerate: `go run ./scripts/avatar_review.go -character pip -out docs/avatar-check/pip`\n\nOpen index.html for expressions, materials and GIFs. The expressions-row PNGs show the six faces in original colours at 64 and 28 pixels on black. Full sheets include Original, Grau and Blaugrau on navy and black. Pip has no jewellery. Physical LED-panel contrast remains to be checked.\n"
+	}
 	if err = os.WriteFile(filepath.Join(out, "README.md"), []byte(note), 0644); err != nil {
 		return err
 	}
 	fmt.Println("Review exported to", out)
 	return nil
 }
+
+// Go Regular is embedded in x/image and includes German umlauts; no host font dependency.
+var reviewFont = func() font.Face {
+	f, err := opentype.Parse(goregular.TTF)
+	if err != nil {
+		panic(err)
+	}
+	face, err := opentype.NewFace(f, &opentype.FaceOptions{Size: 12, DPI: 72, Hinting: font.HintingFull})
+	if err != nil {
+		panic(err)
+	}
+	return face
+}()
+
 func sheet(c *avatar.Collection, samples []sample, cols, size int, bg color.RGBA, title, path string) error {
 	cellW := max(size+16, 144)
 	cellH := size + 48
@@ -298,7 +361,7 @@ func sheet(c *avatar.Collection, samples []sample, cols, size int, bg color.RGBA
 	canvas := image.NewRGBA(image.Rect(0, 0, cols*cellW, rows*cellH+28))
 	draw.Draw(canvas, canvas.Bounds(), image.NewUniform(bg), image.Point{}, draw.Src)
 	label := func(x, y int, s string) {
-		d := font.Drawer{Dst: canvas, Src: image.NewUniform(color.RGBA{235, 235, 245, 255}), Face: basicfont.Face7x13, Dot: fixed.P(x, y)}
+		d := font.Drawer{Dst: canvas, Src: image.NewUniform(color.RGBA{235, 235, 245, 255}), Face: reviewFont, Dot: fixed.P(x, y)}
 		d.DrawString(s)
 	}
 	label(8, 18, title)

@@ -137,8 +137,8 @@ func (k *Kit) RenderLive(a Avatar, face string) string {
 func (k *Kit) render(a Avatar, face, faces string) string {
 	a.Character = k.character.Key
 	a = Fill(a, "")
-	fur, _ := findColour(Furs, a.Fur)
-	head, _ := findColour(Headdresses, a.Headdress)
+	fur, _ := findColour(FurPalette(a.Character), a.Fur)
+	head, _ := findColour(HeaddressPalette(a.Character), a.Headdress)
 	handle, _ := findColour(Handles, a.Handle)
 
 	var style strings.Builder

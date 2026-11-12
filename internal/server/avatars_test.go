@@ -490,7 +490,7 @@ func TestExpressionGalleryFollowsUnsavedCharacterAndColours(t *testing.T) {
 			coat := avatar.FurPalette(ch.Key)[0]
 			a.Fur = coat.Key
 			a.Handle = "blue"
-			a.Headdress = "lapis"
+			a.Headdress = "emerald"
 			a.Blade = "pink"
 			q = figureForm(a)
 			q.Set("character", ch.Key)
@@ -746,12 +746,12 @@ func TestPipEditorHasHeadbandAndNoJewellery(t *testing.T) {
 		t.Fatalf("Pip editor: %d", rec.Code)
 	}
 	body := rec.Body.String()
-	for _, want := range []string{`data-character="pip"`, `name="headdress"`, `name="fur" value="sand"`, `name="fur" value="chocolate"`, `name="blade" value="pink" checked`} {
+	for _, want := range []string{`data-character="pip"`, `name="headdress"`, `name="fur" value="grey"`, `name="fur" value="blue-grey"`, `name="blade" value="pink" checked`} {
 		if !strings.Contains(body, want) {
 			t.Errorf("missing %s", want)
 		}
 	}
-	for _, unwanted := range []string{`name="bling"`, `type="radio" name="ballColor"`, `name="fur" value="cream"`} {
+	for _, unwanted := range []string{`name="bling"`, `type="radio" name="ballColor"`, `name="fur" value="cream"`, `name="fur" value="sand"`, `name="fur" value="chocolate"`, `name="headdress" value="lapis"`} {
 		if strings.Contains(body, unwanted) {
 			t.Errorf("unexpected %s", unwanted)
 		}
