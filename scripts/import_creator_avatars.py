@@ -487,6 +487,12 @@ def convert_vex(source, target):
 PIP_EYES = ((146, 221, 26, 31), (260, 192, 26, 31))
 PIP_GRIP_PIVOT = (283, 375)
 PIP_FUR = "#2f4ea8"
+PIP_RACKET_ROTATION = 18
+PIP_RACKET_SCALE = 0.9
+PIP_RACKET_HEAD_OFFSET = (-7, 34)
+PIP_RACKET_GRIP_OFFSET = (-7, -10)
+# Proposed round emblem only; no accessory is active pending placement approval.
+PIP_EMBLEM_RESERVE = (208, 376, 24, 24)
 
 
 # One lighting layout, expressed relative to either eye centre. Only a covered
@@ -663,13 +669,15 @@ def convert_pip(source, target):
     rotation = (
         Transform()
         .translate(*PIP_GRIP_PIVOT)
-        .rotate(math.radians(18))
+        .rotate(math.radians(PIP_RACKET_ROTATION))
         .translate(-PIP_GRIP_PIVOT[0], -PIP_GRIP_PIVOT[1])
     )
-    shrink = Transform().translate(334, 283).scale(0.9).translate(-334, -283)
+    shrink = (
+        Transform().translate(334, 283).scale(PIP_RACKET_SCALE).translate(-334, -283)
+    )
     blade = transformed(
         transformed(transformed(original[48][2], shrink), rotation),
-        Transform().translate(0, 34),
+        Transform().translate(*PIP_RACKET_HEAD_OFFSET),
     )
     cut = rect(268, 220, 420, 420)
     # Equipment was fused into the silhouette. Restore the right cheek first,
@@ -708,15 +716,28 @@ def convert_pip(source, target):
     shaft = shape("M336 337 L263 407")
     shaft.stroke(19, pathops.LineCap.ROUND_CAP, pathops.LineJoin.ROUND_JOIN, 4)
     shaft.convertConicsToQuads(0.01)
+    shaft = transformed(shaft, Transform().translate(*PIP_RACKET_GRIP_OFFSET))
     blank.append(("ink", INK, outlined(shaft, 10)))
     blank.append(("paddle-handle", "#efa31b", shaft))
     for d in [
         "M320 344 L333 357 L329 362 L316 349Z",
         "M270 392 L283 405 L279 410 L266 397Z",
     ]:
-        blank.append(("ink", INK, shape(d)))
+        blank.append(
+            (
+                "ink",
+                INK,
+                transformed(shape(d), Transform().translate(*PIP_RACKET_GRIP_OFFSET)),
+            )
+        )
     blade_parts = [("ink", INK, outlined(blade, 13)), ("paddle-face", "#df3b9a", blade)]
     blank.extend(blade_parts)
+    racket_parts = list(blank)
+    for role, fill, p in racket_parts:
+        x1, y1, x2, y2 = p.bounds
+        assert (
+            min(x1, y1) >= 8 - 0.001 and max(x2, y2) <= 412 + 0.001
+        ), "Hank racket path outside 8-unit canvas inset"
     paw = transformed(original[8][2], rotation)
     blank.append(("ink", INK, outlined(paw, 11)))
     blank.append(("body", PIP_FUR, paw))
@@ -741,16 +762,35 @@ def convert_pip(source, target):
         < 0.001
     ), "Pip racket/head gap below 12"
 
+    for role, fill, p in racket_parts:
+        assert (
+            op(outlined(head, 24), p, pathops.PathOp.INTERSECTION).area < 0.001
+        ), "Hank racket/face gap below 12"
+        assert (
+            op(
+                outlined(ellipse(*PIP_EMBLEM_RESERVE), 24),
+                p,
+                pathops.PathOp.INTERSECTION,
+            ).area
+            < 0.001
+        ), "Hank racket/emblem reserve gap below 12"
+    # Stripes belong to the visible handle area; the blade/flipper must not
+    # hide the chosen material down to a sliver.
+    visible_grip = op(
+        shaft,
+        op(outlined(blade, 13), outlined(paw, 11), pathops.PathOp.UNION),
+        pathops.PathOp.DIFFERENCE,
+    )
+    assert (
+        visible_grip.area >= 30 * 18
+    ), "Hank visible handle area below 30x18 equivalent"
+
     def paths(parts):
         return "".join(svgpath(p, colour(r, f)) for r, f, p in parts)
 
     # Named groups make the raster clearance test independent of path ordering.
     equipment = (
-        paths(blank[:4])
-        + '<g data-pip-part="blade">'
-        + paths(blade_parts)
-        + "</g>"
-        + paths(blank[6:])
+        paths(blank[:4]) + '<g data-pip-part="blade">' + paths(blade_parts) + "</g>"
     )
     save(
         "base",
@@ -758,6 +798,8 @@ def convert_pip(source, target):
         + paths(body_parts)
         + '</g><g data-pip-part="racket">'
         + equipment
+        + '</g><g data-pip-part="flipper">'
+        + paths(blank[6:])
         + "</g>",
     )
     # Pip deliberately has no blush cheeks in any expression.

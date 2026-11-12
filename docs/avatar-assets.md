@@ -268,3 +268,43 @@ Barlow Project Authors, **SIL Open Font License 1.1**. Upstream:
 https://github.com/google/fonts/tree/main/ofl/barlow . A copy of the license is
 stored at `docs/licenses/Barlow-OFL.txt`. The runtime would use generated filled
 paths, never a runtime font or SVG text.
+
+### Hank racket canvas correction
+
+Step 1 (translation) is sufficient. Rotation remains **18 degrees clockwise**
+and head scale remains **90%**; neither step 2 nor step 3 was needed.
+`PIP_RACKET_HEAD_OFFSET = (-7,34)` is the total offset after the existing baked
+rotation/scale, i.e. **(-7,0) relative to the previous accepted head position**.
+`PIP_RACKET_GRIP_OFFSET = (-7,-10)` translates the handle and stripes. The gripping
+flipper stays in its original position, exposing the chosen handle material
+beside/below it. No face or other avatar geometry changes.
+
+The six actual racket paths (shaft, shaft outline, stripes, head and head outline)
+are grouped under `data-pip-part="racket"`. The unchanged flipper is now a separate
+`data-pip-part="flipper"` group; it is anatomy rather than racket geometry.
+Every racket path is inside [8,412] in both axes, including the handle:
+
+- Head black-outline right bound: 411.0473 → **8.9527 units** right margin.
+- Lowest handle-outline bound: 411.5002 → **8.4998 units** bottom margin.
+- Minimum distance to head/face contour: **12.772 units**.
+- Minimum distance to the proposed round emblem reserve (208,376), radius 24:
+  **13.501 units**. This remains a placement proposal; the slot is not enabled.
+- Exposed selected grip colour after subtracting blade, flipper and black stripes:
+  **685.52 square units**, exceeding the 540-unit 30×18 reference area. Its visible
+  bounding extent is approximately 48.74×57.85; this is an exposed-area check,
+  not a claim of a solid rectangular patch.
+
+Measurements for each path are in `docs/avatar-check/pip/racket-measurements.json`.
+The generator asserts margins, clearances and visible handle area. The exact
+curve-space test independently reads the output SVG:
+
+```sh
+PYTHONDONTWRITEBYTECODE=1 /path/to/vector-tools/bin/python \\
+  -m unittest discover -s scripts -p test_hank_racket_geometry.py -v
+```
+
+A Go test overscans each path outside the original canvas to catch clipping and
+margin violations in normal CI. The gallery exports all expressions at 192 and
+64 px on black, plus `racket-colours-192-black.png` and
+`racket-colours-64-black.png` for Hellblau, Stahl and Pink. Face separation remains
+99 pixels (Neutral/Angry), the documented cheek-free baseline.

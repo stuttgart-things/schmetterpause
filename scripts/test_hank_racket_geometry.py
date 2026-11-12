@@ -1,0 +1,80 @@
+"""Exact curve-space bounds and clearance checks for Hank's baked SVG paths."""
+
+import unittest
+from pathlib import Path
+import xml.etree.ElementTree as ET
+import pathops
+from import_creator_avatars import shape, op, rect, ellipse
+
+ROOT = Path(__file__).resolve().parents[1] / "web/static/img/pip"
+
+
+def union(paths):
+    result = pathops.Path()
+    for p in paths:
+        result = op(result, p, pathops.PathOp.UNION)
+    return result
+
+
+def grow(p, distance):
+    border = pathops.Path(p)
+    border.stroke(
+        distance * 2, pathops.LineCap.ROUND_CAP, pathops.LineJoin.ROUND_JOIN, 4
+    )
+    border.convertConicsToQuads(0.001)
+    return op(p, border, pathops.PathOp.UNION)
+
+
+def paths(group):
+    return [shape(el.get("d")) for el in group.iter("{http://www.w3.org/2000/svg}path")]
+
+
+class HankRacketGeometry(unittest.TestCase):
+    def setUp(self):
+        root = ET.parse(ROOT / "base.svg").getroot()
+        self.parts = {g.get("data-pip-part"): g for g in root}
+        self.racket = self.parts["racket"]
+
+    def test_every_racket_path_including_ink_has_eight_unit_canvas_margin(self):
+        for index, p in enumerate(paths(self.racket)):
+            with self.subTest(path=index):
+                x1, y1, x2, y2 = p.bounds
+                self.assertGreaterEqual(min(x1, y1), 8 - 0.001)
+                self.assertLessEqual(max(x2, y2), 412 + 0.001)
+
+    def test_twelve_unit_head_and_proposed_round_emblem_clearance(self):
+        head = op(
+            union(paths(self.parts["body"])),
+            rect(0, 0, 420, 315),
+            pathops.PathOp.INTERSECTION,
+        )
+        racket = union(paths(self.racket))
+        self.assertLess(
+            op(grow(head, 12), racket, pathops.PathOp.INTERSECTION).area, 0.001
+        )
+        # The small round belly emblem remains a proposal, not an active slot.
+        reserve = ellipse(208, 376, 24, 24)
+        self.assertLess(
+            op(grow(reserve, 12), racket, pathops.PathOp.INTERSECTION).area, 0.001
+        )
+
+    def test_selected_grip_colour_keeps_at_least_thirty_by_eighteen_equivalent_area(
+        self,
+    ):
+        grip = next(
+            shape(el.get("d"))
+            for el in self.racket
+            if el.get("fill", "").startswith("var(--handle,")
+        )
+        blade = next(g for g in self.racket if g.get("data-pip-part") == "blade")
+        stripes = [shape(el.get("d")) for el in list(self.racket)[2:4]]
+        cover = union(paths(blade) + paths(self.parts["flipper"]) + stripes)
+        visible = op(grip, cover, pathops.PathOp.DIFFERENCE)
+        x1, y1, x2, y2 = visible.bounds
+        self.assertGreaterEqual(visible.area, 30 * 18)
+        self.assertGreaterEqual(x2 - x1, 30)
+        self.assertGreaterEqual(y2 - y1, 18)
+
+
+if __name__ == "__main__":
+    unittest.main()

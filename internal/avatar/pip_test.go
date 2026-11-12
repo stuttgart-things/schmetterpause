@@ -511,3 +511,41 @@ func TestPipHighlightsShareRelativeLightSource(t *testing.T) {
 		}
 	}
 }
+
+func TestHankRacketPathsStayInsideCanvasMargin(t *testing.T) {
+	data, err := fs.ReadFile(web.Static, "static/img/pip/base.svg")
+	if err != nil {
+		t.Fatal(err)
+	}
+	group := regexp.MustCompile(`(?s)<g data-pip-part="racket">(.*?)</g>\s*<g data-pip-part="flipper">`).FindSubmatch(data)
+	if group == nil {
+		t.Fatal("missing separate racket/flipper groups")
+	}
+	paths := regexp.MustCompile(`<path\b[^>]*/>`).FindAllString(string(group[1]), -1)
+	if len(paths) != 6 {
+		t.Fatalf("unexpected racket path count: %d", len(paths))
+	}
+	for index, path := range paths {
+		path = regexp.MustCompile(`fill="[^"]+"`).ReplaceAllString(path, `fill="#ffffff"`)
+		// Overscan the SVG so paths beyond the 420 canvas cannot hide in clipping.
+		img, err := rasterise(`<svg viewBox="-20 -20 460 460">`+path+`</svg>`, 460)
+		if err != nil {
+			t.Fatal(err)
+		}
+		painted := 0
+		for y := 0; y < 460; y++ {
+			for x := 0; x < 460; x++ {
+				if img.RGBAAt(x, y).R <= 8 {
+					continue
+				}
+				painted++
+				if x < 28 || x >= 432 || y < 28 || y >= 432 {
+					t.Fatalf("racket path %d violates 8-unit margin at %d,%d", index, x-20, y-20)
+				}
+			}
+		}
+		if painted == 0 {
+			t.Fatalf("racket path %d is missing", index)
+		}
+	}
+}

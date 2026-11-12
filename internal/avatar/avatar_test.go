@@ -364,7 +364,7 @@ func TestCharacterDeliveries(t *testing.T) {
 								groups++
 								validFace := strings.HasPrefix(name, "face-") && attrs["class"] == "sthings-face" && attrs["data-face"] == strings.TrimPrefix(name, "face-")
 								validBling := strings.HasPrefix(name, "bling-") && attrs["class"] == "sthings-bling" && attrs["data-bling"] == strings.TrimPrefix(name, "bling-")
-								validPipPart := ch.Key == "pip" && ((name == "base" && depth == 2 && (attrs["data-pip-part"] == "body" || attrs["data-pip-part"] == "racket")) ||
+								validPipPart := ch.Key == "pip" && ((name == "base" && depth == 2 && (attrs["data-pip-part"] == "body" || attrs["data-pip-part"] == "racket" || attrs["data-pip-part"] == "flipper")) ||
 									(name == "base" && depth == 3 && attrs["data-pip-part"] == "blade") ||
 									(strings.HasPrefix(name, "face-") && depth == 3 && faceDepth == 2 && attrs["data-pip-part"] == "beak"))
 								if validFace || validBling {
@@ -408,7 +408,7 @@ func TestCharacterDeliveries(t *testing.T) {
 					}
 					if ch.Key == "pip" {
 						if name == "base" {
-							wantGroups = 3
+							wantGroups = 4
 						} else if strings.HasPrefix(name, "face-") {
 							wantGroups = 2
 						}

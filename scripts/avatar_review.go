@@ -115,6 +115,19 @@ func run(key, out string) error {
 		}
 		comparisonBefore = nil
 
+		var rackets []sample
+		for _, blade := range []string{"light-blue", "steel", "pink"} {
+			b := a
+			b.Blade = blade
+			label := map[string]string{"light-blue": "Hellblau", "steel": "Stahl", "pink": "Pink"}[blade]
+			rackets = append(rackets, sample{label, b, "neutral"})
+		}
+		for _, size := range []int{192, 64} {
+			if err = sheet(collection, rackets, 3, size, color.RGBA{0, 0, 0, 255}, "Hank | Schlägerfarben", filepath.Join(out, fmt.Sprintf("racket-colours-%d-black.png", size))); err != nil {
+				return err
+			}
+		}
+
 		var eyes []sample
 		for _, face := range avatar.Faces {
 			eyes = append(eyes, sample{face.Name, a, face.Key})
