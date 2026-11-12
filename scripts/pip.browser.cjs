@@ -24,17 +24,26 @@ const { chromium } = require(process.env.SP_PLAYWRIGHT_MODULE || 'playwright');
       page.waitForResponse(r=>r.url().includes('/fragments/figure-character')&&r.status()===200),
       page.locator('.character-pick').filter({has:pip}).click(),
     ]);
+    await page.waitForFunction(()=>document.querySelector('#figure-preview svg')?.getAttribute('data-character')==='pip');
     assert.deepEqual(await page.locator('input[name=fur]').evaluateAll(es=>es.map(e=>e.value)),['','grey','blue-grey']);
     assert.equal(await page.locator('input[name=headdress][value=lapis]').count(),0);
-    assert.equal(await page.locator('input[name=bling]').count(),0);
+    assert.deepEqual(await page.locator('input[name=bling]').evaluateAll(es=>es.map(e=>e.value)),['','initial']);
     const faces=['neutral','happy','surprised','skeptical','angry','sad'];
     assert.deepEqual(await page.locator('.face-preview').evaluateAll(es=>es.map(e=>e.dataset.expression)),faces);
     async function choose(name,value) {
       const input=page.locator(`input[name=${name}][value="${value}"]`);
-      if (!(await input.isChecked())) await Promise.all([
-        page.waitForResponse(r=>r.url().includes('/fragments/figure-preview')&&r.status()===200),
-        page.locator('.figure-parts label.pick').filter({has:input}).click(),
-      ]);
+      if (!(await input.isChecked())) {
+        const version=await page.evaluate(()=>{
+          const v=(window.__hankVersion||0)+1;window.__hankVersion=v;
+          document.body.addEventListener('htmx:afterSettle',()=>{window.__hankSettled=v},{once:true});
+          return v;
+        });
+        await Promise.all([
+          page.waitForResponse(r=>r.url().includes('/fragments/figure-preview')&&r.status()===200),
+          page.locator('.figure-parts label.pick').filter({has:input}).click(),
+        ]);
+        await page.waitForFunction(v=>window.__hankSettled===v,version);
+      }
     }
     const originalLabel=page.locator('.figure-parts label.pick').filter({has:page.locator('input[name=headdress][value=fur]')});
     assert.match(await originalLabel.innerText(),/Original/);
@@ -51,6 +60,11 @@ const { chromium } = require(process.env.SP_PLAYWRIGHT_MODULE || 'playwright');
       assert.ok((await page.locator('#character-thumbnail-pip').innerHTML()).includes(prop));
       for(const card of await page.locator('.face-preview').all()) assert.ok((await card.innerHTML()).includes(prop));
     }
+    await choose('bling','initial');
+    await page.locator('#figure-preview [data-initial=A]').waitFor({state:'visible'});
+    assert.equal(await page.locator('#figure-preview [data-initial=A]').count(),1);
+    assert.equal(await page.locator('.face-preview [data-initial=A]').count(),6);
+    assert.equal(await page.locator('#character-thumbnail-pip [data-initial=A]').count(),1);
     await page.locator('#figure-editor').screenshot({path:path.join(out,'editor-desktop.png')});
     const save=page.locator('#figure-editor button[type=submit]').filter({hasText:'Speichern'});
     await Promise.all([page.waitForResponse(r=>r.url().endsWith('/figure')&&r.status()===200),save.click()]);
@@ -58,7 +72,7 @@ const { chromium } = require(process.env.SP_PLAYWRIGHT_MODULE || 'playwright');
     assert.ok(await page.locator('input[name=character][value=pip]').isChecked());
     assert.ok(await page.locator('input[name=fur][value=blue-grey]').isChecked());
     const svg=await (await ctx.request.get(base+'/avatars/'+id+'.svg')).text();
-    assert.ok(svg.includes('data-character="pip"')&&svg.includes('--fur:#587e9b'));
+    assert.ok(svg.includes('data-character="pip"')&&svg.includes('--fur:#587e9b')&&svg.includes('data-initial="A"'));
     const gif=await ctx.request.get(base+'/avatars/'+id+'.gif?face=angry');
     assert.equal(gif.status(),200);assert.match(gif.headers()['content-type'],/image\/gif/);
     await page.setViewportSize({width:390,height:844});

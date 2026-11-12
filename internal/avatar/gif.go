@@ -46,11 +46,11 @@ var Cheer = []Frame{
 // read, which a browser resolves and oksvg does not. Here every var(--name,
 // fallback) becomes the value the figure sets, or the fallback where it sets
 // none.
-func (k *Kit) RenderFlat(a Avatar, face string) string {
+func (k *Kit) RenderFlat(a Avatar, face string, ctx ...RenderContext) string {
 	if !hasOption(Faces, face) {
 		face = Faces[0].Key
 	}
-	svg := k.render(a, "", k.faces[face])
+	svg := k.render(a, "", k.faces[face], ctx...)
 
 	props := map[string]string{}
 	if m := styleAttr.FindStringSubmatch(svg); m != nil {
@@ -89,7 +89,7 @@ var (
 // takes the nearest of them without dithering. The edges a rasteriser
 // smooths would otherwise become a speckle of in-between colours, which on a
 // grid of LEDs reads as noise rather than as a smooth line.
-func (k *Kit) GIF(a Avatar, frames []Frame, size int) ([]byte, error) {
+func (k *Kit) GIF(a Avatar, frames []Frame, size int, ctx ...RenderContext) ([]byte, error) {
 	size = min(max(size, MinGIFSize), MaxGIFSize)
 	if len(frames) == 0 {
 		return nil, fmt.Errorf("a GIF needs a frame")
@@ -97,7 +97,7 @@ func (k *Kit) GIF(a Avatar, frames []Frame, size int) ([]byte, error) {
 
 	flats := make([]string, len(frames))
 	for i, f := range frames {
-		flats[i] = k.RenderFlat(a, f.Face)
+		flats[i] = k.RenderFlat(a, f.Face, ctx...)
 	}
 	// New blecki accessory colours must not recolour antialiased coat edges.
 	// Keep the original quantisation wherever the accessory changes no pixel.
@@ -107,7 +107,7 @@ func (k *Kit) GIF(a Avatar, frames []Frame, size int) ([]byte, error) {
 		plain.Bling = NoBling
 		baseFlats = make([]string, len(frames))
 		for i, f := range frames {
-			baseFlats[i] = k.RenderFlat(plain, f.Face)
+			baseFlats[i] = k.RenderFlat(plain, f.Face, ctx...)
 		}
 	}
 	basePal := paletteOf(baseFlats)

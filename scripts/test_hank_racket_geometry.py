@@ -52,8 +52,8 @@ class HankRacketGeometry(unittest.TestCase):
         self.assertLess(
             op(grow(head, 12), racket, pathops.PathOp.INTERSECTION).area, 0.001
         )
-        # The small round belly emblem remains a proposal, not an active slot.
-        reserve = ellipse(208, 376, 24, 24)
+        # The actual round belly emblem, including its outline.
+        reserve = ellipse(209.8, 366.1, 28.5, 28.5)
         self.assertLess(
             op(grow(reserve, 12), racket, pathops.PathOp.INTERSECTION).area, 0.001
         )

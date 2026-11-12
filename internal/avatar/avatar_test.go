@@ -135,7 +135,7 @@ func TestRandomIsRepeatableAndReachesEverything(t *testing.T) {
 		}
 	}
 	want := len(avatar.Furs) + len(avatar.PipFurs) + len(avatar.Headdresses) + len(avatar.Handles) +
-		len(avatar.Blades) + len(avatar.Blings) + len(avatar.BleckiBlings) - 1 + len(avatar.Characters) + 1
+		len(avatar.Blades) + len(avatar.Blings) + len(avatar.BleckiBlings) - 1 + len(avatar.HankBlings) - 1 + len(avatar.Characters) + 1
 	if len(seen) != want {
 		t.Errorf("3000 rolls reached %d choices, want all %d", len(seen), want)
 	}
@@ -370,7 +370,8 @@ func TestCharacterDeliveries(t *testing.T) {
 								if validFace || validBling {
 									faceDepth = depth
 								}
-								if !validFace && !validBling && !validPipPart {
+								validInitial := ch.Key == "pip" && name == "bling-initial" && depth == 3 && attrs["data-initial"] == "fallback"
+								if !validFace && !validBling && !validPipPart && !validInitial {
 									t.Error("invalid face group")
 								}
 							case "path", "circle", "ellipse":
@@ -381,13 +382,13 @@ func TestCharacterDeliveries(t *testing.T) {
 							default:
 								t.Errorf("unexpected element %s", el.Name.Local)
 							}
-							if fill, ok := attrs["fill"]; ok && !regexp.MustCompile(`^(#[0-9a-fA-F]{6}|var\(--(?:fur|fur-dark|headdress|headdress-dark|handle|handle-dark|paddle|ball|ball-shadow), #[0-9a-fA-F]{6}\))$`).MatchString(fill) {
+							if fill, ok := attrs["fill"]; ok && !regexp.MustCompile(`^(#[0-9a-fA-F]{6}|var\(--(?:fur|fur-dark|headdress|headdress-dark|handle|handle-dark|paddle|ball|ball-shadow|emblem), #[0-9a-fA-F]{6}\))$`).MatchString(fill) {
 								t.Errorf("invalid material fill %q", fill)
 							}
 							for k := range attrs {
 								allowed := k == "fill" || k == "fill-rule" ||
 									(el.Name.Local == "svg" && (k == "viewBox" || k == "xmlns")) ||
-									(el.Name.Local == "g" && (k == "class" || k == "data-face" || k == "data-bling" || (ch.Key == "pip" && k == "data-pip-part"))) ||
+									(el.Name.Local == "g" && (k == "class" || k == "data-face" || k == "data-bling" || (ch.Key == "pip" && (k == "data-pip-part" || k == "data-initial")))) ||
 									(el.Name.Local == "path" && k == "d") ||
 									(el.Name.Local == "circle" && (k == "cx" || k == "cy" || k == "r")) ||
 									(el.Name.Local == "ellipse" && (k == "cx" || k == "cy" || k == "rx" || k == "ry"))
@@ -410,6 +411,8 @@ func TestCharacterDeliveries(t *testing.T) {
 						if name == "base" {
 							wantGroups = 4
 						} else if strings.HasPrefix(name, "face-") {
+							wantGroups = 2
+						} else if name == "bling-initial" {
 							wantGroups = 2
 						}
 					}

@@ -80,18 +80,24 @@ func (c *Collection) kit(a Avatar) *Kit {
 }
 
 // Render draws the selected character with its neutral expression.
-func (c *Collection) Render(a Avatar) string { return c.kit(a).Render(a) }
+func (c *Collection) Render(a Avatar, ctx ...RenderContext) string { return c.kit(a).Render(a, ctx...) }
 
 // RenderFace draws one expression for a comparison preview.
-func (c *Collection) RenderFace(a Avatar, face string) string { return c.kit(a).RenderFace(a, face) }
+func (c *Collection) RenderFace(a Avatar, face string, ctx ...RenderContext) string {
+	return c.kit(a).RenderFace(a, face, ctx...)
+}
 
 // RenderLive includes every game-controlled expression.
-func (c *Collection) RenderLive(a Avatar, face string) string { return c.kit(a).RenderLive(a, face) }
+func (c *Collection) RenderLive(a Avatar, face string, ctx ...RenderContext) string {
+	return c.kit(a).RenderLive(a, face, ctx...)
+}
 
 // GIF renders the selected character using the shared LED animation pipeline.
-func (c *Collection) GIF(a Avatar, frames []Frame, size int) ([]byte, error) {
-	return c.kit(a).GIF(a, frames, size)
+func (c *Collection) GIF(a Avatar, frames []Frame, size int, ctx ...RenderContext) ([]byte, error) {
+	return c.kit(a).GIF(a, frames, size, ctx...)
 }
 
 // RenderFlat resolves the selected character's materials for raster previews.
-func (c *Collection) RenderFlat(a Avatar, face string) string { return c.kit(a).RenderFlat(a, face) }
+func (c *Collection) RenderFlat(a Avatar, face string, ctx ...RenderContext) string {
+	return c.kit(a).RenderFlat(a, face, ctx...)
+}

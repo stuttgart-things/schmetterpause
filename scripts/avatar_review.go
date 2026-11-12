@@ -19,6 +19,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"testing/fstest"
 
 	"github.com/srwiley/oksvg"
 	"github.com/srwiley/rasterx"
@@ -40,8 +41,16 @@ type sample struct {
 func main() {
 	key := flag.String("character", "vex", "character key")
 	out := flag.String("out", "docs/avatar-check/vex", "output directory")
+	emblems := flag.Bool("emblems-only", false, "export Hank emblem acceptance matrix (include hank_emblem_review.go)")
 	accessories := flag.Bool("accessories-only", false, "export only the blecki accessory acceptance matrix")
 	flag.Parse()
+	if *emblems {
+		if err := emblemReview(*out); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+		return
+	}
 	if *accessories {
 		if err := accessoryReview(*key, *out); err != nil {
 			fmt.Fprintln(os.Stderr, err)
@@ -74,6 +83,7 @@ func previousPipFrames() (map[string]image.Image, error) {
 
 var comparisonBefore map[string]image.Image
 var eyesDetail bool
+var reviewNames map[string]string
 
 func run(key, out string) error {
 	labelKey := key
@@ -403,7 +413,7 @@ not photographs of a real panel. In particular, dark wood and moss on black
 should be checked on the device. No runtime hides jewellery automatically.
 `
 	if key == "pip" {
-		note = "# Hank acceptance review\n\nRegenerate: `go run ./scripts/avatar_review.go -character pip -out docs/avatar-check/pip`\n\nOpen index.html for expressions, materials and GIFs. The expressions-row PNGs show the six faces in original colours at 64 and 28 pixels on black. Full sheets include Original, Grau and Blaugrau on navy and black. Hank deliberately has no cheeks and no jewellery. Grey excludes Silver; native Pink is labelled Original. The eyes-before-after-64-black.png sheet compares archived 7969bdf GIFs against Hank without cheeks, each Alt/Neu pair adjacent. The eyes-detail-192.png sheet shows eyes and brows. Eyes have no sclera; only two round white glints remain. Physical LED-panel contrast remains to be checked.\n"
+		note = "# Hank acceptance review\n\nRegenerate: `go run ./scripts/avatar_review.go -character pip -out docs/avatar-check/pip`\n\nOpen index.html for expressions, materials and GIFs. The expressions-row PNGs show the six faces in original colours at 64 and 28 pixels on black. Full sheets include Original, Grau and Blaugrau on navy and black. Hank has no cheeks; Schmuck choices are Kein Schmuck and Initiale. Grey excludes Silver; native Pink is labelled Original. The eyes-before-after-64-black.png sheet compares archived 7969bdf GIFs against Hank without cheeks, each Alt/Neu pair adjacent. The eyes-detail-192.png sheet shows eyes and brows. Eyes have no sclera; only two round white glints remain. Physical LED-panel contrast remains to be checked.\n"
 	}
 	if err = os.WriteFile(filepath.Join(out, "README.md"), []byte(note), 0644); err != nil {
 		return err
@@ -427,7 +437,11 @@ var reviewFont = func() font.Face {
 
 func sheet(c *avatar.Collection, samples []sample, cols, size int, bg color.RGBA, title, path string) error {
 	cellW := max(size+16, 144)
-	cellH := size + 48
+	maxLines := 1
+	for _, sample := range samples {
+		maxLines = max(maxLines, len(strings.Split(sample.label, " / ")))
+	}
+	cellH := size + max(48, 20+14*maxLines)
 	rows := (len(samples) + cols - 1) / cols
 	canvas := image.NewRGBA(image.Rect(0, 0, cols*cellW, rows*cellH+28))
 	draw.Draw(canvas, canvas.Bounds(), image.NewUniform(bg), image.Point{}, draw.Src)
@@ -438,7 +452,8 @@ func sheet(c *avatar.Collection, samples []sample, cols, size int, bg color.RGBA
 	label(8, 18, title)
 	for i, s := range samples {
 		renderer := c
-		svg := renderer.RenderFlat(s.a, s.face)
+		ctx := avatar.RenderContext{DisplayName: reviewNames[s.label]}
+		svg := renderer.RenderFlat(s.a, s.face, ctx)
 
 		if eyesDetail {
 			data, err := fs.ReadFile(web.Static, "static/img/pip/face-"+s.face+".svg")
@@ -464,7 +479,7 @@ func sheet(c *avatar.Collection, samples []sample, cols, size int, bg color.RGBA
 		x := (i%cols)*cellW + (cellW-size)/2
 		y := 28 + (i/cols)*cellH
 		if bg.R == 0 && bg.G == 0 && bg.B == 0 && (size == 64 || (s.a.Character == "pip" && size == 192 && !eyesDetail)) {
-			data, err := renderer.GIF(s.a, []avatar.Frame{{Face: s.face}}, size)
+			data, err := renderer.GIF(s.a, []avatar.Frame{{Face: s.face}}, size, ctx)
 			if err != nil {
 				return err
 			}
@@ -627,4 +642,128 @@ func writeBallContrast(out string) error {
 		return err
 	}
 	return os.WriteFile(filepath.Join(out, "ball-colour-contrast.csv"), data.Bytes(), 0644)
+}
+
+func handBeforeCollection() (*avatar.Collection, error) {
+	files := fstest.MapFS{}
+	err := fs.WalkDir(web.Static, "static/img", func(name string, entry fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if entry.IsDir() {
+			return nil
+		}
+		data, err := fs.ReadFile(web.Static, name)
+		if err != nil {
+			return err
+		}
+		files[name] = &fstest.MapFile{Data: data}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	before, err := os.ReadFile("docs/avatar-check/pip/emblems/hand-before-base.svg")
+	if err != nil {
+		return nil, err
+	}
+	files["static/img/pip/base.svg"] = &fstest.MapFile{Data: before}
+	return avatar.LoadCollection(files, "static/img")
+}
+
+func emblemReview(out string) error {
+	c, err := avatar.LoadCollection(web.Static, "static/img")
+	if err != nil {
+		return err
+	}
+	if err = os.MkdirAll(out, 0755); err != nil {
+		return err
+	}
+	reviewNames = map[string]string{}
+	coats := []struct{ key, name string }{{"", "Original"}, {"grey", "Grau"}, {"blue-grey", "Blaugrau"}}
+	heads := []struct{ key, name string }{{"fur", "Original"}, {"gold", "Gold"}, {"ruby", "Rubin"}, {"ivory", "Elfenbein"}, {"silver", "Silber"}}
+	var matrix []sample
+	for _, coat := range coats {
+		for _, head := range heads {
+			for _, bling := range avatar.HankBlings {
+				for _, face := range []string{"neutral", "angry"} {
+					a := avatar.DefaultForCharacter("pip", "")
+					a.Fur = coat.key
+					a.Headdress = head.key
+					a.Blade = "light-blue"
+					a.Bling = bling.Key
+					faceLabel := map[string]string{"neutral": "Neutral", "angry": "Wütend"}[face]
+					label := coat.name + " / " + head.name + " / " + bling.Name + " / " + faceLabel
+					if coat.key == "grey" && head.key == "silver" {
+						label = coat.name + " / Silber→Orig.* / " + bling.Name + " / " + faceLabel
+					}
+					reviewNames[label] = "Anna"
+					matrix = append(matrix, sample{label, a, face})
+				}
+			}
+		}
+	}
+	var letters []sample
+	for _, r := range "ABCDEFGHIJKLMNOPQRSTUVWXYZÄÖÜ" {
+		a := avatar.DefaultForCharacter("pip", "")
+		a.Blade = "light-blue"
+		a.Bling = "initial"
+		label := string(r)
+		reviewNames[label] = label
+		letters = append(letters, sample{label, a, "neutral"})
+	}
+	a := avatar.DefaultForCharacter("pip", "")
+	a.Blade = "light-blue"
+	a.Bling = "initial"
+	letters = append(letters, sample{"Schläger (kein Name)", a, "neutral"})
+	for _, bg := range []struct {
+		name   string
+		colour color.RGBA
+	}{{"app", color.RGBA{10, 10, 18, 255}}, {"black", color.RGBA{0, 0, 0, 255}}} {
+		for _, size := range []int{192, 64, 28} {
+			if err = sheet(c, matrix, 4, size, bg.colour, fmt.Sprintf("Hank | Embleme | %d px | %s", size, bg.name), filepath.Join(out, fmt.Sprintf("emblems-%d-%s.png", size, bg.name))); err != nil {
+				return err
+			}
+			if err = sheet(c, letters, 6, size, bg.colour, fmt.Sprintf("Hank | A–Z Ä Ö Ü und Rückfall | %d px", size), filepath.Join(out, fmt.Sprintf("letters-%d-%s.png", size, bg.name))); err != nil {
+				return err
+			}
+		}
+	}
+	reviewNames = nil
+	before, err := handBeforeCollection()
+	if err != nil {
+		return err
+	}
+	for _, name := range []string{"hand-before-420.png", "hand-after-420.png"} {
+		plain := avatar.DefaultForCharacter("pip", "")
+		plain.Blade = "light-blue"
+		plain.Handle = "red"
+		renderer := c
+		if strings.Contains(name, "before") {
+			renderer = before
+		}
+		svg := renderer.RenderFlat(plain, "neutral")
+		icon, err := oksvg.ReadIconStream(strings.NewReader(svg), oksvg.StrictErrorMode)
+		if err != nil {
+			return err
+		}
+		scale := 420.0 / 130.0
+		icon.SetTarget(-225*scale, -310*scale, 420*scale, 420*scale)
+		frame := image.NewRGBA(image.Rect(0, 0, 420, 420))
+		draw.Draw(frame, frame.Bounds(), image.Black, image.Point{}, draw.Src)
+		icon.Draw(rasterx.NewDasher(420, 420, rasterx.NewScannerGV(420, 420, frame, frame.Bounds())), 1)
+		f, err := os.Create(filepath.Join(out, name))
+		if err != nil {
+			return err
+		}
+		err = png.Encode(f, frame)
+		closeErr := f.Close()
+		if err != nil {
+			return err
+		}
+		if closeErr != nil {
+			return closeErr
+		}
+	}
+	return nil
 }

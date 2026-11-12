@@ -31,7 +31,12 @@ var BleckiBlings = []Option{
 }
 
 // BlingPalette returns the jewellery drawn for this character’s single slot.
+var HankBlings = []Option{{NoBling, "Kein Schmuck"}, {"initial", "Initiale"}}
+
 func BlingPalette(characterKey string) []Option {
+	if characterKey == "pip" {
+		return HankBlings
+	}
 	if characterKey == "vex" {
 		return BleckiBlings
 	}

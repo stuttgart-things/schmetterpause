@@ -491,8 +491,8 @@ PIP_RACKET_ROTATION = 18
 PIP_RACKET_SCALE = 0.9
 PIP_RACKET_HEAD_OFFSET = (-7, 34)
 PIP_RACKET_GRIP_OFFSET = (-7, -10)
-# Proposed round emblem only; no accessory is active pending placement approval.
-PIP_EMBLEM_RESERVE = (208, 376, 24, 24)
+# Actual maximum-size round Hank emblem, including its black border.
+PIP_EMBLEM_RESERVE = (209.8, 366.1, 28.5, 28.5)
 
 
 # One lighting layout, expressed relative to either eye centre. Only a covered
@@ -741,6 +741,21 @@ def convert_pip(source, target):
     paw = transformed(original[8][2], rotation)
     blank.append(("ink", INK, outlined(paw, 11)))
     blank.append(("body", PIP_FUR, paw))
+    # A small thumb crosses the shaft instead of leaving it merely resting
+    # alongside the flipper. It stays inside the pre-existing figure silhouette.
+    thumb = shape("M286 369 C278 369 272 375 273 381 Q277 389 286 385 L294 378Z")
+    thumb = transformed(
+        thumb, Transform().translate(284, 378).scale(0.75).translate(-284, -378)
+    )
+    thumb_ink = outlined(thumb, 11)
+    old_silhouette = pathops.Path()
+    for role, fill, p in body_parts + blank:
+        old_silhouette = op(old_silhouette, p, pathops.PathOp.UNION)
+    assert (
+        op(thumb_ink, old_silhouette, pathops.PathOp.DIFFERENCE).area < 0.001
+    ), "Thumb would change outer silhouette"
+    blank.append(("ink", INK, thumb_ink))
+    blank.append(("body", PIP_FUR, thumb))
     target.mkdir(parents=True, exist_ok=True)
 
     def save(name, body):
@@ -778,7 +793,11 @@ def convert_pip(source, target):
     # hide the chosen material down to a sliver.
     visible_grip = op(
         shaft,
-        op(outlined(blade, 13), outlined(paw, 11), pathops.PathOp.UNION),
+        op(
+            outlined(blade, 13),
+            op(outlined(paw, 11), thumb_ink, pathops.PathOp.UNION),
+            pathops.PathOp.UNION,
+        ),
         pathops.PathOp.DIFFERENCE,
     )
     assert (

@@ -40,6 +40,24 @@ func (s *Server) avatarOf(ctx context.Context, playerID uuid.UUID) avatar.Avatar
 	return avatar.Fill(stored, playerID.String())
 }
 
+// figureContext resolves trusted identity at the request boundary. Anonymous
+// and repository failures deliberately render the initial fallback symbol.
+func (s *Server) figureContext(ctx context.Context, id uuid.UUID) avatar.RenderContext {
+	if id == uuid.Nil {
+		return avatar.RenderContext{}
+	}
+	player, err := s.store.Players().ByID(ctx, id)
+	if err != nil {
+		return avatar.RenderContext{}
+	}
+	return avatar.RenderContext{DisplayName: player.DisplayName}
+}
+
+func (s *Server) editorView(r *http.Request, a avatar.Avatar) templates.FigureEditorView {
+	id, _ := auth.PlayerID(r.Context())
+	return figureEditorView(a, s.figureContext(r.Context(), id))
+}
+
 // pageFigure is a player's figure for beside a heading, and the class of its
 // blade for the box around it.
 //
@@ -52,7 +70,7 @@ func (s *Server) pageFigure(ctx context.Context, playerID uuid.UUID) (svg, blade
 	if i, ok := avatar.BladeOf(a); ok {
 		blade = "paddle-" + strconv.Itoa(i)
 	}
-	return figures.Render(a), blade
+	return figures.Render(a, s.figureContext(ctx, playerID)), blade
 }
 
 // handleAvatar serves a player's figure with every face, for whatever stands
@@ -81,7 +99,8 @@ func (s *Server) handleAvatar(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
-	if _, err := s.store.Players().ByID(r.Context(), id); err != nil {
+	player, err := s.store.Players().ByID(r.Context(), id)
+	if err != nil {
 		if !errors.Is(err, domain.ErrNotFound) {
 			s.log.ErrorContext(r.Context(), "loading the player for a figure failed", "player_id", id, "error", err)
 		}
@@ -93,10 +112,10 @@ func (s *Server) handleAvatar(w http.ResponseWriter, r *http.Request) {
 	// match's screen.
 	a := s.avatarOf(r.Context(), id)
 	if asGIF {
-		s.writeFigureGIF(w, r, "public, max-age=60", a)
+		s.writeFigureGIF(w, r, "public, max-age=60", a, avatar.RenderContext{DisplayName: player.DisplayName})
 		return
 	}
-	writeFigure(w, "public, max-age=60", figures.RenderLive(a, r.URL.Query().Get("face")))
+	writeFigure(w, "public, max-age=60", figures.RenderLive(a, r.URL.Query().Get("face"), avatar.RenderContext{DisplayName: player.DisplayName}))
 }
 
 // handleRandomAvatar serves a figure rolled for this request, for a match
@@ -118,7 +137,7 @@ func (s *Server) handleRandomAvatar(w http.ResponseWriter, r *http.Request) {
 // panel plays after a won set or match. ?size= is the side in pixels,
 // avatar.DefaultGIFSize unless it says otherwise, and held between the
 // smallest size that still shows a face and the largest one a panel needs.
-func (s *Server) writeFigureGIF(w http.ResponseWriter, r *http.Request, cache string, a avatar.Avatar) {
+func (s *Server) writeFigureGIF(w http.ResponseWriter, r *http.Request, cache string, a avatar.Avatar, ctx ...avatar.RenderContext) {
 	q := r.URL.Query()
 	frames := avatar.Cheer
 	if q.Has("face") {
@@ -129,7 +148,7 @@ func (s *Server) writeFigureGIF(w http.ResponseWriter, r *http.Request, cache st
 		size = n
 	}
 
-	b, err := figures.GIF(a, frames, size)
+	b, err := figures.GIF(a, frames, size, ctx...)
 	if err != nil {
 		s.log.ErrorContext(r.Context(), "drawing a figure as GIF failed", "error", err)
 		http.Error(w, "Die Figur ließ sich nicht zeichnen.", http.StatusInternalServerError)
@@ -158,7 +177,7 @@ func writeFigure(w http.ResponseWriter, cache, svg string) {
 }
 
 // figureEditorView describes the editor with a checked, its preview rendered.
-func figureEditorView(a avatar.Avatar) templates.FigureEditorView {
+func figureEditorView(a avatar.Avatar, ctx ...avatar.RenderContext) templates.FigureEditorView {
 	a = avatar.Fill(a, "")
 	colours := func(name, label string, palette []avatar.Colour, key string) templates.FigurePart {
 		part := templates.FigurePart{Name: name, Label: label}
@@ -198,9 +217,11 @@ func figureEditorView(a avatar.Avatar) templates.FigureEditorView {
 	}
 	if a.Character == "vex" {
 		parts = append(parts[:1], parts[2:]...)
+	}
+	if a.Character == "vex" || a.Character == "pip" {
 		parts = append(parts, bling)
 	}
-	view := templates.FigureEditorView{Preview: figures.Render(a), Parts: parts, NoHeaddress: a.Character == "vex", Expressions: figureExpressionsView(a), BallColor: figureBallColorView(a)}
+	view := templates.FigureEditorView{Preview: figures.Render(a, ctx...), Parts: parts, NoHeaddress: a.Character == "vex", Expressions: figureExpressionsView(a, ctx...), BallColor: figureBallColorView(a)}
 	for _, ch := range avatar.Characters {
 		thumbnail := avatar.DefaultForCharacter(ch.Key, "")
 		thumbnail.Blade = avatar.Blades[0].Key
@@ -209,13 +230,18 @@ func figureEditorView(a avatar.Avatar) templates.FigureEditorView {
 		}
 		view.Characters = append(view.Characters, templates.FigureCharacter{
 			Key: ch.Key, Name: ch.Name, Checked: ch.Key == a.Character,
-			Preview: figures.Render(thumbnail),
+			Preview: func() string {
+				if ch.Key == a.Character {
+					return figures.Render(thumbnail, ctx...)
+				}
+				return figures.Render(thumbnail)
+			}(),
 		})
 	}
 	return view
 }
 
-func figureExpressionsView(a avatar.Avatar) templates.FigureExpressionsView {
+func figureExpressionsView(a avatar.Avatar, ctx ...avatar.RenderContext) templates.FigureExpressionsView {
 	a = avatar.Fill(a, "")
 	view := templates.FigureExpressionsView{}
 	for _, ch := range avatar.Characters {
@@ -224,7 +250,7 @@ func figureExpressionsView(a avatar.Avatar) templates.FigureExpressionsView {
 		}
 	}
 	for _, f := range avatar.Faces {
-		view.Faces = append(view.Faces, templates.FigureExpression{Key: f.Key, Name: f.Name, Preview: figures.RenderFace(a, f.Key)})
+		view.Faces = append(view.Faces, templates.FigureExpression{Key: f.Key, Name: f.Name, Preview: figures.RenderFace(a, f.Key, ctx...)})
 	}
 	return view
 }
@@ -247,6 +273,8 @@ func figureFromForm(r *http.Request) avatar.Avatar {
 // it would look. Nothing is stored.
 func (s *Server) handleFigurePreview(w http.ResponseWriter, r *http.Request) {
 	a := figureFromForm(r)
+	id, _ := auth.PlayerID(r.Context())
+	ctx := s.figureContext(r.Context(), id)
 	// Changing the coat can invalidate a previously selected silver band.
 	if a.Character == "pip" && a.Fur == "grey" && a.Headdress == "silver" {
 		a.Headdress = avatar.SameAsFur
@@ -257,12 +285,12 @@ func (s *Server) handleFigurePreview(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusUnprocessableEntity)
 		return
 	}
-	s.render(w, r, templates.FigurePreview(figures.Render(a)))
-	s.render(w, r, templates.FigureExpressions(figureExpressionsView(a), true))
-	s.render(w, r, templates.FigureSelectedThumbnail(figures.Render(a), a.Character))
+	s.render(w, r, templates.FigurePreview(figures.Render(a, ctx)))
+	s.render(w, r, templates.FigureExpressions(figureExpressionsView(a, ctx), true))
+	s.render(w, r, templates.FigureSelectedThumbnail(figures.Render(a, ctx), a.Character))
 	s.render(w, r, templates.FigureBallColor(figureBallColorView(a), true))
 	if a.Character == "pip" {
-		view := figureEditorView(a)
+		view := s.editorView(r, a)
 		for _, part := range view.Parts {
 			if part.Name == "headdress" {
 				s.render(w, r, templates.FigureHeaddress(part, true))
@@ -295,7 +323,7 @@ func (s *Server) handleFigureCharacter(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusUnprocessableEntity)
 		return
 	}
-	s.render(w, r, templates.FigureEditor(figureEditorView(a)))
+	s.render(w, r, templates.FigureEditor(s.editorView(r, a)))
 }
 
 // handleSaveFigure stores the editor's figure for the reader, and nobody else:
@@ -305,7 +333,7 @@ func (s *Server) handleSaveFigure(w http.ResponseWriter, r *http.Request) {
 	self, _ := auth.PlayerID(r.Context())
 	a := figureFromForm(r)
 	if err := avatar.Validate(a); err != nil {
-		view := figureEditorView(s.avatarOf(r.Context(), self))
+		view := s.editorView(r, s.avatarOf(r.Context(), self))
 		view.Error = "Das ließ sich nicht speichern. Lade die Seite neu und versuch es noch einmal."
 		w.WriteHeader(http.StatusUnprocessableEntity)
 		s.render(w, r, templates.FigureEditor(view))
@@ -313,7 +341,7 @@ func (s *Server) handleSaveFigure(w http.ResponseWriter, r *http.Request) {
 	}
 	if err := s.store.Avatars().Put(r.Context(), self, a); err != nil {
 		s.log.ErrorContext(r.Context(), "storing the figure failed", "player_id", self, "error", err)
-		view := figureEditorView(a)
+		view := s.editorView(r, a)
 		view.Error = "Das hat gerade nicht geklappt. Versuch es noch einmal."
 		w.WriteHeader(http.StatusInternalServerError)
 		s.render(w, r, templates.FigureEditor(view))
@@ -329,7 +357,7 @@ func (s *Server) handleResetFigure(w http.ResponseWriter, r *http.Request) {
 	self, _ := auth.PlayerID(r.Context())
 	if err := s.store.Avatars().Delete(r.Context(), self); err != nil {
 		s.log.ErrorContext(r.Context(), "resetting the figure failed", "player_id", self, "error", err)
-		view := figureEditorView(s.avatarOf(r.Context(), self))
+		view := s.editorView(r, s.avatarOf(r.Context(), self))
 		view.Error = "Das hat gerade nicht geklappt. Versuch es noch einmal."
 		w.WriteHeader(http.StatusInternalServerError)
 		s.render(w, r, templates.FigureEditor(view))
@@ -343,7 +371,7 @@ func (s *Server) handleResetFigure(w http.ResponseWriter, r *http.Request) {
 // stored, and the figure beside the name out of band, so the page agrees with
 // itself without a reload.
 func (s *Server) renderFigureChange(w http.ResponseWriter, r *http.Request, self uuid.UUID, mark func(*templates.FigureEditorView)) {
-	view := figureEditorView(s.avatarOf(r.Context(), self))
+	view := s.editorView(r, s.avatarOf(r.Context(), self))
 	mark(&view)
 	s.render(w, r, templates.FigureEditor(view))
 	svg, blade := s.pageFigure(r.Context(), self)
@@ -354,7 +382,7 @@ func (s *Server) renderFigureChange(w http.ResponseWriter, r *http.Request, self
 // is a suggestion, and "Speichern" is still the one button that keeps it.
 func (s *Server) handleRollFigure(w http.ResponseWriter, r *http.Request) {
 	a := avatar.Random(rand.New(rand.NewPCG(rand.Uint64(), rand.Uint64()))) //nolint:gosec // decoration, not a secret
-	view := figureEditorView(a)
+	view := s.editorView(r, a)
 	view.Rolled = true
 	s.render(w, r, templates.FigureEditor(view))
 }

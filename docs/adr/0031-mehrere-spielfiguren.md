@@ -79,3 +79,16 @@ ins Anwendungs-Binary oder Container-Image.
 - Kein zusätzliches JavaScript: Auswahl und Vorschau bleiben HTMX-Formulare.
 - Die Anwendung prüft Figuren-, Farb- und Schmuckschlüssel. Die Datenbank
   speichert auch unbekannte Schlüssel für einen weiterhin möglichen Rückfall.
+
+
+## Ergänzung: Hanks Initialen-Emblem
+
+Hank behält den gespeicherten Schlüssel `pip`. Auf dem Arbeitsbranch
+`feat/pip-avatar` verwendet Hank den bestehenden einzelnen Schmuck-Slot mit
+„Kein Schmuck“ und „Initiale“. Unbekannte bzw. verworfene Werte wie Fisch und
+Schneeflocke fallen beim Lesen auf „Kein Schmuck“ zurück. Es gibt kein neues
+Datenbankfeld. Die Initiale wird aus dem Spielernamen in einem ausschließlich
+für das Rendern übergebenen Kontext abgeleitet; ohne Namen erscheint ein Schläger.
+Die Glyphe besteht aus vorab erzeugten gefüllten Barlow-Bold-Pfaden (SIL OFL 1.1).
+Das Emblem liegt nach der Basis und vor dem Gesicht. Die kleinere, tiefer sitzende
+Platzierung wurde wegen der bestehenden Pose ausdrücklich gewählt.

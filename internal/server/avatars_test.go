@@ -1,6 +1,7 @@
 package server_test
 
 import (
+	"bytes"
 	"context"
 	"image/gif"
 	"net/http"
@@ -14,6 +15,7 @@ import (
 
 	"github.com/stuttgart-things/schmetterpause/internal/avatar"
 	"github.com/stuttgart-things/schmetterpause/internal/templates"
+	"github.com/stuttgart-things/schmetterpause/web"
 )
 
 // cream and pink, so the figure is told apart from the default by its fur and
@@ -739,19 +741,19 @@ func TestBleckiBallColourControlPersistenceAndFallback(t *testing.T) {
 	}
 }
 
-func TestPipEditorHasHeadbandAndNoJewellery(t *testing.T) {
+func TestHankEditorHasHeadbandAndInitial(t *testing.T) {
 	h, _, anna, _ := twoBrowsers(t)
 	rec := fragment(t, h, "/fragments/figure-character?character=pip&blade=pink", anna)
 	if rec.Code != http.StatusOK {
 		t.Fatalf("Pip editor: %d", rec.Code)
 	}
 	body := rec.Body.String()
-	for _, want := range []string{`data-character="pip"`, `Gesichtsausdrücke: Hank`, `>Hank<`, `name="headdress"`, `name="fur" value="grey"`, `name="fur" value="blue-grey"`, `name="blade" value="pink" checked`} {
+	for _, want := range []string{`data-character="pip"`, `Gesichtsausdrücke: Hank`, `>Hank<`, `name="bling" value="initial"`, `name="headdress"`, `name="fur" value="grey"`, `name="fur" value="blue-grey"`, `name="blade" value="pink" checked`} {
 		if !strings.Contains(body, want) {
 			t.Errorf("missing %s", want)
 		}
 	}
-	for _, unwanted := range []string{`name="bling"`, `type="radio" name="ballColor"`, `name="fur" value="cream"`, `name="fur" value="sand"`, `name="fur" value="chocolate"`, `name="headdress" value="lapis"`} {
+	for _, unwanted := range []string{`type="radio" name="ballColor"`, `name="fur" value="cream"`, `name="fur" value="sand"`, `name="fur" value="chocolate"`, `name="headdress" value="lapis"`} {
 		if strings.Contains(body, unwanted) {
 			t.Errorf("unexpected %s", unwanted)
 		}
@@ -792,5 +794,58 @@ func TestPipGreyRefreshesHeadbandOptionsAndFallsBackToPink(t *testing.T) {
 	rec = fragment(t, h, "/fragments/figure-preview?"+q.Encode(), anna)
 	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), `name="headdress" value="silver"`) {
 		t.Fatal("silver did not return on blue-grey")
+	}
+}
+
+func TestHankInitialUsesTrustedPlayerNameAcrossEditorHeaderSVGAndGIF(t *testing.T) {
+	h, store, anna, _ := twoBrowsers(t)
+	id := uuid.MustParse(opponentID(t, store, "Anna"))
+	a := avatar.DefaultForCharacter("pip", id.String())
+	a.Bling = "initial"
+	a.Blade = "pink"
+	form := figureForm(a)
+	form.Set("character", "pip")
+	form.Set("displayName", "Zelda")
+	preview := fragment(t, h, "/fragments/figure-preview?"+form.Encode(), anna)
+	if preview.Code != http.StatusOK || !strings.Contains(preview.Body.String(), `data-initial="A"`) {
+		t.Fatal("editor lost trusted name", preview.Code)
+	}
+	if strings.Contains(preview.Body.String(), `data-initial="Z"`) {
+		t.Fatal("client replaced trusted name")
+	}
+	if r := postAs(t, h, "/figure", anna, form); r.Code != http.StatusOK {
+		t.Fatal(r.Code, r.Body.String())
+	}
+	stored, err := store.Avatars().Get(t.Context(), id)
+	if err != nil || stored != a {
+		t.Fatal("stored choices changed", stored, err)
+	}
+	profile := fragment(t, h, "/players/"+id.String(), anna).Body.String()
+	if !strings.Contains(profile, `data-initial="A"`) {
+		t.Fatal("profile/header has no initial")
+	}
+	svg := get(t, h, "/avatars/"+id.String()+".svg?face=angry").Body.String()
+	if !strings.Contains(svg, `data-initial="A"`) || strings.Contains(svg, `data-initial="fallback"`) {
+		t.Fatal("live SVG lost name")
+	}
+	actual := get(t, h, "/avatars/"+id.String()+".gif?face=angry").Body.Bytes()
+	collection := avatar.MustLoadCollection(web.Static, "static/img")
+	expected, err := collection.GIF(a, []avatar.Frame{{Face: "angry"}}, 64, avatar.RenderContext{DisplayName: "Anna"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(actual, expected) {
+		t.Fatal("LED GIF lost render context")
+	}
+	for _, key := range []string{"snowflake", "fish"} {
+		stale := a
+		stale.Bling = key
+		if err := store.Avatars().Put(t.Context(), id, stale); err != nil {
+			t.Fatal(err)
+		}
+		page := fragment(t, h, "/players/"+id.String(), anna).Body.String()
+		if !strings.Contains(page, `name="bling" value="" checked`) || strings.Contains(page, `data-bling="initial"`) {
+			t.Fatal("retired choice did not fall back", key)
+		}
 	}
 }

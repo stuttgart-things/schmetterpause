@@ -1,0 +1,187 @@
+{
+  "emblem_size": 57,
+  "centre": [
+    209.8,
+    366.1
+  ],
+  "belly_edge_clearance": 10.052,
+  "flipper_clearance": 17.785,
+  "racket_clearance": 12.023,
+  "visible_selected_grip_colour_area": 590.726,
+  "initials": [
+    {
+      "initial": "A",
+      "width": 25.829,
+      "height": 29.312,
+      "height_at_64": 4.47
+    },
+    {
+      "initial": "B",
+      "width": 23.256,
+      "height": 31.92,
+      "height_at_64": 4.86
+    },
+    {
+      "initial": "C",
+      "width": 23.138,
+      "height": 31.92,
+      "height_at_64": 4.86
+    },
+    {
+      "initial": "D",
+      "width": 23.348,
+      "height": 31.92,
+      "height_at_64": 4.86
+    },
+    {
+      "initial": "E",
+      "width": 22.162,
+      "height": 31.92,
+      "height_at_64": 4.86
+    },
+    {
+      "initial": "F",
+      "width": 22.116,
+      "height": 31.92,
+      "height_at_64": 4.86
+    },
+    {
+      "initial": "G",
+      "width": 23.092,
+      "height": 31.92,
+      "height_at_64": 4.86
+    },
+    {
+      "initial": "H",
+      "width": 23.392,
+      "height": 31.92,
+      "height_at_64": 4.86
+    },
+    {
+      "initial": "I",
+      "width": 6.43,
+      "height": 31.92,
+      "height_at_64": 4.86
+    },
+    {
+      "initial": "J",
+      "width": 22.678,
+      "height": 31.92,
+      "height_at_64": 4.86
+    },
+    {
+      "initial": "K",
+      "width": 24.084,
+      "height": 30.82,
+      "height_at_64": 4.7
+    },
+    {
+      "initial": "L",
+      "width": 22.116,
+      "height": 31.92,
+      "height_at_64": 4.86
+    },
+    {
+      "initial": "M",
+      "width": 25.59,
+      "height": 30.208,
+      "height_at_64": 4.6
+    },
+    {
+      "initial": "N",
+      "width": 24.27,
+      "height": 31.286,
+      "height_at_64": 4.77
+    },
+    {
+      "initial": "O",
+      "width": 23.396,
+      "height": 31.92,
+      "height_at_64": 4.86
+    },
+    {
+      "initial": "P",
+      "width": 23.334,
+      "height": 31.76,
+      "height_at_64": 4.84
+    },
+    {
+      "initial": "Q",
+      "width": 20.238,
+      "height": 31.92,
+      "height_at_64": 4.86
+    },
+    {
+      "initial": "R",
+      "width": 23.268,
+      "height": 31.444,
+      "height_at_64": 4.79
+    },
+    {
+      "initial": "S",
+      "width": 23.226,
+      "height": 31.92,
+      "height_at_64": 4.86
+    },
+    {
+      "initial": "T",
+      "width": 23.836,
+      "height": 31.602,
+      "height_at_64": 4.82
+    },
+    {
+      "initial": "U",
+      "width": 23.354,
+      "height": 31.92,
+      "height_at_64": 4.86
+    },
+    {
+      "initial": "V",
+      "width": 24.67,
+      "height": 30.36,
+      "height_at_64": 4.63
+    },
+    {
+      "initial": "W",
+      "width": 29.886,
+      "height": 25.22,
+      "height_at_64": 3.84
+    },
+    {
+      "initial": "X",
+      "width": 24.79,
+      "height": 30.36,
+      "height_at_64": 4.63
+    },
+    {
+      "initial": "Y",
+      "width": 24.429,
+      "height": 30.512,
+      "height_at_64": 4.65
+    },
+    {
+      "initial": "Z",
+      "width": 22.208,
+      "height": 31.92,
+      "height_at_64": 4.86
+    },
+    {
+      "initial": "Ä",
+      "width": 21.354,
+      "height": 31.92,
+      "height_at_64": 4.86
+    },
+    {
+      "initial": "Ö",
+      "width": 18.03,
+      "height": 31.92,
+      "height_at_64": 4.86
+    },
+    {
+      "initial": "Ü",
+      "width": 17.78,
+      "height": 31.92,
+      "height_at_64": 4.86
+    }
+  ]
+}

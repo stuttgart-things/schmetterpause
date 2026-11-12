@@ -50,7 +50,7 @@ func TestPipPaletteFallbackAndRandom(t *testing.T) {
 			t.Fatalf("fallback: %+v", got)
 		}
 	}
-	if !reflect.DeepEqual(BlingPalette("pip"), []Option{{NoBling, "Kein Schmuck"}}) {
+	if !reflect.DeepEqual(BlingPalette("pip"), []Option{{NoBling, "Kein Schmuck"}, {"initial", "Initiale"}}) {
 		t.Fatal("unexpected jewellery")
 	}
 	rng := rand.New(rand.NewPCG(42, 21))
@@ -62,7 +62,7 @@ func TestPipPaletteFallbackAndRandom(t *testing.T) {
 			if err := Validate(a); err != nil {
 				t.Fatal(err)
 			}
-			if a.Bling != NoBling {
+			if !hasOption(HankBlings, a.Bling) {
 				t.Fatal(a)
 			}
 		}
@@ -73,8 +73,8 @@ func TestPipPaletteFallbackAndRandom(t *testing.T) {
 }
 
 func TestPipAssetsUseFilledPathsOnly(t *testing.T) {
-	forbidden := regexp.MustCompile(`(?i)\b(?:stroke(?:-[a-z]+)?|transform|mask|clip-path|filter)\s*=|<(?:\w+:)?(?:mask|clipPath|filter|image)\b`)
-	files := []string{"base.svg"}
+	forbidden := regexp.MustCompile(`(?i)\b(?:stroke(?:-[a-z]+)?|transform|mask|clip-path|filter)\s*=|<(?:\w+:)?(?:mask|clipPath|filter|image|text)\b`)
+	files := []string{"base.svg", "bling-initial.svg"}
 	for _, face := range Faces {
 		files = append(files, "face-"+face.Key+".svg")
 	}

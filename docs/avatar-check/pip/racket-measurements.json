@@ -56,12 +56,21 @@
     ]
   ],
   "head_clearance": 12.772,
-  "round_emblem_clearance": 13.501,
-  "visible_grip_colour_area": 685.52,
+  "round_emblem_clearance": 12.023,
   "visible_grip_colour_bounds": [
     246.49981689453125,
     348.6522521972656,
     295.23492431640625,
     406.4999694824219
-  ]
+  ],
+  "visible_grip_colour_area_before_thumb": 685.52,
+  "visible_grip_colour_area": 590.726,
+  "emblem_reserve": {
+    "centre": [
+      209.8,
+      366.1
+    ],
+    "radius": 28.5,
+    "clearance": 12.023
+  }
 }

@@ -235,40 +235,6 @@ go test ./internal/server -run TestHankBrowser -count=1 -v
 
 Set `SP_PREVIEW_SCREENSHOT_DIR` for desktop/mobile captures.
 
-### Hank emblem investigation (placement decision pending)
-
-The display name is Hank. The internal key remains `pip` in profiles, paths,
-branch names and avatar URLs; no migration is needed. blecki remains lowercase,
-as explicitly selected earlier in this work.
-
-| Render path | Name availability |
-| --- | --- |
-| Profile and editor | Player exists in the request/session; currently not forwarded to the renderer |
-| Header avatar | Player ID is present and display name can be loaded from the player repository |
-| Game/live SVG for a player | `/avatars/{id}.svg` already loads the player; display name is available |
-| LED/player GIF | Same player endpoint loads the player; GIF method currently receives choices only |
-| Random/demo SVG and GIF | No player identity; racket fallback required |
-| Non-selected catalogue thumbnails | No owner identity; racket fallback required |
-| Check-image script/library calls without context | No player name; racket fallback, or an explicit sample name |
-
-The planned render context carries the display name only for rendering; it is
-not a saved avatar choice. Name-based initials will require no database field.
-The implementation must not accept an arbitrary name from an editor form.
-
-The unmodified belly path bounds are approximately (149.211,315)–(256.974,417.237).
-With ten-unit belly/flipper clearance, the conservative square is only
-`BELLY_EMBLEM_BOX = (184,352)–(232,400)` (48 by 48). It is on the flipper level,
-not above the flippers. The requested 90–110-unit shield and higher placement
-cannot fit this pose. A placement prototype is in `emblems/placement-proposal.png`;
-this is a review image, not an activated accessory. The user has been asked
-whether the smaller/lower version is acceptable before the slot is enabled.
-
-Font chosen for the proposed vector glyphs: **Barlow Bold**, copyright 2017 The
-Barlow Project Authors, **SIL Open Font License 1.1**. Upstream:
-https://github.com/google/fonts/tree/main/ofl/barlow . A copy of the license is
-stored at `docs/licenses/Barlow-OFL.txt`. The runtime would use generated filled
-paths, never a runtime font or SVG text.
-
 ### Hank racket canvas correction
 
 Step 1 (translation) is sufficient. Rotation remains **18 degrees clockwise**
@@ -280,17 +246,17 @@ flipper stays in its original position, exposing the chosen handle material
 beside/below it. No face or other avatar geometry changes.
 
 The six actual racket paths (shaft, shaft outline, stripes, head and head outline)
-are grouped under `data-pip-part="racket"`. The unchanged flipper is now a separate
+are grouped under `data-pip-part="racket"`. The flipper is a separate
 `data-pip-part="flipper"` group; it is anatomy rather than racket geometry.
 Every racket path is inside [8,412] in both axes, including the handle:
 
 - Head black-outline right bound: 411.0473 → **8.9527 units** right margin.
 - Lowest handle-outline bound: 411.5002 → **8.4998 units** bottom margin.
 - Minimum distance to head/face contour: **12.772 units**.
-- Minimum distance to the proposed round emblem reserve (208,376), radius 24:
-  **13.501 units**. This remains a placement proposal; the slot is not enabled.
+- At the original racket-fix review, distance to the 48-unit round proposal was
+  **13.501 units**. The later approved 57-unit emblem is checked separately below.
 - Exposed selected grip colour after subtracting blade, flipper and black stripes:
-  **685.52 square units**, exceeding the 540-unit 30×18 reference area. Its visible
+  Initially **685.52 square units**, exceeding the 540-unit 30×18 reference area. Its visible
   bounding extent is approximately 48.74×57.85; this is an exposed-area check,
   not a claim of a solid rectangular patch.
 
@@ -308,3 +274,107 @@ margin violations in normal CI. The gallery exports all expressions at 192 and
 64 px on black, plus `racket-colours-192-black.png` and
 `racket-colours-64-black.png` for Hellblau, Stahl and Pink. Face separation remains
 99 pixels (Neutral/Angry), the documented cheek-free baseline.
+
+
+### Hank initial emblem (approved smaller/lower placement)
+
+Hank has exactly two options in its existing stored `bling` slot: **Kein Schmuck**
+(default) and **Initiale** (`initial`). Snowflake/fish and all other unknown keys
+are rejected on submission and fall back to none when reading old profiles.
+Saving, random selection and reset reuse the existing infrastructure. `pip` is
+still the storage/directory key; no migration or name field was added.
+
+The final black-outlined shield is a **57-unit circle**, centred at **(209.8,366.1)**.
+`BELLY_EMBLEM_BOX = (181.3,337.6)–(238.3,394.6)`. A search of the actual belly,
+flipper and racket paths allowed about 57.17 units; rounding to 57 provides
+clearance tolerance. Measured margins from the entire emblem including outline:
+
+- White belly boundary: **10.052 units**.
+- Flippers including the new thumb: **17.785 units**.
+- Racket: **12.023 units**.
+- All six beaks: more than the required 10 units (checked geometrically).
+
+The shield uses a 5.5-unit black ring. Its colour follows the effective headband;
+Ivory and legal Silver instead use the selected coat (including original navy).
+There is no separate emblem palette. Grey/Silver remains disallowed by the
+existing palette; the review matrix marks its normal Original-pink fallback
+instead of enabling that combination. Ivory/Grey demonstrates the grey fallback.
+
+#### Player name / rendering context
+
+`avatar.RenderContext{DisplayName: ...}` is transient and never stored as an avatar
+choice. `InitialForName` trims, uppercases the first rune and accepts only A–Z,
+Ä, Ö, Ü. Empty/unsupported first characters use a table-tennis-racket symbol.
+The client cannot supply the trusted name through a form or query parameter.
+
+| Path | Name source / outcome |
+| --- | --- |
+| Profile editor and selected thumbnail | Authenticated player from repository → own initial |
+| Profile/header figure | Figure's player ID → repository display name |
+| Game/live player SVG | Existing `/avatars/{id}.svg` player lookup → initial |
+| Player LED/GIF | Same player lookup; context forwarded through every GIF frame |
+| Random/demo SVG/GIF | No player identity → racket fallback |
+| Unselected character thumbnails | Default figure, no player identity; no initial accessory by default |
+| Bare render-library call without context | Racket fallback |
+| Check-image script | No ambient player name; matrix supplies Anna, glyph sheet supplies each letter; explicit nameless cell uses racket |
+
+No names are inserted into SVG text. A validated initial selects compiled glyph
+paths, and the SVG has no text, runtime font, transform, stroke, masks or images.
+
+#### Glyph source and license
+
+Glyphs are **Barlow Bold**, copyright 2017 The Barlow Project Authors, under the
+**SIL Open Font License 1.1**. License: `docs/licenses/Barlow-OFL.txt`. Upstream:
+https://github.com/google/fonts/tree/main/ofl/barlow .
+
+`scripts/hank_glyphs.json` stores all 29 decomposed font outlines and the source
+font SHA-256. `generate_hank_glyphs.py` creates it once from the bold TTF;
+`generate_hank_emblem.py` bakes the final, centred shapes into
+`internal/avatar/hank_glyphs.go` and `web/static/img/pip/bling-initial.svg`.
+Runtime needs neither the TTF nor Python. Narrow letters retain cap height;
+wide glyphs scale down to fit the round coloured interior with their black border.
+
+```sh
+PYTHONDONTWRITEBYTECODE=1 /path/to/vector-tools/bin/python scripts/generate_hank_glyphs.py /path/to/Barlow-Bold.ttf
+PYTHONDONTWRITEBYTECODE=1 /path/to/vector-tools/bin/python scripts/generate_hank_emblem.py
+gofmt -w internal/avatar/hank_glyphs.go
+```
+
+#### Grip / thumb correction
+
+The hand detail showed the handle resting beside the flipper. Only a small thumb
+was added over the shaft, using a 0.75-scaled local fingertip shape; arm, existing
+flipper paths, racket coordinates and the overall outer silhouette are unchanged.
+A curve-space XOR test compares the full before/after silhouette and obtains zero
+new area. The thumb intersects both the shaft and old hand, visibly wrapping it.
+
+The selected grip colour still has **590.726 square units** exposed after the
+blade, flipper, new thumb and black stripes, exceeding the existing 30×18 reference
+area (540). All racket paths retain their 8-unit canvas margin and all relevant
+head/emblem clearances remain valid. `hand-before-base.svg` is the precise old
+base used to reproduce the 420-pixel before/after hand crops.
+
+#### Acceptance output and limitations
+
+```sh
+go run ./scripts/avatar_review.go -emblems-only -out docs/avatar-check/pip/emblems
+PYTHONDONTWRITEBYTECODE=1 /path/to/vector-tools/bin/python -m unittest discover -s scripts -p 'test_hank_*geometry.py' -v
+```
+
+Open `docs/avatar-check/pip/emblems/index.html` for none/initial × Neutral/Angry ×
+three coats × five headbands, all 29 letters plus fallback, at 192/64/28 pixels
+on navy and black, and 420-pixel before/after hand details. Geometric/glyph/hand
+measurements are in `emblems/measurements.json`.
+
+At 64 pixels the shield is **8.69 pixels across** and letter bounding heights are
+**3.84–4.86 pixels**. The badge is visible; simple initials are small but identifiable,
+while wide letters and umlaut dots have limited readability. At 28 pixels it is
+primarily a coloured badge; the letter cannot be reliably read. A real LED check
+and subjective approval remain outstanding. No claim of full small-size glyph
+legibility is made.
+
+With no emblem, a named A/Ü initial or the racket fallback, the minimum pairwise
+64-pixel expression separation remains **99** (Neutral/Angry), meeting this task's
+current baseline. The geometric, palette, glyph, persistence/context, random/reset,
+SVG restriction and browser checks cover the new slot. Other avatars are unchanged;
+blecki keeps its deliberately lowercase display name.
