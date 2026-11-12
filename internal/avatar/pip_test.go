@@ -1,11 +1,14 @@
 package avatar
 
 import (
+	"bytes"
 	"errors"
 	"image"
 	"image/color"
+	"image/gif"
 	"io/fs"
 	"math/rand/v2"
+	"os"
 	"reflect"
 	"regexp"
 	"strings"
@@ -311,15 +314,13 @@ func TestPipEyesKeepTwoVisibleHighlights(t *testing.T) {
 		}
 		for index, anchor := range [][2]int{{146, 221}, {260, 192}} {
 			cx, cy := anchor[0], anchor[1]
-			hy := cy - 8
-			smallDY := 10
+			hy := cy - 5
 			if face.Key == "angry" || face.Key == "sad" || (face.Key == "skeptical" && index == 1) {
-				hy = cy + 13
-				smallDY = 6
+				hy = cy + 15
 			}
 			// Check centres and four interior points so a lid cannot turn a glint
 			// into a missing pixel or a clipped triangle.
-			for _, glint := range [][3]int{{cx - 5, hy, 4}, {cx + 6, hy + smallDY, 1}} {
+			for _, glint := range [][3]int{{cx - 4, hy, 5}, {cx + 9, cy + 18, 1}} {
 				for _, offset := range [][2]int{{0, 0}, {glint[2], 0}, {-glint[2], 0}, {0, glint[2]}, {0, -glint[2]}} {
 					pixel := img.RGBAAt(glint[0]+offset[0], glint[1]+offset[1])
 					if pixel.R < 240 || pixel.G < 240 || pixel.B < 240 {
@@ -328,5 +329,118 @@ func TestPipEyesKeepTwoVisibleHighlights(t *testing.T) {
 				}
 			}
 		}
+	}
+}
+
+func TestPipOpenEyesHaveOnlyRoundWhiteGlints(t *testing.T) {
+	for _, face := range Faces {
+		data, err := fs.ReadFile(web.Static, "static/img/pip/face-"+face.Key+".svg")
+		if err != nil {
+			t.Fatal(err)
+		}
+		eyes := regexp.MustCompile(`(?s)<g data-pip-part="beak">.*?</g>`).ReplaceAllString(string(data), "")
+		whites := regexp.MustCompile(`<path fill="#f8f8f8"[^>]*/>`).FindAllString(eyes, -1)
+		if face.Key == "happy" {
+			if len(whites) != 0 {
+				t.Fatal("changed happy crescents")
+			}
+			continue
+		}
+		if len(whites) != 4 {
+			t.Fatalf("%s has %d white paths, want two glints per eye", face.Key, len(whites))
+		}
+		big, small := 0, 0
+		for _, path := range whites {
+			img, err := rasterise(`<svg viewBox="0 0 420 420">`+path+`</svg>`, 420)
+			if err != nil {
+				t.Fatal(err)
+			}
+			minX, minY, maxX, maxY := 420, 420, 0, 0
+			for y := 0; y < 420; y++ {
+				for x := 0; x < 420; x++ {
+					if img.RGBAAt(x, y).R >= 128 {
+						minX = min(minX, x)
+						minY = min(minY, y)
+						maxX = max(maxX, x)
+						maxY = max(maxY, y)
+					}
+				}
+			}
+			w, h := maxX-minX+1, maxY-minY+1
+			switch {
+			case w >= 16 && w <= 19 && h >= 16 && h <= 19:
+				big++
+			case w >= 7 && w <= 9 && h >= 7 && h <= 9:
+				small++
+			default:
+				t.Errorf("%s white shape %dx%d is not a permitted round glint (possible sclera)", face.Key, w, h)
+			}
+			if img.RGBAAt(minX, minY).R >= 128 {
+				t.Error("rectangular glint")
+			}
+		}
+		if big != 2 || small != 2 {
+			t.Errorf("%s glints: big=%d small=%d", face.Key, big, small)
+		}
+	}
+}
+
+func TestPip64PixelExpressionsRemainAsDistinctAsAddbf59(t *testing.T) {
+	c, err := LoadCollection(web.Static, "static/img")
+	if err != nil {
+		t.Fatal(err)
+	}
+	current := c.kits["pip"]
+	old := *current
+	old.faces = map[string]string{}
+	for _, face := range Faces {
+		data, err := os.ReadFile("../../docs/avatar-check/pip/before-sclera-removal/face-" + face.Key + ".svg")
+		if err != nil {
+			t.Fatal(err)
+		}
+		old.faces[face.Key], err = inner(string(data))
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+	a := DefaultForCharacter("pip", "")
+	separation := func(k *Kit) int {
+		t.Helper()
+		images := map[string]image.Image{}
+		for _, face := range Faces {
+			data, err := k.GIF(a, []Frame{{Face: face.Key}}, 64)
+			if err != nil {
+				t.Fatal(err)
+			}
+			images[face.Key], err = gif.Decode(bytes.NewReader(data))
+			if err != nil {
+				t.Fatal(err)
+			}
+		}
+		minimum := 64 * 64
+		for i, one := range Faces {
+			for _, two := range Faces[i+1:] {
+				changed := 0
+				for y := 0; y < 64; y++ {
+					for x := 0; x < 64; x++ {
+						l := color.GrayModel.Convert(images[one.Key].At(x, y)).(color.Gray).Y / 32
+						r := color.GrayModel.Convert(images[two.Key].At(x, y)).(color.Gray).Y / 32
+						if l != r {
+							changed++
+						}
+					}
+				}
+				if changed < minimum {
+					t.Logf("closest pair: %s/%s = %d", one.Key, two.Key, changed)
+				}
+				minimum = min(minimum, changed)
+			}
+		}
+		return minimum
+	}
+	previous, now := separation(&old), separation(current)
+	t.Logf("minimum pair separation in 64px quantised GIFs: addbf59=%d current=%d", previous, now)
+	if now < previous {
+		t.Errorf("expression separation regressed: %d < %d", now, previous)
 	}
 }

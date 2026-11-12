@@ -500,13 +500,10 @@ def pip_eye(cx, cy, rx, ry, state, index):
         ry *= 1.1
     outer = ellipse(cx, cy, rx, ry)
     inner = ellipse(cx, cy, rx - 6, ry - 6)
-    # The iris occupies 80% (65% when surprised) of the sclera's area.
-    fraction = math.sqrt(0.65 if state == "surprised" else 0.8)
-    iris = ellipse(cx, cy + 1, (rx - 6) * fraction, (ry - 6) * fraction)
     if state == "angry":
-        ends = (-15, 1) if index == 0 else (1, -15)
+        ends = (-18, 4) if index == 0 else (4, -18)
     elif state == "sad":
-        ends = (1, -15) if index == 0 else (-15, 1)
+        ends = (4, -18) if index == 0 else (-18, 4)
     elif state == "skeptical":
         ends = (-27, -27) if index == 0 else (0, 0)
     elif state == "neutral":
@@ -521,30 +518,25 @@ def pip_eye(cx, cy, rx, ry, state, index):
         s += svgpath(op(outer, below, pathops.PathOp.DIFFERENCE), "#fff6f3")
         outer = op(outer, below, pathops.PathOp.INTERSECTION)
         visible = op(inner, below, pathops.PathOp.INTERSECTION)
-    s += svgpath(outer, INK) + svgpath(visible, WHITE)
-    s += svgpath(op(iris, visible, pathops.PathOp.INTERSECTION), "#14141f")
-    # Under a lowered lid, move the same upper-left lighting motif down so
-    # both round glints stay visible, separated and fully inside the iris.
-    hy = (
-        cy - 8
-        if state in ["neutral", "surprised"] or (state == "skeptical" and index == 0)
-        else cy + 13
-    )
-    big = ellipse(cx - 5, hy, 6.5, 6.5)
-    small = ellipse(cx + 6, hy + (6 if hy == cy + 13 else 10), 3, 3)
+    s += svgpath(outer, INK) + svgpath(visible, "#14141f")
+    # No sclera: white occurs only above the lid or in two intact round glints.
+    # A lowered lid needs the large glint shifted down and slightly smaller.
+    lowered = state in ["angry", "sad"] or (state == "skeptical" and index == 1)
+    hy = cy + 15 if lowered else cy - 5
+    big = ellipse(cx - 4, hy, 8 if lowered else 9, 8 if lowered else 9)
+    small = ellipse(cx + 8.5, cy + 17.5, 3.5, 3.5)
     for glint in (big, small):
-        s += svgpath(
-            op(
-                op(glint, iris, pathops.PathOp.INTERSECTION),
-                visible,
-                pathops.PathOp.INTERSECTION,
-            ),
-            WHITE,
-        )
+        # Reject a clipped highlight rather than silently turning it into a shard.
+        assert op(glint, visible, pathops.PathOp.DIFFERENCE).area < 0.001
+        s += svgpath(glint, WHITE)
     if ends:
         s += vex_brow(cx - rx, yl, cx + rx, yr, 0, 13)
     else:
-        s += vex_brow(cx - rx + 1, cy - ry + 5, cx + rx - 1, cy - ry + 5, -8, 13)
+        # Keep the upper rim inside the oval: no outward eyelash tips.
+        keel = shape(
+            f"M{cx-rx+7} {cy-ry+13} Q{cx} {cy-ry-5} {cx+rx-7} {cy-ry+13} Q{cx} {cy-ry+21} {cx-rx+7} {cy-ry+13}Z"
+        )
+        s += svgpath(op(keel, outer, pathops.PathOp.INTERSECTION), INK)
     return s
 
 

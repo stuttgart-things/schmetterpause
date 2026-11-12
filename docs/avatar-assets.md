@@ -184,11 +184,18 @@ Pip retains the Creator penguin's pose, torso, head proportions and headband.
 Only the gripping assembly and the previously occluded right cheek are rebuilt.
 `PIP_EYES` uses centres (146,221) and (260,192), two units below their native
 positions, with equal 26 by 31 radii (52 by 62 full size). Open eyes have a
-6-unit filled outer ring, a nearly black (#14141f) iris occupying 80 percent
-of the inner eye (65 percent when surprised), and two white glints with
-13- and 6-unit diameters. Surprised eyes are enlarged by ten percent. White
-lids and pointed 13-unit black lid keels carry the expressions. Both glints
-stay below lowered lids; a raster test checks their centres and interior points.
+6-unit filled black outline around a solid dark oval (#14141f), with no sclera
+or white ring. The two round white glints have 18- and 7-unit diameters.
+Under lowered lids, the large glint moves down and has a 16-unit diameter;
+the small glint keeps its position. The generator rejects clipped glints.
+Surprised eyes remain ten percent larger and use a smooth upper rim contained
+inside the oval, without projecting eyelash tips. White facial-colour lids
+and pointed black keels carry the expressions. Angry and sad lid endpoints
+are spread by three additional units in opposite directions, keeping the
+same average lid height and approximate occlusion while improving shape
+separation. Brow paths and angles remain unchanged. A raster test checks the
+highlight centres and interior points, and another permits only two round
+white glint paths per eye—no white sclera surface.
 The generator checks at least 8 units of clearance from the headband, including
 the lid keels, for every expression.
 Angry lids descend towards the nose, sad lids outwards, and skeptical is
@@ -256,12 +263,22 @@ regression against the same disposable server. Set `SP_PREVIEW_SCREENSHOT_DIR` t
 desktop and mobile editor captures.
 
 
-The eye revision comparison is `eyes-before-after-64-black.png`: each expression
-has Alt directly beside Neu. Archived pre-revision faces from adf4bc6 are kept
-under `docs/avatar-check/pip/before-eyes/`, outside embedded application assets.
+The current eye revision comparison is `eyes-before-after-64-black.png`: each
+expression has Alt directly beside Neu. Baseline faces from addbf59 are kept
+under `docs/avatar-check/pip/before-sclera-removal/`, outside embedded application
+assets. The older adf4bc6 fixture under `before-eyes/` is retained for history.
 The review generator uses the same unchanged base and runtime GIF quantisation
 for both versions. The Pip base, all six beaks, paddle geometry and brow paths
 are unchanged by this eye revision. Unit tests also retain the coarse-luminance
 checks for six distinct expressions at 64 pixels and the positive/surprised/
 negative groups at 28 pixels. These checks establish pixel differences, not
 subjective visual approval or physical LED readability.
+
+
+`eyes-detail-192.png` shows just the eye/brow region of all six expressions
+on a facial-colour surface, with the beak and body omitted from the review
+render only. The 64-pixel comparison test measures the minimum pairwise coarse
+luminance difference in production-quantised GIFs: addbf59 = 109 differing
+pixels, current = 113. This is a reproducible regression metric, not a promise
+about subjective friendliness or physical LED readability. Base, headband,
+paddle, palettes, Happy face and all six beaks are unchanged.
