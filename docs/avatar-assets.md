@@ -180,82 +180,93 @@ saving/reset and stale stored choices.
 
 ## Pip review
 
-Pip retains its Creator pose, head proportions, headband, paddle, grip and
-palettes. `PIP_EYES` remains (146,221) and (260,192), with equal 26 by 31 radii;
-Surprised remains ten percent larger. Eyes use a #14141f oval, a filled black
-6-unit border, no sclera, two round white glints and white facial-colour lids.
+Pip keeps the existing 52 by 62 dark, sclera-free eyes, lighting helper, beaks,
+paddle, base and palettes. Neutral remains symmetric and horizontal with
+7.56% white-lid coverage; Happy, Surprised, Angry and Sad remain unchanged
+except for their cheeks. The original 64-pixel regression threshold remains
+114, taken from e2dd9f9. The final measured minimum is **115**.
 
-`PIP_LIGHT_LARGE = (-5,-10)` and `PIP_LIGHT_SMALL = (8.5,17.5)` define a common
-upper-left light source relative to either eye centre. Large glints are 18 units
-across in open eyes and 16 under negative half lids; small glints are 7 units.
-`pip_glints` moves only the large glint vertically, in quarter-unit steps, until
-its entire circle clears the actual lid and keel. X never changes. Neutral's
-horizontal lids use identical -12 endpoint offsets; both glints consequently
-move down by the same amount. The two eyes remain symmetric, with a 0-degree
-lid angle. Skeptical, Angry and Sad retain their previous brow and lid paths.
-Happy retains both crescent eyes and its beak.
+### Eye-anchored cheeks
 
-The two native pink cheek paths (Creator indices 49/50) have moved out of Pip's
-base into a separate `data-pip-part="cheeks"` group in every face. No user option
-or stored field is added. Their anchors and basic native curves are retained:
+`pip_cheek` derives both complete ellipse positions from each expression's
+actual visible eye contour, not fixed canvas coordinates:
 
-| Expression | Colour | Nominal size relative to native |
-| --- | --- | --- |
-| Neutral, Skeptical, Surprised | #f5b5ce | 100% |
-| Happy | #f294b8 | 118% in both axes |
-| Angry | #e2585c | 115% wide, 105% high (slightly transverse) |
-| Sad | #f6d4e0 | 75% in both axes |
+- `PIP_CHEEK_SIZE = (40,22)`; identical nominal dimensions for left/right.
+- `PIP_CHEEK_OFFSET = .25`: centre 25% of eye width towards the outside.
+- `PIP_CHEEK_GAP = 10`: cheek top 10 units below visible eye bottom.
+- If needed, only an inward quarter-unit search is permitted. Size and y are
+  fixed; no clipping or downward escape is used. Current placements need no
+  meaningful inward correction.
+- Curved-path checks enforce full containment in the visible white face and
+  eye clearance between 8 and 14 units. Both cheeks have the same vertical gap.
 
-The source cheek already extended invisibly underneath the left eye, especially
-when surprised. The importer trims that hidden cap plus one unit of clearance;
-it does not move the cheek anchor. Cheeks are borderless filled paths. Path
-checks reject overlaps with eyes/beaks and enforce a 12-unit paddle gap. Eye and
-lid-keel clearance from the headband remains at least 8 units.
+| Expression | Colour | Width × height | Left/right contour gap |
+| --- | --- | --- | --- |
+| Neutral | #f5b5ce | 40 × 22 | 11.076 / 11.076 |
+| Happy | #f294b8 | 47.2 × 25.96 (+18%) | 11.493 / 11.493 |
+| Surprised | #f5b5ce | 40 × 22 | 11.261 / 11.261 |
+| Skeptical | #f5b5ce | 40 × 22 | 11.076 / 11.078 |
+| Angry | #ec6f74 | 46 × 23.1 (transverse) | 10.974 / 10.974 |
+| Sad | #f6d4e0 | 30 × 16.5 (75%) | 11.226 / 11.226 |
 
-Pip's GIF quantiser preserves the original palette result wherever the new
-cheeks change no raster pixel. Otherwise the additional red could colour unrelated
-antialiased navy coat edges. This correction is scoped to Pip cheek groups; a
-regression test compares every unchanged pixel with the no-cheek reference.
-Historical fixtures without cheek groups keep their original GIF output.
+All vertical gaps are 10 units, within SVG rounding tolerance of .002 units.
+Exact measured centres, sizes and gaps are in `cheek-measurements.json`.
+Cheeks remain borderless, expression-owned groups; no profile option, database
+field or randomisation choice is introduced. The base contains no cheeks.
 
-Original navy is #2f4ea8; alternatives are Grey #8793a5 and Blue-grey #587e9b.
-Pip excludes Sand/Chocolate and headband Lapis; Grey also excludes Silver.
-Invalid stored combinations fall back to Original; native headband Pink is
-labelled Original. Grip/blade palettes and the absent jewellery slot are unchanged.
+### Authorised Skeptical refinement
 
-Reproduce the review from the repository root:
+Only the right horizontal lid and left brow change. The right white lid is
+one unit below the eye centre, covering about **52.05%** of the oval. The
+left tapered brow spans (104,185) to (188,185), with a stronger -29 quadratic
+bend and 16-unit maximum thickness. It is raised and more arched; the right
+brow and beak stay unchanged. The lighting helper is byte-for-byte unchanged:
+covered large glints shift only vertically until fully visible.
+
+The minimum pairwise coarse-luminance difference in 64-pixel production GIFs
+is **115**, above the **114** e2dd9f9 requirement. The reviewed intermediate
+open-Neutral state measured 99. Pixel differences do not establish subjective
+visual quality or physical LED readability.
+
+### Rendering and acceptance images
+
+Pip's cheek-aware GIF quantisation preserves every unchanged raster pixel,
+preventing new cheek colours from recolouring antialiased coat edges. Black
+192-pixel review sheets use the same palette quantisation as the 64-pixel LED
+preview. The former grey antialiasing intermediates are absent; PNGs are opaque,
+and there is no intentional grey outline. Navy app previews retain antialiasing.
+No other avatar's assets or output policy are changed.
 
 ```sh
 go run ./scripts/avatar_review.go -character pip -out docs/avatar-check/pip
 ```
 
-`docs/avatar-check/pip/index.html` links these acceptance sheets:
+`docs/avatar-check/pip/index.html` links:
 
-- All six expressions and three coats, 192/64/28 px, on navy and black.
-- `eyes-before-after-64-black.png`: f4e47ae beside the new expression. The archived
-  old base and faces in `before-cheek-expressions/` reproduce the former cheeks.
-- `eyes-detail-192.png`: eyes, brows and cheeks, with the beak/body omitted only
-  from this review render.
-- `angry-red-options-64-black.png`: Angry with Ruby headband and Red grip on all
-  three coats. Red cheeks are spatially separated from headband and grip.
-- Native expression rows, material sheets and production-pipeline GIFs.
+- Six expressions × three coats, at 192/64/28 px on navy and black.
+- `eyes-before-after-64-black.png`: previous open-Neutral working state versus
+  new state, expression by expression. Fixtures are in `before-eye-anchored-cheeks/`.
+- `eyes-detail-192.png`: eye/brow/cheek detail, with beak/body omitted only in
+  the review render.
+- `angry-red-options-64-black.png`: coral cheeks with Ruby headband and Red
+  grip on Original, Grey and Blue-grey.
+- Material sheets, native-size expression rows and runtime-pipeline GIFs.
 
-The final minimum pairwise coarse-luminance difference at 64 px is **114** pixels,
-compared with **113** in f4e47ae. The metric uses production-quantised single-frame
-GIFs and all 15 expression pairs. Red cheeks occupy 39/38/38 exact-colour pixels
-on Original/Grey/Blue-grey with Ruby/Red. Pixel separation is not a substitute
-for subjective visual acceptance or physical LED testing. The red elements share
-a hue family; their real panel appearance remains a manual check. Sad is allowed
-to become faint at 64 px.
+Run the exact curve-space tests with the vector-tool development venv:
 
-Tests cover cheek ownership/colour, forbidden SVG features, shared highlight
-coordinates, intact round glints, unchanged GIF pixels, palette fallbacks/random,
-64-pixel expression separation and positive/surprised/negative groups at 28 px.
-All six beaks and the protected Happy/negative eye/brow ink paths were compared
-against f4e47ae; the base differs only by removal of its two pink cheek paths.
-Older `before-eyes/` and `before-sclera-removal/` fixtures remain historical inputs.
+```sh
+PYTHONDONTWRITEBYTECODE=1 /path/to/vector-tools/bin/python \
+  -m unittest discover -s scripts -p test_pip_geometry.py -v
+```
 
-The opt-in real-browser test runs normal handlers with disposable players:
+The test reads the generated SVGs and verifies complete ellipses, white-face
+containment, 8–14 unit contour gaps, 8–12 unit vertical gaps, common left/right
+size and vertical gap, and 20–30% outward horizontal placement. Go tests cover
+SVG restrictions, glints, palette fallbacks, red visibility, unchanged GIF pixels,
+expression separation and small-display groups.
+
+The real-browser check exercises normal handlers with disposable players,
+then runs the existing blecki regression:
 
 ```sh
 SP_RUN_PIP_BROWSER=1 SP_PLAYWRIGHT_MODULE=/path/to/playwright \
@@ -263,6 +274,7 @@ SP_PREVIEW_BROWSER_BINARY=/path/to/chrome \
 go test ./internal/server -run TestPipBrowser -count=1 -v
 ```
 
-It checks palettes, previews, selected thumbnails, save/reload, SVG/GIF, mobile
-layout and reset, then runs the existing blecki browser regression. Set
-`SP_PREVIEW_SCREENSHOT_DIR` to export desktop/mobile captures.
+Set `SP_PREVIEW_SCREENSHOT_DIR` for desktop/mobile captures. Other review
+fixtures remain historical inputs. The cheeks now sit directly beneath the
+eyes and remain geometrically separate; final aesthetic acceptance and the
+real LED-panel check remain manual. No decision to remove cheeks has been made.

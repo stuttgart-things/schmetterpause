@@ -82,7 +82,7 @@ func previousPipCollection() (*avatar.Collection, error) {
 		if face.Key == "base" {
 			name = "base.svg"
 		}
-		data, err := os.ReadFile(filepath.Join("docs/avatar-check/pip/before-cheek-expressions", name))
+		data, err := os.ReadFile(filepath.Join("docs/avatar-check/pip/before-eye-anchored-cheeks", name))
 		if err != nil {
 			return nil, err
 		}
@@ -415,7 +415,7 @@ not photographs of a real panel. In particular, dark wood and moss on black
 should be checked on the device. No runtime hides jewellery automatically.
 `
 	if key == "pip" {
-		note = "# Pip acceptance review\n\nRegenerate: `go run ./scripts/avatar_review.go -character pip -out docs/avatar-check/pip`\n\nOpen index.html for expressions, materials and GIFs. The expressions-row PNGs show the six faces in original colours at 64 and 28 pixels on black. Full sheets include Original, Grau and Blaugrau on navy and black. Pip has no jewellery. Grey excludes Silver; native Pink is labelled Original. The eyes-before-after-64-black.png sheet compares archived faces and base from f4e47ae with the new eyes, each Alt/Neu pair adjacent. The eyes-detail-192.png sheet shows eyes, brows and expression cheeks. Eyes have no sclera; only two round white glints remain. Physical LED-panel contrast remains to be checked.\n"
+		note = "# Pip acceptance review\n\nRegenerate: `go run ./scripts/avatar_review.go -character pip -out docs/avatar-check/pip`\n\nOpen index.html for expressions, materials and GIFs. The expressions-row PNGs show the six faces in original colours at 64 and 28 pixels on black. Full sheets include Original, Grau and Blaugrau on navy and black. Pip has no jewellery. Grey excludes Silver; native Pink is labelled Original. The eyes-before-after-64-black.png sheet compares archived faces and base from the previous open-Neutral working state with the new eyes, each Alt/Neu pair adjacent. The eyes-detail-192.png sheet shows eyes, brows and expression cheeks. Eyes have no sclera; only two round white glints remain. Physical LED-panel contrast remains to be checked.\n"
 	}
 	if err = os.WriteFile(filepath.Join(out, "README.md"), []byte(note), 0644); err != nil {
 		return err
@@ -478,8 +478,8 @@ func sheet(c *avatar.Collection, samples []sample, cols, size int, bg color.RGBA
 		icon.Draw(rasterx.NewDasher(size, size, rasterx.NewScannerGV(size, size, frame, frame.Bounds())), 1)
 		x := (i%cols)*cellW + (cellW-size)/2
 		y := 28 + (i/cols)*cellH
-		if bg.R == 0 && bg.G == 0 && bg.B == 0 && size == 64 {
-			data, err := renderer.GIF(s.a, []avatar.Frame{{Face: s.face}}, 64)
+		if bg.R == 0 && bg.G == 0 && bg.B == 0 && (size == 64 || (s.a.Character == "pip" && size == 192 && !eyesDetail)) {
+			data, err := renderer.GIF(s.a, []avatar.Frame{{Face: s.face}}, size)
 			if err != nil {
 				return err
 			}

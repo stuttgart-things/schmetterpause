@@ -393,7 +393,7 @@ func TestPipOpenEyesHaveOnlyRoundWhiteGlints(t *testing.T) {
 	}
 }
 
-func TestPip64PixelExpressionsRemainAsDistinctAsF4e47ae(t *testing.T) {
+func TestPip64PixelExpressionsRemainAsDistinctAsE2dd9f9(t *testing.T) {
 	c, err := LoadCollection(web.Static, "static/img")
 	if err != nil {
 		t.Fatal(err)
@@ -402,7 +402,7 @@ func TestPip64PixelExpressionsRemainAsDistinctAsF4e47ae(t *testing.T) {
 	old := *current
 	old.faces = map[string]string{}
 	for _, face := range Faces {
-		data, err := os.ReadFile("../../docs/avatar-check/pip/before-cheek-expressions/face-" + face.Key + ".svg")
+		data, err := os.ReadFile("../../docs/avatar-check/pip/before-oval-cheeks/face-" + face.Key + ".svg")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -411,7 +411,7 @@ func TestPip64PixelExpressionsRemainAsDistinctAsF4e47ae(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	base, err := os.ReadFile("../../docs/avatar-check/pip/before-cheek-expressions/base.svg")
+	base, err := os.ReadFile("../../docs/avatar-check/pip/before-oval-cheeks/base.svg")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -455,8 +455,8 @@ func TestPip64PixelExpressionsRemainAsDistinctAsF4e47ae(t *testing.T) {
 		return minimum
 	}
 	previous, now := separation(&old), separation(current)
-	t.Logf("minimum pair separation in 64px quantised GIFs: f4e47ae=%d current=%d", previous, now)
-	if previous != 113 {
+	t.Logf("minimum pair separation in 64px quantised GIFs: e2dd9f9=%d current=%d", previous, now)
+	if previous != 114 {
 		t.Fatalf("baseline separation changed: %d", previous)
 	}
 	if now < previous {
@@ -472,7 +472,7 @@ func TestPipFacesOwnTheirCheeksAndAngryRedSurvivesGIF(t *testing.T) {
 	if strings.Contains(string(base), "#f5b5ce") || strings.Contains(string(base), `data-pip-part="cheeks"`) {
 		t.Fatal("cheeks remain in Pip base")
 	}
-	colours := map[string]string{"neutral": "#f5b5ce", "skeptical": "#f5b5ce", "surprised": "#f5b5ce", "happy": "#f294b8", "angry": "#e2585c", "sad": "#f6d4e0"}
+	colours := map[string]string{"neutral": "#f5b5ce", "skeptical": "#f5b5ce", "surprised": "#f5b5ce", "happy": "#f294b8", "angry": "#ec6f74", "sad": "#f6d4e0"}
 	for _, face := range Faces {
 		data, err := fs.ReadFile(web.Static, "static/img/pip/face-"+face.Key+".svg")
 		if err != nil {
@@ -507,7 +507,7 @@ func TestPipFacesOwnTheirCheeksAndAngryRedSurvivesGIF(t *testing.T) {
 		for y := 0; y < 64; y++ {
 			for x := 0; x < 64; x++ {
 				r, g, b, _ := img.At(x, y).RGBA()
-				if r>>8 == 0xe2 && g>>8 == 0x58 && b>>8 == 0x5c {
+				if r>>8 == 0xec && g>>8 == 0x6f && b>>8 == 0x74 {
 					pixels++
 				}
 			}
