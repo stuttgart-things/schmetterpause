@@ -7,10 +7,12 @@ import (
 	"image/color"
 	"image/gif"
 	"io/fs"
+	"math"
 	"math/rand/v2"
 	"os"
 	"reflect"
 	"regexp"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -314,13 +316,19 @@ func TestPipEyesKeepTwoVisibleHighlights(t *testing.T) {
 		}
 		for index, anchor := range [][2]int{{146, 221}, {260, 192}} {
 			cx, cy := anchor[0], anchor[1]
-			hy := cy - 5
-			if face.Key == "angry" || face.Key == "sad" || (face.Key == "skeptical" && index == 1) {
-				hy = cy + 15
+			hy := cy - 10
+			if face.Key == "neutral" || face.Key == "angry" || face.Key == "sad" || (face.Key == "skeptical" && index == 1) {
+				data, _ := fs.ReadFile(web.Static, "static/img/pip/face-"+face.Key+".svg")
+				glints := regexp.MustCompile(`<path fill="#f8f8f8"[^>]*d="M[-.0-9]+ ([-.0-9]+)`).FindAllSubmatch(data, -1)
+				y, err := strconv.ParseFloat(string(glints[index*2][1]), 64)
+				if err != nil {
+					t.Fatal(err)
+				}
+				hy = int(math.Round(y))
 			}
 			// Check centres and four interior points so a lid cannot turn a glint
 			// into a missing pixel or a clipped triangle.
-			for _, glint := range [][3]int{{cx - 4, hy, 5}, {cx + 9, cy + 18, 1}} {
+			for _, glint := range [][3]int{{cx - 5, hy, 5}, {cx + 9, cy + 18, 1}} {
 				for _, offset := range [][2]int{{0, 0}, {glint[2], 0}, {-glint[2], 0}, {0, glint[2]}, {0, -glint[2]}} {
 					pixel := img.RGBAAt(glint[0]+offset[0], glint[1]+offset[1])
 					if pixel.R < 240 || pixel.G < 240 || pixel.B < 240 {
@@ -368,7 +376,7 @@ func TestPipOpenEyesHaveOnlyRoundWhiteGlints(t *testing.T) {
 			}
 			w, h := maxX-minX+1, maxY-minY+1
 			switch {
-			case w >= 16 && w <= 19 && h >= 16 && h <= 19:
+			case w >= 15 && w <= 19 && h >= 15 && h <= 19 && w-h <= 1 && h-w <= 1:
 				big++
 			case w >= 7 && w <= 9 && h >= 7 && h <= 9:
 				small++
@@ -385,7 +393,7 @@ func TestPipOpenEyesHaveOnlyRoundWhiteGlints(t *testing.T) {
 	}
 }
 
-func TestPip64PixelExpressionsRemainAsDistinctAsAddbf59(t *testing.T) {
+func TestPip64PixelExpressionsRemainAsDistinctAsF4e47ae(t *testing.T) {
 	c, err := LoadCollection(web.Static, "static/img")
 	if err != nil {
 		t.Fatal(err)
@@ -394,7 +402,7 @@ func TestPip64PixelExpressionsRemainAsDistinctAsAddbf59(t *testing.T) {
 	old := *current
 	old.faces = map[string]string{}
 	for _, face := range Faces {
-		data, err := os.ReadFile("../../docs/avatar-check/pip/before-sclera-removal/face-" + face.Key + ".svg")
+		data, err := os.ReadFile("../../docs/avatar-check/pip/before-cheek-expressions/face-" + face.Key + ".svg")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -402,6 +410,14 @@ func TestPip64PixelExpressionsRemainAsDistinctAsAddbf59(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
+	}
+	base, err := os.ReadFile("../../docs/avatar-check/pip/before-cheek-expressions/base.svg")
+	if err != nil {
+		t.Fatal(err)
+	}
+	old.base, err = inner(string(base))
+	if err != nil {
+		t.Fatal(err)
 	}
 	a := DefaultForCharacter("pip", "")
 	separation := func(k *Kit) int {
@@ -439,8 +455,167 @@ func TestPip64PixelExpressionsRemainAsDistinctAsAddbf59(t *testing.T) {
 		return minimum
 	}
 	previous, now := separation(&old), separation(current)
-	t.Logf("minimum pair separation in 64px quantised GIFs: addbf59=%d current=%d", previous, now)
+	t.Logf("minimum pair separation in 64px quantised GIFs: f4e47ae=%d current=%d", previous, now)
+	if previous != 113 {
+		t.Fatalf("baseline separation changed: %d", previous)
+	}
 	if now < previous {
 		t.Errorf("expression separation regressed: %d < %d", now, previous)
+	}
+}
+
+func TestPipFacesOwnTheirCheeksAndAngryRedSurvivesGIF(t *testing.T) {
+	base, err := fs.ReadFile(web.Static, "static/img/pip/base.svg")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(base), "#f5b5ce") || strings.Contains(string(base), `data-pip-part="cheeks"`) {
+		t.Fatal("cheeks remain in Pip base")
+	}
+	colours := map[string]string{"neutral": "#f5b5ce", "skeptical": "#f5b5ce", "surprised": "#f5b5ce", "happy": "#f294b8", "angry": "#e2585c", "sad": "#f6d4e0"}
+	for _, face := range Faces {
+		data, err := fs.ReadFile(web.Static, "static/img/pip/face-"+face.Key+".svg")
+		if err != nil {
+			t.Fatal(err)
+		}
+		group := regexp.MustCompile(`(?s)<g data-pip-part="cheeks">(.*?)</g>`).FindSubmatch(data)
+		if group == nil {
+			t.Fatal("missing cheeks", face.Key)
+		}
+		if strings.Count(string(group[1]), `<path `) != 2 || strings.Count(string(group[1]), `fill="`+colours[face.Key]+`"`) != 2 {
+			t.Fatalf("%s must own two borderless cheeks of colour %s", face.Key, colours[face.Key])
+		}
+	}
+	c, err := LoadCollection(web.Static, "static/img")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, fur := range []string{"", "grey", "blue-grey"} {
+		a := DefaultForCharacter("pip", "")
+		a.Fur = fur
+		a.Headdress = "ruby"
+		a.Handle = "red"
+		data, err := c.GIF(a, []Frame{{Face: "angry"}}, 64)
+		if err != nil {
+			t.Fatal(err)
+		}
+		img, err := gif.Decode(bytes.NewReader(data))
+		if err != nil {
+			t.Fatal(err)
+		}
+		pixels := 0
+		for y := 0; y < 64; y++ {
+			for x := 0; x < 64; x++ {
+				r, g, b, _ := img.At(x, y).RGBA()
+				if r>>8 == 0xe2 && g>>8 == 0x58 && b>>8 == 0x5c {
+					pixels++
+				}
+			}
+		}
+		t.Logf("%q angry cheek red: %d pixels with Ruby headband and Red grip", fur, pixels)
+		if pixels < 2 {
+			t.Errorf("angry cheeks lost red on %q", fur)
+		}
+	}
+}
+
+func TestPipHighlightsShareRelativeLightSource(t *testing.T) {
+	for _, face := range Faces {
+		if face.Key == "happy" {
+			continue
+		}
+		data, err := fs.ReadFile(web.Static, "static/img/pip/face-"+face.Key+".svg")
+		if err != nil {
+			t.Fatal(err)
+		}
+		glints := regexp.MustCompile(`<path fill="#f8f8f8"[^>]*d="M([-.0-9]+) ([-.0-9]+)`).FindAllSubmatch(data, -1)
+		if len(glints) != 4 {
+			t.Fatal("missing glints")
+		}
+		neutralY := -1000.0
+		for i, anchor := range [][2]float64{{146, 221}, {260, 192}} {
+			radius := 9.0
+			lowered := face.Key == "angry" || face.Key == "sad" || (face.Key == "skeptical" && i == 1)
+			if lowered {
+				radius = 8
+			}
+			x, _ := strconv.ParseFloat(string(glints[i*2][1]), 64)
+			y, _ := strconv.ParseFloat(string(glints[i*2][2]), 64)
+			if math.Abs(x+radius-anchor[0]+5) > .01 {
+				t.Errorf("%s eye %d horizontal light drift", face.Key, i)
+			}
+			if y-anchor[1] < -10.01 {
+				t.Error("highlight moved upwards")
+			}
+			if face.Key == "surprised" || (face.Key == "skeptical" && i == 0) {
+				if math.Abs(y-anchor[1]+10) > .01 {
+					t.Error("uncovered eye light drift")
+				}
+			}
+			if face.Key == "neutral" {
+				if i == 0 {
+					neutralY = y - anchor[1]
+				} else if math.Abs(y-anchor[1]-neutralY) > .01 {
+					t.Error("neutral glints are not aligned")
+				}
+			}
+			sx, _ := strconv.ParseFloat(string(glints[i*2+1][1]), 64)
+			sy, _ := strconv.ParseFloat(string(glints[i*2+1][2]), 64)
+			if math.Abs(sx+3.5-anchor[0]-8.5) > .01 || math.Abs(sy-anchor[1]-17.5) > .01 {
+				t.Error("small glint light drift")
+			}
+		}
+	}
+}
+
+func TestPipCheekColoursDoNotRecolourUnchangedGIFPixels(t *testing.T) {
+	c, err := LoadCollection(web.Static, "static/img")
+	if err != nil {
+		t.Fatal(err)
+	}
+	kit := c.kits["pip"]
+	plain := *kit
+	plain.faces = map[string]string{}
+	for key, face := range kit.faces {
+		plain.faces[key] = pipCheekGroup.ReplaceAllString(face, "")
+	}
+	a := DefaultForCharacter("pip", "")
+	a.Headdress = "ruby"
+	a.Handle = "red"
+	for _, face := range Faces {
+		actual, err := kit.GIF(a, []Frame{{Face: face.Key}}, 64)
+		if err != nil {
+			t.Fatal(err)
+		}
+		before, err := plain.GIF(a, []Frame{{Face: face.Key}}, 64)
+		if err != nil {
+			t.Fatal(err)
+		}
+		one, err := gif.Decode(bytes.NewReader(actual))
+		if err != nil {
+			t.Fatal(err)
+		}
+		two, err := gif.Decode(bytes.NewReader(before))
+		if err != nil {
+			t.Fatal(err)
+		}
+		flatOne, err := rasterise(kit.RenderFlat(a, face.Key), 64)
+		if err != nil {
+			t.Fatal(err)
+		}
+		flatTwo, err := rasterise(plain.RenderFlat(a, face.Key), 64)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for y := 0; y < 64; y++ {
+			for x := 0; x < 64; x++ {
+				if flatOne.RGBAAt(x, y) != flatTwo.RGBAAt(x, y) {
+					continue
+				}
+				if color.RGBAModel.Convert(one.At(x, y)) != color.RGBAModel.Convert(two.At(x, y)) {
+					t.Fatalf("%s cheeks recoloured unrelated pixel %d,%d", face.Key, x, y)
+				}
+			}
+		}
 	}
 }

@@ -489,6 +489,27 @@ PIP_GRIP_PIVOT = (283, 375)
 PIP_FUR = "#2f4ea8"
 
 
+# One lighting layout, expressed relative to either eye centre. Only a covered
+# large glint moves vertically; its x coordinate and the small glint stay fixed.
+PIP_LIGHT_LARGE = (-5, -10)
+PIP_LIGHT_SMALL = (8.5, 17.5)
+
+
+def pip_glints(cx, cy, visible, keel, lowered):
+    radius = 8 if lowered else 9
+    support = op(visible, keel, pathops.PathOp.DIFFERENCE)
+    y = cy + PIP_LIGHT_LARGE[1]
+    while True:
+        large = ellipse(cx + PIP_LIGHT_LARGE[0], y, radius, radius)
+        if op(large, support, pathops.PathOp.DIFFERENCE).area < 0.001:
+            break
+        y += 0.25
+        assert y < cy + 20, "No room for intact highlight"
+    small = ellipse(cx + PIP_LIGHT_SMALL[0], cy + PIP_LIGHT_SMALL[1], 3.5, 3.5)
+    assert op(small, support, pathops.PathOp.DIFFERENCE).area < 0.001
+    return svgpath(large, WHITE) + svgpath(small, WHITE)
+
+
 def pip_eye(cx, cy, rx, ry, state, index):
     if state == "happy":
         # Two closed, upward crescents; maximum thickness is 12 canvas units.
@@ -507,7 +528,7 @@ def pip_eye(cx, cy, rx, ry, state, index):
     elif state == "skeptical":
         ends = (-27, -27) if index == 0 else (0, 0)
     elif state == "neutral":
-        ends = (-24, -18) if index == 0 else (-18, -24)
+        ends = (-12, -12)
     else:
         ends = None
     s = ""
@@ -519,24 +540,22 @@ def pip_eye(cx, cy, rx, ry, state, index):
         outer = op(outer, below, pathops.PathOp.INTERSECTION)
         visible = op(inner, below, pathops.PathOp.INTERSECTION)
     s += svgpath(outer, INK) + svgpath(visible, "#14141f")
-    # No sclera: white occurs only above the lid or in two intact round glints.
-    # A lowered lid needs the large glint shifted down and slightly smaller.
-    lowered = state in ["angry", "sad"] or (state == "skeptical" and index == 1)
-    hy = cy + 15 if lowered else cy - 5
-    big = ellipse(cx - 4, hy, 8 if lowered else 9, 8 if lowered else 9)
-    small = ellipse(cx + 8.5, cy + 17.5, 3.5, 3.5)
-    for glint in (big, small):
-        # Reject a clipped highlight rather than silently turning it into a shard.
-        assert op(glint, visible, pathops.PathOp.DIFFERENCE).area < 0.001
-        s += svgpath(glint, WHITE)
     if ends:
-        s += vex_brow(cx - rx, yl, cx + rx, yr, 0, 13)
-    else:
-        # Keep the upper rim inside the oval: no outward eyelash tips.
         keel = shape(
-            f"M{cx-rx+7} {cy-ry+13} Q{cx} {cy-ry-5} {cx+rx-7} {cy-ry+13} Q{cx} {cy-ry+21} {cx-rx+7} {cy-ry+13}Z"
+            f"M{cx-rx} {yl} Q{cx} {(yl+yr)/2-13} {cx+rx} {yr} Q{cx} {(yl+yr)/2+13} {cx-rx} {yl}Z"
         )
-        s += svgpath(op(keel, outer, pathops.PathOp.INTERSECTION), INK)
+    else:
+        # Smooth upper cap inside the oval, clear of the common upper-left glint.
+        keel = op(
+            shape(
+                f"M{cx-rx+7} {cy-ry+10} Q{cx} {cy-ry-3} {cx+rx-7} {cy-ry+10} Q{cx} {cy-ry+16} {cx-rx+7} {cy-ry+10}Z"
+            ),
+            outer,
+            pathops.PathOp.INTERSECTION,
+        )
+    lowered = state in ["angry", "sad"] or (state == "skeptical" and index == 1)
+    s += pip_glints(cx, cy, visible, keel, lowered)
+    s += svgpath(keel, INK)
     return s
 
 
@@ -663,7 +682,7 @@ def convert_pip(source, target):
     )
     blank = []
     for i, (role, fill, p) in enumerate(original):
-        if i in {8, 46, 48, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61}:
+        if i in {8, 46, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61}:
             continue
         if i == 0:
             p = op(p, cut, pathops.PathOp.DIFFERENCE)
@@ -741,9 +760,56 @@ def convert_pip(source, target):
         + equipment
         + "</g>",
     )
+    cheeks = [original[49][2], original[50][2]]
+    import xml.etree.ElementTree as ET
+
     for face in FACES:
+        eye_geometry = pathops.Path()
+        for i, anchor in enumerate(PIP_EYES):
+            for el in ET.fromstring("<svg>" + pip_eye(*anchor, face, i) + "</svg>"):
+                if el.get("fill") in [INK, "#14141f"]:
+                    eye_geometry = op(
+                        eye_geometry, shape(el.get("d")), pathops.PathOp.UNION
+                    )
+        blush = []
+        for p in cheeks:
+            scale_x, scale_y, fill = {
+                "happy": (1.18, 1.18, "#f294b8"),
+                "angry": (1.15, 1.05, "#e2585c"),
+                "sad": (0.75, 0.75, "#f6d4e0"),
+            }.get(face, (1, 1, "#f5b5ce"))
+            x1, y1, x2, y2 = p.bounds
+            cx, cy = (x1 + x2) / 2, (y1 + y2) / 2
+            p = transformed(
+                p,
+                Transform()
+                .translate(cx, cy)
+                .scale(scale_x, scale_y)
+                .translate(-cx, -cy),
+            )
+            assert (
+                op(
+                    outlined(p, 24), outlined(blade, 13), pathops.PathOp.INTERSECTION
+                ).area
+                < 0.001
+            ), "Cheek/racket gap below 12"
+            # The source cheeks already extended invisibly under the eyes.
+            # Trim that hidden cap plus one unit, keeping the same anchors,
+            # nominal scale and outer silhouette instead of moving the cheeks.
+            p = op(p, outlined(eye_geometry, 2), pathops.PathOp.DIFFERENCE)
+            assert op(p, eye_geometry, pathops.PathOp.INTERSECTION).area < 0.001
+            beak_geometry = pathops.Path()
+            for el in ET.fromstring("<svg>" + pip_beak(face) + "</svg>"):
+                beak_geometry = op(
+                    beak_geometry, shape(el.get("d")), pathops.PathOp.UNION
+                )
+            assert op(p, beak_geometry, pathops.PathOp.INTERSECTION).area < 0.001
+            blush.append(svgpath(p, fill))
         body = (
-            "".join(pip_eye(*anchor, face, i) for i, anchor in enumerate(PIP_EYES))
+            '<g data-pip-part="cheeks">'
+            + "".join(blush)
+            + "</g>"
+            + "".join(pip_eye(*anchor, face, i) for i, anchor in enumerate(PIP_EYES))
             + pip_brows(face)
             + '<g data-pip-part="beak">'
             + pip_beak(face)

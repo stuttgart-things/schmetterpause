@@ -110,6 +110,14 @@ func (k *Kit) GIF(a Avatar, frames []Frame, size int) ([]byte, error) {
 			baseFlats[i] = k.RenderFlat(plain, f.Face)
 		}
 	}
+	// Expression cheeks must not recolour unrelated antialiased coat edges.
+	// Historical kits without the cheek group retain their original output.
+	if k.character.Key == "pip" && strings.Contains(k.faces[frames[0].Face], `data-pip-part="cheeks"`) {
+		baseFlats = make([]string, len(flats))
+		for i, flat := range flats {
+			baseFlats[i] = pipCheekGroup.ReplaceAllString(flat, "")
+		}
+	}
 	basePal := paletteOf(baseFlats)
 	pal := paletteOf(flats)
 
@@ -146,6 +154,8 @@ func (k *Kit) GIF(a Avatar, frames []Frame, size int) ([]byte, error) {
 	}
 	return buf.Bytes(), nil
 }
+
+var pipCheekGroup = regexp.MustCompile(`(?s)<g data-pip-part="cheeks">.*?</g>`)
 
 // paletteOf is black and every colour the flat figures name, in the order
 // they first appear. A figure names a few dozen; a GIF holds 256.

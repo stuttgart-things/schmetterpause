@@ -180,76 +180,82 @@ saving/reset and stale stored choices.
 
 ## Pip review
 
-Pip retains the Creator penguin's pose, torso, head proportions and headband.
-Only the gripping assembly and the previously occluded right cheek are rebuilt.
-`PIP_EYES` uses centres (146,221) and (260,192), two units below their native
-positions, with equal 26 by 31 radii (52 by 62 full size). Open eyes have a
-6-unit filled black outline around a solid dark oval (#14141f), with no sclera
-or white ring. The two round white glints have 18- and 7-unit diameters.
-Under lowered lids, the large glint moves down and has a 16-unit diameter;
-the small glint keeps its position. The generator rejects clipped glints.
-Surprised eyes remain ten percent larger and use a smooth upper rim contained
-inside the oval, without projecting eyelash tips. White facial-colour lids
-and pointed black keels carry the expressions. Angry and sad lid endpoints
-are spread by three additional units in opposite directions, keeping the
-same average lid height and approximate occlusion while improving shape
-separation. Brow paths and angles remain unchanged. A raster test checks the
-highlight centres and interior points, and another permits only two round
-white glint paths per eye—no white sclera surface.
-The generator checks at least 8 units of clearance from the headband, including
-the lid keels, for every expression.
-Angry lids descend towards the nose, sad lids outwards, and skeptical is
-asymmetric. Happy uses filled crescent eyes at least 10 units thick.
+Pip retains its Creator pose, head proportions, headband, paddle, grip and
+palettes. `PIP_EYES` remains (146,221) and (260,192), with equal 26 by 31 radii;
+Surprised remains ten percent larger. Eyes use a #14141f oval, a filled black
+6-unit border, no sclera, two round white glints and white facial-colour lids.
 
-Every face has its own beak in a `data-pip-part="beak"` group. The base has
-no beak. Six variations remain within ten percent of the native 61 by 49
-bounds: closed neutral, pink open happy, red open surprised, sideways skeptical,
-compressed angry and drooping sad. Runtime tests check ownership, unique
-geometry and raster bounds.
+`PIP_LIGHT_LARGE = (-5,-10)` and `PIP_LIGHT_SMALL = (8.5,17.5)` define a common
+upper-left light source relative to either eye centre. Large glints are 18 units
+across in open eyes and 16 under negative half lids; small glints are 7 units.
+`pip_glints` moves only the large glint vertically, in quarter-unit steps, until
+its entire circle clears the actual lid and keel. X never changes. Neutral's
+horizontal lids use identical -12 endpoint offsets; both glints consequently
+move down by the same amount. The two eyes remain symmetric, with a 0-degree
+lid angle. Skeptical, Angry and Sad retain their previous brow and lid paths.
+Happy retains both crescent eyes and its beak.
 
-`PIP_GRIP_PIVOT` is (283,375). The paddle is rotated 18 degrees clockwise,
-scaled to 90 percent and lowered 34 units; all coordinates are baked into
-filled paths. The generator asserts a 12-unit gap using path boolean operations
-on expanded head and blade outlines, and a Go raster test independently checks
-the visible head against the blade. Grip stripes and gripping flipper follow
-the new assembly. Other avatars' assets remain unchanged.
+The two native pink cheek paths (Creator indices 49/50) have moved out of Pip's
+base into a separate `data-pip-part="cheeks"` group in every face. No user option
+or stored field is added. Their anchors and basic native curves are retained:
 
-Pip's original navy is **#2f4ea8**, lighter than #233c87 to keep the coat visible
-on black without losing its blue character. Alternatives are **Grau #8793a5**
-(cool medium grey, shade #5a6678) and **Blaugrau #587e9b** (muted blue-grey,
-shade #38556e). Sand and Chocolate now fall back to Original. Pip's headband
-excludes Lapis and, specifically on Grey, Silver; old invalid combinations
-fall back to the original pink. The native pink option is labelled Original,
-not “Wie das Fell”. On a live coat change, the editor replaces just the headband
-fieldset and selects Original if Silver has become invalid. Both palette
-restrictions apply to validation, preview, rendering and random generation.
-Other figures retain the shared palettes. Handle/blade choices are unchanged.
-Pip has no jewellery. Persistence uses the existing fields; no migration.
+| Expression | Colour | Nominal size relative to native |
+| --- | --- | --- |
+| Neutral, Skeptical, Surprised | #f5b5ce | 100% |
+| Happy | #f294b8 | 118% in both axes |
+| Angry | #e2585c | 115% wide, 105% high (slightly transverse) |
+| Sad | #f6d4e0 | 75% in both axes |
 
-Reproduce all PNGs and GIFs through the runtime renderer:
+The source cheek already extended invisibly underneath the left eye, especially
+when surprised. The importer trims that hidden cap plus one unit of clearance;
+it does not move the cheek anchor. Cheeks are borderless filled paths. Path
+checks reject overlaps with eyes/beaks and enforce a 12-unit paddle gap. Eye and
+lid-keel clearance from the headband remains at least 8 units.
+
+Pip's GIF quantiser preserves the original palette result wherever the new
+cheeks change no raster pixel. Otherwise the additional red could colour unrelated
+antialiased navy coat edges. This correction is scoped to Pip cheek groups; a
+regression test compares every unchanged pixel with the no-cheek reference.
+Historical fixtures without cheek groups keep their original GIF output.
+
+Original navy is #2f4ea8; alternatives are Grey #8793a5 and Blue-grey #587e9b.
+Pip excludes Sand/Chocolate and headband Lapis; Grey also excludes Silver.
+Invalid stored combinations fall back to Original; native headband Pink is
+labelled Original. Grip/blade palettes and the absent jewellery slot are unchanged.
+
+Reproduce the review from the repository root:
 
 ```sh
 go run ./scripts/avatar_review.go -character pip -out docs/avatar-check/pip
 ```
 
-Open `docs/avatar-check/pip/index.html`. It includes all six expressions and
-three coats at 192, 64 and 28 pixels on navy and black; `critical-64-black.png`
-contains the allowed critical combinations (Grey/Silver is excluded). Black 64-pixel previews
-use the runtime GIF quantisation. Labels use embedded Go Regular, which
-supports German umlauts without host fonts. Native-size expression rows,
-material sheets, headband sheets and GIFs are also included.
+`docs/avatar-check/pip/index.html` links these acceptance sheets:
 
-Review notes: Steel blade on Grey and Blue grip on original navy have low
-surface-colour separation. Black outlines and the new paddle gap help, but
-don't guarantee physical LED readability. Blue blade on navy/blue-grey shares
-a hue family but remains separated geometrically. Ivory and legal Silver headbands
-remain visible through their black border, though Ivory approaches the white
-face in brightness. Grey/Silver is no longer offered. Dark wood is a small coloured grip area at 28 pixels.
-No critical combination has been recoloured automatically. A real LED-panel
-check and aesthetic approval remain outstanding.
+- All six expressions and three coats, 192/64/28 px, on navy and black.
+- `eyes-before-after-64-black.png`: f4e47ae beside the new expression. The archived
+  old base and faces in `before-cheek-expressions/` reproduce the former cheeks.
+- `eyes-detail-192.png`: eyes, brows and cheeks, with the beak/body omitted only
+  from this review render.
+- `angry-red-options-64-black.png`: Angry with Ruby headband and Red grip on all
+  three coats. Red cheeks are spatially separated from headband and grip.
+- Native expression rows, material sheets and production-pipeline GIFs.
 
-An opt-in browser test runs against normal handlers with disposable test
-players (no external database or stored user sessions):
+The final minimum pairwise coarse-luminance difference at 64 px is **114** pixels,
+compared with **113** in f4e47ae. The metric uses production-quantised single-frame
+GIFs and all 15 expression pairs. Red cheeks occupy 39/38/38 exact-colour pixels
+on Original/Grey/Blue-grey with Ruby/Red. Pixel separation is not a substitute
+for subjective visual acceptance or physical LED testing. The red elements share
+a hue family; their real panel appearance remains a manual check. Sad is allowed
+to become faint at 64 px.
+
+Tests cover cheek ownership/colour, forbidden SVG features, shared highlight
+coordinates, intact round glints, unchanged GIF pixels, palette fallbacks/random,
+64-pixel expression separation and positive/surprised/negative groups at 28 px.
+All six beaks and the protected Happy/negative eye/brow ink paths were compared
+against f4e47ae; the base differs only by removal of its two pink cheek paths.
+Older `before-eyes/` and `before-sclera-removal/` fixtures remain historical inputs.
+
+The opt-in real-browser test runs normal handlers with disposable players:
 
 ```sh
 SP_RUN_PIP_BROWSER=1 SP_PLAYWRIGHT_MODULE=/path/to/playwright \
@@ -257,28 +263,6 @@ SP_PREVIEW_BROWSER_BINARY=/path/to/chrome \
 go test ./internal/server -run TestPipBrowser -count=1 -v
 ```
 
-It checks palettes, previews, selected thumbnails, saving/reloading, SVG/GIF
-endpoints, mobile layout and reset, then runs the existing blecki browser
-regression against the same disposable server. Set `SP_PREVIEW_SCREENSHOT_DIR` to export
-desktop and mobile editor captures.
-
-
-The current eye revision comparison is `eyes-before-after-64-black.png`: each
-expression has Alt directly beside Neu. Baseline faces from addbf59 are kept
-under `docs/avatar-check/pip/before-sclera-removal/`, outside embedded application
-assets. The older adf4bc6 fixture under `before-eyes/` is retained for history.
-The review generator uses the same unchanged base and runtime GIF quantisation
-for both versions. The Pip base, all six beaks, paddle geometry and brow paths
-are unchanged by this eye revision. Unit tests also retain the coarse-luminance
-checks for six distinct expressions at 64 pixels and the positive/surprised/
-negative groups at 28 pixels. These checks establish pixel differences, not
-subjective visual approval or physical LED readability.
-
-
-`eyes-detail-192.png` shows just the eye/brow region of all six expressions
-on a facial-colour surface, with the beak and body omitted from the review
-render only. The 64-pixel comparison test measures the minimum pairwise coarse
-luminance difference in production-quantised GIFs: addbf59 = 109 differing
-pixels, current = 113. This is a reproducible regression metric, not a promise
-about subjective friendliness or physical LED readability. Base, headband,
-paddle, palettes, Happy face and all six beaks are unchanged.
+It checks palettes, previews, selected thumbnails, save/reload, SVG/GIF, mobile
+layout and reset, then runs the existing blecki browser regression. Set
+`SP_PREVIEW_SCREENSHOT_DIR` to export desktop/mobile captures.

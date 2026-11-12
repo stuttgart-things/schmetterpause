@@ -77,9 +77,12 @@ func previousPipCollection() (*avatar.Collection, error) {
 	if err != nil {
 		return nil, err
 	}
-	for _, face := range avatar.Faces {
+	for _, face := range append([]avatar.Option{{Key: "base"}}, avatar.Faces...) {
 		name := "face-" + face.Key + ".svg"
-		data, err := os.ReadFile(filepath.Join("docs/avatar-check/pip/before-sclera-removal", name))
+		if face.Key == "base" {
+			name = "base.svg"
+		}
+		data, err := os.ReadFile(filepath.Join("docs/avatar-check/pip/before-cheek-expressions", name))
 		if err != nil {
 			return nil, err
 		}
@@ -125,12 +128,24 @@ func run(key, out string) error {
 		}
 		comparisonBefore = nil
 
+		var red []sample
+		for _, coat := range append([]avatar.Colour{{Key: "", Name: "Original"}}, avatar.FurPalette(key)...) {
+			b := a
+			b.Fur = coat.Key
+			b.Headdress = "ruby"
+			b.Handle = "red"
+			red = append(red, sample{coat.Name + " / Wütend, Rubin, roter Griff", b, "angry"})
+		}
+		if err = sheet(collection, red, 3, 64, color.RGBA{0, 0, 0, 255}, "Pip | Zornesröte + Rubin + Rot | 64 px", filepath.Join(out, "angry-red-options-64-black.png")); err != nil {
+			return err
+		}
+
 		var eyes []sample
 		for _, face := range avatar.Faces {
 			eyes = append(eyes, sample{face.Name, a, face.Key})
 		}
 		eyesDetail = true
-		err = sheet(collection, eyes, 3, 192, color.RGBA{10, 10, 18, 255}, "Pip | Augenpartie | 192 px Detail", filepath.Join(out, "eyes-detail-192.png"))
+		err = sheet(collection, eyes, 3, 192, color.RGBA{10, 10, 18, 255}, "Pip | Augen und Wangen | 192 px Detail", filepath.Join(out, "eyes-detail-192.png"))
 		eyesDetail = false
 		if err != nil {
 			return err
@@ -400,7 +415,7 @@ not photographs of a real panel. In particular, dark wood and moss on black
 should be checked on the device. No runtime hides jewellery automatically.
 `
 	if key == "pip" {
-		note = "# Pip acceptance review\n\nRegenerate: `go run ./scripts/avatar_review.go -character pip -out docs/avatar-check/pip`\n\nOpen index.html for expressions, materials and GIFs. The expressions-row PNGs show the six faces in original colours at 64 and 28 pixels on black. Full sheets include Original, Grau and Blaugrau on navy and black. Pip has no jewellery. Grey excludes Silver; native Pink is labelled Original. The eyes-before-after-64-black.png sheet compares archived faces from addbf59 with the new eyes, each Alt/Neu pair adjacent. The eyes-detail-192.png sheet shows only eyes and brows. Eyes have no sclera; only two round white glints remain. Physical LED-panel contrast remains to be checked.\n"
+		note = "# Pip acceptance review\n\nRegenerate: `go run ./scripts/avatar_review.go -character pip -out docs/avatar-check/pip`\n\nOpen index.html for expressions, materials and GIFs. The expressions-row PNGs show the six faces in original colours at 64 and 28 pixels on black. Full sheets include Original, Grau and Blaugrau on navy and black. Pip has no jewellery. Grey excludes Silver; native Pink is labelled Original. The eyes-before-after-64-black.png sheet compares archived faces and base from f4e47ae with the new eyes, each Alt/Neu pair adjacent. The eyes-detail-192.png sheet shows eyes, brows and expression cheeks. Eyes have no sclera; only two round white glints remain. Physical LED-panel contrast remains to be checked.\n"
 	}
 	if err = os.WriteFile(filepath.Join(out, "README.md"), []byte(note), 0644); err != nil {
 		return err
@@ -455,8 +470,8 @@ func sheet(c *avatar.Collection, samples []sample, cols, size int, bg color.RGBA
 		icon.SetTarget(0, 0, float64(size), float64(size))
 
 		if eyesDetail {
-			scale := float64(size) / 190
-			icon.SetTarget(-105*scale, -135*scale+(float64(size)-125*scale)/2, 420*scale, 420*scale)
+			scale := float64(size) / 240
+			icon.SetTarget(-90*scale, -130*scale+(float64(size)-160*scale)/2, 420*scale, 420*scale)
 		}
 		frame := image.NewRGBA(image.Rect(0, 0, size, size))
 		draw.Draw(frame, frame.Bounds(), image.NewUniform(bg), image.Point{}, draw.Src)
