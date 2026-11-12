@@ -1,4 +1,4 @@
-# Hank initial emblem acceptance review
+# hank initial emblem acceptance review
 
 Run from the repository root:
 

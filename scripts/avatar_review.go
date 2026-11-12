@@ -39,11 +39,19 @@ type sample struct {
 }
 
 func main() {
+	cheek := flag.Bool("cheek-contour-only", false, "export hank contour before/after review")
 	key := flag.String("character", "vex", "character key")
 	out := flag.String("out", "docs/avatar-check/vex", "output directory")
-	emblems := flag.Bool("emblems-only", false, "export Hank emblem acceptance matrix (include hank_emblem_review.go)")
+	emblems := flag.Bool("emblems-only", false, "export hank emblem acceptance matrix")
 	accessories := flag.Bool("accessories-only", false, "export only the blecki accessory acceptance matrix")
 	flag.Parse()
+	if *cheek {
+		if err := cheekContourReview(*out); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+		return
+	}
 	if *emblems {
 		if err := emblemReview(*out); err != nil {
 			fmt.Fprintln(os.Stderr, err)
@@ -85,6 +93,15 @@ var comparisonBefore map[string]image.Image
 var eyesDetail bool
 var reviewNames map[string]string
 
+func templateName(key string) string {
+	for _, ch := range avatar.Characters {
+		if ch.Key == key {
+			return ch.Name
+		}
+	}
+	return key
+}
+
 func run(key, out string) error {
 	labelKey := key
 	for _, character := range avatar.Characters {
@@ -120,7 +137,7 @@ func run(key, out string) error {
 		for _, face := range avatar.Faces {
 			samples = append(samples, sample{face.Name + " / Alt", a, face.Key}, sample{face.Name + " / Neu", a, face.Key})
 		}
-		if err = sheet(collection, samples, 6, 64, color.RGBA{0, 0, 0, 255}, "hank | Alt / Neu je Ausdruck | 64 px schwarz", filepath.Join(out, "eyes-before-after-64-black.png")); err != nil {
+		if err = sheet(collection, samples, 6, 64, color.RGBA{0, 0, 0, 255}, templateName("pip")+" | Alt / Neu je Ausdruck | 64 px schwarz", filepath.Join(out, "eyes-before-after-64-black.png")); err != nil {
 			return err
 		}
 		comparisonBefore = nil
@@ -133,7 +150,7 @@ func run(key, out string) error {
 			rackets = append(rackets, sample{label, b, "neutral"})
 		}
 		for _, size := range []int{192, 64} {
-			if err = sheet(collection, rackets, 3, size, color.RGBA{0, 0, 0, 255}, "hank | Schlägerfarben", filepath.Join(out, fmt.Sprintf("racket-colours-%d-black.png", size))); err != nil {
+			if err = sheet(collection, rackets, 3, size, color.RGBA{0, 0, 0, 255}, templateName("pip")+" | Schlägerfarben", filepath.Join(out, fmt.Sprintf("racket-colours-%d-black.png", size))); err != nil {
 				return err
 			}
 		}
@@ -143,7 +160,7 @@ func run(key, out string) error {
 			eyes = append(eyes, sample{face.Name, a, face.Key})
 		}
 		eyesDetail = true
-		err = sheet(collection, eyes, 3, 192, color.RGBA{10, 10, 18, 255}, "hank | Augenpartie | 192 px Detail", filepath.Join(out, "eyes-detail-192.png"))
+		err = sheet(collection, eyes, 3, 192, color.RGBA{10, 10, 18, 255}, templateName("pip")+" | Augenpartie | 192 px Detail", filepath.Join(out, "eyes-detail-192.png"))
 		eyesDetail = false
 		if err != nil {
 			return err
@@ -160,7 +177,7 @@ func run(key, out string) error {
 			row = append(row, sample{f.Name, a, f.Key})
 		}
 		for _, size := range []int{64, 28} {
-			if err = sheet(collection, row, 6, size, color.RGBA{0, 0, 0, 255}, "hank | original | black", filepath.Join(out, fmt.Sprintf("expressions-row-%d-black.png", size))); err != nil {
+			if err = sheet(collection, row, 6, size, color.RGBA{0, 0, 0, 255}, templateName("pip")+" | original | black", filepath.Join(out, fmt.Sprintf("expressions-row-%d-black.png", size))); err != nil {
 				return err
 			}
 		}
@@ -205,7 +222,7 @@ func run(key, out string) error {
 			}
 			critical = append(critical, sample{coat + " / Schläger " + map[string]string{"blue": "Blau", "steel": "Stahl"}[pair[1]], b, "neutral"})
 		}
-		if err = sheet(collection, critical, 4, 64, color.RGBA{0, 0, 0, 255}, "hank | kritische Kombinationen | 64 px", filepath.Join(out, "critical-64-black.png")); err != nil {
+		if err = sheet(collection, critical, 4, 64, color.RGBA{0, 0, 0, 255}, templateName("pip")+" | kritische Kombinationen | 64 px", filepath.Join(out, "critical-64-black.png")); err != nil {
 			return err
 		}
 	}
@@ -413,7 +430,7 @@ not photographs of a real panel. In particular, dark wood and moss on black
 should be checked on the device. No runtime hides jewellery automatically.
 `
 	if key == "pip" {
-		note = "# Hank acceptance review\n\nRegenerate: `go run ./scripts/avatar_review.go -character pip -out docs/avatar-check/pip`\n\nOpen index.html for expressions, materials and GIFs. The expressions-row PNGs show the six faces in original colours at 64 and 28 pixels on black. Full sheets include Original, Grau and Blaugrau on navy and black. Hank has no cheeks; Schmuck choices are Kein Schmuck and Initiale. Grey excludes Silver; native Pink is labelled Original. The eyes-before-after-64-black.png sheet compares archived 7969bdf GIFs against Hank without cheeks, each Alt/Neu pair adjacent. The eyes-detail-192.png sheet shows eyes and brows. Eyes have no sclera; only two round white glints remain. Physical LED-panel contrast remains to be checked.\n"
+		note = "# hank acceptance review\n\nRegenerate: `go run ./scripts/avatar_review.go -character pip -out docs/avatar-check/pip`\n\nOpen index.html for expressions, materials and GIFs. The expressions-row PNGs show the six faces in original colours at 64 and 28 pixels on black. Full sheets include Original, Grau and Blaugrau on navy and black. hank has no cheeks; Schmuck choices are Kein Schmuck and Initiale. Grey excludes Silver; native Pink is labelled Original. The eyes-before-after-64-black.png sheet compares archived 7969bdf GIFs against hank without cheeks, each Alt/Neu pair adjacent. The eyes-detail-192.png sheet shows eyes and brows. Eyes have no sclera; only two round white glints remain. Physical LED-panel contrast remains to be checked.\n"
 	}
 	if err = os.WriteFile(filepath.Join(out, "README.md"), []byte(note), 0644); err != nil {
 		return err
@@ -572,11 +589,11 @@ func accessoryReview(key, out string) error {
 		}
 		for _, size := range []int{192, 64, 28} {
 			ballName := fmt.Sprintf("ball-blades-%d-%s.png", size, bg.name)
-			if err = sheet(c, balls, 7, size, bg.colour, fmt.Sprintf("blecki | ball / blade colours | %d px | %s", size, bg.name), filepath.Join(out, ballName)); err != nil {
+			if err = sheet(c, balls, 7, size, bg.colour, fmt.Sprintf(templateName("vex")+" | ball / blade colours | %d px | %s", size, bg.name), filepath.Join(out, ballName)); err != nil {
 				return err
 			}
 			name := fmt.Sprintf("accessories-%d-%s.png", size, bg.name)
-			if err = sheet(c, samples, len(avatar.BlingPalette(key))*2, size, bg.colour, fmt.Sprintf("blecki | accessories | %d px | %s", size, bg.name), filepath.Join(out, name)); err != nil {
+			if err = sheet(c, samples, len(avatar.BlingPalette(key))*2, size, bg.colour, fmt.Sprintf(templateName("vex")+" | accessories | %d px | %s", size, bg.name), filepath.Join(out, name)); err != nil {
 				return err
 			}
 		}
@@ -644,7 +661,7 @@ func writeBallContrast(out string) error {
 	return os.WriteFile(filepath.Join(out, "ball-colour-contrast.csv"), data.Bytes(), 0644)
 }
 
-func handBeforeCollection() (*avatar.Collection, error) {
+func handBeforeCollection(basePath ...string) (*avatar.Collection, error) {
 	files := fstest.MapFS{}
 	err := fs.WalkDir(web.Static, "static/img", func(name string, entry fs.DirEntry, err error) error {
 		if err != nil {
@@ -663,7 +680,11 @@ func handBeforeCollection() (*avatar.Collection, error) {
 	if err != nil {
 		return nil, err
 	}
-	before, err := os.ReadFile("docs/avatar-check/pip/emblems/hand-before-base.svg")
+	name := "docs/avatar-check/pip/emblems/hand-before-base.svg"
+	if len(basePath) > 0 {
+		name = basePath[0]
+	}
+	before, err := os.ReadFile(name)
 	if err != nil {
 		return nil, err
 	}
@@ -721,17 +742,17 @@ func emblemReview(out string) error {
 		colour color.RGBA
 	}{{"app", color.RGBA{10, 10, 18, 255}}, {"black", color.RGBA{0, 0, 0, 255}}} {
 		for _, size := range []int{192, 64, 28} {
-			if err = sheet(c, matrix, 4, size, bg.colour, fmt.Sprintf("hank | Embleme | %d px | %s", size, bg.name), filepath.Join(out, fmt.Sprintf("emblems-%d-%s.png", size, bg.name))); err != nil {
+			if err = sheet(c, matrix, 4, size, bg.colour, fmt.Sprintf(templateName("pip")+" | Embleme | %d px | %s", size, bg.name), filepath.Join(out, fmt.Sprintf("emblems-%d-%s.png", size, bg.name))); err != nil {
 				return err
 			}
-			if err = sheet(c, letters, 6, size, bg.colour, fmt.Sprintf("hank | A–Z Ä Ö Ü und Rückfall | %d px", size), filepath.Join(out, fmt.Sprintf("letters-%d-%s.png", size, bg.name))); err != nil {
+			if err = sheet(c, letters, 6, size, bg.colour, fmt.Sprintf(templateName("pip")+" | A–Z Ä Ö Ü und Rückfall | %d px", size), filepath.Join(out, fmt.Sprintf("letters-%d-%s.png", size, bg.name))); err != nil {
 				return err
 			}
 		}
 	}
 	comparison := []sample{letters[14], letters[16], letters[len(letters)-1]}
 	for _, size := range []int{192, 64} {
-		if err = sheet(c, comparison, 3, size, color.RGBA{0, 0, 0, 255}, "hank | O / Q / Rückfall", filepath.Join(out, fmt.Sprintf("fallback-oq-%d-black.png", size))); err != nil {
+		if err = sheet(c, comparison, 3, size, color.RGBA{0, 0, 0, 255}, templateName("pip")+" | O / Q / Rückfall", filepath.Join(out, fmt.Sprintf("fallback-oq-%d-black.png", size))); err != nil {
 			return err
 		}
 	}
@@ -772,4 +793,53 @@ func emblemReview(out string) error {
 		}
 	}
 	return nil
+}
+
+// cheekContourReview preserves the previous base and renders the exact native area.
+func cheekContourReview(out string) error {
+	if err := os.MkdirAll(out, 0755); err != nil {
+		return err
+	}
+	current, err := avatar.LoadCollection(web.Static, "static/img")
+	if err != nil {
+		return err
+	}
+	before, err := handBeforeCollection("docs/avatar-check/pip/cheek-contour/before-base.svg")
+	if err != nil {
+		return err
+	}
+	a := avatar.DefaultForCharacter("pip", "")
+	a.Blade = "light-blue"
+	for _, entry := range []struct {
+		name string
+		c    *avatar.Collection
+	}{{"before", before}, {"after", current}} {
+		svg := entry.c.RenderFlat(a, "neutral")
+		icon, err := oksvg.ReadIconStream(strings.NewReader(svg), oksvg.StrictErrorMode)
+		if err != nil {
+			return err
+		}
+		scale := 420.0 / 100.0
+		icon.SetTarget(-285*scale, -175*scale, 420*scale, 420*scale)
+		frame := image.NewRGBA(image.Rect(0, 0, 420, 420))
+		draw.Draw(frame, frame.Bounds(), image.Black, image.Point{}, draw.Src)
+		icon.Draw(rasterx.NewDasher(420, 420, rasterx.NewScannerGV(420, 420, frame, frame.Bounds())), 1)
+		f, err := os.Create(filepath.Join(out, "cheek-"+entry.name+"-420.png"))
+		if err != nil {
+			return err
+		}
+		err = png.Encode(f, frame)
+		closeErr := f.Close()
+		if err != nil {
+			return err
+		}
+		if closeErr != nil {
+			return closeErr
+		}
+	}
+	var expressions []sample
+	for _, face := range avatar.Faces {
+		expressions = append(expressions, sample{face.Name, a, face.Key})
+	}
+	return sheet(current, expressions, 6, 192, color.RGBA{0, 0, 0, 255}, templateName("pip")+" | bereinigte Wangenkontur", filepath.Join(out, "expressions-192-black.png"))
 }

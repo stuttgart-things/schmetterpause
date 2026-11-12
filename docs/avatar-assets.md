@@ -1,5 +1,12 @@
 # Avatar drawings
 
+## Naming convention
+
+Template names are consistently lowercase: **sthings**, **blecki**, **hank**.
+The shared catalogue constructor in `internal/avatar/characters.go` normalizes
+all template names; figure selection, headings and review labels use these names.
+This rule does not apply to player display names. Emblem initials remain uppercase.
+
 The active catalogue is `internal/avatar/characters.go`. The empty character
 key means sthings; it is also the database default for existing players.
 Each other character has `base.svg` and six `face-*.svg` files under
@@ -7,8 +14,8 @@ Each other character has `base.svg` and six `face-*.svg` files under
 class and a `data-face` attribute, including in live SVG and LED GIF output.
 
 blecki retains the provided Character Creator v4 wolf drawing and its pose.
-Hank is restored from its workshop branch as the third selectable character.
-The Pogo and Kiki workshop drawings remain preserved on separate branches. Face surfaces are separated and additional
+hank is restored from its workshop branch as the third selectable character.
+The pogo and kiki workshop drawings remain preserved on separate branches. Face surfaces are separated and additional
 expressions are drawn at
 the native eye and mouth positions. The supplied jewellery overlays are not
 imported: the original sthings jewellery is offered only for sthings. blecki’s ball is purpose-drawn for its own single slot.
@@ -16,7 +23,7 @@ imported: the original sthings jewellery is offered only for sthings. blecki’s
 ## Reproduce the Creator imports
 
 Use the supplied `tischtennis-character-creator-v4 (3)/assets/characters`
-directory as input. The release importer processes blecki and Hank and does not
+directory as input. The release importer processes blecki and hank and does not
 modify its source directory. The workshop branches retain the other imports.
 
 ```sh
@@ -37,10 +44,10 @@ Boolean operations preserve the native curves when extracting face surfaces.
 For the new characters, an empty fur key keeps the original materials.
 Choosing a palette colour replaces the main body surface; muzzle, ear and
 other material colours remain fixed. The existing `fur` key for headband and
-handle selects their original colours. Hank retains its separately coloured headband. blecki has no headband and therefore
+handle selects their original colours. hank retains its separately coloured headband. blecki has no headband and therefore
 has no visible headband control. All player-supplied keys are validated
-before saving. Unknown stored characters, including the removed Fynn and
-Chomp, fall back to sthings. Their SVG assets are no longer shipped.
+before saving. Unknown stored characters, including the removed fynn and
+chomp, fall back to sthings. Their SVG assets are no longer shipped.
 
 ADR-0031 describes the persistence and editor behaviour. Tests check the SVG
 contract, six distinct expressions in monochrome, GIF cheering, palette
@@ -178,12 +185,12 @@ that preview changes never rewrite the saved SVG. Go handler tests exercise
 saving/reset and stale stored choices.
 
 
-## Hank review
+## hank review
 
-**Hank deliberately has no blush cheeks in any expression.** The six face SVGs
+**hank deliberately has no blush cheeks in any expression.** The six face SVGs
 and base contain no cheek group or former cheek colours. Cheeks were removed
 because the placement attempts did not suit the drawing. Other avatars, including
-the preserved Pogo/Kiki workshop drawings, retain their own cheeks unchanged.
+the preserved pogo/kiki workshop drawings, retain their own cheeks unchanged.
 
 Eye dimensions, centres, sclera-free construction, shared lighting helper,
 brows, all lids (including sharpened Skeptical), six beaks, paddle, base and
@@ -192,7 +199,7 @@ the two cheek paths in each face. No new profile field or choice is introduced.
 
 The anchoring helper/constants, cheek measurements JSON, geometric cheek test,
 cheek colour/ownership tests, red-cheek test image and unused cheek fixtures
-have been removed. The Hank-only GIF palette preservation introduced for cheek
+have been removed. The hank-only GIF palette preservation introduced for cheek
 colours is also removed; blecki's separate accessory handling remains intact.
 Only an absence test retains the four former colour values, as a forbidden list.
 
@@ -230,12 +237,12 @@ regression too:
 ```sh
 SP_RUN_PIP_BROWSER=1 SP_PLAYWRIGHT_MODULE=/path/to/playwright \
 SP_PREVIEW_BROWSER_BINARY=/path/to/chrome \
-go test ./internal/server -run TestHankBrowser -count=1 -v
+go test ./internal/server -run TestPipBrowser -count=1 -v
 ```
 
 Set `SP_PREVIEW_SCREENSHOT_DIR` for desktop/mobile captures.
 
-### Hank racket canvas correction
+### hank racket canvas correction
 
 Step 1 (translation) is sufficient. Rotation remains **18 degrees clockwise**
 and head scale remains **90%**; neither step 2 nor step 3 was needed.
@@ -276,9 +283,9 @@ margin violations in normal CI. The gallery exports all expressions at 192 and
 99 pixels (Neutral/Angry), the documented cheek-free baseline.
 
 
-### Hank initial emblem (approved smaller/lower placement)
+### hank initial emblem (approved smaller/lower placement)
 
-Hank has exactly two options in its existing stored `bling` slot: **Kein Schmuck**
+hank has exactly two options in its existing stored `bling` slot: **Kein Schmuck**
 (default) and **Initiale** (`initial`). Snowflake/fish and all other unknown keys
 are rejected on submission and fall back to none when reading old profiles.
 Saving, random selection and reset reuse the existing infrastructure. `pip` is
@@ -378,3 +385,17 @@ With no emblem, a named A/Ü initial or the racket fallback, the minimum pairwis
 current baseline. The geometric, palette, glyph, persistence/context, random/reset,
 SVG restriction and browser checks cover the new slot. Other avatars are unchanged;
 blecki keeps its deliberately lowercase display name.
+
+### Known critical combination
+
+Blue grip on the Blue-grey base colour (**Griff Blau / Grundfarbe Blaugrau**)
+is a critical low-contrast combination. It remains selectable and is never
+recoloured automatically; check its readability on the physical LED panel.
+
+### Right cheek contour cleanup
+
+The spur came from the first black path in `base.svg`'s `data-pip-part="body"`
+group, inherited from the native fused head/racket silhouette. The former y=220
+cut retained the old racket's top edge at y=212–220. The importer now cuts from
+y=212 and joins the reconstructed rounded cheek at (340.3075,212).
+Current racket, grip, flipper, faces and emblem geometry are unchanged.

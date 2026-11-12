@@ -49,6 +49,9 @@ class HankRacketGeometry(unittest.TestCase):
             pathops.PathOp.INTERSECTION,
         )
         racket = union(paths(self.racket))
+        for name in ("racket", "flipper"):
+            for p in paths(self.parts[name]):
+                self.assertLess(op(grow(head, 12), p, pathops.PathOp.INTERSECTION).area, .001, name)
         self.assertLess(
             op(grow(head, 12), racket, pathops.PathOp.INTERSECTION).area, 0.001
         )

@@ -679,11 +679,13 @@ def convert_pip(source, target):
         transformed(transformed(original[48][2], shrink), rotation),
         Transform().translate(*PIP_RACKET_HEAD_OFFSET),
     )
-    cut = rect(268, 220, 420, 420)
+    # The native fused racket starts at y=212. Cutting at y=220 left
+    # its upper shoulder as a black spur on the right cheek (body path 0).
+    cut = rect(268, 212, 420, 420)
     # Equipment was fused into the silhouette. Restore the right cheek first,
     # without changing the upper head, torso or headband contours.
     cheek = shape(
-        "M318 198 Q341 218 339 240 Q337 268 307 286 Q281 307 250 314 L247 301 Q285 291 301 270 Q322 247 318 223Z"
+        "M318 198 L340.3075 212 Q339.9 225 339 240 Q337 268 307 286 Q281 307 250 314 L247 301 Q285 291 301 270 Q322 247 318 223Z"
     )
     cheek_white = shape(
         "M273 208 Q310 195 328 216 Q339 244 310 270 Q281 299 251 306 L245 290 Q264 265 267 241Z"

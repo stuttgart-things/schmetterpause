@@ -12,7 +12,7 @@
 ## Entscheidung
 
 Für den Release stehen sthings und blecki zur Auswahl. blecki behält den
-bestehenden gespeicherten Schlüssel `vex`. Pogo, Hank (interner Schlüssel `pip`) und Kiki werden auf den
+bestehenden gespeicherten Schlüssel `vex`. pogo, hank (interner Schlüssel `pip`) und kiki werden auf den
 Branches `feat/pogo-fine-tuning`, `feat/pip-fine-tuning` und
 `feat/kiki-fine-tuning` weiterbearbeitet und sind im Release nicht enthalten. Die
 Auswahl wird mit den Farben in `player_avatars` gespeichert. Die additive
@@ -51,7 +51,7 @@ Gesichter. Das Gesicht bleibt vom Spiel bestimmt. SVG und GIF, Profile,
 Kopfzeile, Live-Spielstand und Zufallsfiguren verwenden denselben Katalog.
 Die öffentlichen Avatar-Adressen ändern sich nicht. Zufall wählt auch die
 Figur; unbekannte gespeicherte Schlüssel fallen pro Teil zurück. Auch die
-entfernten Figuren Fynn und Chomp werden wie unbekannte Schlüssel behandelt:
+entfernten Figuren fynn und chomp werden wie unbekannte Schlüssel behandelt:
 Sie sind nicht mehr wählbar, vorhandene Auswahlen zeigen sthings. Dasselbe
 gilt im Release für die drei Figuren in Bearbeitung. Die gespeicherten Werte
 werden dabei nicht überschrieben, damit ihre spätere Rückkehr möglich bleibt.
@@ -81,10 +81,10 @@ ins Anwendungs-Binary oder Container-Image.
   speichert auch unbekannte Schlüssel für einen weiterhin möglichen Rückfall.
 
 
-## Ergänzung: Hanks Initialen-Emblem
+## Ergänzung: hanks Initialen-Emblem
 
-Hank behält den gespeicherten Schlüssel `pip`. Auf dem Arbeitsbranch
-`feat/pip-avatar` verwendet Hank den bestehenden einzelnen Schmuck-Slot mit
+hank behält den gespeicherten Schlüssel `pip`. Auf dem Arbeitsbranch
+`feat/pip-avatar` verwendet hank den bestehenden einzelnen Schmuck-Slot mit
 „Kein Schmuck“ und „Initiale“. Unbekannte bzw. verworfene Werte wie Fisch und
 Schneeflocke fallen beim Lesen auf „Kein Schmuck“ zurück. Es gibt kein neues
 Datenbankfeld. Die Initiale wird aus dem Spielernamen in einem ausschließlich

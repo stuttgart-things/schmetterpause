@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io/fs"
 	"path"
+	"strings"
 )
 
 // Character defines one drawing and its original materials.
@@ -15,10 +16,18 @@ type Character struct {
 }
 
 // Characters is the release catalogue, shared by rendering, forms and random rolls.
-var Characters = []Character{
-	{"", "sthings", "#f89828", "#f89828", "#f89828"},
-	{"vex", "blecki", "#817d93", "#dd359a", "#f4a62b"},
-	{"pip", "hank", "#2f4ea8", "#d742c5", "#efa31b"},
+var Characters = characterCatalogue(
+	Character{"", "sthings", "#f89828", "#f89828", "#f89828"},
+	Character{"vex", "blecki", "#817d93", "#dd359a", "#f4a62b"},
+	Character{"pip", "hank", "#2f4ea8", "#d742c5", "#efa31b"},
+)
+
+// Template names are lowercase independently of player display names and initials.
+func characterCatalogue(characters ...Character) []Character {
+	for i := range characters {
+		characters[i].Name = strings.ToLower(characters[i].Name)
+	}
+	return characters
 }
 
 func character(key string) (Character, bool) {

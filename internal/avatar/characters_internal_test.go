@@ -63,3 +63,16 @@ func TestCharacterFacesAtDisplaySizes(t *testing.T) {
 		})
 	}
 }
+
+func TestTemplateNamesAreLowercase(t *testing.T) {
+	for _, ch := range Characters {
+		if ch.Name != strings.ToLower(ch.Name) {
+			t.Errorf("template %q is not lowercase", ch.Name)
+		}
+	}
+	for _, ch := range characterCatalogue(Character{Name: "Hank"}, Character{Name: "BLECKI"}, Character{Name: "SThings"}) {
+		if ch.Name != strings.ToLower(ch.Name) {
+			t.Errorf("catalogue failed to normalize %q", ch.Name)
+		}
+	}
+}
