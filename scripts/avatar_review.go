@@ -153,6 +153,20 @@ func run(key, out string) error {
 		if err = sheet(collection, contrasts, len(avatar.Blades), 96, bg.colour, key+" | fixed colour contrast | "+bg.name, filepath.Join(out, "jewellery-blades-"+bg.name+".png")); err != nil {
 			return err
 		}
+
+		if key == "pip" {
+			var headbands []sample
+			for _, coat := range palette {
+				for _, head := range avatar.Headdresses {
+					b := a
+					b.Fur, b.Headdress = coat.Key, head.Key
+					headbands = append(headbands, sample{coat.Name + " / " + head.Name, b, "neutral"})
+				}
+			}
+			if err = sheet(collection, headbands, len(avatar.Headdresses), 144, bg.colour, key+" | headbands | "+bg.name, filepath.Join(out, "headbands-"+bg.name+".png")); err != nil {
+				return err
+			}
+		}
 		var materials []sample
 		for _, c := range avatar.Handles {
 			b := a

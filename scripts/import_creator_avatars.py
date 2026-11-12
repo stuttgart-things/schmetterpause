@@ -32,7 +32,7 @@ SPECS = {
     "pip": dict(
         eyes=[(146, 219, 21, 21), (260, 190, 19, 23)],
         mouth=(213, 240),
-        regions=[(110, 186, 181, 247), (227, 156, 287, 225), (177, 205, 250, 267)],
+        regions=[(110, 174, 181, 247), (227, 145, 287, 225), (177, 205, 250, 267)],
         holes={("muzzle", 0): {1, 2}},
         remove={"eye-pupil", "eye-highlight", "beak", "beak-shadow"},
         native="neutral",
@@ -164,6 +164,49 @@ def brows(spec, expression):
                 f"M{cx-rx} {y-lift} Q{cx} {y-10-lift} {cx+rx} {y-lift} L{cx+rx} {y+6-lift} Q{cx} {y-4-lift} {cx-rx} {y+6-lift}Z"
             )
     return s
+
+
+def pip_eye(cx, cy, rx, ry, expression, index):
+    """Penguin eyes: white sclera, glossy pupil and tapered upper lid."""
+    if expression == "happy":
+        return eye(cx, cy, rx, ry, expression, "#fff6f3")
+    s = oval(cx, cy, rx, ry, INK) + oval(cx, cy, rx - 4, ry - 4, WHITE)
+    s += oval(cx, cy + (7 if expression == "sad" else 3), rx * 0.55, ry * 0.64, INK)
+    if expression == "angry":
+        left, right = (-8, 5) if index == 0 else (5, -8)
+    elif expression == "sad":
+        left, right = (5, -7) if index == 0 else (-7, 5)
+    elif expression == "skeptical" and index == 1:
+        left, right = 1, 1
+    else:
+        left, right = -ry + 3, -ry + 3
+    if expression in ["angry", "sad", "skeptical"]:
+        s += paint(
+            f"M{cx-rx-1} {cy-ry-2} H{cx+rx+1} V{cy+right} L{cx-rx-1} {cy+left}Z",
+            "#fff6f3",
+        )
+    # The highlight stays inside the visible pupil, including half-open eyes.
+    s += oval(cx - 3, cy + (9 if expression == "sad" else 7), 3, 3.5, WHITE)
+    s += paint(
+        f"M{cx-rx-2} {cy+left-3} Q{cx} {cy+(left+right)/2-5} {cx+rx+2} {cy+right-3} L{cx+rx-1} {cy+right+4} Q{cx} {cy+(left+right)/2+1} {cx-rx-2} {cy+left-3}Z"
+    )
+    return s
+
+
+def pip_brows(expression):
+    if expression == "surprised":
+        return paint("M124 191 Q146 177 168 191 Q146 184 124 191Z") + paint(
+            "M241 160 Q260 146 279 160 Q260 153 241 160Z"
+        )
+    if expression == "skeptical":
+        return paint("M124 192 Q146 169 168 191 Q147 181 124 192Z") + paint(
+            "M241 163 Q260 159 279 165 Q260 172 241 163Z"
+        )
+    if expression == "sad":
+        return paint("M124 196 Q147 190 168 178 Q158 196 124 196Z") + paint(
+            "M240 151 Q259 170 280 177 Q253 177 240 151Z"
+        )
+    return brows(SPECS["pip"], expression)
 
 
 def visible(scene):
@@ -560,8 +603,14 @@ def convert(source, name, target):
                 eye_expression = (
                     "neutral" if face == "skeptical" and index == 0 else face
                 )
-                body += eye(cx, cy, rx, ry, eye_expression, bg)
-            body += brows(spec, face) + mouth(name, spec, face, original)
+                body += (
+                    pip_eye(cx, cy, rx, ry, face, index)
+                    if name == "pip"
+                    else eye(cx, cy, rx, ry, eye_expression, bg)
+                )
+            body += (pip_brows(face) if name == "pip" else brows(spec, face)) + mouth(
+                name, spec, face, original
+            )
         # Clip the re-drawn features to the same interior face areas. Native ears,
         # cheeks, headbands and paddle contours remain untouched.
         import xml.etree.ElementTree as ET
@@ -583,5 +632,5 @@ if __name__ == "__main__":
     parser.add_argument("source", type=Path)
     parser.add_argument("--target", type=Path, default=Path("web/static/img"))
     args = parser.parse_args()
-    for name in ("vex",):
+    for name in ("vex", "pip"):
         convert(args.source, name, args.target / name)

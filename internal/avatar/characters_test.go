@@ -136,7 +136,7 @@ func TestRemovedCharactersCannotBeSelected(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, key := range []string{"fynn", "chomp", "pogo", "pip", "kiki"} {
+	for _, key := range []string{"fynn", "chomp", "pogo", "kiki"} {
 		t.Run(key, func(t *testing.T) {
 			a := avatar.Avatar{Character: key, Headdress: avatar.SameAsFur, Handle: avatar.SameAsFur, Blade: "pink"}
 			if !errors.Is(avatar.Validate(a), avatar.ErrUnknown) {

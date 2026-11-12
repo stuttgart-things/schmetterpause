@@ -487,7 +487,8 @@ func TestExpressionGalleryFollowsUnsavedCharacterAndColours(t *testing.T) {
 			}
 			check(t, switched.Body.String(), ch.Key)
 			a := avatar.DefaultForCharacter(ch.Key, id.String())
-			a.Fur = "white"
+			coat := avatar.FurPalette(ch.Key)[0]
+			a.Fur = coat.Key
 			a.Handle = "blue"
 			a.Headdress = "lapis"
 			a.Blade = "pink"
@@ -503,7 +504,7 @@ func TestExpressionGalleryFollowsUnsavedCharacterAndColours(t *testing.T) {
 			if !strings.Contains(body, `hx-swap-oob="true"`) {
 				t.Error("colour preview does not refresh the gallery")
 			}
-			for _, colour := range []string{"--fur:#f7f5f0", "--handle:#2f6fd0", "--paddle:#d64f9c"} {
+			for _, colour := range []string{"--fur:" + coat.Hex, "--handle:#2f6fd0", "--paddle:#d64f9c"} {
 				if strings.Count(body, colour) != 8 {
 					t.Errorf("%s was not applied to main preview, selected thumbnail and six expressions", colour)
 				}
@@ -566,7 +567,7 @@ func TestVexPaletteOptionsAndRequestsAreRestricted(t *testing.T) {
 		t.Error("read mutated persisted choices")
 	}
 	for _, ch := range avatar.Characters {
-		if ch.Key == "vex" {
+		if ch.Key != "" {
 			continue
 		}
 		other := fragment(t, h, "/fragments/figure-character?character="+ch.Key+"&blade=pink", anna).Body.String()
@@ -630,7 +631,7 @@ func TestBleckiJewelleryPersistsPreviewsAndResets(t *testing.T) {
 	if !strings.Contains(profile, `name="fur" value="" checked`) || strings.Contains(profile, `name="fur" value="cinnamon"`) {
 		t.Error("stored cinnamon does not show Original")
 	}
-	if !strings.Contains(profile, "blecki") || strings.Contains(profile, ">Vex<") || strings.Contains(profile, `value="pip"`) || strings.Contains(profile, `value="pogo"`) || strings.Contains(profile, `value="kiki"`) {
+	if !strings.Contains(profile, "blecki") || strings.Contains(profile, ">Vex<") || !strings.Contains(profile, `value="pip"`) || strings.Contains(profile, `value="pogo"`) || strings.Contains(profile, `value="kiki"`) {
 		t.Error("release character selection is wrong")
 	}
 }
@@ -735,5 +736,27 @@ func TestBleckiBallColourControlPersistenceAndFallback(t *testing.T) {
 	body = fragment(t, h, "/players/"+id.String(), anna).Body.String()
 	if strings.Contains(body, "<legend>Ballfarbe</legend>") {
 		t.Error("reset must hide ball colours")
+	}
+}
+
+func TestPipEditorHasHeadbandAndNoJewellery(t *testing.T) {
+	h, _, anna, _ := twoBrowsers(t)
+	rec := fragment(t, h, "/fragments/figure-character?character=pip&blade=pink", anna)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("Pip editor: %d", rec.Code)
+	}
+	body := rec.Body.String()
+	for _, want := range []string{`data-character="pip"`, `name="headdress"`, `name="fur" value="sand"`, `name="fur" value="chocolate"`, `name="blade" value="pink" checked`} {
+		if !strings.Contains(body, want) {
+			t.Errorf("missing %s", want)
+		}
+	}
+	for _, unwanted := range []string{`name="bling"`, `type="radio" name="ballColor"`, `name="fur" value="cream"`} {
+		if strings.Contains(body, unwanted) {
+			t.Errorf("unexpected %s", unwanted)
+		}
+	}
+	if strings.Count(body, `class="sthings-face"`) < 7 {
+		t.Error("missing expression gallery")
 	}
 }

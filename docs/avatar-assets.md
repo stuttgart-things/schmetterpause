@@ -7,7 +7,8 @@ Each other character has `base.svg` and six `face-*.svg` files under
 class and a `data-face` attribute, including in live SVG and LED GIF output.
 
 blecki retains the provided Character Creator v4 wolf drawing and its pose.
-The Pogo, Pip and Kiki workshop drawings are preserved on separate branches. Face surfaces are separated and additional
+Pip is restored from its workshop branch as the third selectable character.
+The Pogo and Kiki workshop drawings remain preserved on separate branches. Face surfaces are separated and additional
 expressions are drawn at
 the native eye and mouth positions. The supplied jewellery overlays are not
 imported: the original sthings jewellery is offered only for sthings. blecki’s ball is purpose-drawn for its own single slot.
@@ -15,7 +16,7 @@ imported: the original sthings jewellery is offered only for sthings. blecki’s
 ## Reproduce the Creator imports
 
 Use the supplied `tischtennis-character-creator-v4 (3)/assets/characters`
-directory as input. The release importer processes blecki only and does not
+directory as input. The release importer processes blecki and Pip and does not
 modify its source directory. The workshop branches retain the other imports.
 
 ```sh
@@ -36,7 +37,7 @@ Boolean operations preserve the native curves when extracting face surfaces.
 For the new characters, an empty fur key keeps the original materials.
 Choosing a palette colour replaces the main body surface; muzzle, ear and
 other material colours remain fixed. The existing `fur` key for headband and
-handle selects their original colours. blecki has no headband and therefore
+handle selects their original colours. Pip retains its separately coloured headband. blecki has no headband and therefore
 has no visible headband control. All player-supplied keys are validated
 before saving. Unknown stored characters, including the removed Fynn and
 Chomp, fall back to sthings. Their SVG assets are no longer shipped.
@@ -175,3 +176,32 @@ It checks the three options, all six expression previews, the selected
 thumbnail, every blade, retired-key rejection and mobile layout, and verifies
 that preview changes never rewrite the saved SVG. Go handler tests exercise
 saving/reset and stale stored choices.
+
+
+## Pip review
+
+Pip is a penguin restored from `feat/pip-fine-tuning`; no other workshop
+characters are enabled. Its base, native Neutral expression and Happy expression
+retain the Creator design. The other eyes use visible sclerae, glossy pupils and
+filled upper lids. Skeptical has an open left eye, a raised brow and a horizontal
+right lid; Angry lids slope inwards; Sad lids slope outwards with a downward gaze.
+The beak remains the native filled shape across expressions.
+
+The initial body palette is Original (navy), Sand and Chocolate. Pale coats are
+excluded to preserve the white face/bib separation. Palette removal falls back
+to Original for stored Pip profiles. Headband, handle and blade palettes remain
+shared. Pip has no jewellery control or jewellery assets. Existing persistence,
+reset, random selection, live expression previews and avatar SVG/GIF endpoints
+are reused without a database migration.
+
+Reproduce the PNG sheets and GIFs through the runtime renderer:
+
+```sh
+go run ./scripts/avatar_review.go -character pip -out docs/avatar-check/pip
+```
+
+Open `docs/avatar-check/pip/index.html` to compare expressions at 192, 64 and
+28 pixels on navy and black, material choices, the 64-pixel animation and a
+larger viewing copy. Physical LED-panel contrast and the aesthetic acceptance
+of Sand/Chocolate remain manual checks. The dark native coat has reduced
+silhouette contrast against black; eyes, bib and headband remain visible.

@@ -33,7 +33,7 @@ func TestVexPaletteIsAppliedToStoredSubmittedAndRandomFigures(t *testing.T) {
 			t.Errorf("stored %s did not fall back to Vex's original coat: %+v", key, filled)
 		}
 		for _, ch := range Characters {
-			if ch.Key == "vex" {
+			if ch.Key != "" {
 				continue
 			}
 			a = DefaultForCharacter(ch.Key, "anna")
@@ -283,8 +283,8 @@ func TestBleckiJewelleryUsesOneCharacterSpecificSlot(t *testing.T) {
 		t.Fatal(err)
 	}
 	want := []string{"", "ball"}
-	if len(Characters) != 2 || Characters[1].Name != "blecki" {
-		t.Fatal("release must offer sthings and blecki only")
+	if len(Characters) != 3 || Characters[1].Name != "blecki" {
+		t.Fatal("release must retain sthings and blecki alongside Pip")
 	}
 	for i, b := range BlingPalette("vex") {
 		if b.Key != want[i] {

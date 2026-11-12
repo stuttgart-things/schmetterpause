@@ -4,6 +4,15 @@ package avatar
 // material of new characters is the separate empty key. blecki keeps cool or
 // muted wolf tones; the remaining alternatives are subject to visual review.
 func FurPalette(characterKey string) []Colour {
+	if characterKey == "pip" {
+		var palette []Colour
+		for _, c := range Furs {
+			if c.Key == "sand" || c.Key == "chocolate" {
+				palette = append(palette, c)
+			}
+		}
+		return palette
+	}
 	if characterKey != "vex" {
 		return Furs
 	}
