@@ -19,6 +19,7 @@ const { chromium } = require(process.env.SP_PLAYWRIGHT_MODULE || 'playwright');
     const profile=base+'/players/'+id;
     await page.goto(profile);
     await page.locator('#figure-editor').waitFor();
+    assert.equal(await page.locator('.character-pick').filter({has:page.locator('input[name=character][value=pip]')}).innerText(), 'hank');
     const pip=page.locator('input[name=character][value=pip]');
     if (!(await pip.isChecked())) await Promise.all([
       page.waitForResponse(r=>r.url().includes('/fragments/figure-character')&&r.status()===200),

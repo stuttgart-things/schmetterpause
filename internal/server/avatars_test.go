@@ -748,7 +748,7 @@ func TestHankEditorHasHeadbandAndInitial(t *testing.T) {
 		t.Fatalf("Pip editor: %d", rec.Code)
 	}
 	body := rec.Body.String()
-	for _, want := range []string{`data-character="pip"`, `Gesichtsausdrücke: Hank`, `>Hank<`, `name="bling" value="initial"`, `name="headdress"`, `name="fur" value="grey"`, `name="fur" value="blue-grey"`, `name="blade" value="pink" checked`} {
+	for _, want := range []string{`data-character="pip"`, `Gesichtsausdrücke: hank`, `>hank<`, `name="bling" value="initial"`, `name="headdress"`, `name="fur" value="grey"`, `name="fur" value="blue-grey"`, `name="blade" value="pink" checked`} {
 		if !strings.Contains(body, want) {
 			t.Errorf("missing %s", want)
 		}

@@ -120,7 +120,7 @@ func run(key, out string) error {
 		for _, face := range avatar.Faces {
 			samples = append(samples, sample{face.Name + " / Alt", a, face.Key}, sample{face.Name + " / Neu", a, face.Key})
 		}
-		if err = sheet(collection, samples, 6, 64, color.RGBA{0, 0, 0, 255}, "Hank | Alt / Neu je Ausdruck | 64 px schwarz", filepath.Join(out, "eyes-before-after-64-black.png")); err != nil {
+		if err = sheet(collection, samples, 6, 64, color.RGBA{0, 0, 0, 255}, "hank | Alt / Neu je Ausdruck | 64 px schwarz", filepath.Join(out, "eyes-before-after-64-black.png")); err != nil {
 			return err
 		}
 		comparisonBefore = nil
@@ -133,7 +133,7 @@ func run(key, out string) error {
 			rackets = append(rackets, sample{label, b, "neutral"})
 		}
 		for _, size := range []int{192, 64} {
-			if err = sheet(collection, rackets, 3, size, color.RGBA{0, 0, 0, 255}, "Hank | Schlägerfarben", filepath.Join(out, fmt.Sprintf("racket-colours-%d-black.png", size))); err != nil {
+			if err = sheet(collection, rackets, 3, size, color.RGBA{0, 0, 0, 255}, "hank | Schlägerfarben", filepath.Join(out, fmt.Sprintf("racket-colours-%d-black.png", size))); err != nil {
 				return err
 			}
 		}
@@ -143,7 +143,7 @@ func run(key, out string) error {
 			eyes = append(eyes, sample{face.Name, a, face.Key})
 		}
 		eyesDetail = true
-		err = sheet(collection, eyes, 3, 192, color.RGBA{10, 10, 18, 255}, "Hank | Augenpartie | 192 px Detail", filepath.Join(out, "eyes-detail-192.png"))
+		err = sheet(collection, eyes, 3, 192, color.RGBA{10, 10, 18, 255}, "hank | Augenpartie | 192 px Detail", filepath.Join(out, "eyes-detail-192.png"))
 		eyesDetail = false
 		if err != nil {
 			return err
@@ -160,7 +160,7 @@ func run(key, out string) error {
 			row = append(row, sample{f.Name, a, f.Key})
 		}
 		for _, size := range []int{64, 28} {
-			if err = sheet(collection, row, 6, size, color.RGBA{0, 0, 0, 255}, "Hank | original | black", filepath.Join(out, fmt.Sprintf("expressions-row-%d-black.png", size))); err != nil {
+			if err = sheet(collection, row, 6, size, color.RGBA{0, 0, 0, 255}, "hank | original | black", filepath.Join(out, fmt.Sprintf("expressions-row-%d-black.png", size))); err != nil {
 				return err
 			}
 		}
@@ -205,7 +205,7 @@ func run(key, out string) error {
 			}
 			critical = append(critical, sample{coat + " / Schläger " + map[string]string{"blue": "Blau", "steel": "Stahl"}[pair[1]], b, "neutral"})
 		}
-		if err = sheet(collection, critical, 4, 64, color.RGBA{0, 0, 0, 255}, "Hank | kritische Kombinationen | 64 px", filepath.Join(out, "critical-64-black.png")); err != nil {
+		if err = sheet(collection, critical, 4, 64, color.RGBA{0, 0, 0, 255}, "hank | kritische Kombinationen | 64 px", filepath.Join(out, "critical-64-black.png")); err != nil {
 			return err
 		}
 	}
@@ -721,17 +721,17 @@ func emblemReview(out string) error {
 		colour color.RGBA
 	}{{"app", color.RGBA{10, 10, 18, 255}}, {"black", color.RGBA{0, 0, 0, 255}}} {
 		for _, size := range []int{192, 64, 28} {
-			if err = sheet(c, matrix, 4, size, bg.colour, fmt.Sprintf("Hank | Embleme | %d px | %s", size, bg.name), filepath.Join(out, fmt.Sprintf("emblems-%d-%s.png", size, bg.name))); err != nil {
+			if err = sheet(c, matrix, 4, size, bg.colour, fmt.Sprintf("hank | Embleme | %d px | %s", size, bg.name), filepath.Join(out, fmt.Sprintf("emblems-%d-%s.png", size, bg.name))); err != nil {
 				return err
 			}
-			if err = sheet(c, letters, 6, size, bg.colour, fmt.Sprintf("Hank | A–Z Ä Ö Ü und Rückfall | %d px", size), filepath.Join(out, fmt.Sprintf("letters-%d-%s.png", size, bg.name))); err != nil {
+			if err = sheet(c, letters, 6, size, bg.colour, fmt.Sprintf("hank | A–Z Ä Ö Ü und Rückfall | %d px", size), filepath.Join(out, fmt.Sprintf("letters-%d-%s.png", size, bg.name))); err != nil {
 				return err
 			}
 		}
 	}
 	comparison := []sample{letters[14], letters[16], letters[len(letters)-1]}
 	for _, size := range []int{192, 64} {
-		if err = sheet(c, comparison, 3, size, color.RGBA{0, 0, 0, 255}, "Hank | O / Q / Rückfall", filepath.Join(out, fmt.Sprintf("fallback-oq-%d-black.png", size))); err != nil {
+		if err = sheet(c, comparison, 3, size, color.RGBA{0, 0, 0, 255}, "hank | O / Q / Rückfall", filepath.Join(out, fmt.Sprintf("fallback-oq-%d-black.png", size))); err != nil {
 			return err
 		}
 	}
