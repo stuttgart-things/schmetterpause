@@ -86,6 +86,17 @@ class HankEmblemGeometry(unittest.TestCase):
                     letter,
                 )
 
+    def test_fallback_is_one_solid_contour_and_fits_letter_inset(self):
+        root = ET.parse(ASSETS / "bling-initial.svg").getroot()
+        fallback = next(g for g in root.iter() if g.get("data-initial") == "fallback")
+        self.assertEqual(len(fallback), 2)
+        interior = ellipse(209.8, 366.1, 22, 22)
+        for el in fallback:
+            d = el.get("d")
+            self.assertEqual(len(re.findall(r"[Mm]", d)), 1, "inner subpath/hole")
+            self.assertLess(op(shape(d), interior, pathops.PathOp.DIFFERENCE).area, .001)
+        self.assertLess(shape(fallback[-1].get("d")).area, self.emblem.area * .6)
+
     def test_thumb_wraps_grip_without_changing_outer_silhouette(self):
         before = ET.parse(
             ROOT / "docs/avatar-check/pip/emblems/hand-before-base.svg"

@@ -729,6 +729,12 @@ func emblemReview(out string) error {
 			}
 		}
 	}
+	comparison := []sample{letters[14], letters[16], letters[len(letters)-1]}
+	for _, size := range []int{192, 64} {
+		if err = sheet(c, comparison, 3, size, color.RGBA{0, 0, 0, 255}, "Hank | O / Q / Rückfall", filepath.Join(out, fmt.Sprintf("fallback-oq-%d-black.png", size))); err != nil {
+			return err
+		}
+	}
 	reviewNames = nil
 	before, err := handBeforeCollection()
 	if err != nil {

@@ -37,3 +37,8 @@ At 64 px the shield is about 8.7 pixels wide, with roughly 4–5-pixel letters.
 The badge is clear but wide letters and umlaut dots are not reliably readable
 at that size. At 28 px it is principally a coloured badge. Physical LED readability
 and aesthetic approval remain manual checks.
+
+Fallback correction: a single solid white paddle silhouette, head upper right and
+short handle lower left (about 45 degrees), with a separate black filled outline.
+`fallback-oq-{192,64}-black.png` compares O, Q and the nameless fallback.
+The geometry test rejects inner subpaths and checks the shared interior margin.

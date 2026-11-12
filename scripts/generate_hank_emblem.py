@@ -70,11 +70,16 @@ for letter, d in source["glyphs"].items():
     + "\n}\n"
 )
 # Table-tennis silhouette: tilted paddle and handle, generated as filled paths.
-paddle = ellipse(CX, CY - 3, 8.7, 11)
-handle = shape(f"M{CX+3} {CY+4} L{CX+12} {CY+15}")
-handle.stroke(6, pathops.LineCap.ROUND_CAP, pathops.LineJoin.ROUND_JOIN, 4)
-handle.convertConicsToQuads(0.001)
-symbol = op(paddle, handle, pathops.PathOp.UNION)
+# One continuous filled silhouette: head northeast, short handle southwest.
+# Coordinates bake the approximately 45-degree direction into the path.
+symbol = shape(
+    f"M{CX-11} {CY+14} Q{CX-14} {CY+16} {CX-16} {CY+12} "
+    f"L{CX-6} {CY+2} "
+    f"C{CX-12} {CY-5} {CX-4} {CY-16} {CX+4} {CY-15} "
+    f"C{CX+13} {CY-15} {CX+17} {CY-7} {CX+12} {CY} "
+    f"C{CX+8} {CY+6} {CX+3} {CY+8} {CX-1} {CY+5}Z"
+)
+symbol = transformed(symbol, Transform().translate(CX, CY).scale(.95).translate(-CX, -CY))
 fallback = svgpath(outlined(symbol), INK) + svgpath(symbol, "#fff6f3")
 shield = svgpath(ellipse(CX, CY, R, R), INK) + svgpath(
     ellipse(CX, CY, R - 5.5, R - 5.5), "var(--emblem, #d742c5)"
