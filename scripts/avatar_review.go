@@ -39,12 +39,20 @@ type sample struct {
 }
 
 func main() {
+	style := flag.Bool("sthings-style-only", false, "export paired sthings/hank reference")
 	cheek := flag.Bool("cheek-contour-only", false, "export hank contour before/after review")
 	key := flag.String("character", "vex", "character key")
 	out := flag.String("out", "docs/avatar-check/vex", "output directory")
 	emblems := flag.Bool("emblems-only", false, "export hank emblem acceptance matrix")
 	accessories := flag.Bool("accessories-only", false, "export only the blecki accessory acceptance matrix")
 	flag.Parse()
+	if *style {
+		if err := sthingsStyleReview(*out); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+		return
+	}
 	if *cheek {
 		if err := cheekContourReview(*out); err != nil {
 			fmt.Fprintln(os.Stderr, err)
@@ -430,7 +438,7 @@ not photographs of a real panel. In particular, dark wood and moss on black
 should be checked on the device. No runtime hides jewellery automatically.
 `
 	if key == "pip" {
-		note = "# hank acceptance review\n\nRegenerate: `go run ./scripts/avatar_review.go -character pip -out docs/avatar-check/pip`\n\nOpen index.html for expressions, materials and GIFs. The expressions-row PNGs show the six faces in original colours at 64 and 28 pixels on black. Full sheets include Original, Grau and Blaugrau on navy and black. hank has no cheeks; Schmuck choices are Kein Schmuck and Initiale. Grey excludes Silver; native Pink is labelled Original. The eyes-before-after-64-black.png sheet compares archived 7969bdf GIFs against hank without cheeks, each Alt/Neu pair adjacent. The eyes-detail-192.png sheet shows eyes and brows. Eyes have no sclera; only two round white glints remain. Physical LED-panel contrast remains to be checked.\n"
+		note = "# hank acceptance review\n\nRegenerate: `go run ./scripts/avatar_review.go -character pip -out docs/avatar-check/pip`\n\nOpen index.html for expressions, materials and GIFs. The expressions-row PNGs show the six faces in original colours at 64 and 28 pixels on black. Full sheets include Original, Grau and Blaugrau on navy and black. hank has no cheeks; Schmuck choices are Kein Schmuck and Initiale. Grey excludes Silver; native Pink is labelled Original. The eyes-before-after-64-black.png sheet compares archived 7969bdf GIFs against hank without cheeks, each Alt/Neu pair adjacent. The eyes-detail-192.png sheet shows eyes and brows. Eyes and brows use the actual scaled sthings artwork, with white eyeballs, attached pupils and their original glints. The raised racket deliberately overlaps the cheek. Physical LED-panel contrast remains to be checked.\n"
 	}
 	if err = os.WriteFile(filepath.Join(out, "README.md"), []byte(note), 0644); err != nil {
 		return err
@@ -842,4 +850,23 @@ func cheekContourReview(out string) error {
 		expressions = append(expressions, sample{face.Name, a, face.Key})
 	}
 	return sheet(current, expressions, 6, 192, color.RGBA{0, 0, 0, 255}, templateName("pip")+" | bereinigte Wangenkontur", filepath.Join(out, "expressions-192-black.png"))
+}
+
+func sthingsStyleReview(out string) error {
+	c, err := avatar.LoadCollection(web.Static, "static/img")
+	if err != nil {
+		return err
+	}
+	if err = os.MkdirAll(out, 0755); err != nil {
+		return err
+	}
+	var pairs []sample
+	for _, face := range avatar.Faces {
+		for _, key := range []string{"", "pip"} {
+			a := avatar.DefaultForCharacter(key, "")
+			a.Blade = "light-blue"
+			pairs = append(pairs, sample{templateName(key) + " / " + face.Name, a, face.Key})
+		}
+	}
+	return sheet(c, pairs, 2, 192, color.RGBA{10, 10, 18, 255}, "sthings / hank | sechs Ausdrücke", filepath.Join(out, "sthings-hank-192-app.png"))
 }

@@ -159,8 +159,8 @@ func TestHankEmblemKeepsExpressionSeparation(t *testing.T) {
 			}
 		}
 		t.Logf("Hank initial %q: minimum separation %d", name, minimum)
-		if minimum < 99 {
-			t.Errorf("emblem regresses separation below 99: %d", minimum)
+		if minimum < 114 {
+			t.Errorf("emblem regresses separation below 114: %d", minimum)
 		}
 	}
 }

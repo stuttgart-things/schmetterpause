@@ -42,24 +42,21 @@ class HankRacketGeometry(unittest.TestCase):
                 self.assertGreaterEqual(min(x1, y1), 8 - 0.001)
                 self.assertLessEqual(max(x2, y2), 412 + 0.001)
 
-    def test_twelve_unit_head_and_proposed_round_emblem_clearance(self):
-        head = op(
-            union(paths(self.parts["body"])),
-            rect(0, 0, 420, 315),
-            pathops.PathOp.INTERSECTION,
-        )
+    def test_racket_overlaps_cheek_and_clears_every_face_feature(self):
+        head = op(union(paths(self.parts["body"])), rect(0,0,420,315), pathops.PathOp.INTERSECTION)
         racket = union(paths(self.racket))
-        for name in ("racket", "flipper"):
-            for p in paths(self.parts[name]):
-                self.assertLess(op(grow(head, 12), p, pathops.PathOp.INTERSECTION).area, .001, name)
-        self.assertLess(
-            op(grow(head, 12), racket, pathops.PathOp.INTERSECTION).area, 0.001
-        )
-        # The actual round belly emblem, including its outline.
-        reserve = ellipse(209.8, 366.1, 28.5, 28.5)
-        self.assertLess(
-            op(grow(reserve, 12), racket, pathops.PathOp.INTERSECTION).area, 0.001
-        )
+        for face in ("neutral","happy","surprised","skeptical","angry","sad"):
+            features=ET.parse(ROOT / ("face-"+face+".svg")).getroot()
+            for p in paths(features):
+                self.assertLess(op(grow(p,12),racket,pathops.PathOp.INTERSECTION).area,.001,face)
+        blade = next(g for g in self.racket if g.get("data-pip-part")=="blade")
+        overlap=op(head,union(paths(blade)),pathops.PathOp.INTERSECTION)
+        strip=op(overlap,rect(0,244.99,420,245.01),pathops.PathOp.INTERSECTION)
+        self.assertGreaterEqual(strip.bounds[2]-strip.bounds[0],20)
+        self.assertGreater(overlap.area,400)
+        reserve=ellipse(209.8,366.1,28.5,28.5)
+        for name in ("racket","flipper"):
+            self.assertLess(op(grow(reserve,12),union(paths(self.parts[name])),pathops.PathOp.INTERSECTION).area,.001,name)
 
     def test_selected_grip_colour_keeps_at_least_thirty_by_eighteen_equivalent_area(
         self,

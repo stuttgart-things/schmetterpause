@@ -7,11 +7,9 @@ import (
 	"image/color"
 	"image/gif"
 	"io/fs"
-	"math"
 	"math/rand/v2"
 	"reflect"
 	"regexp"
-	"strconv"
 	"strings"
 	"testing"
 
@@ -120,48 +118,7 @@ func TestPipHeadbandPaletteAndRendering(t *testing.T) {
 	}
 }
 
-func TestPipRacketClearsTheHead(t *testing.T) {
-	data, err := fs.ReadFile(web.Static, "static/img/pip/base.svg")
-	if err != nil {
-		t.Fatal(err)
-	}
-	part := func(name string) *image.RGBA {
-		t.Helper()
-		match := regexp.MustCompile(`(?s)<g data-pip-part="` + name + `">(.*?)</g>`).FindSubmatch(data)
-		if match == nil {
-			t.Fatalf("missing %s", name)
-		}
-		svg := `<svg viewBox="0 0 420 420">` + string(match[1]) + `</svg>`
-		// Resolve the same variables as RenderFlat for this geometry-only check.
-		svg = varRef.ReplaceAllStringFunc(svg, func(s string) string { return varRef.FindStringSubmatch(s)[2] })
-		svg = regexp.MustCompile(`fill="[^"]+"`).ReplaceAllString(svg, `fill="#ffffff"`)
-		img, err := rasterise(svg, 420)
-		if err != nil {
-			t.Fatal(err)
-		}
-		return img
-	}
-	body, blade := part("body"), part("blade")
-	for y := 0; y < 420; y++ {
-		for x := 0; x < 420; x++ {
-			if blade.RGBAAt(x, y).R < 128 {
-				continue
-			}
-			for dy := -12; dy <= 12; dy++ {
-				for dx := -12; dx <= 12; dx++ {
-					if dx*dx+dy*dy >= 144 || y+dy > 315 {
-						continue
-					}
-					if body.RGBAAt(x+dx, y+dy).R >= 128 {
-						t.Fatalf("blade/head gap below 12 at %d,%d", x, y)
-					}
-				}
-			}
-		}
-	}
-}
-
-func TestPipBeaksBelongToFacesAndRemainWithinNativeSize(t *testing.T) {
+func TestPipBeaksBelongToFacesWithinTwentyFivePercent(t *testing.T) {
 	base, err := fs.ReadFile(web.Static, "static/img/pip/base.svg")
 	if err != nil {
 		t.Fatal(err)
@@ -200,7 +157,7 @@ func TestPipBeaksBelongToFacesAndRemainWithinNativeSize(t *testing.T) {
 			}
 		}
 		w, h := maxX-minX+1, maxY-minY+1
-		if w < 54 || w > 68 || h < 43 || h > 55 {
+		if w < 45 || w > 77 || h < 36 || h > 62 {
 			t.Errorf("%s beak %dx%d exceeds native size tolerance", face.Key, w, h)
 		}
 	}
@@ -299,99 +256,6 @@ func TestPipSilverRequiresANonGreyCoat(t *testing.T) {
 	}
 }
 
-func TestPipEyesKeepTwoVisibleHighlights(t *testing.T) {
-	c, err := LoadCollection(web.Static, "static/img")
-	if err != nil {
-		t.Fatal(err)
-	}
-	a := DefaultForCharacter("pip", "")
-	for _, face := range Faces {
-		if face.Key == "happy" {
-			continue
-		}
-		img, err := rasterise(c.RenderFlat(a, face.Key), 420)
-		if err != nil {
-			t.Fatal(err)
-		}
-		for index, anchor := range [][2]int{{146, 221}, {260, 192}} {
-			cx, cy := anchor[0], anchor[1]
-			hy := cy - 10
-			if face.Key == "neutral" || face.Key == "angry" || face.Key == "sad" || (face.Key == "skeptical" && index == 1) {
-				data, _ := fs.ReadFile(web.Static, "static/img/pip/face-"+face.Key+".svg")
-				glints := regexp.MustCompile(`<path fill="#f8f8f8"[^>]*d="M[-.0-9]+ ([-.0-9]+)`).FindAllSubmatch(data, -1)
-				y, err := strconv.ParseFloat(string(glints[index*2][1]), 64)
-				if err != nil {
-					t.Fatal(err)
-				}
-				hy = int(math.Round(y))
-			}
-			// Check centres and four interior points so a lid cannot turn a glint
-			// into a missing pixel or a clipped triangle.
-			for _, glint := range [][3]int{{cx - 5, hy, 5}, {cx + 9, cy + 18, 1}} {
-				for _, offset := range [][2]int{{0, 0}, {glint[2], 0}, {-glint[2], 0}, {0, glint[2]}, {0, -glint[2]}} {
-					pixel := img.RGBAAt(glint[0]+offset[0], glint[1]+offset[1])
-					if pixel.R < 240 || pixel.G < 240 || pixel.B < 240 {
-						t.Errorf("%s eye %d glint covered at %v: %v", face.Key, index, offset, pixel)
-					}
-				}
-			}
-		}
-	}
-}
-
-func TestPipOpenEyesHaveOnlyRoundWhiteGlints(t *testing.T) {
-	for _, face := range Faces {
-		data, err := fs.ReadFile(web.Static, "static/img/pip/face-"+face.Key+".svg")
-		if err != nil {
-			t.Fatal(err)
-		}
-		eyes := regexp.MustCompile(`(?s)<g data-pip-part="beak">.*?</g>`).ReplaceAllString(string(data), "")
-		whites := regexp.MustCompile(`<path fill="#f8f8f8"[^>]*/>`).FindAllString(eyes, -1)
-		if face.Key == "happy" {
-			if len(whites) != 0 {
-				t.Fatal("changed happy crescents")
-			}
-			continue
-		}
-		if len(whites) != 4 {
-			t.Fatalf("%s has %d white paths, want two glints per eye", face.Key, len(whites))
-		}
-		big, small := 0, 0
-		for _, path := range whites {
-			img, err := rasterise(`<svg viewBox="0 0 420 420">`+path+`</svg>`, 420)
-			if err != nil {
-				t.Fatal(err)
-			}
-			minX, minY, maxX, maxY := 420, 420, 0, 0
-			for y := 0; y < 420; y++ {
-				for x := 0; x < 420; x++ {
-					if img.RGBAAt(x, y).R >= 128 {
-						minX = min(minX, x)
-						minY = min(minY, y)
-						maxX = max(maxX, x)
-						maxY = max(maxY, y)
-					}
-				}
-			}
-			w, h := maxX-minX+1, maxY-minY+1
-			switch {
-			case w >= 15 && w <= 19 && h >= 15 && h <= 19 && w-h <= 1 && h-w <= 1:
-				big++
-			case w >= 7 && w <= 9 && h >= 7 && h <= 9:
-				small++
-			default:
-				t.Errorf("%s white shape %dx%d is not a permitted round glint (possible sclera)", face.Key, w, h)
-			}
-			if img.RGBAAt(minX, minY).R >= 128 {
-				t.Error("rectangular glint")
-			}
-		}
-		if big != 2 || small != 2 {
-			t.Errorf("%s glints: big=%d small=%d", face.Key, big, small)
-		}
-	}
-}
-
 func TestPip64PixelExpressionSeparation(t *testing.T) {
 	c, err := LoadCollection(web.Static, "static/img")
 	if err != nil {
@@ -436,12 +300,7 @@ func TestPip64PixelExpressionSeparation(t *testing.T) {
 	now := separation(current)
 	t.Logf("minimum pair separation in 64px quantised GIFs: current=%d target=114", now)
 	if now < 114 {
-		t.Logf("requested target 114 not met (%d); report measured closest pair without altering expressions", now)
-	}
-	// The cheek-removal request explicitly permits reporting a value below
-	// the target; protect that reported cheek-free baseline against regression.
-	if now < 99 {
-		t.Errorf("cheek-free baseline regressed: %d < 99", now)
+		t.Errorf("sthings-style expression separation regressed: %d < 114", now)
 	}
 }
 
@@ -458,55 +317,6 @@ func TestPipHasNoCheeks(t *testing.T) {
 		for _, forbidden := range []string{`data-pip-part="cheeks"`, "#f5b5ce", "#f294b8", "#ec6f74", "#f6d4e0"} {
 			if strings.Contains(strings.ToLower(string(data)), forbidden) {
 				t.Errorf("%s still contains %s", name, forbidden)
-			}
-		}
-	}
-}
-
-func TestPipHighlightsShareRelativeLightSource(t *testing.T) {
-	for _, face := range Faces {
-		if face.Key == "happy" {
-			continue
-		}
-		data, err := fs.ReadFile(web.Static, "static/img/pip/face-"+face.Key+".svg")
-		if err != nil {
-			t.Fatal(err)
-		}
-		glints := regexp.MustCompile(`<path fill="#f8f8f8"[^>]*d="M([-.0-9]+) ([-.0-9]+)`).FindAllSubmatch(data, -1)
-		if len(glints) != 4 {
-			t.Fatal("missing glints")
-		}
-		neutralY := -1000.0
-		for i, anchor := range [][2]float64{{146, 221}, {260, 192}} {
-			radius := 9.0
-			lowered := face.Key == "angry" || face.Key == "sad" || (face.Key == "skeptical" && i == 1)
-			if lowered {
-				radius = 8
-			}
-			x, _ := strconv.ParseFloat(string(glints[i*2][1]), 64)
-			y, _ := strconv.ParseFloat(string(glints[i*2][2]), 64)
-			if math.Abs(x+radius-anchor[0]+5) > .01 {
-				t.Errorf("%s eye %d horizontal light drift", face.Key, i)
-			}
-			if y-anchor[1] < -10.01 {
-				t.Error("highlight moved upwards")
-			}
-			if face.Key == "surprised" || (face.Key == "skeptical" && i == 0) {
-				if math.Abs(y-anchor[1]+10) > .01 {
-					t.Error("uncovered eye light drift")
-				}
-			}
-			if face.Key == "neutral" {
-				if i == 0 {
-					neutralY = y - anchor[1]
-				} else if math.Abs(y-anchor[1]-neutralY) > .01 {
-					t.Error("neutral glints are not aligned")
-				}
-			}
-			sx, _ := strconv.ParseFloat(string(glints[i*2+1][1]), 64)
-			sy, _ := strconv.ParseFloat(string(glints[i*2+1][2]), 64)
-			if math.Abs(sx+3.5-anchor[0]-8.5) > .01 || math.Abs(sy-anchor[1]-17.5) > .01 {
-				t.Error("small glint light drift")
 			}
 		}
 	}
@@ -546,6 +356,32 @@ func TestHankRacketPathsStayInsideCanvasMargin(t *testing.T) {
 		}
 		if painted == 0 {
 			t.Fatalf("racket path %d is missing", index)
+		}
+	}
+}
+
+// The previous two-glint/no-sclera tests encoded the superseded eye design.
+// The approved reference now uses sthings' combined white pupil cut-outs.
+func TestPipEyesUseSthingsWhiteAndInkConstruction(t *testing.T) {
+	for _, face := range Faces {
+		data, err := fs.ReadFile(web.Static, "static/img/pip/face-"+face.Key+".svg")
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, side := range []string{"0", "1"} {
+			match := regexp.MustCompile(`(?s)<g data-pip-part="eye-` + side + `">(.*?)</g>`).FindSubmatch(data)
+			if match == nil {
+				t.Fatalf("%s missing eye %s", face.Key, side)
+			}
+			if !bytes.Contains(match[1], []byte(`fill="#080808"`)) {
+				t.Fatal("missing strong ink contour")
+			}
+			if face.Key != "happy" && !bytes.Contains(match[1], []byte(`fill="#f8f8f8"`)) {
+				t.Fatal("missing white eye and glint")
+			}
+			if bytes.Contains(match[1], []byte("#14141f")) {
+				t.Fatal("obsolete sclera-free oval")
+			}
 		}
 	}
 }

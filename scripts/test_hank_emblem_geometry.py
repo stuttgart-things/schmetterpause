@@ -43,13 +43,13 @@ class HankEmblemGeometry(unittest.TestCase):
                 p = shape(el.get("d"))
                 x1, y1, x2, y2 = p.bounds
                 if (60 < x1 < 80 and 315 < y1 < 320) or (
-                    230 < x1 < 240 and 310 < y1 < 315
+                    230 < x1 < 240 and 280 < y1 < 300
                 ):
                     arms.append(p)
         self.assertEqual(len(arms), 2)
         flippers = union(arms + paths(self.g["flipper"]))
         self.assertLess(
-            op(self.emblem, grow(flippers, 10), pathops.PathOp.INTERSECTION).area, 0.001
+            op(self.emblem, grow(flippers, 12), pathops.PathOp.INTERSECTION).area, 0.001
         )
         self.assertLess(
             op(
@@ -97,35 +97,12 @@ class HankEmblemGeometry(unittest.TestCase):
             self.assertLess(op(shape(d), interior, pathops.PathOp.DIFFERENCE).area, .001)
         self.assertLess(shape(fallback[-1].get("d")).area, self.emblem.area * .6)
 
-    def test_thumb_wraps_grip_without_changing_outer_silhouette(self):
-        before = ET.parse(
-            ROOT / "docs/avatar-check/pip/emblems/hand-before-base.svg"
-        ).getroot()
-        old = {g.get("data-pip-part"): g for g in before}
-        self.assertEqual(
-            [p.attrib for p in old["body"]][2:], [p.attrib for p in self.g["body"]][2:]
-        )
-        self.assertEqual(
-            [p.attrib for p in old["racket"].iter()],
-            [p.attrib for p in self.g["racket"].iter()],
-        )
-        oldshape = union(paths(before))
-        newshape = union(paths(self.root))
-        # A later approved cleanup removed the old fused-racket spur here.
-        changed = op(newshape, oldshape, pathops.PathOp.XOR)
-        self.assertLess(op(changed, rect(318, 212, 361, 241), pathops.PathOp.DIFFERENCE).area, .001)
-        self.assertEqual(len(list(self.g["flipper"])), 4)
+    def test_raised_thumb_still_wraps_grip_and_flipper(self):
         thumb = shape(list(self.g["flipper"])[-1].get("d"))
-        grip = next(
-            shape(el.get("d"))
-            for el in self.g["racket"]
-            if el.get("fill", "").startswith("var(--handle,")
-        )
-        self.assertGreater(op(thumb, grip, pathops.PathOp.INTERSECTION).area, 10)
-        self.assertGreater(
-            op(thumb, union(paths(old["flipper"])), pathops.PathOp.INTERSECTION).area,
-            10,
-        )
+        paw = shape(list(self.g["flipper"])[1].get("d"))
+        grip = next(shape(el.get("d")) for el in self.g["racket"] if el.get("fill", "").startswith("var(--handle,"))
+        self.assertGreater(op(thumb,grip,pathops.PathOp.INTERSECTION).area,10)
+        self.assertGreater(op(thumb,paw,pathops.PathOp.INTERSECTION).area,10)
 
 
 if __name__ == "__main__":

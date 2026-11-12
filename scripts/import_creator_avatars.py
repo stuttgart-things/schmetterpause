@@ -484,154 +484,75 @@ def convert_vex(source, target):
 
 
 # Fixed native anchors on the unchanged, slightly tilted head.
-PIP_EYES = ((146, 221, 26, 31), (260, 192, 26, 31))
+PIP_EYES = ((145, 236, 32, 40), (255, 214, 32, 40))
+PIP_STHINGS_EYE_SCALE = 0.8
 PIP_GRIP_PIVOT = (283, 375)
 PIP_FUR = "#2f4ea8"
 PIP_RACKET_ROTATION = 18
 PIP_RACKET_SCALE = 0.9
-PIP_RACKET_HEAD_OFFSET = (-7, 34)
-PIP_RACKET_GRIP_OFFSET = (-7, -10)
+PIP_RACKET_HEAD_OFFSET = (-8, -52)
+PIP_RACKET_GRIP_OFFSET = (8, -80)
 # Actual maximum-size round Hank emblem, including its black border.
 PIP_EMBLEM_RESERVE = (209.8, 366.1, 28.5, 28.5)
 
 
-# One lighting layout, expressed relative to either eye centre. Only a covered
-# large glint moves vertically; its x coordinate and the small glint stay fixed.
-PIP_LIGHT_LARGE = (-5, -10)
-PIP_LIGHT_SMALL = (8.5, 17.5)
-
-
-def pip_glints(cx, cy, visible, keel, lowered):
-    radius = 8 if lowered else 9
-    support = op(visible, keel, pathops.PathOp.DIFFERENCE)
-    y = cy + PIP_LIGHT_LARGE[1]
-    while True:
-        large = ellipse(cx + PIP_LIGHT_LARGE[0], y, radius, radius)
-        if op(large, support, pathops.PathOp.DIFFERENCE).area < 0.001:
-            break
-        y += 0.25
-        assert y < cy + 20, "No room for intact highlight"
-    small = ellipse(cx + PIP_LIGHT_SMALL[0], cy + PIP_LIGHT_SMALL[1], 3.5, 3.5)
-    assert op(small, support, pathops.PathOp.DIFFERENCE).area < 0.001
-    return svgpath(large, WHITE) + svgpath(small, WHITE)
-
-
 def pip_eye(cx, cy, rx, ry, state, index):
-    if state == "happy":
-        # Two closed, upward crescents; maximum thickness is 12 canvas units.
-        return paint(
-            f"M{cx-rx} {cy+5} Q{cx} {cy-31} {cx+rx} {cy+5} Q{cx} {cy-7} {cx-rx} {cy+5}Z"
-        )
-    if state == "surprised":
-        rx *= 1.1
-        ry *= 1.1
-    outer = ellipse(cx, cy, rx, ry)
-    inner = ellipse(cx, cy, rx - 6, ry - 6)
-    if state == "angry":
-        ends = (-18, 4) if index == 0 else (4, -18)
-    elif state == "sad":
-        ends = (4, -18) if index == 0 else (-18, 4)
-    elif state == "skeptical":
-        ends = (-27, -27) if index == 0 else (1, 1)
-    elif state == "neutral":
-        ends = (-23, -23)
-    else:
-        ends = None
-    s = ""
-    visible = inner
-    if ends:
-        yl, yr = cy + ends[0], cy + ends[1]
-        below = shape(f"M{cx-rx-2} {yl} L{cx+rx+2} {yr} V{cy+ry+2} H{cx-rx-2}Z")
-        s += svgpath(op(outer, below, pathops.PathOp.DIFFERENCE), "#fff6f3")
-        outer = op(outer, below, pathops.PathOp.INTERSECTION)
-        visible = op(inner, below, pathops.PathOp.INTERSECTION)
-    s += svgpath(outer, INK) + svgpath(visible, "#14141f")
-    if ends:
-        keel = shape(
-            f"M{cx-rx} {yl} Q{cx} {(yl+yr)/2-13} {cx+rx} {yr} Q{cx} {(yl+yr)/2+13} {cx-rx} {yl}Z"
-        )
-    else:
-        # Smooth upper cap inside the oval, clear of the common upper-left glint.
-        keel = op(
-            shape(
-                f"M{cx-rx+7} {cy-ry+10} Q{cx} {cy-ry-3} {cx+rx-7} {cy-ry+10} Q{cx} {cy-ry+16} {cx-rx+7} {cy-ry+10}Z"
-            ),
-            outer,
-            pathops.PathOp.INTERSECTION,
-        )
-    lowered = state in ["angry", "sad"] or (state == "skeptical" and index == 1)
-    s += pip_glints(cx, cy, visible, keel, lowered)
-    s += svgpath(keel, INK)
-    return s
+    """Transfer the actual sthings contours, pupils, glints and brows together.
 
-
-def pip_brows(state):
-    if state == "angry":
-        return vex_brow(121, 178, 169, 202, 0, 13) + vex_brow(236, 172, 284, 148, 0, 13)
-    if state == "sad":
-        return vex_brow(121, 194, 169, 175, 0, 12) + vex_brow(236, 145, 284, 164, 0, 12)
-    if state == "skeptical":
-        return vex_brow(104, 185, 188, 185, -29, 16) + vex_brow(
-            236, 158, 284, 158, 0, 12
-        )
-    if state == "surprised":
-        return vex_brow(121, 184, 170, 184, -14, 13) + vex_brow(
-            236, 155, 284, 155, -14, 13
-        )
-    return ""
+    Select entire eye contours, never crop through an eye or borrow its mouth.
+    EVEN_ODD is essential: the white/pupil construction is the original artwork.
+    """
+    import xml.etree.ElementTree as ET
+    root = ET.parse(Path(__file__).resolve().parents[1] /
+                    f"web/static/img/sthings/face-{state}.svg").getroot()
+    source_cx = (161, 246)[index]
+    scale = PIP_STHINGS_EYE_SCALE
+    t = Transform(scale, 0, 0, scale, cx - source_cx*scale, cy - 181*scale)
+    result = ""
+    for el in root.iter("{http://www.w3.org/2000/svg}path"):
+        source = shape(el.get("d"))
+        selected = pathops.Path()
+        selected.fillType = pathops.FillType.EVEN_ODD
+        for contour in source.contours:
+            x1,y1,x2,y2 = contour.bounds
+            if y2 <= 229 and ((index == 0 and x2 <= 203) or (index == 1 and x1 >= 205)):
+                selected.addPath(contour)
+        if not list(selected.contours):
+            continue
+        selected.simplify()
+        out = pathops.Path()
+        selected.draw(TransformPen(out.getPen(),t))
+        result += svgpath(out, el.get("fill"))
+    return result
 
 
 def pip_beak(state):
-    # Each variant stays within 55–67 by 44–54 units (native 61 by 49).
+    """Orange penguin beaks with the expressive mouth vocabulary of sthings."""
     if state == "happy":
-        outer = "M183 237 Q201 218 215 211 Q231 215 244 232 Q236 259 214 263 Q193 259 183 237Z"
-        upper = "M188 235 Q203 220 215 216 Q228 220 239 232 Q215 241 188 235Z"
-        lower = "M192 249 Q216 260 237 245 Q225 260 214 259 Q200 257 192 249Z"
-        return (
-            paint(outer)
-            + paint(
-                "M188 237 Q216 233 239 234 Q232 255 214 258 Q198 255 188 237Z",
-                "#ad3f58",
-            )
-            + paint(upper, "#f59a08")
-            + paint(lower, "#e28b13")
-            + oval(215, 250, 11, 4, "#fa7894")
-        )
+        return (paint("M177 274 Q194 253 215 254 Q237 253 252 270 Q248 302 215 313 Q186 307 177 274Z")
+            + paint("M182 274 Q199 259 215 259 Q233 258 247 271 Q243 298 215 307 Q191 302 182 274Z", "#f59a08")
+            + paint("M185 277 Q215 281 244 274 Q239 298 215 305 Q193 300 185 277Z", "#94364e")
+            + oval(215, 297, 17, 7, "#fa7894"))
     if state == "surprised":
-        return (
-            paint(
-                "M183 237 Q189 216 214 210 Q240 216 244 235 Q241 258 215 264 Q190 260 183 237Z"
-            )
-            + paint(
-                "M188 236 Q197 221 214 215 Q230 220 239 234 Q217 243 188 236Z",
-                "#f59a08",
-            )
-            + paint(
-                "M191 239 Q214 232 237 238 Q237 255 215 259 Q196 255 191 239Z",
-                "#94364e",
-            )
-            + paint(
-                "M196 254 Q215 258 233 252 Q226 260 215 260 Q204 259 196 254Z",
-                "#e28b13",
-            )
-        )
+        return (oval(215, 282, 27, 30, INK) + oval(215, 282, 22, 25, "#f59a08")
+            + oval(215, 282, 14, 19, "#60283d"))
     if state == "skeptical":
-        outer = "M182 238 Q199 219 216 211 Q230 219 246 237 Q232 257 214 260 Q194 254 182 238Z"
-        top = "M187 237 Q203 222 216 216 Q230 224 241 236 Q219 246 187 237Z"
-        seam = "M187 238 Q216 250 241 237 Q218 257 187 238Z"
+        outer="M182 281 Q201 260 218 260 Q235 269 246 279 Q232 301 212 302 Q195 294 182 281Z"
+        top="M187 280 Q203 265 218 265 Q232 273 241 278 Q228 295 212 297 Q199 290 187 280Z"
+        seam="M188 283 Q212 290 239 275 L240 281 Q213 296 188 287Z"
     elif state == "angry":
-        outer = "M183 237 Q200 216 214 214 Q230 219 244 237 Q231 249 214 258 Q193 250 183 237Z"
-        top = "M188 236 Q203 220 214 219 Q227 224 239 236 L215 241Z"
-        seam = "M188 238 L239 237 Q219 249 188 238Z"
+        outer="M180 278 Q212 263 249 278 L242 307 Q218 295 187 307Z"
+        top="M186 279 Q213 269 243 279 L238 300 Q214 291 191 301Z"
+        seam="M186 283 L242 281 L239 290 Q213 284 189 292Z"
     elif state == "sad":
-        outer = "M184 232 Q201 212 214 211 Q232 218 244 235 Q231 255 213 261 Q195 250 184 232Z"
-        top = "M189 232 Q203 218 214 216 Q230 225 239 234 Q218 239 189 232Z"
-        seam = "M189 234 Q218 244 239 236 Q221 251 189 234Z"
+        outer="M184 276 Q199 263 214 264 Q233 269 246 280 Q234 301 214 309 Q194 299 184 276Z"
+        top="M190 277 Q202 269 214 269 Q231 274 240 281 Q230 296 214 303 Q199 295 190 277Z"
+        seam="M190 291 Q214 270 239 292 L237 297 Q214 280 192 296Z"
     else:
-        outer = "M183 237 Q200 218 214 210 Q232 215 244 232 Q233 252 214 259 Q194 254 183 237Z"
-        top = "M188 235 Q202 222 214 215 Q228 220 239 232 Q216 245 188 235Z"
-        seam = "M188 237 Q215 250 239 234 Q220 256 188 237Z"
-    return paint(outer) + paint(top, "#f59a08") + paint(seam, "#b5690b")
+        outer="M183 279 Q199 263 214 258 Q233 263 247 276 Q238 299 215 304 Q195 300 183 279Z"
+        top="M189 278 Q203 267 214 263 Q230 268 241 276 Q234 294 215 299 Q199 294 189 278Z"
+        seam="M189 282 Q215 295 240 274 L238 282 Q216 302 190 287Z"
+    return paint(outer) + paint(top,"#f59a08") + paint(seam,INK)
 
 
 def convert_pip(source, target):
@@ -688,20 +609,38 @@ def convert_pip(source, target):
         "M318 198 L340.3075 212 Q339.9 225 339 240 Q337 268 307 286 Q281 307 250 314 L247 301 Q285 291 301 270 Q322 247 318 223Z"
     )
     cheek_white = shape(
-        "M273 208 Q310 195 328 216 Q339 244 310 270 Q281 299 251 306 L245 290 Q264 265 267 241Z"
+        "M245 205 L328.73 205 Q331 235 310 270 Q281 299 251 306 L245 290 Q264 265 267 241Z"
     )
     blank = []
+    hand_shadows = []
     for i, (role, fill, p) in enumerate(original):
         if i in {8, 46, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61}:
             continue
+        if role == "shadow" and p.bounds[0] > 245 and p.bounds[1] > 320:
+            # These tiny native shades belong to the former hand/arm position,
+            # not to the torso. Move hand shading with its flipper; remove the
+            # superseded upper-arm shading rather than leave detached pixels.
+            if p.bounds[0] > 275:
+                hand_shadows.append(p)
+            continue
         if i == 0:
             p = op(p, cut, pathops.PathOp.DIFFERENCE)
+        if i == 6:
+            # Raised racket-side arm; the torso and opposite flipper stay native.
+            p = shape("M235 312 Q255 290 278 287 L301 303 Q292 327 273 344 Q264 354 258 355 L248 338Z")
+            blank.append(("ink", INK, outlined(p, 11)))
         if i == 43:
             clean = pathops.Path()
             clean.addPath(list(p.contours)[0])
             p = clean
             # Close the native beak cut-out with the same facial surface.
             p = op(p, ellipse(213, 236, 39, 33), pathops.PathOp.UNION)
+            # Match a single smooth inner cheek curve to the outer head curve.
+            # The former native/rebuilt white surfaces had a dent at y=215.
+            p = op(p, rect(268, 205, 420, 420), pathops.PathOp.DIFFERENCE)
+            # Union the full white face surface: touching separately painted
+            # patches can leave a dark seam in the actual browser SVG.
+            p = op(p, cheek_white, pathops.PathOp.UNION)
         if role == "body":
             fill = PIP_FUR
         if role == "shadow":
@@ -710,8 +649,6 @@ def convert_pip(source, target):
         blank.append((role, fill, p))
         if i == 0:
             blank.append(("ink", INK, cheek))
-        if i == 43:
-            blank.append(("muzzle", "#fff6f3", cheek_white))
     body_parts = list(blank)
     blank = []
     # Racket, grip and gripping flipper are rebuilt as one separate assembly.
@@ -740,22 +677,22 @@ def convert_pip(source, target):
         assert (
             min(x1, y1) >= 8 - 0.001 and max(x2, y2) <= 412 + 0.001
         ), "Hank racket path outside 8-unit canvas inset"
-    paw = transformed(original[8][2], rotation)
+    paw = transformed(transformed(original[8][2], rotation), Transform().translate(15, -70))
     blank.append(("ink", INK, outlined(paw, 11)))
     blank.append(("body", PIP_FUR, paw))
+    for shade in hand_shadows:
+        shade = op(transformed(shade, Transform().translate(15, -70)), paw, pathops.PathOp.INTERSECTION)
+        if shade.area > .001:
+            blank.append(("pip-shadow", "var(--fur-dark, #213777)", shade))
     # A small thumb crosses the shaft instead of leaving it merely resting
     # alongside the flipper. It stays inside the pre-existing figure silhouette.
     thumb = shape("M286 369 C278 369 272 375 273 381 Q277 389 286 385 L294 378Z")
     thumb = transformed(
         thumb, Transform().translate(284, 378).scale(0.75).translate(-284, -378)
     )
+    thumb = transformed(thumb, Transform().translate(15, -70))
     thumb_ink = outlined(thumb, 11)
-    old_silhouette = pathops.Path()
-    for role, fill, p in body_parts + blank:
-        old_silhouette = op(old_silhouette, p, pathops.PathOp.UNION)
-    assert (
-        op(thumb_ink, old_silhouette, pathops.PathOp.DIFFERENCE).area < 0.001
-    ), "Thumb would change outer silhouette"
+    # The whole gripping hand is raised with the grip; the thumb still wraps it.
     blank.append(("ink", INK, thumb_ink))
     blank.append(("body", PIP_FUR, thumb))
     target.mkdir(parents=True, exist_ok=True)
@@ -767,30 +704,14 @@ def convert_pip(source, target):
             + "</svg>\n"
         )
 
-    # Assert a true 12-unit path-space gap, including the filled outline.
-    head = op(original[0][2], cut, pathops.PathOp.DIFFERENCE)
-    head = op(
-        op(head, cheek, pathops.PathOp.UNION),
-        rect(0, 0, 420, 315),
-        pathops.PathOp.INTERSECTION,
-    )
-    assert (
-        op(outlined(head, 24), outlined(blade, 13), pathops.PathOp.INTERSECTION).area
-        < 0.001
-    ), "Pip racket/head gap below 12"
-
-    for role, fill, p in racket_parts:
-        assert (
-            op(outlined(head, 24), p, pathops.PathOp.INTERSECTION).area < 0.001
-        ), "Hank racket/face gap below 12"
-        assert (
-            op(
-                outlined(ellipse(*PIP_EMBLEM_RESERVE), 24),
-                p,
-                pathops.PathOp.INTERSECTION,
-            ).area
-            < 0.001
-        ), "Hank racket/emblem reserve gap below 12"
+    # Deliberate cheek overlap like sthings; equipment must clear actual features.
+    for face in FACES:
+        features = "".join(pip_eye(*a, face, i) for i,a in enumerate(PIP_EYES)) + pip_beak(face)
+        for el in ET.fromstring("<svg>"+features+"</svg>"):
+            p = shape(el.get("d"))
+            assert op(outlined(p,24), outlined(blade,13), pathops.PathOp.INTERSECTION).area < .001, f"hank {face}: racket/feature gap below 12"
+    for role,fill,p in racket_parts + blank[6:]:
+        assert op(outlined(ellipse(*PIP_EMBLEM_RESERVE),24),p,pathops.PathOp.INTERSECTION).area < .001, "hank equipment/emblem gap below 12"
     # Stripes belong to the visible handle area; the blade/flipper must not
     # hide the chosen material down to a sliver.
     visible_grip = op(
@@ -826,8 +747,7 @@ def convert_pip(source, target):
     # Pip deliberately has no blush cheeks in any expression.
     for face in FACES:
         body = (
-            "".join(pip_eye(*anchor, face, i) for i, anchor in enumerate(PIP_EYES))
-            + pip_brows(face)
+            "".join(f'<g data-pip-part="eye-{i}">' + pip_eye(*anchor, face, i) + '</g>' for i, anchor in enumerate(PIP_EYES))
             + '<g data-pip-part="beak">'
             + pip_beak(face)
             + "</g>"

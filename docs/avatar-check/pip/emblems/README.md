@@ -15,7 +15,7 @@ of the approved smaller/lower placement, not the original 90–110 unit request.
 - `letters-{192,64,28}-{app,black}.png`: A–Z, Ä/Ö/Ü and the racket fallback.
   Each cell is the whole figure at the stated size, not an enlarged emblem.
 - `hand-before-420.png` / `hand-after-420.png`: a 420-pixel hand detail before
-  and after the added thumb. `hand-before-base.svg` preserves the exact old base.
+  and the current raised pose; the fixed historical crop therefore shows less of the raised hand. `hand-before-base.svg` preserves the exact old base.
 - `measurements.json`: actual margins, selected grip colour area and glyph sizes.
 
 The matrix's `Silber→Orig.*` marks the existing forbidden Grey/Silver combination:
@@ -42,3 +42,7 @@ Fallback correction: a single solid white paddle silhouette, head upper right an
 short handle lower left (about 45 degrees), with a separate black filled outline.
 `fallback-oq-{192,64}-black.png` compares O, Q and the nameless fallback.
 The geometry test rejects inner subpaths and checks the shared interior margin.
+
+The racket and gripping flipper have since been raised in the approved sthings-style
+pose; current clearances and grip area are in ../sthings-style/measurements.json.
+The emblem geometry, colour rule, glyphs and context logic remain unchanged.

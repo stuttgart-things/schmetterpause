@@ -366,7 +366,7 @@ func TestCharacterDeliveries(t *testing.T) {
 								validBling := strings.HasPrefix(name, "bling-") && attrs["class"] == "sthings-bling" && attrs["data-bling"] == strings.TrimPrefix(name, "bling-")
 								validPipPart := ch.Key == "pip" && ((name == "base" && depth == 2 && (attrs["data-pip-part"] == "body" || attrs["data-pip-part"] == "racket" || attrs["data-pip-part"] == "flipper")) ||
 									(name == "base" && depth == 3 && attrs["data-pip-part"] == "blade") ||
-									(strings.HasPrefix(name, "face-") && depth == 3 && faceDepth == 2 && attrs["data-pip-part"] == "beak"))
+									(strings.HasPrefix(name, "face-") && depth == 3 && faceDepth == 2 && (attrs["data-pip-part"] == "beak" || attrs["data-pip-part"] == "eye-0" || attrs["data-pip-part"] == "eye-1")))
 								if validFace || validBling {
 									faceDepth = depth
 								}
@@ -411,7 +411,7 @@ func TestCharacterDeliveries(t *testing.T) {
 						if name == "base" {
 							wantGroups = 4
 						} else if strings.HasPrefix(name, "face-") {
-							wantGroups = 2
+							wantGroups = 4
 						} else if name == "bling-initial" {
 							wantGroups = 2
 						}

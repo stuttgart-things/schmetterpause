@@ -185,7 +185,7 @@ that preview changes never rewrite the saved SVG. Go handler tests exercise
 saving/reset and stale stored choices.
 
 
-## hank review
+## hank review – historical cheek-removal stage
 
 **hank deliberately has no blush cheeks in any expression.** The six face SVGs
 and base contain no cheek group or former cheek colours. Cheeks were removed
@@ -242,7 +242,7 @@ go test ./internal/server -run TestPipBrowser -count=1 -v
 
 Set `SP_PREVIEW_SCREENSHOT_DIR` for desktop/mobile captures.
 
-### hank racket canvas correction
+### hank racket canvas correction – previous separated pose
 
 Step 1 (translation) is sufficient. Rotation remains **18 degrees clockwise**
 and head scale remains **90%**; neither step 2 nor step 3 was needed.
@@ -399,3 +399,61 @@ group, inherited from the native fused head/racket silhouette. The former y=220
 cut retained the old racket's top edge at y=212–220. The importer now cuts from
 y=212 and joins the reconstructed rounded cheek at (340.3075,212).
 Current racket, grip, flipper, faces and emblem geometry are unchanged.
+
+## hank aligned with sthings (current artwork)
+
+This pass supersedes the historical sclera-free eyes and separated-racket pose
+above. The importer selects the complete left/right eye contours directly from
+all six **sthings** face SVGs, including white eyeballs, attached black pupils,
+original glints, lid cuts and eyebrows. Their relative outline weight and pupil
+positions therefore match the reference exactly. A uniform 0.8 scale places the
+eyes at (145,236) and (255,214), keeping >=8 units from the unchanged headband.
+Whole contours are selected with the original even-odd fill; the sthings mouth
+is excluded. No runtime transformations or fonts are involved.
+
+Orange beaks now provide six different mouths: asymmetric smile, open laugh with
+pink tongue, round dark opening, sideways seam, compressed angry seam and downturned
+sad seam. Sizes stay within about 25% of the former native 61×49-unit beak.
+
+The native racket head retains its baked 18° rotation and 90% scale. Its post-rotation
+offset is (-8,-52); the grip offset is (8,-80). The gripping flipper and thumb move
+(15,-70) from the previous pose, with a reconnected upper arm. Tiny shades belonging
+to the old arm/hand are moved or replaced with that assembly, leaving no detached
+pixels behind. Other torso geometry, opposite flipper, headband, palettes and the
+accepted 57-unit emblem and its rendering logic remain unchanged.
+
+The full head/racket overlap is deliberate, like sthings: **43.856 units** across
+at y=245. The closest eye/brow clearance is **15.929 units**, the closest beak
+clearance **20.755 units**. Minimum canvas margin is **9.953 units**. Visible selected
+grip colour covers **591.431 units²**. Racket/emblem clearance is **29.013 units**;
+flipper/emblem clearance is **50.386 units**. Exact measurements and regeneration
+are in `scripts/measure_hank_pose.py` and `docs/avatar-check/pip/sthings-style/measurements.json`.
+
+The actual local HTTP SVG was fetched before changing the build and its base paths
+matched a9c99c8; the random-avatar endpoint returns `Cache-Control: no-store`.
+Player avatars instead have the existing maximum 60-second cache lifetime. The old
+outer black spur had already been removed, but the junction of the original and
+rebuilt white cheek surfaces still had a slight inward kink around y=215. The white
+surface is now unioned into one path with a smooth curve beginning at (328.73,205); a geometric regression check also rejects a dark seam at the old junction. The
+already smooth outer black outline stays unchanged. Before/after detail images
+are browser screenshots of the actual HTTP-served SVG, not substitute drawings.
+
+Tests intentionally replace the obsolete two-glint/no-sclera and head/racket-gap
+assertions. They now compare actual eye artifacts to the scaled sthings reference,
+check all six eye/brow/beak groups for >=12 units of racket clearance, require >=20
+units of cheek overlap, and retain grip, canvas, emblem, material and path-only checks.
+The 64-pixel GIF minimum separation is **157**, weakest pair **Skeptisch/Wütend**,
+above both the previous 99 baseline and the target of 114. Physical LED readability
+and visual approval remain manual checks.
+
+```sh
+go run ./scripts/avatar_review.go -sthings-style-only -out docs/avatar-check/pip/sthings-style
+PYTHONDONTWRITEBYTECODE=1 /tmp/avatar-vector-tools/bin/python scripts/measure_hank_pose.py
+# With the current app running locally:
+SP_PLAYWRIGHT_MODULE=/path/to/playwright SP_PREVIEW_BROWSER_BINARY=/path/to/chrome \
+  node scripts/hank_style.browser.cjs
+```
+
+`docs/avatar-check/pip/sthings-style/` holds the paired sthings/hank sheet at 192 px
+on navy and actual served before/after cheek crops. The usual hank expression sheets
+cover all three coats at 192/64/28 px on navy and black.

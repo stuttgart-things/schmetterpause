@@ -9,20 +9,25 @@ from test_hank_racket_geometry import paths, union
 ROOT = Path(__file__).resolve().parents[1]
 
 class HankContourGeometry(unittest.TestCase):
-    def test_only_the_fused_cheek_outline_is_changed(self):
-        before = ET.parse(ROOT / "docs/avatar-check/pip/cheek-contour/before-base.svg").getroot()
+    def test_head_outline_has_no_old_spur_and_only_authorized_body_regions_change(self):
+        before = ET.parse(ROOT / "docs/avatar-check/pip/sthings-style/before-base.svg").getroot()
         after = ET.parse(ROOT / "web/static/img/pip/base.svg").getroot()
-        for old, new in zip(before, after):
-            self.assertEqual(old.attrib, new.attrib)
-            if old.get("data-pip-part") != "body":
-                self.assertEqual(ET.tostring(old), ET.tostring(new))
-            else:
-                self.assertEqual([p.attrib for p in old][2:], [p.attrib for p in new][2:])
-        difference = op(union(paths(before)), union(paths(after)), pathops.PathOp.XOR)
-        self.assertGreater(difference.area, 30)
-        self.assertLess(op(difference, rect(318,212,361,241), pathops.PathOp.DIFFERENCE).area, .001)
-        silhouette = union(paths(after))
-        self.assertLess(op(silhouette, rect(341,212,361,240), pathops.PathOp.INTERSECTION).area, .001)
+        self.assertEqual(before[0][0].attrib,after[0][0].attrib)
+        self.assertEqual(before[0][1].attrib,after[0][1].attrib)
+        changed = op(union(paths(before[0])),union(paths(after[0])),pathops.PathOp.XOR)
+        allowed = union([rect(230,280,350,420),rect(245,198,341,310)])
+        self.assertLess(op(changed,allowed,pathops.PathOp.DIFFERENCE).area,.001)
+        # Inspect the bare head, not the racket now deliberately covering it.
+        head=op(union(paths(after[0])),rect(0,0,420,280),pathops.PathOp.INTERSECTION)
+        self.assertLess(op(head,rect(341,212,361,240),pathops.PathOp.INTERSECTION).area,.001)
+        oldband=[el.attrib for el in before[0] if el.get("fill", "").startswith("var(--headdress")]
+        newband=[el.attrib for el in after[0] if el.get("fill", "").startswith("var(--headdress")]
+        self.assertEqual(oldband,newband)
+
+    def test_white_cheek_has_no_seam_between_native_and_rebuilt_surfaces(self):
+        after=ET.parse(ROOT / "web/static/img/pip/base.svg").getroot()
+        white=union([shape(el.get("d")) for el in after[0] if el.get("fill")=="#fff6f3"])
+        self.assertLess(op(rect(280,205,320,212),white,pathops.PathOp.DIFFERENCE).area,.001)
 
     def test_no_unassigned_small_path_fragments(self):
         before = ET.parse(ROOT / "docs/avatar-check/pip/cheek-contour/before-base.svg").getroot()
