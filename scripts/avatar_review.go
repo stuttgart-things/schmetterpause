@@ -76,6 +76,12 @@ var comparisonBefore map[string]image.Image
 var eyesDetail bool
 
 func run(key, out string) error {
+	labelKey := key
+	for _, character := range avatar.Characters {
+		if character.Key == key {
+			labelKey = character.Name
+		}
+	}
 	known := false
 	for _, c := range avatar.Characters {
 		if c.Key == key {
@@ -104,7 +110,7 @@ func run(key, out string) error {
 		for _, face := range avatar.Faces {
 			samples = append(samples, sample{face.Name + " / Alt", a, face.Key}, sample{face.Name + " / Neu", a, face.Key})
 		}
-		if err = sheet(collection, samples, 6, 64, color.RGBA{0, 0, 0, 255}, "Pip | Alt / Neu je Ausdruck | 64 px schwarz", filepath.Join(out, "eyes-before-after-64-black.png")); err != nil {
+		if err = sheet(collection, samples, 6, 64, color.RGBA{0, 0, 0, 255}, "Hank | Alt / Neu je Ausdruck | 64 px schwarz", filepath.Join(out, "eyes-before-after-64-black.png")); err != nil {
 			return err
 		}
 		comparisonBefore = nil
@@ -114,7 +120,7 @@ func run(key, out string) error {
 			eyes = append(eyes, sample{face.Name, a, face.Key})
 		}
 		eyesDetail = true
-		err = sheet(collection, eyes, 3, 192, color.RGBA{10, 10, 18, 255}, "Pip | Augenpartie | 192 px Detail", filepath.Join(out, "eyes-detail-192.png"))
+		err = sheet(collection, eyes, 3, 192, color.RGBA{10, 10, 18, 255}, "Hank | Augenpartie | 192 px Detail", filepath.Join(out, "eyes-detail-192.png"))
 		eyesDetail = false
 		if err != nil {
 			return err
@@ -131,7 +137,7 @@ func run(key, out string) error {
 			row = append(row, sample{f.Name, a, f.Key})
 		}
 		for _, size := range []int{64, 28} {
-			if err = sheet(collection, row, 6, size, color.RGBA{0, 0, 0, 255}, "Pip | original | black", filepath.Join(out, fmt.Sprintf("expressions-row-%d-black.png", size))); err != nil {
+			if err = sheet(collection, row, 6, size, color.RGBA{0, 0, 0, 255}, "Hank | original | black", filepath.Join(out, fmt.Sprintf("expressions-row-%d-black.png", size))); err != nil {
 				return err
 			}
 		}
@@ -176,7 +182,7 @@ func run(key, out string) error {
 			}
 			critical = append(critical, sample{coat + " / Schläger " + map[string]string{"blue": "Blau", "steel": "Stahl"}[pair[1]], b, "neutral"})
 		}
-		if err = sheet(collection, critical, 4, 64, color.RGBA{0, 0, 0, 255}, "Pip | kritische Kombinationen | 64 px", filepath.Join(out, "critical-64-black.png")); err != nil {
+		if err = sheet(collection, critical, 4, 64, color.RGBA{0, 0, 0, 255}, "Hank | kritische Kombinationen | 64 px", filepath.Join(out, "critical-64-black.png")); err != nil {
 			return err
 		}
 	}
@@ -184,7 +190,7 @@ func run(key, out string) error {
 	for _, bg := range backgrounds {
 		for _, size := range []int{28, 64, 192} {
 			name := fmt.Sprintf("expressions-%d-%s.png", size, bg.name)
-			if err = sheet(collection, expressions, 6, size, bg.colour, fmt.Sprintf("%s | %d px | %s", key, size, bg.name), filepath.Join(out, name)); err != nil {
+			if err = sheet(collection, expressions, 6, size, bg.colour, fmt.Sprintf("%s | %d px | %s", labelKey, size, bg.name), filepath.Join(out, name)); err != nil {
 				return err
 			}
 		}
@@ -200,7 +206,7 @@ func run(key, out string) error {
 				colours = append(colours, sample{label + " / " + f, b, f})
 			}
 		}
-		if err = sheet(collection, colours, len(palette), 144, bg.colour, key+" | body alternatives | "+bg.name, filepath.Join(out, "colours-"+bg.name+".png")); err != nil {
+		if err = sheet(collection, colours, len(palette), 144, bg.colour, labelKey+" | body alternatives | "+bg.name, filepath.Join(out, "colours-"+bg.name+".png")); err != nil {
 			return err
 		}
 		var jewellery []sample
@@ -219,7 +225,7 @@ func run(key, out string) error {
 			}
 		}
 		for _, size := range []int{28, 64, 192} {
-			if err = sheet(collection, jewellery, len(avatar.BlingPalette(key))*2, size, bg.colour, key+" | jewellery | "+bg.name, filepath.Join(out, fmt.Sprintf("jewellery-%d-%s.png", size, bg.name))); err != nil {
+			if err = sheet(collection, jewellery, len(avatar.BlingPalette(key))*2, size, bg.colour, labelKey+" | jewellery | "+bg.name, filepath.Join(out, fmt.Sprintf("jewellery-%d-%s.png", size, bg.name))); err != nil {
 				return err
 			}
 		}
@@ -232,7 +238,7 @@ func run(key, out string) error {
 				grips = append(grips, sample{coat.Name + " / " + handle.Name, b, "neutral"})
 			}
 		}
-		if err = sheet(collection, grips, len(avatar.Handles), 192, bg.colour, key+" | grips | "+bg.name, filepath.Join(out, "grips-"+bg.name+".png")); err != nil {
+		if err = sheet(collection, grips, len(avatar.Handles), 192, bg.colour, labelKey+" | grips | "+bg.name, filepath.Join(out, "grips-"+bg.name+".png")); err != nil {
 			return err
 		}
 		// Check fixed jewellery against every paddle colour as well as every coat.
@@ -248,7 +254,7 @@ func run(key, out string) error {
 				}
 			}
 		}
-		if err = sheet(collection, contrasts, len(avatar.Blades), 96, bg.colour, key+" | fixed colour contrast | "+bg.name, filepath.Join(out, "jewellery-blades-"+bg.name+".png")); err != nil {
+		if err = sheet(collection, contrasts, len(avatar.Blades), 96, bg.colour, labelKey+" | fixed colour contrast | "+bg.name, filepath.Join(out, "jewellery-blades-"+bg.name+".png")); err != nil {
 			return err
 		}
 
@@ -261,7 +267,7 @@ func run(key, out string) error {
 					headbands = append(headbands, sample{coat.Name + " / " + head.Name, b, "neutral"})
 				}
 			}
-			if err = sheet(collection, headbands, len(avatar.HeaddressPalette(key)), 144, bg.colour, key+" | headbands | "+bg.name, filepath.Join(out, "headbands-"+bg.name+".png")); err != nil {
+			if err = sheet(collection, headbands, len(avatar.HeaddressPalette(key)), 144, bg.colour, labelKey+" | headbands | "+bg.name, filepath.Join(out, "headbands-"+bg.name+".png")); err != nil {
 				return err
 			}
 		}
@@ -280,7 +286,7 @@ func run(key, out string) error {
 			b.Blade = c.Key
 			materials = append(materials, sample{"blade: " + c.Key, b, "neutral"})
 		}
-		if err = sheet(collection, materials, len(avatar.Handles), 112, bg.colour, key+" | handles / blades | "+bg.name, filepath.Join(out, "materials-"+bg.name+".png")); err != nil {
+		if err = sheet(collection, materials, len(avatar.Handles), 112, bg.colour, labelKey+" | handles / blades | "+bg.name, filepath.Join(out, "materials-"+bg.name+".png")); err != nil {
 			return err
 		}
 		combinations := []sample{}
@@ -302,7 +308,7 @@ func run(key, out string) error {
 		if bg.name == "black" {
 			size = 64
 		}
-		if err = sheet(collection, combinations, 2, size, bg.colour, key+" | combinations | "+bg.name, filepath.Join(out, "combinations-"+bg.name+".png")); err != nil {
+		if err = sheet(collection, combinations, 2, size, bg.colour, labelKey+" | combinations | "+bg.name, filepath.Join(out, "combinations-"+bg.name+".png")); err != nil {
 			return err
 		}
 
@@ -384,7 +390,7 @@ not photographs of a real panel. In particular, dark wood and moss on black
 should be checked on the device. No runtime hides jewellery automatically.
 `
 	if key == "pip" {
-		note = "# Pip acceptance review\n\nRegenerate: `go run ./scripts/avatar_review.go -character pip -out docs/avatar-check/pip`\n\nOpen index.html for expressions, materials and GIFs. The expressions-row PNGs show the six faces in original colours at 64 and 28 pixels on black. Full sheets include Original, Grau and Blaugrau on navy and black. Pip deliberately has no cheeks and no jewellery. Grey excludes Silver; native Pink is labelled Original. The eyes-before-after-64-black.png sheet compares archived 7969bdf GIFs against Pip without cheeks, each Alt/Neu pair adjacent. The eyes-detail-192.png sheet shows eyes and brows. Eyes have no sclera; only two round white glints remain. Physical LED-panel contrast remains to be checked.\n"
+		note = "# Hank acceptance review\n\nRegenerate: `go run ./scripts/avatar_review.go -character pip -out docs/avatar-check/pip`\n\nOpen index.html for expressions, materials and GIFs. The expressions-row PNGs show the six faces in original colours at 64 and 28 pixels on black. Full sheets include Original, Grau and Blaugrau on navy and black. Hank deliberately has no cheeks and no jewellery. Grey excludes Silver; native Pink is labelled Original. The eyes-before-after-64-black.png sheet compares archived 7969bdf GIFs against Hank without cheeks, each Alt/Neu pair adjacent. The eyes-detail-192.png sheet shows eyes and brows. Eyes have no sclera; only two round white glints remain. Physical LED-panel contrast remains to be checked.\n"
 	}
 	if err = os.WriteFile(filepath.Join(out, "README.md"), []byte(note), 0644); err != nil {
 		return err

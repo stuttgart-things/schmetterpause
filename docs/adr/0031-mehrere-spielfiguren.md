@@ -12,7 +12,7 @@
 ## Entscheidung
 
 Für den Release stehen sthings und blecki zur Auswahl. blecki behält den
-bestehenden gespeicherten Schlüssel `vex`. Pogo, Pip und Kiki werden auf den
+bestehenden gespeicherten Schlüssel `vex`. Pogo, Hank (interner Schlüssel `pip`) und Kiki werden auf den
 Branches `feat/pogo-fine-tuning`, `feat/pip-fine-tuning` und
 `feat/kiki-fine-tuning` weiterbearbeitet und sind im Release nicht enthalten. Die
 Auswahl wird mit den Farben in `player_avatars` gespeichert. Die additive

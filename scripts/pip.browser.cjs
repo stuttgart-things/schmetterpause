@@ -71,6 +71,6 @@ const { chromium } = require(process.env.SP_PLAYWRIGHT_MODULE || 'playwright');
     await page.goto(profile);await page.locator('#figure-editor').waitFor();
     assert.ok(await page.locator('input[name=character][value=""]').isChecked());
     assert.deepEqual(errors,[]);
-    console.log('Pip browser: palettes, six faces, colour previews, save/reload, SVG/GIF, mobile and reset passed');
+    console.log('Hank browser: palettes, six faces, colour previews, save/reload, SVG/GIF, mobile and reset passed');
   } finally { await browser.close(); }
 })().catch(e=>{console.error(e);process.exit(1);});

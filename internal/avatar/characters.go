@@ -18,7 +18,7 @@ type Character struct {
 var Characters = []Character{
 	{"", "sthings", "#f89828", "#f89828", "#f89828"},
 	{"vex", "blecki", "#817d93", "#dd359a", "#f4a62b"},
-	{"pip", "Pip", "#2f4ea8", "#d742c5", "#efa31b"},
+	{"pip", "Hank", "#2f4ea8", "#d742c5", "#efa31b"},
 }
 
 func character(key string) (Character, bool) {

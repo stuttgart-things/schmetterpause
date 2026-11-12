@@ -7,7 +7,7 @@ Each other character has `base.svg` and six `face-*.svg` files under
 class and a `data-face` attribute, including in live SVG and LED GIF output.
 
 blecki retains the provided Character Creator v4 wolf drawing and its pose.
-Pip is restored from its workshop branch as the third selectable character.
+Hank is restored from its workshop branch as the third selectable character.
 The Pogo and Kiki workshop drawings remain preserved on separate branches. Face surfaces are separated and additional
 expressions are drawn at
 the native eye and mouth positions. The supplied jewellery overlays are not
@@ -16,7 +16,7 @@ imported: the original sthings jewellery is offered only for sthings. blecki’s
 ## Reproduce the Creator imports
 
 Use the supplied `tischtennis-character-creator-v4 (3)/assets/characters`
-directory as input. The release importer processes blecki and Pip and does not
+directory as input. The release importer processes blecki and Hank and does not
 modify its source directory. The workshop branches retain the other imports.
 
 ```sh
@@ -37,7 +37,7 @@ Boolean operations preserve the native curves when extracting face surfaces.
 For the new characters, an empty fur key keeps the original materials.
 Choosing a palette colour replaces the main body surface; muzzle, ear and
 other material colours remain fixed. The existing `fur` key for headband and
-handle selects their original colours. Pip retains its separately coloured headband. blecki has no headband and therefore
+handle selects their original colours. Hank retains its separately coloured headband. blecki has no headband and therefore
 has no visible headband control. All player-supplied keys are validated
 before saving. Unknown stored characters, including the removed Fynn and
 Chomp, fall back to sthings. Their SVG assets are no longer shipped.
@@ -178,9 +178,9 @@ that preview changes never rewrite the saved SVG. Go handler tests exercise
 saving/reset and stale stored choices.
 
 
-## Pip review
+## Hank review
 
-**Pip deliberately has no blush cheeks in any expression.** The six face SVGs
+**Hank deliberately has no blush cheeks in any expression.** The six face SVGs
 and base contain no cheek group or former cheek colours. Cheeks were removed
 because the placement attempts did not suit the drawing. Other avatars, including
 the preserved Pogo/Kiki workshop drawings, retain their own cheeks unchanged.
@@ -192,7 +192,7 @@ the two cheek paths in each face. No new profile field or choice is introduced.
 
 The anchoring helper/constants, cheek measurements JSON, geometric cheek test,
 cheek colour/ownership tests, red-cheek test image and unused cheek fixtures
-have been removed. The Pip-only GIF palette preservation introduced for cheek
+have been removed. The Hank-only GIF palette preservation introduced for cheek
 colours is also removed; blecki's separate accessory handling remains intact.
 Only an absence test retains the four former colour values, as a forbidden list.
 
@@ -230,7 +230,41 @@ regression too:
 ```sh
 SP_RUN_PIP_BROWSER=1 SP_PLAYWRIGHT_MODULE=/path/to/playwright \
 SP_PREVIEW_BROWSER_BINARY=/path/to/chrome \
-go test ./internal/server -run TestPipBrowser -count=1 -v
+go test ./internal/server -run TestHankBrowser -count=1 -v
 ```
 
 Set `SP_PREVIEW_SCREENSHOT_DIR` for desktop/mobile captures.
+
+### Hank emblem investigation (placement decision pending)
+
+The display name is Hank. The internal key remains `pip` in profiles, paths,
+branch names and avatar URLs; no migration is needed. blecki remains lowercase,
+as explicitly selected earlier in this work.
+
+| Render path | Name availability |
+| --- | --- |
+| Profile and editor | Player exists in the request/session; currently not forwarded to the renderer |
+| Header avatar | Player ID is present and display name can be loaded from the player repository |
+| Game/live SVG for a player | `/avatars/{id}.svg` already loads the player; display name is available |
+| LED/player GIF | Same player endpoint loads the player; GIF method currently receives choices only |
+| Random/demo SVG and GIF | No player identity; racket fallback required |
+| Non-selected catalogue thumbnails | No owner identity; racket fallback required |
+| Check-image script/library calls without context | No player name; racket fallback, or an explicit sample name |
+
+The planned render context carries the display name only for rendering; it is
+not a saved avatar choice. Name-based initials will require no database field.
+The implementation must not accept an arbitrary name from an editor form.
+
+The unmodified belly path bounds are approximately (149.211,315)–(256.974,417.237).
+With ten-unit belly/flipper clearance, the conservative square is only
+`BELLY_EMBLEM_BOX = (184,352)–(232,400)` (48 by 48). It is on the flipper level,
+not above the flippers. The requested 90–110-unit shield and higher placement
+cannot fit this pose. A placement prototype is in `emblems/placement-proposal.png`;
+this is a review image, not an activated accessory. The user has been asked
+whether the smaller/lower version is acceptable before the slot is enabled.
+
+Font chosen for the proposed vector glyphs: **Barlow Bold**, copyright 2017 The
+Barlow Project Authors, **SIL Open Font License 1.1**. Upstream:
+https://github.com/google/fonts/tree/main/ofl/barlow . A copy of the license is
+stored at `docs/licenses/Barlow-OFL.txt`. The runtime would use generated filled
+paths, never a runtime font or SVG text.
