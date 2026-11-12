@@ -51,22 +51,26 @@ templ FigureEditor(v FigureEditorView) {
 					hx-swap="innerHTML"
 				>
 					for _, part := range v.Parts {
-						<fieldset class="figure-part">
-							<legend>{ part.Label }</legend>
-							for _, o := range part.Options {
-								<label class="pick">
-									<input type="radio" name={ part.Name } value={ o.Key } checked?={ o.Checked }/>
-									<span>
-										if o.Hex != "" {
-											<i class="swatch" style={ "background:" + o.Hex }></i>
-										} else if o.SameAsFur {
-											<i class="swatch swatch-fur"></i>
-										}
-										{ o.Name }
-									</span>
-								</label>
-							}
-						</fieldset>
+						if part.Name == "headdress" {
+							@FigureHeaddress(part, false)
+						} else {
+							<fieldset class="figure-part">
+								<legend>{ part.Label }</legend>
+								for _, o := range part.Options {
+									<label class="pick">
+										<input type="radio" name={ part.Name } value={ o.Key } checked?={ o.Checked }/>
+										<span>
+											if o.Hex != "" {
+												<i class="swatch" style={ "background:" + o.Hex }></i>
+											} else if o.SameAsFur {
+												<i class="swatch swatch-fur"></i>
+											}
+											{ o.Name }
+										</span>
+									</label>
+								}
+							</fieldset>
+						}
 					}
 					@FigureBallColor(v.BallColor, false)
 				</div>
@@ -169,4 +173,30 @@ templ FigureBallColor(v FigureBallColorView, oob bool) {
 			<input type="hidden" name="ballColor" value={ v.Value }/>
 		}
 	</div>
+}
+
+// FigureHeaddress refreshes coat-dependent headband choices without replacing the form.
+templ FigureHeaddress(part FigurePart, oob bool) {
+	<fieldset
+		id="figure-headdress"
+		class="figure-part"
+		if oob {
+			hx-swap-oob="true"
+		}
+	>
+		<legend>{ part.Label }</legend>
+		for _, o := range part.Options {
+			<label class="pick">
+				<input type="radio" name={ part.Name } value={ o.Key } checked?={ o.Checked }/>
+				<span>
+					if o.Hex != "" {
+						<i class="swatch" style={ "background:" + o.Hex }></i>
+					} else if o.SameAsFur {
+						<i class="swatch swatch-fur"></i>
+					}
+					{ o.Name }
+				</span>
+			</label>
+		}
+	</fieldset>
 }

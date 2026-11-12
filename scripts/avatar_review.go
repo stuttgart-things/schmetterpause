@@ -12,11 +12,13 @@ import (
 	"image/draw"
 	"image/gif"
 	"image/png"
+	"io/fs"
 	"math"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
+	"testing/fstest"
 
 	"github.com/srwiley/oksvg"
 	"github.com/srwiley/rasterx"
@@ -52,6 +54,41 @@ func main() {
 		os.Exit(1)
 	}
 }
+
+// Archived faces are loaded over the unchanged embedded base for a reproducible
+// before/after comparison through the same production GIF renderer.
+func previousPipCollection() (*avatar.Collection, error) {
+	files := fstest.MapFS{}
+	err := fs.WalkDir(web.Static, "static/img", func(path string, entry fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if entry.IsDir() {
+			return nil
+		}
+		data, err := fs.ReadFile(web.Static, path)
+		if err != nil {
+			return err
+		}
+		files[path] = &fstest.MapFile{Data: data}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	for _, face := range avatar.Faces {
+		name := "face-" + face.Key + ".svg"
+		data, err := os.ReadFile(filepath.Join("docs/avatar-check/pip/before-eyes", name))
+		if err != nil {
+			return nil, err
+		}
+		files["static/img/pip/"+name] = &fstest.MapFile{Data: data}
+	}
+	return avatar.LoadCollection(files, "static/img")
+}
+
+var comparisonBefore *avatar.Collection
+
 func run(key, out string) error {
 	known := false
 	for _, c := range avatar.Characters {
@@ -71,6 +108,21 @@ func run(key, out string) error {
 	}
 	a := avatar.DefaultForCharacter(key, "")
 	a.Blade = "light-blue"
+
+	if key == "pip" {
+		comparisonBefore, err = previousPipCollection()
+		if err != nil {
+			return err
+		}
+		var samples []sample
+		for _, face := range avatar.Faces {
+			samples = append(samples, sample{face.Name + " / Alt", a, face.Key}, sample{face.Name + " / Neu", a, face.Key})
+		}
+		if err = sheet(collection, samples, 6, 64, color.RGBA{0, 0, 0, 255}, "Pip | Alt / Neu je Ausdruck | 64 px schwarz", filepath.Join(out, "eyes-before-after-64-black.png")); err != nil {
+			return err
+		}
+		comparisonBefore = nil
+	}
 	backgrounds := []struct {
 		name   string
 		colour color.RGBA
@@ -101,6 +153,9 @@ func run(key, out string) error {
 			for _, head := range []string{"ivory", "silver"} {
 				b := a
 				b.Fur, b.Headdress = coat.Key, head
+				if coat.Key == "grey" && head == "silver" {
+					continue
+				}
 				critical = append(critical, sample{coat.Name + " / Stirnband " + map[string]string{"ivory": "Elfenbein", "silver": "Silber"}[head], b, "neutral"})
 			}
 		}
@@ -203,7 +258,7 @@ func run(key, out string) error {
 		if key == "pip" {
 			var headbands []sample
 			for _, coat := range palette {
-				for _, head := range avatar.HeaddressPalette(key) {
+				for _, head := range avatar.HeaddressPalette(key, coat.Key) {
 					b := a
 					b.Fur, b.Headdress = coat.Key, head.Key
 					headbands = append(headbands, sample{coat.Name + " / " + head.Name, b, "neutral"})
@@ -332,7 +387,7 @@ not photographs of a real panel. In particular, dark wood and moss on black
 should be checked on the device. No runtime hides jewellery automatically.
 `
 	if key == "pip" {
-		note = "# Pip acceptance review\n\nRegenerate: `go run ./scripts/avatar_review.go -character pip -out docs/avatar-check/pip`\n\nOpen index.html for expressions, materials and GIFs. The expressions-row PNGs show the six faces in original colours at 64 and 28 pixels on black. Full sheets include Original, Grau and Blaugrau on navy and black. Pip has no jewellery. Physical LED-panel contrast remains to be checked.\n"
+		note = "# Pip acceptance review\n\nRegenerate: `go run ./scripts/avatar_review.go -character pip -out docs/avatar-check/pip`\n\nOpen index.html for expressions, materials and GIFs. The expressions-row PNGs show the six faces in original colours at 64 and 28 pixels on black. Full sheets include Original, Grau and Blaugrau on navy and black. Pip has no jewellery. Grey excludes Silver; native Pink is labelled Original. The eyes-before-after-64-black.png sheet compares archived faces from adf4bc6 with the new eyes, each Alt/Neu pair adjacent. Physical LED-panel contrast remains to be checked.\n"
 	}
 	if err = os.WriteFile(filepath.Join(out, "README.md"), []byte(note), 0644); err != nil {
 		return err
@@ -366,7 +421,11 @@ func sheet(c *avatar.Collection, samples []sample, cols, size int, bg color.RGBA
 	}
 	label(8, 18, title)
 	for i, s := range samples {
-		svg := c.RenderFlat(s.a, s.face)
+		renderer := c
+		if comparisonBefore != nil && strings.HasSuffix(s.label, " / Alt") {
+			renderer = comparisonBefore
+		}
+		svg := renderer.RenderFlat(s.a, s.face)
 		icon, err := oksvg.ReadIconStream(strings.NewReader(svg), oksvg.StrictErrorMode)
 		if err != nil {
 			return err
@@ -378,7 +437,7 @@ func sheet(c *avatar.Collection, samples []sample, cols, size int, bg color.RGBA
 		x := (i%cols)*cellW + (cellW-size)/2
 		y := 28 + (i/cols)*cellH
 		if bg.R == 0 && bg.G == 0 && bg.B == 0 && size == 64 {
-			data, err := c.GIF(s.a, []avatar.Frame{{Face: s.face}}, 64)
+			data, err := renderer.GIF(s.a, []avatar.Frame{{Face: s.face}}, 64)
 			if err != nil {
 				return err
 			}

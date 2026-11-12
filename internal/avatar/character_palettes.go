@@ -48,13 +48,17 @@ var PipFurs = []Colour{
 }
 
 // HeaddressPalette retains shared colours except Pip's navy-adjacent Lapis.
-func HeaddressPalette(characterKey string) []Colour {
+// With a coat supplied, grey also excludes Silver. Pip's native pink is Original.
+func HeaddressPalette(characterKey string, fur ...string) []Colour {
 	if characterKey != "pip" {
 		return Headdresses
 	}
 	var palette []Colour
 	for _, c := range Headdresses {
-		if c.Key != "lapis" {
+		if c.Key == SameAsFur {
+			c.Name = "Original"
+		}
+		if c.Key != "lapis" && !(len(fur) > 0 && fur[0] == "grey" && c.Key == "silver") {
 			palette = append(palette, c)
 		}
 	}

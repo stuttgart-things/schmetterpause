@@ -245,3 +245,88 @@ func TestPipExpressionGroupsRemainVisibleAt28Pixels(t *testing.T) {
 		t.Errorf("original coat appears in only %d pixels", coatPixels)
 	}
 }
+
+func TestPipSilverRequiresANonGreyCoat(t *testing.T) {
+	for _, fur := range []string{"", "grey", "blue-grey"} {
+		a := DefaultForCharacter("pip", "anna")
+		a.Fur = fur
+		a.Headdress = "silver"
+		allowed := fur != "grey"
+		if got := has(HeaddressPalette("pip", fur), "silver"); got != allowed {
+			t.Errorf("silver offered for %q: %v", fur, got)
+		}
+		if (Validate(a) == nil) != allowed {
+			t.Errorf("validation for %q", fur)
+		}
+		filled := Fill(a, "anna")
+		if allowed && filled.Headdress != "silver" {
+			t.Fatal("legal silver removed")
+		}
+		if !allowed && filled.Headdress != SameAsFur {
+			t.Fatal("grey/silver did not fall back to Original")
+		}
+		if HeaddressPalette("pip", fur)[0].Name != "Original" {
+			t.Fatal("wrong Pip default headband label")
+		}
+	}
+	rng := rand.New(rand.NewPCG(73, 99))
+	seenGrey := false
+	seenSilver := false
+	for range 3000 {
+		a := Random(rng)
+		if err := Validate(a); err != nil {
+			t.Fatal(err)
+		}
+		if a.Character != "pip" {
+			continue
+		}
+		if a.Fur == "grey" {
+			seenGrey = true
+			if a.Headdress == "silver" {
+				t.Fatal("random grey/silver")
+			}
+		}
+		if a.Headdress == "silver" {
+			seenSilver = true
+		}
+	}
+	if !seenGrey || !seenSilver {
+		t.Fatal("missing legal random options")
+	}
+}
+
+func TestPipEyesKeepTwoVisibleHighlights(t *testing.T) {
+	c, err := LoadCollection(web.Static, "static/img")
+	if err != nil {
+		t.Fatal(err)
+	}
+	a := DefaultForCharacter("pip", "")
+	for _, face := range Faces {
+		if face.Key == "happy" {
+			continue
+		}
+		img, err := rasterise(c.RenderFlat(a, face.Key), 420)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for index, anchor := range [][2]int{{146, 221}, {260, 192}} {
+			cx, cy := anchor[0], anchor[1]
+			hy := cy - 8
+			smallDY := 10
+			if face.Key == "angry" || face.Key == "sad" || (face.Key == "skeptical" && index == 1) {
+				hy = cy + 13
+				smallDY = 6
+			}
+			// Check centres and four interior points so a lid cannot turn a glint
+			// into a missing pixel or a clipped triangle.
+			for _, glint := range [][3]int{{cx - 5, hy, 4}, {cx + 6, hy + smallDY, 1}} {
+				for _, offset := range [][2]int{{0, 0}, {glint[2], 0}, {-glint[2], 0}, {0, glint[2]}, {0, -glint[2]}} {
+					pixel := img.RGBAAt(glint[0]+offset[0], glint[1]+offset[1])
+					if pixel.R < 240 || pixel.G < 240 || pixel.B < 240 {
+						t.Errorf("%s eye %d glint covered at %v: %v", face.Key, index, offset, pixel)
+					}
+				}
+			}
+		}
+	}
+}

@@ -182,9 +182,15 @@ saving/reset and stale stored choices.
 
 Pip retains the Creator penguin's pose, torso, head proportions and headband.
 Only the gripping assembly and the previously occluded right cheek are rebuilt.
-`PIP_EYES` fixes both eyes to their native centres (146,219 and 260,190), with
-22 by 23 radii. Open eyes use white sclerae, large round pupils, highlights,
-white lids and pointed black lid edges of the same construction as blecki.
+`PIP_EYES` uses centres (146,221) and (260,192), two units below their native
+positions, with equal 26 by 31 radii (52 by 62 full size). Open eyes have a
+6-unit filled outer ring, a nearly black (#14141f) iris occupying 80 percent
+of the inner eye (65 percent when surprised), and two white glints with
+13- and 6-unit diameters. Surprised eyes are enlarged by ten percent. White
+lids and pointed 13-unit black lid keels carry the expressions. Both glints
+stay below lowered lids; a raster test checks their centres and interior points.
+The generator checks at least 8 units of clearance from the headband, including
+the lid keels, for every expression.
 Angry lids descend towards the nose, sad lids outwards, and skeptical is
 asymmetric. Happy uses filled crescent eyes at least 10 units thick.
 
@@ -205,7 +211,10 @@ Pip's original navy is **#2f4ea8**, lighter than #233c87 to keep the coat visibl
 on black without losing its blue character. Alternatives are **Grau #8793a5**
 (cool medium grey, shade #5a6678) and **Blaugrau #587e9b** (muted blue-grey,
 shade #38556e). Sand and Chocolate now fall back to Original. Pip's headband
-excludes Lapis; old values fall back to the original pink. Both palette
+excludes Lapis and, specifically on Grey, Silver; old invalid combinations
+fall back to the original pink. The native pink option is labelled Original,
+not “Wie das Fell”. On a live coat change, the editor replaces just the headband
+fieldset and selects Original if Silver has become invalid. Both palette
 restrictions apply to validation, preview, rendering and random generation.
 Other figures retain the shared palettes. Handle/blade choices are unchanged.
 Pip has no jewellery. Persistence uses the existing fields; no migration.
@@ -218,7 +227,7 @@ go run ./scripts/avatar_review.go -character pip -out docs/avatar-check/pip
 
 Open `docs/avatar-check/pip/index.html`. It includes all six expressions and
 three coats at 192, 64 and 28 pixels on navy and black; `critical-64-black.png`
-contains the requested eleven critical combinations. Black 64-pixel previews
+contains the allowed critical combinations (Grey/Silver is excluded). Black 64-pixel previews
 use the runtime GIF quantisation. Labels use embedded Go Regular, which
 supports German umlauts without host fonts. Native-size expression rows,
 material sheets, headband sheets and GIFs are also included.
@@ -226,9 +235,9 @@ material sheets, headband sheets and GIFs are also included.
 Review notes: Steel blade on Grey and Blue grip on original navy have low
 surface-colour separation. Black outlines and the new paddle gap help, but
 don't guarantee physical LED readability. Blue blade on navy/blue-grey shares
-a hue family but remains separated geometrically. Ivory and Silver headbands
+a hue family but remains separated geometrically. Ivory and legal Silver headbands
 remain visible through their black border, though Ivory approaches the white
-face in brightness. Dark wood is a small coloured grip area at 28 pixels.
+face in brightness. Grey/Silver is no longer offered. Dark wood is a small coloured grip area at 28 pixels.
 No critical combination has been recoloured automatically. A real LED-panel
 check and aesthetic approval remain outstanding.
 
@@ -245,3 +254,14 @@ It checks palettes, previews, selected thumbnails, saving/reloading, SVG/GIF
 endpoints, mobile layout and reset, then runs the existing blecki browser
 regression against the same disposable server. Set `SP_PREVIEW_SCREENSHOT_DIR` to export
 desktop and mobile editor captures.
+
+
+The eye revision comparison is `eyes-before-after-64-black.png`: each expression
+has Alt directly beside Neu. Archived pre-revision faces from adf4bc6 are kept
+under `docs/avatar-check/pip/before-eyes/`, outside embedded application assets.
+The review generator uses the same unchanged base and runtime GIF quantisation
+for both versions. The Pip base, all six beaks, paddle geometry and brow paths
+are unchanged by this eye revision. Unit tests also retain the coarse-luminance
+checks for six distinct expressions at 64 pixels and the positive/surprised/
+negative groups at 28 pixels. These checks establish pixel differences, not
+subjective visual approval or physical LED readability.

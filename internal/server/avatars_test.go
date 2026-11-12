@@ -760,3 +760,37 @@ func TestPipEditorHasHeadbandAndNoJewellery(t *testing.T) {
 		t.Error("missing expression gallery")
 	}
 }
+
+func TestPipGreyRefreshesHeadbandOptionsAndFallsBackToPink(t *testing.T) {
+	h, _, anna, _ := twoBrowsers(t)
+	a := avatar.DefaultForCharacter("pip", "")
+	a.Fur = "grey"
+	a.Headdress = "silver"
+	a.Blade = "pink"
+	q := figureForm(a)
+	q.Set("character", "pip")
+	rec := fragment(t, h, "/fragments/figure-preview?"+q.Encode(), anna)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("coat switch: %d", rec.Code)
+	}
+	body := rec.Body.String()
+	if strings.Contains(body, `name="headdress" value="silver"`) {
+		t.Fatal("silver still offered on grey")
+	}
+	for _, want := range []string{`id="figure-headdress"`, `hx-swap-oob="true"`, `name="headdress" value="fur" checked`, `--headdress:#d742c5`, `Original`} {
+		if !strings.Contains(body, want) {
+			t.Errorf("missing %s", want)
+		}
+	}
+	if strings.Contains(body, "Wie das Fell") {
+		t.Fatal("Pip has misleading Original label")
+	}
+	a.Fur = "blue-grey"
+	a.Headdress = avatar.SameAsFur
+	q = figureForm(a)
+	q.Set("character", "pip")
+	rec = fragment(t, h, "/fragments/figure-preview?"+q.Encode(), anna)
+	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), `name="headdress" value="silver"`) {
+		t.Fatal("silver did not return on blue-grey")
+	}
+}

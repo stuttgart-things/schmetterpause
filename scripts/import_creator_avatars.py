@@ -484,47 +484,67 @@ def convert_vex(source, target):
 
 
 # Fixed native anchors on the unchanged, slightly tilted head.
-PIP_EYES = ((146, 219, 22, 23), (260, 190, 22, 23))
+PIP_EYES = ((146, 221, 26, 31), (260, 192, 26, 31))
 PIP_GRIP_PIVOT = (283, 375)
 PIP_FUR = "#2f4ea8"
 
 
 def pip_eye(cx, cy, rx, ry, state, index):
     if state == "happy":
+        # Two closed, upward crescents; maximum thickness is 12 canvas units.
         return paint(
-            f"M{cx-rx} {cy+5} Q{cx} {cy-28} {cx+rx} {cy+5} Q{cx} {cy-5} {cx-rx} {cy+5}Z"
+            f"M{cx-rx} {cy+5} Q{cx} {cy-31} {cx+rx} {cy+5} Q{cx} {cy-7} {cx-rx} {cy+5}Z"
         )
     if state == "surprised":
-        rx *= 1.08
-        ry *= 1.08
-    outer, inner = ellipse(cx, cy, rx, ry), ellipse(cx, cy, rx - 4, ry - 4)
+        rx *= 1.1
+        ry *= 1.1
+    outer = ellipse(cx, cy, rx, ry)
+    inner = ellipse(cx, cy, rx - 6, ry - 6)
+    # The iris occupies 80% (65% when surprised) of the sclera's area.
+    fraction = math.sqrt(0.65 if state == "surprised" else 0.8)
+    iris = ellipse(cx, cy + 1, (rx - 6) * fraction, (ry - 6) * fraction)
     if state == "angry":
-        ends = (-10, 3) if index == 0 else (3, -10)
+        ends = (-15, 1) if index == 0 else (1, -15)
     elif state == "sad":
-        ends = (3, -10) if index == 0 else (-10, 3)
+        ends = (1, -15) if index == 0 else (-15, 1)
     elif state == "skeptical":
-        ends = (-19, -19) if index == 0 else (-2, -2)
+        ends = (-27, -27) if index == 0 else (0, 0)
     elif state == "neutral":
-        ends = (-15, -10) if index == 0 else (-10, -15)
+        ends = (-24, -18) if index == 0 else (-18, -24)
     else:
         ends = None
     s = ""
+    visible = inner
     if ends:
-        yl, yr = (cy + ends[0], cy + ends[1])
+        yl, yr = cy + ends[0], cy + ends[1]
         below = shape(f"M{cx-rx-2} {yl} L{cx+rx+2} {yr} V{cy+ry+2} H{cx-rx-2}Z")
         s += svgpath(op(outer, below, pathops.PathOp.DIFFERENCE), "#fff6f3")
         outer = op(outer, below, pathops.PathOp.INTERSECTION)
-        inner = op(inner, below, pathops.PathOp.INTERSECTION)
-    s += svgpath(outer, INK) + svgpath(inner, WHITE)
-    py = cy + (10 if state == "sad" else 6)
-    pupil = ellipse(cx - 1, py, 10, 11)
-    highlight = ellipse(cx - 4, py - 3, 3.2, 3.6)
-    s += svgpath(op(pupil, inner, pathops.PathOp.INTERSECTION), INK)
-    s += svgpath(op(highlight, inner, pathops.PathOp.INTERSECTION), WHITE)
+        visible = op(inner, below, pathops.PathOp.INTERSECTION)
+    s += svgpath(outer, INK) + svgpath(visible, WHITE)
+    s += svgpath(op(iris, visible, pathops.PathOp.INTERSECTION), "#14141f")
+    # Under a lowered lid, move the same upper-left lighting motif down so
+    # both round glints stay visible, separated and fully inside the iris.
+    hy = (
+        cy - 8
+        if state in ["neutral", "surprised"] or (state == "skeptical" and index == 0)
+        else cy + 13
+    )
+    big = ellipse(cx - 5, hy, 6.5, 6.5)
+    small = ellipse(cx + 6, hy + (6 if hy == cy + 13 else 10), 3, 3)
+    for glint in (big, small):
+        s += svgpath(
+            op(
+                op(glint, iris, pathops.PathOp.INTERSECTION),
+                visible,
+                pathops.PathOp.INTERSECTION,
+            ),
+            WHITE,
+        )
     if ends:
-        s += vex_brow(cx - rx, yl, cx + rx, yr, 0, 11)
+        s += vex_brow(cx - rx, yl, cx + rx, yr, 0, 13)
     else:
-        s += vex_brow(cx - rx + 1, cy - ry + 6, cx + rx - 1, cy - ry + 6, -8, 11)
+        s += vex_brow(cx - rx + 1, cy - ry + 5, cx + rx - 1, cy - ry + 5, -8, 13)
     return s
 
 
@@ -599,6 +619,24 @@ def pip_beak(state):
 
 def convert_pip(source, target):
     original = creator_svg.paths(source, "pip")
+    headband = original[47][2]
+    import xml.etree.ElementTree as ET
+
+    for index, (cx, cy, rx, ry) in enumerate(PIP_EYES):
+        for state in FACES:
+            geometry = pathops.Path()
+            for el in ET.fromstring(
+                "<svg>" + pip_eye(cx, cy, rx, ry, state, index) + "</svg>"
+            ):
+                geometry = op(geometry, shape(el.get("d")), pathops.PathOp.UNION)
+            # Include the extended lid keel, not only the eye oval.
+            safety = pathops.Path(geometry)
+            safety.stroke(16, pathops.LineCap.ROUND_CAP, pathops.LineJoin.ROUND_JOIN, 4)
+            safety.convertConicsToQuads(0.01)
+            safety = op(geometry, safety, pathops.PathOp.UNION)
+            assert (
+                op(safety, headband, pathops.PathOp.INTERSECTION).area < 0.001
+            ), f"Pip {state} eye/headband gap below 8"
 
     def transformed(p, t):
         out = pathops.Path()

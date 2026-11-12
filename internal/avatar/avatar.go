@@ -89,7 +89,7 @@ func Fill(a Avatar, playerID string) Avatar {
 	if !validFur(a.Character, a.Fur) {
 		a.Fur = d.Fur
 	}
-	if _, ok := findColour(HeaddressPalette(a.Character), a.Headdress); !ok {
+	if _, ok := findColour(HeaddressPalette(a.Character, a.Fur), a.Headdress); !ok {
 		a.Headdress = d.Headdress
 	}
 	if _, ok := findColour(Handles, a.Handle); !ok {
@@ -116,7 +116,7 @@ func Validate(a Avatar) error {
 	}{
 		{"character", a.Character, knownCharacter},
 		{"fur", a.Fur, validFur(a.Character, a.Fur)},
-		{"headdress", a.Headdress, has(HeaddressPalette(a.Character), a.Headdress)},
+		{"headdress", a.Headdress, has(HeaddressPalette(a.Character, a.Fur), a.Headdress)},
 		{"handle", a.Handle, has(Handles, a.Handle)},
 		{"blade", a.Blade, has(Blades, a.Blade)},
 		{"bling", a.Bling, hasOption(BlingPalette(a.Character), a.Bling)},
@@ -156,6 +156,10 @@ func Random(r *rand.Rand) Avatar {
 		if r.IntN(len(palette)+1) == 0 {
 			a.Fur = ""
 		}
+	}
+	heads = HeaddressPalette(key, a.Fur)
+	if !has(heads, a.Headdress) {
+		a.Headdress = heads[r.IntN(len(heads))].Key
 	}
 	return a
 }

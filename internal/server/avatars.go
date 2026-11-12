@@ -176,7 +176,7 @@ func figureEditorView(a avatar.Avatar) templates.FigureEditorView {
 		bling.Options = append(bling.Options, templates.FigureOption{Key: o.Key, Name: o.Name, Checked: o.Key == a.Bling})
 	}
 	fur := colours("fur", "Grundfarbe", avatar.FurPalette(a.Character), a.Fur)
-	head := colours("headdress", "Kopfschmuck", avatar.HeaddressPalette(a.Character), a.Headdress)
+	head := colours("headdress", "Kopfschmuck", avatar.HeaddressPalette(a.Character, a.Fur), a.Headdress)
 	handle := colours("handle", "Griff", avatar.Handles, a.Handle)
 	parts := []templates.FigurePart{fur, head, handle, colours("blade", "Schläger", avatar.Blades, a.Blade)}
 	if a.Character == "" {
@@ -247,6 +247,10 @@ func figureFromForm(r *http.Request) avatar.Avatar {
 // it would look. Nothing is stored.
 func (s *Server) handleFigurePreview(w http.ResponseWriter, r *http.Request) {
 	a := figureFromForm(r)
+	// Changing the coat can invalidate a previously selected silver band.
+	if a.Character == "pip" && a.Fur == "grey" && a.Headdress == "silver" {
+		a.Headdress = avatar.SameAsFur
+	}
 	if err := avatar.Validate(a); err != nil {
 		// Only a hand-made request gets here; the form offers nothing else.
 		// The preview keeps what it showed.
@@ -257,6 +261,14 @@ func (s *Server) handleFigurePreview(w http.ResponseWriter, r *http.Request) {
 	s.render(w, r, templates.FigureExpressions(figureExpressionsView(a), true))
 	s.render(w, r, templates.FigureSelectedThumbnail(figures.Render(a), a.Character))
 	s.render(w, r, templates.FigureBallColor(figureBallColorView(a), true))
+	if a.Character == "pip" {
+		view := figureEditorView(a)
+		for _, part := range view.Parts {
+			if part.Name == "headdress" {
+				s.render(w, r, templates.FigureHeaddress(part, true))
+			}
+		}
+	}
 }
 
 // handleFigureCharacter changes the suggestion, without storing it. Each

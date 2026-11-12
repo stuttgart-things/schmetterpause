@@ -36,7 +36,17 @@ const { chromium } = require(process.env.SP_PLAYWRIGHT_MODULE || 'playwright');
         page.locator('.figure-parts label.pick').filter({has:input}).click(),
       ]);
     }
-    await choose('fur','blue-grey');await choose('headdress','ivory');await choose('handle','blue');await choose('blade','steel');
+    const originalLabel=page.locator('.figure-parts label.pick').filter({has:page.locator('input[name=headdress][value=fur]')});
+    assert.match(await originalLabel.innerText(),/Original/);
+    assert.doesNotMatch(await originalLabel.innerText(),/Wie das Fell/);
+    await choose('headdress','silver');
+    await choose('fur','grey');
+    assert.equal(await page.locator('input[name=headdress][value=silver]').count(),0);
+    assert.ok(await page.locator('input[name=headdress][value=fur]').isChecked());
+    for(const card of await page.locator('.face-preview').all()) assert.ok((await card.innerHTML()).includes('--headdress:#d742c5'));
+    await choose('fur','blue-grey');
+    assert.equal(await page.locator('input[name=headdress][value=silver]').count(),1);
+    await choose('headdress','ivory');await choose('handle','blue');await choose('blade','steel');
     for (const prop of ['--fur:#587e9b','--headdress:#f2ead8','--handle:#2f6fd0','--paddle:#8c8f9c']) {
       assert.ok((await page.locator('#character-thumbnail-pip').innerHTML()).includes(prop));
       for(const card of await page.locator('.face-preview').all()) assert.ok((await card.innerHTML()).includes(prop));
