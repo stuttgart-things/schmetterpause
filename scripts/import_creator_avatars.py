@@ -493,32 +493,6 @@ PIP_FUR = "#2f4ea8"
 # large glint moves vertically; its x coordinate and the small glint stay fixed.
 PIP_LIGHT_LARGE = (-5, -10)
 PIP_LIGHT_SMALL = (8.5, 17.5)
-# Complete ovals, positioned relative to each expression's visible eyes.
-PIP_CHEEK_SIZE = (40, 22)
-PIP_CHEEK_OFFSET = 0.25
-PIP_CHEEK_GAP = 10
-
-
-def pip_cheek(anchor, eye, index, state, white_face):
-    """A complete oval anchored to the actual visible eye, never to the canvas."""
-    cx, cy, rx, ry = anchor
-    sx, sy, fill = {
-        "happy": (1.18, 1.18, "#f294b8"),
-        "angry": (1.15, 1.05, "#ec6f74"),
-        "sad": (0.75, 0.75, "#f6d4e0"),
-    }.get(state, (1, 1, "#f5b5ce"))
-    cheek_rx, cheek_ry = PIP_CHEEK_SIZE[0] * sx / 2, PIP_CHEEK_SIZE[1] * sy / 2
-    direction = -1 if index == 0 else 1
-    eye_width = (rx * 2) * (1.1 if state == "surprised" else 1)
-    x = cx + direction * eye_width * PIP_CHEEK_OFFSET
-    y = eye.bounds[3] + PIP_CHEEK_GAP + cheek_ry
-    # Search only inward, in quarter-unit steps. Both size and y remain fixed.
-    for _ in range(160):
-        p = ellipse(x, y, cheek_rx, cheek_ry)
-        if op(p, white_face, pathops.PathOp.DIFFERENCE).area < 0.001:
-            return p, fill
-        x -= direction * 0.25
-    raise ValueError(f"No unclipped in-face cheek position for {state}, eye {index}")
 
 
 def pip_glints(cx, cy, visible, keel, lowered):
@@ -786,52 +760,10 @@ def convert_pip(source, target):
         + equipment
         + "</g>",
     )
-    face_white = pathops.Path()
-    for role, fill, p in visible(body_parts):
-        if fill == "#fff6f3":
-            face_white = op(face_white, p, pathops.PathOp.UNION)
-    import xml.etree.ElementTree as ET
-
+    # Pip deliberately has no blush cheeks in any expression.
     for face in FACES:
-        eyes = []
-        for i, anchor in enumerate(PIP_EYES):
-            geometry = pathops.Path()
-            for el in ET.fromstring("<svg>" + pip_eye(*anchor, face, i) + "</svg>"):
-                if el.get("fill") in [INK, "#14141f"]:
-                    geometry = op(geometry, shape(el.get("d")), pathops.PathOp.UNION)
-            eyes.append(geometry)
-        eye_geometry = op(eyes[0], eyes[1], pathops.PathOp.UNION)
-        blush = []
-        for i, anchor in enumerate(PIP_EYES):
-            p, fill = pip_cheek(anchor, eyes[i], i, face, face_white)
-            assert (
-                op(
-                    outlined(p, 24), outlined(blade, 13), pathops.PathOp.INTERSECTION
-                ).area
-                < 0.001
-            ), "Cheek/racket gap below 12"
-            assert (
-                op(p, face_white, pathops.PathOp.DIFFERENCE).area < 0.001
-            ), f"Pip {face} cheek leaves white face"
-            assert (
-                op(p, outlined(eye_geometry, 16), pathops.PathOp.INTERSECTION).area
-                < 0.001
-            ), f"Pip {face} cheek/eye gap below 8"
-            assert (
-                op(p, outlined(eyes[i], 28), pathops.PathOp.INTERSECTION).area > 0.001
-            ), f"Pip {face} cheek/eye gap above 14"
-            beak_geometry = pathops.Path()
-            for el in ET.fromstring("<svg>" + pip_beak(face) + "</svg>"):
-                beak_geometry = op(
-                    beak_geometry, shape(el.get("d")), pathops.PathOp.UNION
-                )
-            assert op(p, beak_geometry, pathops.PathOp.INTERSECTION).area < 0.001
-            blush.append(svgpath(p, fill))
         body = (
-            '<g data-pip-part="cheeks">'
-            + "".join(blush)
-            + "</g>"
-            + "".join(pip_eye(*anchor, face, i) for i, anchor in enumerate(PIP_EYES))
+            "".join(pip_eye(*anchor, face, i) for i, anchor in enumerate(PIP_EYES))
             + pip_brows(face)
             + '<g data-pip-part="beak">'
             + pip_beak(face)

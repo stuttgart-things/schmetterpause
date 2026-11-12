@@ -180,93 +180,52 @@ saving/reset and stale stored choices.
 
 ## Pip review
 
-Pip keeps the existing 52 by 62 dark, sclera-free eyes, lighting helper, beaks,
-paddle, base and palettes. Neutral remains symmetric and horizontal with
-7.56% white-lid coverage; Happy, Surprised, Angry and Sad remain unchanged
-except for their cheeks. The original 64-pixel regression threshold remains
-114, taken from e2dd9f9. The final measured minimum is **115**.
+**Pip deliberately has no blush cheeks in any expression.** The six face SVGs
+and base contain no cheek group or former cheek colours. Cheeks were removed
+because the placement attempts did not suit the drawing. Other avatars, including
+the preserved Pogo/Kiki workshop drawings, retain their own cheeks unchanged.
 
-### Eye-anchored cheeks
+Eye dimensions, centres, sclera-free construction, shared lighting helper,
+brows, all lids (including sharpened Skeptical), six beaks, paddle, base and
+palettes are unchanged from 7969bdf. The only removed live vector shapes are
+the two cheek paths in each face. No new profile field or choice is introduced.
 
-`pip_cheek` derives both complete ellipse positions from each expression's
-actual visible eye contour, not fixed canvas coordinates:
+The anchoring helper/constants, cheek measurements JSON, geometric cheek test,
+cheek colour/ownership tests, red-cheek test image and unused cheek fixtures
+have been removed. The Pip-only GIF palette preservation introduced for cheek
+colours is also removed; blecki's separate accessory handling remains intact.
+Only an absence test retains the four former colour values, as a forbidden list.
 
-- `PIP_CHEEK_SIZE = (40,22)`; identical nominal dimensions for left/right.
-- `PIP_CHEEK_OFFSET = .25`: centre 25% of eye width towards the outside.
-- `PIP_CHEEK_GAP = 10`: cheek top 10 units below visible eye bottom.
-- If needed, only an inward quarter-unit search is permitted. Size and y are
-  fixed; no clipping or downward escape is used. Current placements need no
-  meaningful inward correction.
-- Curved-path checks enforce full containment in the visible white face and
-  eye clearance between 8 and 14 units. Both cheeks have the same vertical gap.
+### Pixel separation and remaining review
 
-| Expression | Colour | Width × height | Left/right contour gap |
-| --- | --- | --- | --- |
-| Neutral | #f5b5ce | 40 × 22 | 11.076 / 11.076 |
-| Happy | #f294b8 | 47.2 × 25.96 (+18%) | 11.493 / 11.493 |
-| Surprised | #f5b5ce | 40 × 22 | 11.261 / 11.261 |
-| Skeptical | #f5b5ce | 40 × 22 | 11.076 / 11.078 |
-| Angry | #ec6f74 | 46 × 23.1 (transverse) | 10.974 / 10.974 |
-| Sad | #f6d4e0 | 30 × 16.5 (75%) | 11.226 / 11.226 |
+The minimum pairwise coarse-luminance difference at 64 px is **99 pixels**,
+for **Neutral/Angry**, below the requested target of **114**. As explicitly
+requested, no expression was adjusted to compensate. This is a disclosed target
+shortfall, not a claim that 114 was achieved. The measurement test logs the
+shortfall and guards the reported cheek-free baseline against falling below 99;
+the existing tests still check six distinct expressions and small-display groups.
+All other Go/browser checks remain applicable. Physical LED and aesthetic review
+remain manual, especially Neutral versus Angry.
 
-All vertical gaps are 10 units, within SVG rounding tolerance of .002 units.
-Exact measured centres, sizes and gaps are in `cheek-measurements.json`.
-Cheeks remain borderless, expression-owned groups; no profile option, database
-field or randomisation choice is introduced. The base contains no cheeks.
-
-### Authorised Skeptical refinement
-
-Only the right horizontal lid and left brow change. The right white lid is
-one unit below the eye centre, covering about **52.05%** of the oval. The
-left tapered brow spans (104,185) to (188,185), with a stronger -29 quadratic
-bend and 16-unit maximum thickness. It is raised and more arched; the right
-brow and beak stay unchanged. The lighting helper is byte-for-byte unchanged:
-covered large glints shift only vertically until fully visible.
-
-The minimum pairwise coarse-luminance difference in 64-pixel production GIFs
-is **115**, above the **114** e2dd9f9 requirement. The reviewed intermediate
-open-Neutral state measured 99. Pixel differences do not establish subjective
-visual quality or physical LED readability.
-
-### Rendering and acceptance images
-
-Pip's cheek-aware GIF quantisation preserves every unchanged raster pixel,
-preventing new cheek colours from recolouring antialiased coat edges. Black
-192-pixel review sheets use the same palette quantisation as the 64-pixel LED
-preview. The former grey antialiasing intermediates are absent; PNGs are opaque,
-and there is no intentional grey outline. Navy app previews retain antialiasing.
-No other avatar's assets or output policy are changed.
+### Reproduce acceptance images
 
 ```sh
 go run ./scripts/avatar_review.go -character pip -out docs/avatar-check/pip
 ```
 
-`docs/avatar-check/pip/index.html` links:
+`docs/avatar-check/pip/index.html` contains all six expressions × three coats at
+192/64/28 px on navy and black, eye detail without cheeks, material comparisons
+and GIFs. `eyes-before-after-64-black.png` compares the actual saved 7969bdf
+64-pixel GIFs in `before-removal-7969bdf/` with the cheek-free runtime output.
+These intentional rendered reference fixtures are the only retained old cheek
+appearances; no obsolete cheek SVGs are shipped or needed for regeneration.
 
-- Six expressions × three coats, at 192/64/28 px on navy and black.
-- `eyes-before-after-64-black.png`: previous open-Neutral working state versus
-  new state, expression by expression. Fixtures are in `before-eye-anchored-cheeks/`.
-- `eyes-detail-192.png`: eye/brow/cheek detail, with beak/body omitted only in
-  the review render.
-- `angry-red-options-64-black.png`: coral cheeks with Ruby headband and Red
-  grip on Original, Grey and Blue-grey.
-- Material sheets, native-size expression rows and runtime-pipeline GIFs.
+Black 192-pixel reviews remain palette-quantised, avoiding the former grey
+antialiasing intermediates. Navy app previews retain normal antialiasing.
+Original/Grey/Blue-grey, coat fallbacks and the Grey/Silver exclusion are unchanged.
 
-Run the exact curve-space tests with the vector-tool development venv:
-
-```sh
-PYTHONDONTWRITEBYTECODE=1 /path/to/vector-tools/bin/python \
-  -m unittest discover -s scripts -p test_pip_geometry.py -v
-```
-
-The test reads the generated SVGs and verifies complete ellipses, white-face
-containment, 8–14 unit contour gaps, 8–12 unit vertical gaps, common left/right
-size and vertical gap, and 20–30% outward horizontal placement. Go tests cover
-SVG restrictions, glints, palette fallbacks, red visibility, unchanged GIF pixels,
-expression separation and small-display groups.
-
-The real-browser check exercises normal handlers with disposable players,
-then runs the existing blecki regression:
+The opt-in browser test uses disposable players and runs the existing blecki
+regression too:
 
 ```sh
 SP_RUN_PIP_BROWSER=1 SP_PLAYWRIGHT_MODULE=/path/to/playwright \
@@ -274,7 +233,4 @@ SP_PREVIEW_BROWSER_BINARY=/path/to/chrome \
 go test ./internal/server -run TestPipBrowser -count=1 -v
 ```
 
-Set `SP_PREVIEW_SCREENSHOT_DIR` for desktop/mobile captures. Other review
-fixtures remain historical inputs. The cheeks now sit directly beneath the
-eyes and remain geometrically separate; final aesthetic acceptance and the
-real LED-panel check remain manual. No decision to remove cheeks has been made.
+Set `SP_PREVIEW_SCREENSHOT_DIR` for desktop/mobile captures.

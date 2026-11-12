@@ -19,7 +19,6 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
-	"testing/fstest"
 
 	"github.com/srwiley/oksvg"
 	"github.com/srwiley/rasterx"
@@ -56,42 +55,24 @@ func main() {
 	}
 }
 
-// Archived faces are loaded over the unchanged embedded base for a reproducible
-// before/after comparison through the same production GIF renderer.
-func previousPipCollection() (*avatar.Collection, error) {
-	files := fstest.MapFS{}
-	err := fs.WalkDir(web.Static, "static/img", func(path string, entry fs.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-		if entry.IsDir() {
-			return nil
-		}
-		data, err := fs.ReadFile(web.Static, path)
-		if err != nil {
-			return err
-		}
-		files[path] = &fstest.MapFile{Data: data}
-		return nil
-	})
-	if err != nil {
-		return nil, err
-	}
-	for _, face := range append([]avatar.Option{{Key: "base"}}, avatar.Faces...) {
-		name := "face-" + face.Key + ".svg"
-		if face.Key == "base" {
-			name = "base.svg"
-		}
-		data, err := os.ReadFile(filepath.Join("docs/avatar-check/pip/before-eye-anchored-cheeks", name))
+// Preserve the actual pre-removal GIFs, including their former quantisation,
+// without retaining obsolete cheek vectors or production logic.
+func previousPipFrames() (map[string]image.Image, error) {
+	frames := map[string]image.Image{}
+	for _, face := range avatar.Faces {
+		data, err := os.ReadFile(filepath.Join("docs/avatar-check/pip/before-removal-7969bdf", "pip-"+face.Key+".gif"))
 		if err != nil {
 			return nil, err
 		}
-		files["static/img/pip/"+name] = &fstest.MapFile{Data: data}
+		frames[face.Key], err = gif.Decode(bytes.NewReader(data))
+		if err != nil {
+			return nil, err
+		}
 	}
-	return avatar.LoadCollection(files, "static/img")
+	return frames, nil
 }
 
-var comparisonBefore *avatar.Collection
+var comparisonBefore map[string]image.Image
 var eyesDetail bool
 
 func run(key, out string) error {
@@ -115,7 +96,7 @@ func run(key, out string) error {
 	a.Blade = "light-blue"
 
 	if key == "pip" {
-		comparisonBefore, err = previousPipCollection()
+		comparisonBefore, err = previousPipFrames()
 		if err != nil {
 			return err
 		}
@@ -128,24 +109,12 @@ func run(key, out string) error {
 		}
 		comparisonBefore = nil
 
-		var red []sample
-		for _, coat := range append([]avatar.Colour{{Key: "", Name: "Original"}}, avatar.FurPalette(key)...) {
-			b := a
-			b.Fur = coat.Key
-			b.Headdress = "ruby"
-			b.Handle = "red"
-			red = append(red, sample{coat.Name + " / Wütend, Rubin, roter Griff", b, "angry"})
-		}
-		if err = sheet(collection, red, 3, 64, color.RGBA{0, 0, 0, 255}, "Pip | Zornesröte + Rubin + Rot | 64 px", filepath.Join(out, "angry-red-options-64-black.png")); err != nil {
-			return err
-		}
-
 		var eyes []sample
 		for _, face := range avatar.Faces {
 			eyes = append(eyes, sample{face.Name, a, face.Key})
 		}
 		eyesDetail = true
-		err = sheet(collection, eyes, 3, 192, color.RGBA{10, 10, 18, 255}, "Pip | Augen und Wangen | 192 px Detail", filepath.Join(out, "eyes-detail-192.png"))
+		err = sheet(collection, eyes, 3, 192, color.RGBA{10, 10, 18, 255}, "Pip | Augenpartie | 192 px Detail", filepath.Join(out, "eyes-detail-192.png"))
 		eyesDetail = false
 		if err != nil {
 			return err
@@ -415,7 +384,7 @@ not photographs of a real panel. In particular, dark wood and moss on black
 should be checked on the device. No runtime hides jewellery automatically.
 `
 	if key == "pip" {
-		note = "# Pip acceptance review\n\nRegenerate: `go run ./scripts/avatar_review.go -character pip -out docs/avatar-check/pip`\n\nOpen index.html for expressions, materials and GIFs. The expressions-row PNGs show the six faces in original colours at 64 and 28 pixels on black. Full sheets include Original, Grau and Blaugrau on navy and black. Pip has no jewellery. Grey excludes Silver; native Pink is labelled Original. The eyes-before-after-64-black.png sheet compares archived faces and base from the previous open-Neutral working state with the new eyes, each Alt/Neu pair adjacent. The eyes-detail-192.png sheet shows eyes, brows and expression cheeks. Eyes have no sclera; only two round white glints remain. Physical LED-panel contrast remains to be checked.\n"
+		note = "# Pip acceptance review\n\nRegenerate: `go run ./scripts/avatar_review.go -character pip -out docs/avatar-check/pip`\n\nOpen index.html for expressions, materials and GIFs. The expressions-row PNGs show the six faces in original colours at 64 and 28 pixels on black. Full sheets include Original, Grau and Blaugrau on navy and black. Pip deliberately has no cheeks and no jewellery. Grey excludes Silver; native Pink is labelled Original. The eyes-before-after-64-black.png sheet compares archived 7969bdf GIFs against Pip without cheeks, each Alt/Neu pair adjacent. The eyes-detail-192.png sheet shows eyes and brows. Eyes have no sclera; only two round white glints remain. Physical LED-panel contrast remains to be checked.\n"
 	}
 	if err = os.WriteFile(filepath.Join(out, "README.md"), []byte(note), 0644); err != nil {
 		return err
@@ -450,9 +419,6 @@ func sheet(c *avatar.Collection, samples []sample, cols, size int, bg color.RGBA
 	label(8, 18, title)
 	for i, s := range samples {
 		renderer := c
-		if comparisonBefore != nil && strings.HasSuffix(s.label, " / Alt") {
-			renderer = comparisonBefore
-		}
 		svg := renderer.RenderFlat(s.a, s.face)
 
 		if eyesDetail {
@@ -486,6 +452,9 @@ func sheet(c *avatar.Collection, samples []sample, cols, size int, bg color.RGBA
 			led, err := gif.Decode(bytes.NewReader(data))
 			if err != nil {
 				return err
+			}
+			if comparisonBefore != nil && strings.HasSuffix(s.label, " / Alt") {
+				led = comparisonBefore[s.face]
 			}
 			draw.Draw(frame, frame.Bounds(), led, image.Point{}, draw.Src)
 		}

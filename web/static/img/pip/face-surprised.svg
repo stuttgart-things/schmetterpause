@@ -1,8 +1,6 @@
 <svg viewBox="0 0 420 420" xmlns="http://www.w3.org/2000/svg">
 <g class="sthings-face" data-face="surprised">
-<g data-pip-part="cheeks">  <path fill="#f5b5ce" fill-rule="evenodd" d="M111.7 276.099C111.7 261.433 151.7 261.433 151.7 276.099C151.7 290.766 111.7 290.766 111.7 276.099Z"/>
-  <path fill="#f5b5ce" fill-rule="evenodd" d="M254.3 247.1C254.3 232.433 294.3 232.433 294.3 247.1C294.3 261.766 254.3 261.766 254.3 247.1Z"/>
-</g>  <path fill="#080808" fill-rule="evenodd" d="M117.4 221C117.4 175.534 174.6 175.534 174.6 221C174.6 266.466 117.4 266.466 117.4 221Z"/>
+  <path fill="#080808" fill-rule="evenodd" d="M117.4 221C117.4 175.534 174.6 175.534 174.6 221C174.6 266.466 117.4 266.466 117.4 221Z"/>
   <path fill="#14141f" fill-rule="evenodd" d="M123.4 221C123.4 183.534 168.6 183.534 168.6 221C168.6 258.466 123.4 258.466 123.4 221Z"/>
   <path fill="#f8f8f8" fill-rule="evenodd" d="M132 211C132 199 150 199 150 211C150 223 132 223 132 211Z"/>
   <path fill="#f8f8f8" fill-rule="evenodd" d="M151 238.5C151 233.833 158 233.833 158 238.5C158 243.167 151 243.167 151 238.5Z"/>

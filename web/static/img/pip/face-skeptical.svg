@@ -1,8 +1,6 @@
 <svg viewBox="0 0 420 420" xmlns="http://www.w3.org/2000/svg">
 <g class="sthings-face" data-face="skeptical">
-<g data-pip-part="cheeks">  <path fill="#f5b5ce" fill-rule="evenodd" d="M113 272.999C113 258.333 153 258.333 153 272.999C153 287.665 113 287.665 113 272.999Z"/>
-  <path fill="#f5b5ce" fill-rule="evenodd" d="M253 243.999C253 229.333 293 229.333 293 243.999C293 258.666 253 258.666 253 243.999Z"/>
-</g>  <path fill="#fff6f3" fill-rule="evenodd" d="M132.594 194C140.728 188.668 151.272 188.668 159.406 194H132.594Z"/>
+  <path fill="#fff6f3" fill-rule="evenodd" d="M132.594 194C140.728 188.668 151.272 188.668 159.406 194H132.594Z"/>
   <path fill="#080808" fill-rule="evenodd" d="M120 221C120 207.757 125.338 198.757 132.594 194H159.406C166.662 198.757 172 207.757 172 221C172 262.332 120 262.332 120 221Z"/>
   <path fill="#14141f" fill-rule="evenodd" d="M126 221C126 187.667 166 187.667 166 221C166 254.333 126 254.333 126 221Z"/>
   <path fill="#f8f8f8" fill-rule="evenodd" d="M132 211C132 199 150 199 150 211C150 223 132 223 132 211Z"/>
