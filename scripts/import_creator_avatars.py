@@ -553,6 +553,9 @@ def pip_beak(state):
 
 
 def convert_pip(source, target):
+    from hank_frame import SCALE, MATRIX
+    from hank_pose import BLADE_SCALE,BLADE_CENTRE,BLADE_RIM,GRIP_START,GRIP_END,GRIP_WIDTH,GRIP_RIM,HAND_OFFSET
+    from sthings_racket_reference import reference
     original = creator_svg.paths(source, "pip")
     headband = original[47][2]
     import xml.etree.ElementTree as ET
@@ -591,7 +594,10 @@ def convert_pip(source, target):
         .translate(-PIP_GRIP_PIVOT[0], -PIP_GRIP_PIVOT[1])
     )
     # A complete round paddle, rather than the notched traced native surface.
-    blade = ellipse(317, 290, 42.3, 43)
+    ref=reference()
+    final_blade=transformed(ref['blade'],Transform(BLADE_SCALE,0,0,BLADE_SCALE,BLADE_CENTRE[0]-348*BLADE_SCALE,BLADE_CENTRE[1]-228.5*BLADE_SCALE))
+    blade=transformed(final_blade,MATRIX.inverse())
+    blade_outline=2*BLADE_RIM/SCALE
     # The native fused racket starts at y=212. Cutting at y=220 left
     # its upper shoulder as a black spur on the right cheek (body path 0).
     cut = rect(268, 212, 420, 420)
@@ -619,7 +625,7 @@ def convert_pip(source, target):
             p = op(p, cut, pathops.PathOp.DIFFERENCE)
         if i == 6:
             # Raised racket-side arm; the torso and opposite flipper stay native.
-            p = shape("M235 312 Q255 290 278 287 L301 303 Q292 327 273 344 Q264 354 258 355 L248 338Z")
+            p = shape("M235 312 Q255 304 278 315 L312 340 Q296 357 276 365 Q265 371 258 355 L248 338Z")
             blank.append(("ink", INK, outlined(p, 11)))
         if i == 43:
             clean = pathops.Path()
@@ -644,15 +650,21 @@ def convert_pip(source, target):
     body_parts = list(blank)
     blank = []
     # Racket, grip and gripping flipper are rebuilt as one separate assembly.
-    shaft = shape("M312 308 L268 351.5")
-    shaft.stroke(21, pathops.LineCap.ROUND_CAP, pathops.LineJoin.ROUND_JOIN, 4)
+    start=MATRIX.inverse().transformPoint(GRIP_START);end=MATRIX.inverse().transformPoint(GRIP_END)
+    shaft = shape(f"M{start[0]} {start[1]} L{end[0]} {end[1]}")
+    shaft.stroke(GRIP_WIDTH/SCALE, pathops.LineCap.ROUND_CAP, pathops.LineJoin.ROUND_JOIN, 4)
     shaft.convertConicsToQuads(0.01)
 
-    blank.append(("ink", INK, outlined(shaft, 10)))
+    blank.append(("ink", INK, outlined(shaft, 2*GRIP_RIM/SCALE)))
     blank.append(("paddle-handle", "#efa31b", shaft))
-    for d in ["M301 313 L309 321 L306 324 L298 316Z", "M269 342 L280 353 L277 356 L266 345Z"]:
-        blank.append(("ink", INK, shape(d)))
-    blade_parts = [("ink", INK, outlined(blade, 10.4)), ("paddle-face", "#df3b9a", blade)]
+    dx,dy=GRIP_END[0]-GRIP_START[0],GRIP_END[1]-GRIP_START[1]
+    length=math.hypot(dx,dy);ux,uy=dx/length,dy/length;nx,ny=-uy,ux
+    for fraction in (.15,.86):
+        cx,cy=GRIP_START[0]+fraction*dx,GRIP_START[1]+fraction*dy
+        points=[(cx+nx*a+ux*b,cy+ny*a+uy*b) for a,b in [(-11,-1.75),(11,-1.75),(11,1.75),(-11,1.75)]]
+        stripe=shape("M"+" L".join(f"{x} {y}" for x,y in points)+"Z")
+        blank.append(("ink",INK,transformed(stripe,MATRIX.inverse())))
+    blade_parts = [("ink", INK, outlined(blade, blade_outline)), ("paddle-face", "#df3b9a", blade)]
     blank.extend(blade_parts)
     racket_parts = list(blank)
     for role, fill, p in racket_parts:
@@ -660,11 +672,11 @@ def convert_pip(source, target):
         assert (
             min(x1, y1) >= 8 - 0.001 and max(x2, y2) <= 412 + 0.001
         ), "Hank racket path outside 8-unit canvas inset"
-    paw = transformed(transformed(original[8][2], rotation), Transform().translate(5, -47))
+    paw = transformed(transformed(original[8][2], rotation), Transform().translate(*HAND_OFFSET))
     blank.append(("ink", INK, outlined(paw, 11)))
     blank.append(("body", PIP_FUR, paw))
     for shade in hand_shadows:
-        shade = op(transformed(shade, Transform().translate(5, -47)), paw, pathops.PathOp.INTERSECTION)
+        shade = op(transformed(shade, Transform().translate(*HAND_OFFSET)), paw, pathops.PathOp.INTERSECTION)
         if shade.area > .001:
             blank.append(("pip-shadow", "var(--fur-dark, #213777)", shade))
     # A small thumb crosses the shaft instead of leaving it merely resting
@@ -673,7 +685,7 @@ def convert_pip(source, target):
     thumb = transformed(
         thumb, Transform().translate(284, 378).scale(0.75).translate(-284, -378)
     )
-    thumb = transformed(thumb, Transform().translate(5, -47))
+    thumb = transformed(thumb, Transform().translate(*HAND_OFFSET))
     thumb_ink = outlined(thumb, 11)
     # The whole gripping hand is raised with the grip; the thumb still wraps it.
     blank.append(("ink", INK, thumb_ink))
@@ -682,35 +694,36 @@ def convert_pip(source, target):
 
     def save(name, body):
         from hank_frame import bake
-        body = bake(body, crest=name=="base", crop=name in ("base","racket"))
+        body = bake(body, crest=name=="base", crop=name=="base")
         (target / (name + ".svg")).write_text(
             '<svg viewBox="0 0 420 420" xmlns="http://www.w3.org/2000/svg">\n'
             + body
             + "</svg>\n"
         )
 
-    # Deliberate cheek overlap like sthings; equipment must clear actual features.
+    # Reference-relative distances in the final frame, before writing any asset.
     for face in FACES:
-        features = "".join(pip_eye(*a, face, i) for i,a in enumerate(PIP_EYES)) + pip_beak(face)
-        for el in ET.fromstring("<svg>"+features+"</svg>"):
-            p = shape(el.get("d"))
-            assert op(outlined(p,20), outlined(blade,10.4), pathops.PathOp.INTERSECTION).area < .001, f"hank {face}: racket/feature gap below 12"
-    for role,fill,p in racket_parts + blank[6:]:
-        assert op(outlined(ellipse(*PIP_EMBLEM_RESERVE),24),p,pathops.PathOp.INTERSECTION).area < .001, "hank equipment/emblem gap below 12"
+        for index,anchor in enumerate(PIP_EYES):
+            for el in ET.fromstring("<svg>"+pip_eye(*anchor,face,index)+"</svg>"):
+                assert op(outlined(transformed(shape(el.get('d')),MATRIX),2*ref['measurements']['eye_gap_required']),outlined(final_blade,2*BLADE_RIM),pathops.PathOp.INTERSECTION).area<.001, f"hank {face}: reference eye clearance"
+        for el in ET.fromstring("<svg>"+pip_beak(face)+"</svg>"):
+            assert op(outlined(transformed(shape(el.get('d')),MATRIX),16),outlined(final_blade,2*BLADE_RIM),pathops.PathOp.INTERSECTION).area<.001, f"hank {face}: beak clearance"
+    for role,fill,p in racket_parts+blank[6:]:
+        assert op(outlined(ellipse(*PIP_EMBLEM_RESERVE),24/SCALE),p,pathops.PathOp.INTERSECTION).area<.001, "hank equipment/emblem gap below 12"
     # Stripes belong to the visible handle area; the blade/flipper must not
     # hide the chosen material down to a sliver.
     visible_grip = op(
         shaft,
         op(
-            outlined(blade, 10.4),
+            outlined(blade, blade_outline),
             op(outlined(paw, 11), thumb_ink, pathops.PathOp.UNION),
             pathops.PathOp.UNION,
         ),
         pathops.PathOp.DIFFERENCE,
     )
     assert (
-        visible_grip.area >= 30 * 18 / 1.2**2
-    ), "Hank visible handle area below 30x18 equivalent"
+        visible_grip.area >= 30 * 18 / SCALE**2
+    ), f"hank visible handle area {visible_grip.area*SCALE**2:.2f} below 30x18 equivalent"
 
     def paths(parts):
         return "".join(svgpath(p, colour(r, f)) for r, f, p in parts)

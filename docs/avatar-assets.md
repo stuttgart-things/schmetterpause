@@ -489,3 +489,24 @@ The angry beak is narrower, closed and downturned; the other five beaks only
 receive the common frame. Minimum expression separation is now 213 at 64 px
 (Skeptical/Angry); tests guard the requested 157 floor. Physical LED readability
 and final visual approval remain manual checks.
+
+## hank – current sthings-sized racket and visible holding hand
+
+This supersedes the 120% crop above. The current uniform frame is 110%, with the
+same 40% crest shortening and 8-unit top margin. It already meets the constraints
+at the smallest allowed scale. The racket uses the complete sthings surface path
+at 91%; both vector dimensions and the actual rendered 118×123-pixel surface are
+within 10% of sthings' 130×135 at a 420-pixel canvas. Its centre lies 47.56 units
+below the eye line, compared with sthings' 47.0.
+
+The holding arm is connected to the fully visible flipper; selected grip colour
+covers 861.92 units². The emblem is still 48×48, but now has 29.08 units from the
+nearest beak and 24.60 below it. All faces/beaks only receive the shared frame;
+other avatars, palettes, slot/context logic and last-racket rendering are unchanged.
+
+See [the current holding report](avatar-check/pip/holding/README.md) for all sthings
+measurements, the explicitly reconstructed face-overlap definition (22.35% versus
+20.27%), rendered masks, clearances, check images and test changes. Minimum 64-pixel
+GIF separation is 193, Skeptical/Angry, guarding the requested 157 floor. Physical
+LED validation remains manual. The older framing/ and sthings-style/ reports are
+historical snapshots, not the current acceptance images.

@@ -6,14 +6,14 @@ from fontTools.svgLib.path import parse_path
 from fontTools.pens.svgPathPen import SVGPathPen
 import xml.etree.ElementTree as ET
 
-SCALE=1.2
-OFFSET_X=-27.21127
+SCALE=1.1
+OFFSET_X=-23.
 CREST_JOIN_Y=60.0
 CREST_HEIGHT_FACTOR=.6  # 40% shorter, keeping every original tuft tip.
 CREST_TOP_BEFORE=11.053
 CREST_TOP_AFTER=CREST_JOIN_Y+(CREST_TOP_BEFORE-CREST_JOIN_Y)*CREST_HEIGHT_FACTOR
 OFFSET_Y=8-SCALE*CREST_TOP_AFTER
-EMBLEM=(212.1,347.,20.)  # 48 units final diameter, fully above the tighter crop.
+EMBLEM=(209.8,361.,24/SCALE)  # 48 units final diameter, fully above the tighter crop.
 MATRIX=Transform(SCALE,0,0,SCALE,OFFSET_X,OFFSET_Y)
 
 def transformed(p,t):

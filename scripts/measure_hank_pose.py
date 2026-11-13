@@ -43,7 +43,7 @@ def measurements():
     bounds=[p.bounds for child in parts["racket"] if child.get("data-pip-part")!="flipper" for p in ([shape(child.get("d"))] if child.tag.endswith("path") else paths(child))]
     return {'eye_reference':'sthings actual contours','eye_scale':.8*SCALE,
         'frame':{'scale':SCALE,'offset':[OFFSET_X,OFFSET_Y]},
-        'racket_shape':'complete ellipse','native_radii':[42.3,43],
+        'racket_shape':'complete sthings paddle contour',
         'emblem_size':emblem.bounds[2]-emblem.bounds[0],
         'emblem_bottom_margin':420-emblem.bounds[3],
         'racket_path_bounds':bounds,'canvas_margin':round(min(min(x1,y1,420-x2,420-y2) for x1,y1,x2,y2 in bounds),3),
@@ -54,7 +54,7 @@ def measurements():
 
 if __name__=='__main__':
     data=measurements()
-    for target in (ROOT/'docs/avatar-check/pip/framing/pose-measurements.json',ROOT/'docs/avatar-check/pip/racket-measurements.json'):
+    for target in (ROOT/'docs/avatar-check/pip/holding/pose-measurements.json',ROOT/'docs/avatar-check/pip/racket-measurements.json'):
         target.parent.mkdir(parents=True,exist_ok=True)
         target.write_text(json.dumps(data,indent=2,ensure_ascii=False)+'\n')
     emblem=shape(ET.parse(ASSETS/'bling-initial.svg').getroot()[0][0].get('d'))
@@ -63,7 +63,7 @@ if __name__=='__main__':
     for el in ET.parse(ASSETS/'base.svg').getroot()[0]:
         if el.get('fill','').startswith('var(--fur,'):
             q=shape(el.get('d'));ax,ay,_,_=q.bounds;ax=(ax-OFFSET_X)/SCALE;ay=(ay-OFFSET_Y)/SCALE
-            if (60<ax<80 and 315<ay<320) or (230<ax<240 and 280<ay<300):arms.append(grow(q,5.5*SCALE))
+            if (60<ax<80 and 315<ay<320) or (230<ax<240 and 280<ay<320):arms.append(grow(q,5.5*SCALE))
     eq=ET.parse(ASSETS/'racket.svg').getroot()[0]
     hand=next(g for g in eq if g.get('data-pip-part')=='flipper')
     letters=[]

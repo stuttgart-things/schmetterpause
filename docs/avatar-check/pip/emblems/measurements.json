@@ -1,187 +1,187 @@
 {
-  "emblem_size": 48.0,
+  "emblem_size": 47.999603271484375,
   "centre": [
-    227.30873107910156,
-    387.641845703125
+    207.77999877929688,
+    371.405029296875
   ],
-  "bottom_margin": 8.3587646484375,
-  "flipper_clearance": 12.329,
-  "racket_clearance": 24.665,
-  "visible_selected_grip_colour_area": 565.236,
+  "bottom_margin": 24.595733642578125,
+  "flipper_clearance": 18.508,
+  "racket_clearance": 39.146,
+  "visible_selected_grip_colour_area": 861.917,
   "initials": [
     {
       "initial": "A",
-      "width": 17.271,
-      "height": 19.601,
-      "height_at_64": 2.99
+      "width": 18.527,
+      "height": 21.025,
+      "height_at_64": 3.2
     },
     {
       "initial": "B",
-      "width": 15.629,
-      "height": 21.451,
-      "height_at_64": 3.27
+      "width": 16.683,
+      "height": 22.895,
+      "height_at_64": 3.49
     },
     {
       "initial": "C",
-      "width": 18.624,
-      "height": 25.694,
-      "height_at_64": 3.92
+      "width": 19.483,
+      "height": 26.88,
+      "height_at_64": 4.1
     },
     {
       "initial": "D",
-      "width": 15.612,
-      "height": 21.346,
-      "height_at_64": 3.25
+      "width": 16.746,
+      "height": 22.895,
+      "height_at_64": 3.49
     },
     {
       "initial": "E",
-      "width": 15.12,
-      "height": 21.778,
-      "height_at_64": 3.32
+      "width": 16.137,
+      "height": 23.243,
+      "height_at_64": 3.54
     },
     {
       "initial": "F",
-      "width": 15.089,
-      "height": 21.778,
-      "height_at_64": 3.32
+      "width": 16.185,
+      "height": 23.36,
+      "height_at_64": 3.56
     },
     {
       "initial": "G",
-      "width": 18.588,
-      "height": 25.694,
-      "height_at_64": 3.92
+      "width": 19.446,
+      "height": 26.88,
+      "height_at_64": 4.1
     },
     {
       "initial": "H",
-      "width": 15.643,
-      "height": 21.346,
-      "height_at_64": 3.25
+      "width": 16.779,
+      "height": 22.895,
+      "height_at_64": 3.49
     },
     {
       "initial": "I",
-      "width": 5.124,
-      "height": 25.438,
-      "height_at_64": 3.88
+      "width": 5.414,
+      "height": 26.88,
+      "height_at_64": 4.1
     },
     {
       "initial": "J",
-      "width": 15.317,
-      "height": 21.559,
-      "height_at_64": 3.29
+      "width": 16.432,
+      "height": 23.126,
+      "height_at_64": 3.52
     },
     {
       "initial": "K",
-      "width": 16.025,
-      "height": 20.506,
-      "height_at_64": 3.12
+      "width": 17.189,
+      "height": 21.996,
+      "height_at_64": 3.35
     },
     {
       "initial": "L",
-      "width": 15.089,
-      "height": 21.778,
-      "height_at_64": 3.32
+      "width": 16.185,
+      "height": 23.36,
+      "height_at_64": 3.56
     },
     {
       "initial": "M",
-      "width": 17.198,
-      "height": 20.302,
-      "height_at_64": 3.09
+      "width": 18.357,
+      "height": 21.668,
+      "height_at_64": 3.3
     },
     {
       "initial": "N",
-      "width": 16.229,
-      "height": 20.921,
-      "height_at_64": 3.19
+      "width": 17.409,
+      "height": 22.442,
+      "height_at_64": 3.42
     },
     {
       "initial": "O",
-      "width": 18.833,
-      "height": 25.694,
-      "height_at_64": 3.92
+      "width": 19.701,
+      "height": 26.88,
+      "height_at_64": 4.1
     },
     {
       "initial": "P",
-      "width": 15.682,
-      "height": 21.346,
-      "height_at_64": 3.25
+      "width": 16.821,
+      "height": 22.895,
+      "height_at_64": 3.49
     },
     {
       "initial": "Q",
-      "width": 16.128,
-      "height": 25.438,
-      "height_at_64": 3.88
+      "width": 17.041,
+      "height": 26.88,
+      "height_at_64": 4.1
     },
     {
       "initial": "R",
-      "width": 15.482,
-      "height": 20.921,
-      "height_at_64": 3.19
+      "width": 16.608,
+      "height": 22.442,
+      "height_at_64": 3.42
     },
     {
       "initial": "S",
-      "width": 18.602,
-      "height": 25.565,
-      "height_at_64": 3.9
+      "width": 19.56,
+      "height": 26.88,
+      "height_at_64": 4.1
     },
     {
       "initial": "T",
-      "width": 15.938,
-      "height": 21.132,
-      "height_at_64": 3.22
+      "width": 17.098,
+      "height": 22.669,
+      "height_at_64": 3.45
     },
     {
       "initial": "U",
-      "width": 15.617,
-      "height": 21.346,
-      "height_at_64": 3.25
+      "width": 16.752,
+      "height": 22.895,
+      "height_at_64": 3.49
     },
     {
       "initial": "V",
-      "width": 16.495,
-      "height": 20.302,
-      "height_at_64": 3.09
-    },
-    {
-      "initial": "W",
-      "width": 19.985,
-      "height": 16.865,
-      "height_at_64": 2.57
-    },
-    {
-      "initial": "X",
-      "width": 16.494,
-      "height": 20.201,
-      "height_at_64": 3.08
-    },
-    {
-      "initial": "Y",
-      "width": 16.335,
-      "height": 20.402,
-      "height_at_64": 3.11
-    },
-    {
-      "initial": "Z",
-      "width": 15.151,
+      "width": 17.695,
       "height": 21.778,
       "height_at_64": 3.32
     },
     {
-      "initial": "Ä",
-      "width": 14.496,
-      "height": 21.667,
+      "initial": "W",
+      "width": 21.439,
+      "height": 18.091,
+      "height_at_64": 2.76
+    },
+    {
+      "initial": "X",
+      "width": 17.692,
+      "height": 21.668,
       "height_at_64": 3.3
     },
     {
+      "initial": "Y",
+      "width": 17.523,
+      "height": 21.886,
+      "height_at_64": 3.33
+    },
+    {
+      "initial": "Z",
+      "width": 16.17,
+      "height": 23.243,
+      "height_at_64": 3.54
+    },
+    {
+      "initial": "Ä",
+      "width": 15.549,
+      "height": 23.243,
+      "height_at_64": 3.54
+    },
+    {
       "initial": "Ö",
-      "width": 14.155,
-      "height": 25.058,
-      "height_at_64": 3.82
+      "width": 15.182,
+      "height": 26.88,
+      "height_at_64": 4.1
     },
     {
       "initial": "Ü",
-      "width": 13.958,
-      "height": 25.058,
-      "height_at_64": 3.82
+      "width": 14.971,
+      "height": 26.88,
+      "height_at_64": 4.1
     }
   ]
 }

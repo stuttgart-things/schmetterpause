@@ -10,11 +10,12 @@ from hank_frame import framed
 ROOT = Path(__file__).resolve().parents[1]
 
 class HankContourGeometry(unittest.TestCase):
-    def test_body_changes_only_by_uniform_frame_and_permitted_crest_shortening(self):
+    def test_body_changes_only_by_frame_crest_and_connected_racket_arm(self):
         before=ET.parse(ROOT/"docs/avatar-check/pip/framing/before-base.svg").getroot()
         after=ET.parse(ROOT/"web/static/img/pip/base.svg").getroot()
         expected=union([framed(p,crest=True,crop=True) for p in paths(before[0])])
-        self.assertLess(op(expected,union(paths(after[0])),pathops.PathOp.XOR).area,.1)
+        changed=op(expected,union(paths(after[0])),pathops.PathOp.XOR)
+        self.assertLess(op(changed,framed(rect(225,280,330,380)),pathops.PathOp.DIFFERENCE).area,.1)
         self.assertLess(op(expected,framed(rect(341,212,361,240)),pathops.PathOp.INTERSECTION).area,.001)
 
     def test_white_cheek_has_no_seam_between_native_and_rebuilt_surfaces(self):

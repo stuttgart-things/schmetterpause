@@ -7,7 +7,7 @@ from fontTools.misc.transform import Transform
 from fontTools.pens.transformPen import TransformPen
 from import_creator_avatars import shape, op
 from test_hank_racket_geometry import union, paths, grow
-from hank_frame import framed
+from hank_frame import framed,MATRIX
 
 ROOT=Path(__file__).resolve().parents[1]/"web/static/img"
 
@@ -45,6 +45,18 @@ class HankSthingsGeometry(unittest.TestCase):
             for a,b in zip(old,new):
                 self.assertEqual(a.get("fill"),b.get("fill"))
                 self.assertLess(op(framed(shape(a.get("d"))),shape(b.get("d")),pathops.PathOp.XOR).area,.1,state)
+
+    def test_all_six_faces_only_receive_the_new_uniform_frame(self):
+        oldframe=Transform(1.2,0,0,1.2,-27.21127,-28.75816)
+        for state in ('neutral','happy','surprised','skeptical','angry','sad'):
+            before=ET.parse(ROOT.parents[2]/'docs/avatar-check/pip/holding'/('before-face-'+state+'.svg')).getroot()
+            after=ET.parse(ROOT/'pip'/('face-'+state+'.svg')).getroot()
+            olds=list(before.iter('{http://www.w3.org/2000/svg}path'));news=list(after.iter('{http://www.w3.org/2000/svg}path'))
+            self.assertEqual(len(olds),len(news))
+            for a,b in zip(olds,news):
+                native=pathops.Path();shape(a.get('d')).draw(TransformPen(native.getPen(),oldframe.inverse()))
+                self.assertEqual(a.get('fill'),b.get('fill'))
+                self.assertLess(op(framed(native),shape(b.get('d')),pathops.PathOp.XOR).area,.1,state)
 
     def test_eye_artwork_keeps_eight_units_from_unchanged_headband(self):
         base=ET.parse(ROOT/"pip/base.svg").getroot()

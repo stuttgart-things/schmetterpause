@@ -30,7 +30,7 @@ class HankEmblemGeometry(unittest.TestCase):
             for el in self.g["body"]
             if el.get("fill") == "#fff6f3"
             and shape(el.get("d")).bounds[1] >= 314*SCALE+OFFSET_Y
-            and shape(el.get("d")).bounds[0] > 145
+            and (shape(el.get("d")).bounds[0]-OFFSET_X)/SCALE > 145
         )
         # The torso is intentionally cut by the canvas; the bottom clearance
         # is 8 units, while the anatomical belly sides keep their 10-unit inset.
@@ -53,7 +53,7 @@ class HankEmblemGeometry(unittest.TestCase):
                 x1, y1, x2, y2 = p.bounds
                 x1=(x1-OFFSET_X)/SCALE; y1=(y1-OFFSET_Y)/SCALE
                 if (60 < x1 < 80 and 315 < y1 < 320) or (
-                    230 < x1 < 240 and 280 < y1 < 300
+                    230 < x1 < 240 and 280 < y1 < 320
                 ):
                     arms.append(p)
         self.assertEqual(len(arms), 2)

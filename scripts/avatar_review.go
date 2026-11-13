@@ -40,6 +40,7 @@ type sample struct {
 }
 
 func main() {
+	holding := flag.Bool("holding-only", false, "export sthings racket reference and hank holding sheets")
 	framing := flag.Bool("framing-only", false, "export framing metrics, selection and emblem checks")
 	style := flag.Bool("sthings-style-only", false, "export paired sthings/hank reference")
 	cheek := flag.Bool("cheek-contour-only", false, "export hank contour before/after review")
@@ -48,6 +49,13 @@ func main() {
 	emblems := flag.Bool("emblems-only", false, "export hank emblem acceptance matrix")
 	accessories := flag.Bool("accessories-only", false, "export only the blecki accessory acceptance matrix")
 	flag.Parse()
+	if *holding {
+		if err := holdingReview(*out); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+		return
+	}
 	if *framing {
 		if err := framingReview(*out); err != nil {
 			fmt.Fprintln(os.Stderr, err)
@@ -979,4 +987,85 @@ func framingReview(out string) error {
 	}
 	reviewNames = nil
 	return nil
+}
+
+func holdingReview(out string) error {
+	if err := sthingsStyleReview(out); err != nil {
+		return err
+	}
+	c, err := avatar.LoadCollection(web.Static, "static/img")
+	if err != nil {
+		return err
+	}
+	reviewNames = map[string]string{}
+	var pairs, choices []sample
+	for _, face := range avatar.Faces {
+		for _, key := range []string{"", "pip"} {
+			a := avatar.DefaultForCharacter(key, "")
+			a.Blade = "light-blue"
+			label := templateName(key) + " / " + face.Name
+			if key == "pip" {
+				a.Bling = "initial"
+				reviewNames[label] = "Anna"
+			}
+			pairs = append(pairs, sample{label, a, face.Key})
+		}
+	}
+	if err = sheet(c, pairs, 2, 192, color.RGBA{10, 10, 18, 255}, "sthings / hank | Initiale A", filepath.Join(out, "sthings-hank-emblem-192-app.png")); err != nil {
+		return err
+	}
+	reviewNames = nil
+	for _, ch := range avatar.Characters {
+		a := avatar.DefaultForCharacter(ch.Key, "")
+		a.Blade = "light-blue"
+		choices = append(choices, sample{ch.Name, a, "neutral"})
+	}
+	if err = sheet(c, choices, 3, 60, color.RGBA{10, 10, 18, 255}, "Figurenauswahl | 60 px", filepath.Join(out, "selection-60-app.png")); err != nil {
+		return err
+	}
+	raster := map[string]interface{}{}
+	for _, who := range []string{"sthings", "hank"} {
+		for _, part := range []string{"blade", "paw", "grip"} {
+			key := who + "-" + part
+			data, err := os.ReadFile(filepath.Join(out, key+"-mask.svg"))
+			if err != nil {
+				return err
+			}
+			icon, err := oksvg.ReadIconStream(bytes.NewReader(data), oksvg.StrictErrorMode)
+			if err != nil {
+				return err
+			}
+			icon.SetTarget(0, 0, 420, 420)
+			img := image.NewRGBA(image.Rect(0, 0, 420, 420))
+			draw.Draw(img, img.Bounds(), image.Black, image.Point{}, draw.Src)
+			icon.Draw(rasterx.NewDasher(420, 420, rasterx.NewScannerGV(420, 420, img, img.Bounds())), 1)
+			minX, minY, maxX, maxY, count := 420, 420, 0, 0, 0
+			for y := 0; y < 420; y++ {
+				for x := 0; x < 420; x++ {
+					if img.RGBAAt(x, y).R >= 128 {
+						minX = min(minX, x)
+						minY = min(minY, y)
+						maxX = max(maxX, x+1)
+						maxY = max(maxY, y+1)
+						count++
+					}
+				}
+			}
+			raster[key] = map[string]interface{}{"bounds": []int{minX, minY, maxX, maxY}, "width": maxX - minX, "height": maxY - minY, "pixels": count, "centre": []float64{float64(minX+maxX) / 2, float64(minY+maxY) / 2}}
+			f, err := os.Create(filepath.Join(out, key+"-mask.png"))
+			if err != nil {
+				return err
+			}
+			err = png.Encode(f, img)
+			f.Close()
+			if err != nil {
+				return err
+			}
+		}
+	}
+	data, err := json.MarshalIndent(raster, "", "  ")
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(filepath.Join(out, "raster-measurements.json"), append(data, '\n'), 0644)
 }

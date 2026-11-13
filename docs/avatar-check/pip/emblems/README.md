@@ -50,3 +50,6 @@ The emblem geometry, colour rule, glyphs and context logic remain unchanged.
 Current framing: the accepted badge is now 48×48, moved up before the shared frame.
 The previous 57-unit geometry and hand-placement measurements above are historical.
 See ../framing/README.md and its current pose measurements for the foreground pose.
+
+The current 110% frame and visible holding hand are documented in ../holding/README.md.
+The 48-unit emblem now has about 29 units to the beak and 25 to the canvas bottom.

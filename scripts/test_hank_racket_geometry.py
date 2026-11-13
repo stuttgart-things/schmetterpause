@@ -6,6 +6,7 @@ import xml.etree.ElementTree as ET
 import pathops
 from import_creator_avatars import shape, op, rect, ellipse
 from hank_frame import SCALE,OFFSET_Y
+from sthings_racket_reference import reference
 
 ROOT = Path(__file__).resolve().parents[1] / "web/static/img/pip"
 
@@ -45,22 +46,38 @@ class HankRacketGeometry(unittest.TestCase):
                 self.assertGreaterEqual(min(x1, y1), 8 - 0.001)
                 self.assertLessEqual(max(x2, y2), 412 + 0.001)
 
-    def test_racket_overlaps_cheek_and_clears_every_face_feature(self):
-        head = op(union(paths(self.parts["body"])), rect(0,0,420,315*SCALE+OFFSET_Y), pathops.PathOp.INTERSECTION)
-        racket = union(paths(self.racket))
-        for face in ("neutral","happy","surprised","skeptical","angry","sad"):
-            features=ET.parse(ROOT / ("face-"+face+".svg")).getroot()
-            for p in paths(features):
-                self.assertLess(op(grow(p,12),racket,pathops.PathOp.INTERSECTION).area,.001,face)
-        blade = next(g for g in self.racket if g.get("data-pip-part")=="blade")
-        overlap=op(head,union(paths(blade)),pathops.PathOp.INTERSECTION)
-        y=285*SCALE+OFFSET_Y
-        strip=op(overlap,rect(0,y-.01,420,y+.01),pathops.PathOp.INTERSECTION)
-        self.assertGreaterEqual(strip.bounds[2]-strip.bounds[0],20)
-        self.assertGreater(overlap.area,400)
-        reserve=shape(ET.parse(ROOT/"bling-initial.svg").getroot()[0][0].get("d"))
-        for name in ("racket","flipper"):
-            self.assertLess(op(grow(reserve,12),union(paths(self.parts[name])),pathops.PathOp.INTERSECTION).area,.001,name)
+    def test_reference_size_position_overlap_and_feature_clearance(self):
+        ref=reference()['measurements']
+        blade=next(g for g in self.racket if g.get("data-pip-part")=="blade")
+        surface=shape(list(blade)[-1].get("d"))
+        rim=union(paths(blade));x1,y1,x2,y2=surface.bounds
+        self.assertGreaterEqual(x2-x1,ref['width']*.9-.001)
+        self.assertLessEqual(x2-x1,ref['width']*1.1+.001)
+        self.assertGreaterEqual(y2-y1,ref['height']*.9-.001)
+        self.assertLessEqual(y2-y1,ref['height']*1.1+.001)
+        neutral=ET.parse(ROOT/'face-neutral.svg').getroot()
+        eyeline=sum((union(paths(g)).bounds[1]+union(paths(g)).bounds[3])/2 for g in neutral[0] if g.get('data-pip-part','').startswith('eye-'))/2
+        delta=(y1+y2)/2-eyeline
+        self.assertAlmostEqual(delta,ref['eye_line_offset'],delta=ref['eye_line_offset']*.1)
+        face=next(shape(e.get('d')) for e in self.parts['body'] if e.get('fill')=='#fff6f3' and shape(e.get('d')).bounds[1]<200)
+        overlap=op(surface,face,pathops.PathOp.INTERSECTION).area/surface.area
+        self.assertAlmostEqual(overlap,ref['face_overlap_fraction_reconstructed'],delta=ref['face_overlap_fraction_reconstructed']*.1)
+        for state in ('neutral','happy','surprised','skeptical','angry','sad'):
+            root=ET.parse(ROOT/('face-'+state+'.svg')).getroot()
+            for g in root[0]:
+                margin=8 if g.get('data-pip-part')=='beak' else ref['eye_gap_required']
+                self.assertLess(op(grow(union(paths(g)),margin),rim,pathops.PathOp.INTERSECTION).area,.001,(state,g.attrib))
+        reserve=shape(ET.parse(ROOT/'bling-initial.svg').getroot()[0][0].get('d'))
+        self.assertLess(op(grow(reserve,12),union(paths(self.racket)),pathops.PathOp.INTERSECTION).area,.001)
+
+    def test_entire_hand_is_inside_canvas_and_visible_below_blade(self):
+        hand=union(paths(self.parts['flipper']))
+        x1,y1,x2,y2=hand.bounds
+        self.assertGreaterEqual(min(x1,y1),8-.001)
+        self.assertLessEqual(max(x2,y2),412+.001)
+        blade=next(g for g in self.racket if g.get('data-pip-part')=='blade')
+        visible=op(hand,union(paths(blade)),pathops.PathOp.DIFFERENCE)
+        self.assertGreaterEqual(visible.area/hand.area,.95)
 
     def test_selected_grip_colour_keeps_at_least_thirty_by_eighteen_equivalent_area(
         self,

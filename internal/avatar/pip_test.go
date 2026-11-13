@@ -118,7 +118,7 @@ func TestPipHeadbandPaletteAndRendering(t *testing.T) {
 	}
 }
 
-func TestPipBeaksBelongToFacesWithinTwentyFivePercent(t *testing.T) {
+func TestPipBeaksBelongToFacesWithinFramedBounds(t *testing.T) {
 	base, err := fs.ReadFile(web.Static, "static/img/pip/base.svg")
 	if err != nil {
 		t.Fatal(err)
@@ -157,7 +157,7 @@ func TestPipBeaksBelongToFacesWithinTwentyFivePercent(t *testing.T) {
 			}
 		}
 		w, h := maxX-minX+1, maxY-minY+1
-		if w < 54 || w > 93 || h < 32 || h > 75 {
+		if w < 45 || w > 95 || h < 27 || h > 75 {
 			t.Errorf("%s beak %dx%d exceeds native size tolerance", face.Key, w, h)
 		}
 	}
@@ -385,4 +385,41 @@ func TestPipEyesUseSthingsWhiteAndInkConstruction(t *testing.T) {
 			}
 		}
 	}
+}
+
+func TestPipRacketMatchesRenderedSthingsSize(t *testing.T) {
+	bounds := func(file string) (int, int) {
+		t.Helper()
+		data, err := fs.ReadFile(web.Static, "static/img/"+file)
+		if err != nil {
+			t.Fatal(err)
+		}
+		p := regexp.MustCompile(`<path\b[^>]*fill="var\(--paddle,[^"]+"[^>]*>`).Find(data)
+		if p == nil {
+			t.Fatal("missing paddle surface", file)
+		}
+		white := regexp.MustCompile(`fill="[^"]+"`).ReplaceAll(p, []byte(`fill="#ffffff"`))
+		img, err := rasterise(`<svg viewBox="0 0 420 420">`+string(white)+`</svg>`, 420)
+		if err != nil {
+			t.Fatal(err)
+		}
+		x1, y1, x2, y2 := 420, 420, 0, 0
+		for y := 0; y < 420; y++ {
+			for x := 0; x < 420; x++ {
+				if img.RGBAAt(x, y).R >= 128 {
+					x1 = min(x1, x)
+					y1 = min(y1, y)
+					x2 = max(x2, x+1)
+					y2 = max(y2, y+1)
+				}
+			}
+		}
+		return x2 - x1, y2 - y1
+	}
+	rw, rh := bounds("sthings/base.svg")
+	w, h := bounds("pip/racket.svg")
+	if float64(w) < .9*float64(rw) || float64(w) > 1.1*float64(rw) || float64(h) < .9*float64(rh) || float64(h) > 1.1*float64(rh) {
+		t.Fatalf("hank %dx%d is not within 10%% of sthings %dx%d", w, h, rw, rh)
+	}
+	t.Logf("rendered surfaces: sthings=%dx%d, hank=%dx%d", rw, rh, w, h)
 }
