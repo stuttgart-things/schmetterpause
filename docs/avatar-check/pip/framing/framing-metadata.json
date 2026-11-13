@@ -1,0 +1,41 @@
+{
+  "sthings": {
+    "eyes_y": 181.5,
+    "eyes_percent": 43.21,
+    "chin_y": 297,
+    "bottom_crop_y": 418,
+    "chin_to_bottom": 121
+  },
+  "hank-before": {
+    "eyes_y": 225.4,
+    "eyes_percent": 53.67,
+    "chin_y": 315,
+    "bottom_crop_y": 420,
+    "chin_to_bottom": 105
+  },
+  "hank-after": {
+    "eyes_y": 241.722,
+    "eyes_percent": 57.55,
+    "chin_y": 349.242,
+    "bottom_crop_y": 420,
+    "chin_to_bottom": 70.758
+  },
+  "blecki": {
+    "eyes_y": 201.5,
+    "eyes_percent": 47.98,
+    "chin_y": 310,
+    "bottom_crop_y": 420,
+    "chin_to_bottom": 110
+  },
+  "frame": {
+    "scale": 1.2,
+    "offset": [
+      -27.21127,
+      -28.758159999999997
+    ],
+    "crest_shortening_percent": 40.0,
+    "crest_top_before_native": 11.053,
+    "crest_top_after_native": 30.6318,
+    "native_canvas_bottom_after": 373.9651333333333
+  }
+}

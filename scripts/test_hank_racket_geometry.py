@@ -5,6 +5,7 @@ from pathlib import Path
 import xml.etree.ElementTree as ET
 import pathops
 from import_creator_avatars import shape, op, rect, ellipse
+from hank_frame import SCALE,OFFSET_Y
 
 ROOT = Path(__file__).resolve().parents[1] / "web/static/img/pip"
 
@@ -33,17 +34,19 @@ class HankRacketGeometry(unittest.TestCase):
     def setUp(self):
         root = ET.parse(ROOT / "base.svg").getroot()
         self.parts = {g.get("data-pip-part"): g for g in root}
-        self.racket = self.parts["racket"]
+        self.racket=ET.parse(ROOT/"racket.svg").getroot()[0]
+        self.parts["racket"]=self.racket
+        self.parts["flipper"]=next(g for g in self.racket if g.get("data-pip-part")=="flipper")
 
     def test_every_racket_path_including_ink_has_eight_unit_canvas_margin(self):
-        for index, p in enumerate(paths(self.racket)):
+        for index, p in enumerate([p for child in self.racket if child.get("data-pip-part")!="flipper" for p in ([shape(child.get("d"))] if child.tag.endswith("path") else paths(child))]):
             with self.subTest(path=index):
                 x1, y1, x2, y2 = p.bounds
                 self.assertGreaterEqual(min(x1, y1), 8 - 0.001)
                 self.assertLessEqual(max(x2, y2), 412 + 0.001)
 
     def test_racket_overlaps_cheek_and_clears_every_face_feature(self):
-        head = op(union(paths(self.parts["body"])), rect(0,0,420,315), pathops.PathOp.INTERSECTION)
+        head = op(union(paths(self.parts["body"])), rect(0,0,420,315*SCALE+OFFSET_Y), pathops.PathOp.INTERSECTION)
         racket = union(paths(self.racket))
         for face in ("neutral","happy","surprised","skeptical","angry","sad"):
             features=ET.parse(ROOT / ("face-"+face+".svg")).getroot()
@@ -51,10 +54,11 @@ class HankRacketGeometry(unittest.TestCase):
                 self.assertLess(op(grow(p,12),racket,pathops.PathOp.INTERSECTION).area,.001,face)
         blade = next(g for g in self.racket if g.get("data-pip-part")=="blade")
         overlap=op(head,union(paths(blade)),pathops.PathOp.INTERSECTION)
-        strip=op(overlap,rect(0,244.99,420,245.01),pathops.PathOp.INTERSECTION)
+        y=285*SCALE+OFFSET_Y
+        strip=op(overlap,rect(0,y-.01,420,y+.01),pathops.PathOp.INTERSECTION)
         self.assertGreaterEqual(strip.bounds[2]-strip.bounds[0],20)
         self.assertGreater(overlap.area,400)
-        reserve=ellipse(209.8,366.1,28.5,28.5)
+        reserve=shape(ET.parse(ROOT/"bling-initial.svg").getroot()[0][0].get("d"))
         for name in ("racket","flipper"):
             self.assertLess(op(grow(reserve,12),union(paths(self.parts[name])),pathops.PathOp.INTERSECTION).area,.001,name)
 

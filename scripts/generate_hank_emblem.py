@@ -9,9 +9,10 @@ from fontTools.pens.transformPen import TransformPen
 from import_creator_avatars import shape, ellipse, op, svgpath, INK
 
 ROOT = Path(__file__).resolve().parents[1]
-# Diameter is conservatively rounded down from the 57.17-unit curve-space optimum.
-BELLY_EMBLEM_BOX = (181.3, 337.6, 238.3, 394.6)
-CX, CY, R = 209.8, 366.1, 28.5
+from hank_frame import EMBLEM, bake
+CX, CY, R = EMBLEM
+# Native fit before the common framing step; final accepted diameter is 48.
+BELLY_EMBLEM_BOX = (CX-R,CY-R,CX+R,CY+R)
 
 
 def transformed(p, t):
@@ -61,7 +62,7 @@ for letter, d in source["glyphs"].items():
     entries.append(
         json.dumps(letter, ensure_ascii=False)
         + ":"
-        + json.dumps(glyph_svg(shape(d)))
+        + json.dumps(bake(glyph_svg(shape(d))))
         + ","
     )
 (ROOT / "internal/avatar/hank_glyphs.go").write_text(
@@ -80,6 +81,8 @@ symbol = shape(
     f"C{CX+8} {CY+6} {CX+3} {CY+8} {CX-1} {CY+5}Z"
 )
 symbol = transformed(symbol, Transform().translate(CX, CY).scale(.95).translate(-CX, -CY))
+while op(outlined(symbol), ellipse(CX,CY,R-6.5,R-6.5), pathops.PathOp.DIFFERENCE).area > .001:
+    symbol = transformed(symbol, Transform().translate(CX,CY).scale(.98).translate(-CX,-CY))
 fallback = svgpath(outlined(symbol), INK) + svgpath(symbol, "#fff6f3")
 shield = svgpath(ellipse(CX, CY, R, R), INK) + svgpath(
     ellipse(CX, CY, R - 5.5, R - 5.5), "var(--emblem, #d742c5)"
@@ -93,6 +96,6 @@ body = (
 )
 (ROOT / "web/static/img/pip/bling-initial.svg").write_text(
     '<svg viewBox="0 0 420 420" xmlns="http://www.w3.org/2000/svg">\n'
-    + body
+    + bake(body)
     + "</svg>\n"
 )

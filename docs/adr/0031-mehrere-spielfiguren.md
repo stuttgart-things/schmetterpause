@@ -92,3 +92,13 @@ für das Rendern übergebenen Kontext abgeleitet; ohne Namen erscheint ein Schl�
 Die Glyphe besteht aus vorab erzeugten gefüllten Barlow-Bold-Pfaden (SIL OFL 1.1).
 Das Emblem liegt nach der Basis und vor dem Gesicht. Die kleinere, tiefer sitzende
 Platzierung wurde wegen der bestehenden Pose ausdrücklich gewählt.
+
+## Ergänzung: hank – Vordergrund und Rahmung
+
+hank behält den Schlüssel `pip`. Sein eigener Schläger wird aus `racket.svg`
+geladen und nach Gesicht und Schmuck gerendert: Basis → Gesicht → Schmuck →
+Schlägergruppe. Nur hank verwendet diese zusätzliche Asset-Datei. Die Flosse
+liegt darin über dem Griff; die runde Schlägerfläche wird danach gezeichnet.
+Die zentrale, vorab in Pfade eingerechnete Rahmung umfasst auch das Emblem und
+seine Buchstaben. SVG und GIF verwenden dadurch dieselbe Geometrie und Reihenfolge.
+Datenmodell, Namenskontext und die anderen Figuren bleiben unverändert.

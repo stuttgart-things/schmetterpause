@@ -100,8 +100,8 @@ func TestHankEveryGlyphIsPathsAndRendersInAllPipelines(t *testing.T) {
 		if !strings.Contains(flat, `data-initial="`+name+`"`) {
 			t.Fatal("wrong glyph", name)
 		}
-		if strings.Index(flat, `data-bling="initial"`) > strings.Index(flat, `class="sthings-face"`) {
-			t.Fatal("emblem is not before face")
+		if strings.Index(flat, `data-bling="initial"`) < strings.Index(flat, `class="sthings-face"`) {
+			t.Fatal("emblem must follow the face")
 		}
 		data, err := c.GIF(a, []Frame{{Face: "neutral"}}, 64, ctx)
 		if err != nil {
@@ -159,8 +159,28 @@ func TestHankEmblemKeepsExpressionSeparation(t *testing.T) {
 			}
 		}
 		t.Logf("Hank initial %q: minimum separation %d", name, minimum)
-		if minimum < 114 {
-			t.Errorf("emblem regresses separation below 114: %d", minimum)
+		if minimum < 157 {
+			t.Errorf("emblem regresses separation below 157: %d", minimum)
+		}
+	}
+}
+
+func TestHankRacketIsLastInEveryRenderPath(t *testing.T) {
+	c, err := LoadCollection(web.Static, "static/img")
+	if err != nil {
+		t.Fatal(err)
+	}
+	a := DefaultForCharacter("pip", "")
+	a.Bling = "initial"
+	for _, face := range Faces {
+		for _, svg := range []string{c.RenderFace(a, face.Key), c.RenderLive(a, face.Key), c.RenderFlat(a, face.Key)} {
+			racket := strings.Index(svg, `data-pip-part="racket"`)
+			if racket < 0 || racket < strings.LastIndex(svg, `class="sthings-face"`) || racket < strings.Index(svg, `data-bling="initial"`) {
+				t.Fatal("racket must follow all faces and jewellery")
+			}
+			if !strings.HasSuffix(svg, `</g></g></svg>`) {
+				t.Fatal("racket/flipper group is not last")
+			}
 		}
 	}
 }

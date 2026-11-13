@@ -16,6 +16,7 @@ import (
 type Kit struct {
 	character Character
 	base      string
+	racket    string
 	faces     map[string]string
 	blings    map[string]string
 }
@@ -39,6 +40,11 @@ func load(fsys fs.FS, dir string, jewellery []Option) (*Kit, error) {
 	var err error
 	if k.base, err = read("base"); err != nil {
 		return nil, err
+	}
+	if path.Base(dir) == "pip" {
+		if k.racket, err = read("racket"); err != nil {
+			return nil, err
+		}
 	}
 	for _, f := range Faces {
 		if k.faces[f.Key], err = read("face-" + f.Key); err != nil {
@@ -200,7 +206,11 @@ func (k *Kit) render(a Avatar, face, faces string, ctx ...RenderContext) string 
 			bling = hankFallbackGlyph.ReplaceAllString(bling, `<g data-initial="`+initial+`">`+hankInitialGlyphs[initial]+`</g>`)
 		}
 	}
-	if k.character.Key == "vex" || k.character.Key == "pip" {
+	if k.character.Key == "pip" {
+		b.WriteString(faces)
+		b.WriteString(bling)
+		b.WriteString(k.racket)
+	} else if k.character.Key == "vex" {
 		b.WriteString(bling)
 		b.WriteString(faces)
 	} else {

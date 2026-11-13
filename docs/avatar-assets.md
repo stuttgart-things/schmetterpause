@@ -457,3 +457,35 @@ SP_PLAYWRIGHT_MODULE=/path/to/playwright SP_PREVIEW_BROWSER_BINARY=/path/to/chro
 `docs/avatar-check/pip/sthings-style/` holds the paired sthings/hank sheet at 192 px
 on navy and actual served before/after cheek crops. The usual hank expression sheets
 cover all three coats at 192/64/28 px on navy and black.
+
+## hank – current framing and foreground equipment
+
+Template names remain lowercase. The current framing is documented with rendered
+measurements and the approved priority trade-off in
+[the framing report](avatar-check/pip/framing/README.md). `scripts/hank_frame.py`
+is the single baked coordinate step shared by base, faces, equipment, accessory
+and generated initial glyphs: uniform 1.2 scale, offset (-27.21127,-28.75816),
+with a separately permitted 40% shortening of the crest above native y=60.
+Head and headband are otherwise unchanged. The crop removes the lower torso.
+
+Rendered head widths at 420 px: sthings 383 (91.2%), hank before 316 (75.2%),
+hank after 379 (90.2%), unchanged blecki 296 (70.5%). Eye heights: sthings 43.2%,
+hank before 53.7%, hank after 57.6%, blecki 48.0%. The lower eye line is the
+explicitly accepted compromise; it is not claimed to match sthings' 43%.
+
+hank now owns a separate `racket.svg`. Only hank renders base → face → jewellery
+→ racket. The hand lies over the grip, and the complete round blade follows the
+hand inside the last group. The former edge indentation belonged to the native
+traced blade path itself, rather than a white face path being painted over it.
+No other avatar's layer order changes.
+
+The emblem is 48×48, fully visible with 8.36 units below it; it moves up in native
+coordinates before framing. The same framing is baked into the OFL letter paths
+and the filled paddle fallback. Name/context derivation, palette fallback and
+persistence are unchanged. All previous 57-unit measurements above describe the
+historical wider crop. The smallest arm-outline clearance is now 12.33 units.
+
+The angry beak is narrower, closed and downturned; the other five beaks only
+receive the common frame. Minimum expression separation is now 213 at 64 px
+(Skeptical/Angry); tests guard the requested 157 floor. Physical LED readability
+and final visual approval remain manual checks.

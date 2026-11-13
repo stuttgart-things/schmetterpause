@@ -1,0 +1,12 @@
+{
+  "endpoint": "/avatars/random.svg?face=neutral",
+  "cache_control": "no-store",
+  "current_base_and_racket_paths_match": true,
+  "crop_native": [
+    120,
+    120,
+    420,
+    420
+  ],
+  "detail_pixels": 420
+}

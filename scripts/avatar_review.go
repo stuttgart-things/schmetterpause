@@ -5,6 +5,7 @@ package main
 import (
 	"bytes"
 	"encoding/csv"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"image"
@@ -39,6 +40,7 @@ type sample struct {
 }
 
 func main() {
+	framing := flag.Bool("framing-only", false, "export framing metrics, selection and emblem checks")
 	style := flag.Bool("sthings-style-only", false, "export paired sthings/hank reference")
 	cheek := flag.Bool("cheek-contour-only", false, "export hank contour before/after review")
 	key := flag.String("character", "vex", "character key")
@@ -46,6 +48,13 @@ func main() {
 	emblems := flag.Bool("emblems-only", false, "export hank emblem acceptance matrix")
 	accessories := flag.Bool("accessories-only", false, "export only the blecki accessory acceptance matrix")
 	flag.Parse()
+	if *framing {
+		if err := framingReview(*out); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+		return
+	}
 	if *style {
 		if err := sthingsStyleReview(*out); err != nil {
 			fmt.Fprintln(os.Stderr, err)
@@ -869,4 +878,105 @@ func sthingsStyleReview(out string) error {
 		}
 	}
 	return sheet(c, pairs, 2, 192, color.RGBA{10, 10, 18, 255}, "sthings / hank | sechs Ausdrücke", filepath.Join(out, "sthings-hank-192-app.png"))
+}
+
+func framingReview(out string) error {
+	if err := sthingsStyleReview(out); err != nil {
+		return err
+	}
+	raw, err := os.ReadFile(filepath.Join(out, "framing-metadata.json"))
+	if err != nil {
+		return err
+	}
+	metrics := map[string]map[string]interface{}{}
+	if err = json.Unmarshal(raw, &metrics); err != nil {
+		return err
+	}
+	for _, name := range []string{"sthings", "blecki", "hank-before", "hank-after"} {
+		data, err := os.ReadFile(filepath.Join(out, name+"-head-mask.svg"))
+		if err != nil {
+			return err
+		}
+		icon, err := oksvg.ReadIconStream(bytes.NewReader(data), oksvg.StrictErrorMode)
+		if err != nil {
+			return err
+		}
+		icon.SetTarget(0, 0, 420, 420)
+		img := image.NewRGBA(image.Rect(0, 0, 420, 420))
+		draw.Draw(img, img.Bounds(), image.Black, image.Point{}, draw.Src)
+		icon.Draw(rasterx.NewDasher(420, 420, rasterx.NewScannerGV(420, 420, img, img.Bounds())), 1)
+		minX, minY, maxX, maxY := 420, 420, 0, 0
+		for y := 0; y < 420; y++ {
+			for x := 0; x < 420; x++ {
+				if img.RGBAAt(x, y).R >= 128 {
+					minX = min(minX, x)
+					minY = min(minY, y)
+					maxX = max(maxX, x+1)
+					maxY = max(maxY, y+1)
+				}
+			}
+		}
+		metrics[name]["head_width_pixels"] = maxX - minX
+		metrics[name]["head_width_percent"] = float64(maxX-minX) / 4.2
+		metrics[name]["top_margin_pixels"] = minY
+		metrics[name]["head_left_margin"] = minX
+		metrics[name]["head_right_margin"] = 420 - maxX
+		f, err := os.Create(filepath.Join(out, name+"-head-mask.png"))
+		if err != nil {
+			return err
+		}
+		err = png.Encode(f, img)
+		f.Close()
+		if err != nil {
+			return err
+		}
+	}
+	result, err := json.MarshalIndent(metrics, "", "  ")
+	if err != nil {
+		return err
+	}
+	if err = os.WriteFile(filepath.Join(out, "framing-measurements.json"), append(result, '\n'), 0644); err != nil {
+		return err
+	}
+	c, err := avatar.LoadCollection(web.Static, "static/img")
+	if err != nil {
+		return err
+	}
+	var choices []sample
+	for _, ch := range avatar.Characters {
+		a := avatar.DefaultForCharacter(ch.Key, "")
+		a.Blade = "light-blue"
+		choices = append(choices, sample{ch.Name, a, "neutral"})
+	}
+	if err = sheet(c, choices, 3, 60, color.RGBA{10, 10, 18, 255}, "Figurenauswahl | 60 px", filepath.Join(out, "selection-60-app.png")); err != nil {
+		return err
+	}
+	reviewNames = map[string]string{}
+	var emblems []sample
+	for _, face := range []string{"neutral", "angry"} {
+		for _, initial := range []string{"A", ""} {
+			a := avatar.DefaultForCharacter("pip", "")
+			a.Bling = "initial"
+			a.Blade = "light-blue"
+			name := "Initiale A"
+			if initial == "" {
+				name = "Rückfall"
+			}
+			label := name + " / " + map[string]string{"neutral": "Neutral", "angry": "Wütend"}[face]
+			reviewNames[label] = initial
+			emblems = append(emblems, sample{label, a, face})
+		}
+	}
+	for _, size := range []int{192, 64} {
+		for _, bg := range []struct {
+			name string
+			c    color.RGBA
+		}{{"app", color.RGBA{10, 10, 18, 255}}, {"black", color.RGBA{0, 0, 0, 255}}} {
+			if err = sheet(c, emblems, 2, size, bg.c, "hank | Emblem im neuen Ausschnitt", filepath.Join(out, fmt.Sprintf("emblems-%d-%s.png", size, bg.name))); err != nil {
+				return err
+			}
+		}
+	}
+	reviewNames = nil
+	return nil
 }

@@ -7,6 +7,7 @@ from fontTools.misc.transform import Transform
 from fontTools.pens.transformPen import TransformPen
 from import_creator_avatars import shape, op
 from test_hank_racket_geometry import union, paths, grow
+from hank_frame import framed
 
 ROOT=Path(__file__).resolve().parents[1]/"web/static/img"
 
@@ -28,11 +29,22 @@ class HankSthingsGeometry(unittest.TestCase):
                     result.simplify()
                     transformed=pathops.Path()
                     result.draw(TransformPen(transformed.getPen(),Transform(.8,0,0,.8,cx-sx*.8,cy-181*.8)))
-                    expected.append((el.get("fill"),transformed))
+                    expected.append((el.get("fill"),framed(transformed)))
                 self.assertEqual(len(eye),len(expected))
                 for actual,(fill,p) in zip(eye,expected):
                     self.assertEqual(actual.get("fill"),fill)
                     self.assertLess(op(shape(actual.get("d")),p,pathops.PathOp.XOR).area,.1,(state,index))
+
+    def test_other_five_beaks_only_receive_the_uniform_frame(self):
+        for state in ("neutral","happy","surprised","skeptical","sad"):
+            before=ET.parse(ROOT.parents[2]/"docs/avatar-check/pip/framing"/("before-face-"+state+".svg")).getroot()
+            after=ET.parse(ROOT/"pip"/("face-"+state+".svg")).getroot()
+            old=next(g for g in before.iter() if g.get("data-pip-part")=="beak")
+            new=next(g for g in after.iter() if g.get("data-pip-part")=="beak")
+            self.assertEqual(len(old),len(new))
+            for a,b in zip(old,new):
+                self.assertEqual(a.get("fill"),b.get("fill"))
+                self.assertLess(op(framed(shape(a.get("d"))),shape(b.get("d")),pathops.PathOp.XOR).area,.1,state)
 
     def test_eye_artwork_keeps_eight_units_from_unchanged_headband(self):
         base=ET.parse(ROOT/"pip/base.svg").getroot()

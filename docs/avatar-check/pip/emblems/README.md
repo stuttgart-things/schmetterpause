@@ -46,3 +46,7 @@ The geometry test rejects inner subpaths and checks the shared interior margin.
 The racket and gripping flipper have since been raised in the approved sthings-style
 pose; current clearances and grip area are in ../sthings-style/measurements.json.
 The emblem geometry, colour rule, glyphs and context logic remain unchanged.
+
+Current framing: the accepted badge is now 48×48, moved up before the shared frame.
+The previous 57-unit geometry and hand-placement measurements above are historical.
+See ../framing/README.md and its current pose measurements for the foreground pose.

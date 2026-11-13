@@ -318,10 +318,17 @@ func TestCharacterDeliveries(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if len(entries) != 7+len(avatar.BlingPalette(ch.Key))-1 {
+			extra := 0
+			if ch.Key == "pip" {
+				extra = 1
+			}
+			if len(entries) != 7+len(avatar.BlingPalette(ch.Key))-1+extra {
 				t.Fatalf("%s has %d files, want base, six faces and jewellery", ch.Name, len(entries))
 			}
 			names := []string{"base"}
+			if ch.Key == "pip" {
+				names = append(names, "racket")
+			}
 			for _, f := range avatar.Faces {
 				names = append(names, "face-"+f.Key)
 			}
@@ -364,7 +371,7 @@ func TestCharacterDeliveries(t *testing.T) {
 								groups++
 								validFace := strings.HasPrefix(name, "face-") && attrs["class"] == "sthings-face" && attrs["data-face"] == strings.TrimPrefix(name, "face-")
 								validBling := strings.HasPrefix(name, "bling-") && attrs["class"] == "sthings-bling" && attrs["data-bling"] == strings.TrimPrefix(name, "bling-")
-								validPipPart := ch.Key == "pip" && ((name == "base" && depth == 2 && (attrs["data-pip-part"] == "body" || attrs["data-pip-part"] == "racket" || attrs["data-pip-part"] == "flipper")) ||
+								validPipPart := ch.Key == "pip" && ((name == "base" && depth == 2 && attrs["data-pip-part"] == "body") || (name == "racket" && ((depth == 2 && attrs["data-pip-part"] == "racket") || (depth == 3 && (attrs["data-pip-part"] == "blade" || attrs["data-pip-part"] == "flipper")))) ||
 									(name == "base" && depth == 3 && attrs["data-pip-part"] == "blade") ||
 									(strings.HasPrefix(name, "face-") && depth == 3 && faceDepth == 2 && (attrs["data-pip-part"] == "beak" || attrs["data-pip-part"] == "eye-0" || attrs["data-pip-part"] == "eye-1")))
 								if validFace || validBling {
@@ -376,7 +383,7 @@ func TestCharacterDeliveries(t *testing.T) {
 								}
 							case "path", "circle", "ellipse":
 								shapes++
-								if name != "base" && faceDepth == 0 {
+								if name != "base" && name != "racket" && faceDepth == 0 {
 									t.Error("shape outside face group")
 								}
 							default:
@@ -409,7 +416,9 @@ func TestCharacterDeliveries(t *testing.T) {
 					}
 					if ch.Key == "pip" {
 						if name == "base" {
-							wantGroups = 4
+							wantGroups = 1
+						} else if name == "racket" {
+							wantGroups = 3
 						} else if strings.HasPrefix(name, "face-") {
 							wantGroups = 4
 						} else if name == "bling-initial" {

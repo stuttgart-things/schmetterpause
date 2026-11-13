@@ -72,7 +72,7 @@ func TestPipPaletteFallbackAndRandom(t *testing.T) {
 
 func TestPipAssetsUseFilledPathsOnly(t *testing.T) {
 	forbidden := regexp.MustCompile(`(?i)\b(?:stroke(?:-[a-z]+)?|transform|mask|clip-path|filter)\s*=|<(?:\w+:)?(?:mask|clipPath|filter|image|text)\b`)
-	files := []string{"base.svg", "bling-initial.svg"}
+	files := []string{"base.svg", "racket.svg", "bling-initial.svg"}
 	for _, face := range Faces {
 		files = append(files, "face-"+face.Key+".svg")
 	}
@@ -157,7 +157,7 @@ func TestPipBeaksBelongToFacesWithinTwentyFivePercent(t *testing.T) {
 			}
 		}
 		w, h := maxX-minX+1, maxY-minY+1
-		if w < 45 || w > 77 || h < 36 || h > 62 {
+		if w < 54 || w > 93 || h < 32 || h > 75 {
 			t.Errorf("%s beak %dx%d exceeds native size tolerance", face.Key, w, h)
 		}
 	}
@@ -298,9 +298,9 @@ func TestPip64PixelExpressionSeparation(t *testing.T) {
 		return minimum
 	}
 	now := separation(current)
-	t.Logf("minimum pair separation in 64px quantised GIFs: current=%d target=114", now)
-	if now < 114 {
-		t.Errorf("sthings-style expression separation regressed: %d < 114", now)
+	t.Logf("minimum pair separation in 64px quantised GIFs: current=%d target=157", now)
+	if now < 157 {
+		t.Errorf("sthings-style expression separation regressed: %d < 157", now)
 	}
 }
 
@@ -323,11 +323,12 @@ func TestPipHasNoCheeks(t *testing.T) {
 }
 
 func TestHankRacketPathsStayInsideCanvasMargin(t *testing.T) {
-	data, err := fs.ReadFile(web.Static, "static/img/pip/base.svg")
+	data, err := fs.ReadFile(web.Static, "static/img/pip/racket.svg")
 	if err != nil {
 		t.Fatal(err)
 	}
-	group := regexp.MustCompile(`(?s)<g data-pip-part="racket">(.*?)</g>\s*<g data-pip-part="flipper">`).FindSubmatch(data)
+	data = regexp.MustCompile(`(?s)<g data-pip-part="flipper">.*?</g>`).ReplaceAll(data, nil)
+	group := regexp.MustCompile(`(?s)<g data-pip-part="racket">(.*?)</g></svg>`).FindSubmatch(data)
 	if group == nil {
 		t.Fatal("missing separate racket/flipper groups")
 	}

@@ -1,187 +1,187 @@
 {
-  "emblem_size": 57,
+  "emblem_size": 48.0,
   "centre": [
-    209.8,
-    366.1
+    227.30873107910156,
+    387.641845703125
   ],
-  "belly_edge_clearance": 10.052,
-  "flipper_clearance": 18.106,
-  "racket_clearance": 29.013,
-  "visible_selected_grip_colour_area": 591.431,
+  "bottom_margin": 8.3587646484375,
+  "flipper_clearance": 12.329,
+  "racket_clearance": 24.665,
+  "visible_selected_grip_colour_area": 565.236,
   "initials": [
     {
       "initial": "A",
-      "width": 25.829,
-      "height": 29.312,
-      "height_at_64": 4.47
+      "width": 17.271,
+      "height": 19.601,
+      "height_at_64": 2.99
     },
     {
       "initial": "B",
-      "width": 23.256,
-      "height": 31.92,
-      "height_at_64": 4.86
+      "width": 15.629,
+      "height": 21.451,
+      "height_at_64": 3.27
     },
     {
       "initial": "C",
-      "width": 23.138,
-      "height": 31.92,
-      "height_at_64": 4.86
+      "width": 18.624,
+      "height": 25.694,
+      "height_at_64": 3.92
     },
     {
       "initial": "D",
-      "width": 23.348,
-      "height": 31.92,
-      "height_at_64": 4.86
+      "width": 15.612,
+      "height": 21.346,
+      "height_at_64": 3.25
     },
     {
       "initial": "E",
-      "width": 22.162,
-      "height": 31.92,
-      "height_at_64": 4.86
+      "width": 15.12,
+      "height": 21.778,
+      "height_at_64": 3.32
     },
     {
       "initial": "F",
-      "width": 22.116,
-      "height": 31.92,
-      "height_at_64": 4.86
+      "width": 15.089,
+      "height": 21.778,
+      "height_at_64": 3.32
     },
     {
       "initial": "G",
-      "width": 23.092,
-      "height": 31.92,
-      "height_at_64": 4.86
+      "width": 18.588,
+      "height": 25.694,
+      "height_at_64": 3.92
     },
     {
       "initial": "H",
-      "width": 23.392,
-      "height": 31.92,
-      "height_at_64": 4.86
+      "width": 15.643,
+      "height": 21.346,
+      "height_at_64": 3.25
     },
     {
       "initial": "I",
-      "width": 6.43,
-      "height": 31.92,
-      "height_at_64": 4.86
+      "width": 5.124,
+      "height": 25.438,
+      "height_at_64": 3.88
     },
     {
       "initial": "J",
-      "width": 22.678,
-      "height": 31.92,
-      "height_at_64": 4.86
+      "width": 15.317,
+      "height": 21.559,
+      "height_at_64": 3.29
     },
     {
       "initial": "K",
-      "width": 24.084,
-      "height": 30.82,
-      "height_at_64": 4.7
+      "width": 16.025,
+      "height": 20.506,
+      "height_at_64": 3.12
     },
     {
       "initial": "L",
-      "width": 22.116,
-      "height": 31.92,
-      "height_at_64": 4.86
+      "width": 15.089,
+      "height": 21.778,
+      "height_at_64": 3.32
     },
     {
       "initial": "M",
-      "width": 25.59,
-      "height": 30.208,
-      "height_at_64": 4.6
+      "width": 17.198,
+      "height": 20.302,
+      "height_at_64": 3.09
     },
     {
       "initial": "N",
-      "width": 24.27,
-      "height": 31.286,
-      "height_at_64": 4.77
+      "width": 16.229,
+      "height": 20.921,
+      "height_at_64": 3.19
     },
     {
       "initial": "O",
-      "width": 23.396,
-      "height": 31.92,
-      "height_at_64": 4.86
+      "width": 18.833,
+      "height": 25.694,
+      "height_at_64": 3.92
     },
     {
       "initial": "P",
-      "width": 23.334,
-      "height": 31.76,
-      "height_at_64": 4.84
+      "width": 15.682,
+      "height": 21.346,
+      "height_at_64": 3.25
     },
     {
       "initial": "Q",
-      "width": 20.238,
-      "height": 31.92,
-      "height_at_64": 4.86
+      "width": 16.128,
+      "height": 25.438,
+      "height_at_64": 3.88
     },
     {
       "initial": "R",
-      "width": 23.268,
-      "height": 31.444,
-      "height_at_64": 4.79
+      "width": 15.482,
+      "height": 20.921,
+      "height_at_64": 3.19
     },
     {
       "initial": "S",
-      "width": 23.226,
-      "height": 31.92,
-      "height_at_64": 4.86
+      "width": 18.602,
+      "height": 25.565,
+      "height_at_64": 3.9
     },
     {
       "initial": "T",
-      "width": 23.836,
-      "height": 31.602,
-      "height_at_64": 4.82
+      "width": 15.938,
+      "height": 21.132,
+      "height_at_64": 3.22
     },
     {
       "initial": "U",
-      "width": 23.354,
-      "height": 31.92,
-      "height_at_64": 4.86
+      "width": 15.617,
+      "height": 21.346,
+      "height_at_64": 3.25
     },
     {
       "initial": "V",
-      "width": 24.67,
-      "height": 30.36,
-      "height_at_64": 4.63
+      "width": 16.495,
+      "height": 20.302,
+      "height_at_64": 3.09
     },
     {
       "initial": "W",
-      "width": 29.886,
-      "height": 25.22,
-      "height_at_64": 3.84
+      "width": 19.985,
+      "height": 16.865,
+      "height_at_64": 2.57
     },
     {
       "initial": "X",
-      "width": 24.79,
-      "height": 30.36,
-      "height_at_64": 4.63
+      "width": 16.494,
+      "height": 20.201,
+      "height_at_64": 3.08
     },
     {
       "initial": "Y",
-      "width": 24.429,
-      "height": 30.512,
-      "height_at_64": 4.65
+      "width": 16.335,
+      "height": 20.402,
+      "height_at_64": 3.11
     },
     {
       "initial": "Z",
-      "width": 22.208,
-      "height": 31.92,
-      "height_at_64": 4.86
+      "width": 15.151,
+      "height": 21.778,
+      "height_at_64": 3.32
     },
     {
       "initial": "Ä",
-      "width": 21.354,
-      "height": 31.92,
-      "height_at_64": 4.86
+      "width": 14.496,
+      "height": 21.667,
+      "height_at_64": 3.3
     },
     {
       "initial": "Ö",
-      "width": 18.03,
-      "height": 31.92,
-      "height_at_64": 4.86
+      "width": 14.155,
+      "height": 25.058,
+      "height_at_64": 3.82
     },
     {
       "initial": "Ü",
-      "width": 17.78,
-      "height": 31.92,
-      "height_at_64": 4.86
+      "width": 13.958,
+      "height": 25.058,
+      "height_at_64": 3.82
     }
   ]
 }
