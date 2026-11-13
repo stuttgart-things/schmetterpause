@@ -40,6 +40,7 @@ type sample struct {
 }
 
 func main() {
+	straight := flag.Bool("straight-only", false, "export straight hank racket axis comparison and details")
 	holding := flag.Bool("holding-only", false, "export sthings racket reference and hank holding sheets")
 	framing := flag.Bool("framing-only", false, "export framing metrics, selection and emblem checks")
 	style := flag.Bool("sthings-style-only", false, "export paired sthings/hank reference")
@@ -49,6 +50,13 @@ func main() {
 	emblems := flag.Bool("emblems-only", false, "export hank emblem acceptance matrix")
 	accessories := flag.Bool("accessories-only", false, "export only the blecki accessory acceptance matrix")
 	flag.Parse()
+	if *straight {
+		if err := straightReview(*out); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+		return
+	}
 	if *holding {
 		if err := holdingReview(*out); err != nil {
 			fmt.Fprintln(os.Stderr, err)
@@ -714,6 +722,13 @@ func handBeforeCollection(basePath ...string) (*avatar.Collection, error) {
 		return nil, err
 	}
 	files["static/img/pip/base.svg"] = &fstest.MapFile{Data: before}
+	if len(basePath) > 1 {
+		equipment, err := os.ReadFile(basePath[1])
+		if err != nil {
+			return nil, err
+		}
+		files["static/img/pip/racket.svg"] = &fstest.MapFile{Data: equipment}
+	}
 	return avatar.LoadCollection(files, "static/img")
 }
 
@@ -1068,4 +1083,57 @@ func holdingReview(out string) error {
 		return err
 	}
 	return os.WriteFile(filepath.Join(out, "raster-measurements.json"), append(data, '\n'), 0644)
+}
+
+func straightReview(out string) error {
+	if err := holdingReview(out); err != nil {
+		return err
+	}
+	current, err := avatar.LoadCollection(web.Static, "static/img")
+	if err != nil {
+		return err
+	}
+	before, err := handBeforeCollection(filepath.Join(out, "before-base.svg"), filepath.Join(out, "before-racket.svg"))
+	if err != nil {
+		return err
+	}
+	canvas := image.NewRGBA(image.Rect(0, 0, 1260, 448))
+	draw.Draw(canvas, canvas.Bounds(), image.NewUniform(color.RGBA{10, 10, 18, 255}), image.Point{}, draw.Src)
+	entries := []struct {
+		label, key, file string
+		c                *avatar.Collection
+	}{{"sthings", "", "sthings", current}, {"hank vorher", "pip", "before", before}, {"hank nachher", "pip", "after", current}}
+	for index, e := range entries {
+		a := avatar.DefaultForCharacter(e.key, "")
+		a.Blade = "light-blue"
+		a.Handle = "red"
+		svg := e.c.RenderFlat(a, "neutral")
+		icon, err := oksvg.ReadIconStream(strings.NewReader(svg), oksvg.StrictErrorMode)
+		if err != nil {
+			return err
+		}
+		scale := 420.0 / 270.0
+		icon.SetTarget(-150*scale, -150*scale, 420*scale, 420*scale)
+		img := image.NewRGBA(image.Rect(0, 0, 420, 420))
+		draw.Draw(img, img.Bounds(), image.NewUniform(color.RGBA{10, 10, 18, 255}), image.Point{}, draw.Src)
+		icon.Draw(rasterx.NewDasher(420, 420, rasterx.NewScannerGV(420, 420, img, img.Bounds())), 1)
+		f, err := os.Create(filepath.Join(out, "hand-racket-"+e.file+"-420.png"))
+		if err != nil {
+			return err
+		}
+		err = png.Encode(f, img)
+		f.Close()
+		if err != nil {
+			return err
+		}
+		draw.Draw(canvas, image.Rect(index*420, 28, index*420+420, 448), img, image.Point{}, draw.Src)
+		d := font.Drawer{Dst: canvas, Src: image.White, Face: reviewFont, Dot: fixed.P(index*420+8, 18)}
+		d.DrawString(e.label)
+	}
+	f, err := os.Create(filepath.Join(out, "hand-racket-comparison-420.png"))
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	return png.Encode(f, canvas)
 }

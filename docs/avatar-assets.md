@@ -510,3 +510,14 @@ measurements, the explicitly reconstructed face-overlap definition (22.35% versu
 GIF separation is 193, Skeptical/Angry, guarding the requested 157 floor. Physical
 LED validation remains manual. The older framing/ and sthings-style/ reports are
 historical snapshots, not the current acceptance images.
+
+## hank – gerade Schlägerachse und Griff von vorn
+
+Die Fläche bleibt exakt wie in 8822413, bei unveränderter 110-%-Rahmung.
+Der Griff liegt jetzt auf der Flächenachse: 13,42° zur Senkrechten, 2,17°
+Abweichung zur unabhängig gemessenen Randnormalen. Die Flosse umfasst ihn von
+vorn; 25,1 Einheiten Griffhals und 10,4 Griffende bleiben frei. Sichtbare
+Grifffarbe: 751,35 Einheiten². Unterscheidbarkeit weiterhin 193
+(Skeptisch/Wütend). Alle anderen Avatare, Gesichter und Paletten unverändert.
+Der aktuelle [Messbericht und die Prüfbilder](avatar-check/pip/straight/README.md)
+ersetzen den vorherigen holding-Zwischenstand. Echter LED-Test bleibt offen.

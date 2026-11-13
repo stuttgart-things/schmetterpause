@@ -1,0 +1,11 @@
+{
+  "web/static/img/pip/base.svg": "f82d6be955daad3b6c741a86ed5b56439dcaaf72b6c347e0dd10637058f2c389",
+  "web/static/img/pip/bling-initial.svg": "8327c7238a5c8931ba7820af45f5d7ae9b6240fef4385aa37b440ec4f40d4a74",
+  "web/static/img/pip/face-neutral.svg": "5b7fab2d8c978cc393bb564eb211ac7439a1bf17e65199bdd9615dc689b865a6",
+  "web/static/img/pip/face-happy.svg": "4553b88dbb60b90ad718fd56cf81973e3631e5b395e93a129425c9c40a738e6e",
+  "web/static/img/pip/face-surprised.svg": "579e903b06006b5763751a67ced6b25517fabd0d9c37b9482201c9b357d151a7",
+  "web/static/img/pip/face-skeptical.svg": "f0ca7568706fc382bc89f5bfb0933bfb178597ddf78f7e4259675ba9f716465f",
+  "web/static/img/pip/face-angry.svg": "1faf951a6fd18c11878e98900fefa1481e35c7c2c659cf8e06e25d49397b86b3",
+  "web/static/img/pip/face-sad.svg": "add988f01d21e6fa6fa1709660d10bdcb6bf0f3b87017df9776dd737d7bd9340",
+  "internal/avatar/hank_glyphs.go": "556571c31237647c240c2ed11faaf441241379a6de013eafa2a5e5f11ca403a6"
+}

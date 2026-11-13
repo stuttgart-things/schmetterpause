@@ -486,9 +486,7 @@ def convert_vex(source, target):
 # Fixed native anchors on the unchanged, slightly tilted head.
 PIP_EYES = ((145, 236, 32, 40), (255, 214, 32, 40))
 PIP_STHINGS_EYE_SCALE = 0.8
-PIP_GRIP_PIVOT = (283, 375)
 PIP_FUR = "#2f4ea8"
-PIP_RACKET_ROTATION = 18
 # Actual maximum-size round Hank emblem, including its black border.
 PIP_EMBLEM_RESERVE = (209.8, 366.1, 28.5, 28.5)
 
@@ -554,7 +552,7 @@ def pip_beak(state):
 
 def convert_pip(source, target):
     from hank_frame import SCALE, MATRIX
-    from hank_pose import BLADE_SCALE,BLADE_CENTRE,BLADE_RIM,GRIP_START,GRIP_END,GRIP_WIDTH,GRIP_RIM,HAND_OFFSET
+    from hank_pose import BLADE_SCALE,BLADE_CENTRE,BLADE_RIM,GRIP_START,GRIP_END,GRIP_WIDTH,GRIP_RIM,HAND_BODY,HAND_THUMB
     from sthings_racket_reference import reference
     original = creator_svg.paths(source, "pip")
     headband = original[47][2]
@@ -587,12 +585,6 @@ def convert_pip(source, target):
         border.convertConicsToQuads(0.01)
         return op(p, border, pathops.PathOp.UNION)
 
-    rotation = (
-        Transform()
-        .translate(*PIP_GRIP_PIVOT)
-        .rotate(math.radians(PIP_RACKET_ROTATION))
-        .translate(-PIP_GRIP_PIVOT[0], -PIP_GRIP_PIVOT[1])
-    )
     # A complete round paddle, rather than the notched traced native surface.
     ref=reference()
     final_blade=transformed(ref['blade'],Transform(BLADE_SCALE,0,0,BLADE_SCALE,BLADE_CENTRE[0]-348*BLADE_SCALE,BLADE_CENTRE[1]-228.5*BLADE_SCALE))
@@ -610,16 +602,11 @@ def convert_pip(source, target):
         "M245 205 L328.73 205 Q331 235 310 270 Q281 299 251 306 L245 290 Q264 265 267 241Z"
     )
     blank = []
-    hand_shadows = []
     for i, (role, fill, p) in enumerate(original):
         if i in {8, 46, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61}:
             continue
         if role == "shadow" and p.bounds[0] > 245 and p.bounds[1] > 320:
-            # These tiny native shades belong to the former hand/arm position,
-            # not to the torso. Move hand shading with its flipper; remove the
-            # superseded upper-arm shading rather than leave detached pixels.
-            if p.bounds[0] > 275:
-                hand_shadows.append(p)
+            # The old hand/arm shading does not belong to the new front fist.
             continue
         if i == 0:
             p = op(p, cut, pathops.PathOp.DIFFERENCE)
@@ -659,7 +646,7 @@ def convert_pip(source, target):
     blank.append(("paddle-handle", "#efa31b", shaft))
     dx,dy=GRIP_END[0]-GRIP_START[0],GRIP_END[1]-GRIP_START[1]
     length=math.hypot(dx,dy);ux,uy=dx/length,dy/length;nx,ny=-uy,ux
-    for fraction in (.15,.86):
+    for fraction in (.30,.96):
         cx,cy=GRIP_START[0]+fraction*dx,GRIP_START[1]+fraction*dy
         points=[(cx+nx*a+ux*b,cy+ny*a+uy*b) for a,b in [(-11,-1.75),(11,-1.75),(11,1.75),(-11,1.75)]]
         stripe=shape("M"+" L".join(f"{x} {y}" for x,y in points)+"Z")
@@ -672,21 +659,12 @@ def convert_pip(source, target):
         assert (
             min(x1, y1) >= 8 - 0.001 and max(x2, y2) <= 412 + 0.001
         ), "Hank racket path outside 8-unit canvas inset"
-    paw = transformed(transformed(original[8][2], rotation), Transform().translate(*HAND_OFFSET))
-    blank.append(("ink", INK, outlined(paw, 11)))
-    blank.append(("body", PIP_FUR, paw))
-    for shade in hand_shadows:
-        shade = op(transformed(shade, Transform().translate(*HAND_OFFSET)), paw, pathops.PathOp.INTERSECTION)
-        if shade.area > .001:
-            blank.append(("pip-shadow", "var(--fur-dark, #213777)", shade))
-    # A small thumb crosses the shaft instead of leaving it merely resting
-    # alongside the flipper. It stays inside the pre-existing figure silhouette.
-    thumb = shape("M286 369 C278 369 272 375 273 381 Q277 389 286 385 L294 378Z")
-    thumb = transformed(
-        thumb, Transform().translate(284, 378).scale(0.75).translate(-284, -378)
-    )
-    thumb = transformed(thumb, Transform().translate(*HAND_OFFSET))
-    thumb_ink = outlined(thumb, 11)
+    # A front-facing fist and lower wrist hold the straight shaft from below.
+    paw=transformed(shape(HAND_BODY),MATRIX.inverse())
+    blank.append(("ink",INK,outlined(paw,10/SCALE)))
+    blank.append(("body",PIP_FUR,paw))
+    thumb=transformed(shape(HAND_THUMB),MATRIX.inverse())
+    thumb_ink = outlined(thumb, 8/SCALE)
     # The whole gripping hand is raised with the grip; the thumb still wraps it.
     blank.append(("ink", INK, thumb_ink))
     blank.append(("body", PIP_FUR, thumb))

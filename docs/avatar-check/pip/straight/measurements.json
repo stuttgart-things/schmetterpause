@@ -1,0 +1,137 @@
+{
+  "sthings": {
+    "blade_bounds": [
+      283.0,
+      161.0,
+      413.0,
+      296.0
+    ],
+    "blade_area": 13578.0,
+    "width": 130,
+    "height": 135,
+    "width_percent": 30.952380952380953,
+    "height_percent": 32.14285714285714,
+    "centre": [
+      348,
+      228.5
+    ],
+    "eyes_y": 181.5,
+    "eye_line_offset": 47.0,
+    "eyes_centre_x": 203.75,
+    "face_centre_x": 206.0,
+    "face_centre_y": 195.3,
+    "face_overlap_fraction_reconstructed": 0.22346657564615813,
+    "eye_gap_outline": 3.060096502304077,
+    "eye_gap_required": 6,
+    "visible_paw_area": 6510.7070960998535,
+    "visible_paw_bounds": [
+      294.0,
+      313.0,
+      376.0,
+      418.0
+    ],
+    "visible_grip_area": 503.14485931396484,
+    "visible_grip_bounds": [
+      300.0,
+      285.0,
+      364.0,
+      402.0
+    ]
+  },
+  "hank": {
+    "frame_scale": 1.1,
+    "frame_offset": [
+      -23.0,
+      -25.69498
+    ],
+    "width": 118.29946899414062,
+    "height": 122.85018920898438,
+    "width_percent": 28.166540236700147,
+    "height_percent": 29.25004504975818,
+    "blade_centre": [
+      346.1000518798828,
+      269.8002166748047
+    ],
+    "eyes_y": 222.24502182006836,
+    "eyes_centre_x": 197.2199993133545,
+    "eye_line_offset": 47.55519485473633,
+    "face_centre": [
+      196.0822868347168,
+      219.0911636352539
+    ],
+    "face_overlap_fraction": 0.20273350819365318,
+    "hand_bounds": [
+      271.99969482421875,
+      351.99993896484375,
+      359.00030517578125,
+      406.118408203125
+    ],
+    "hand_visible_fraction": 1.0,
+    "visible_hand_colour_area": 1736.824426110912,
+    "visible_hand_colour_bounds": [
+      276.99969482421875,
+      357.0005187988281,
+      353.99969482421875,
+      401.1116027832031
+    ],
+    "visible_grip_area": 751.3451502509397,
+    "visible_grip_bounds": [
+      305.00958251953125,
+      324.9836120605469,
+      345.9259033203125,
+      404.9997253417969
+    ],
+    "canvas_margin": 8.25,
+    "feature_clearances": {
+      "neutral": {
+        "eye-0": 111.92,
+        "eye-1": 6.238,
+        "beak": 32.319
+      },
+      "happy": {
+        "eye-0": 128.23,
+        "eye-1": 14.709,
+        "beak": 26.326
+      },
+      "surprised": {
+        "eye-0": 117.325,
+        "eye-1": 7.728,
+        "beak": 38.147
+      },
+      "skeptical": {
+        "eye-0": 122.931,
+        "eye-1": 9.944,
+        "beak": 33.673
+      },
+      "angry": {
+        "eye-0": 115.553,
+        "eye-1": 9.79,
+        "beak": 41.594
+      },
+      "sad": {
+        "eye-0": 114.997,
+        "eye-1": 6.232,
+        "beak": 33.757
+      }
+    },
+    "emblem_size": 47.999603271484375,
+    "emblem_bottom_margin": 24.595733642578125,
+    "emblem_beak_clearance": {
+      "neutral": 38.936,
+      "happy": 29.077,
+      "surprised": 30.077,
+      "skeptical": 40.95,
+      "angry": 42.808,
+      "sad": 33.379
+    },
+    "emblem_racket_clearance": 40.482,
+    "emblem_flipper_clearance": 40.482,
+    "native_bottom_crop": 405.1772545454545,
+    "chin_to_bottom": 99.19497999999999
+  },
+  "notes": {
+    "face_overlap": "sthings is reconstructed by mirroring the visible left face at x=206; its native face is already cut around the paddle. hank uses its complete white face surface.",
+    "reference_outline": "7-unit original outer rim, evidenced by the blue/black right canvas bounds 413/420; hank uses at least max(reference gap,6).",
+    "visible_areas": "Paint-order-aware selected grip and paw surfaces; black hand outline is additionally used for full-hand visibility and canvas tests."
+  }
+}

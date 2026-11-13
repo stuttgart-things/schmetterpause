@@ -11,7 +11,8 @@ from sthings_racket_reference import reference
 from hank_frame import SCALE,OFFSET_X,OFFSET_Y
 ROOT=Path(__file__).resolve().parents[1];OUT=ROOT/'docs/avatar-check/pip/holding';ASSETS=ROOT/'web/static/img/pip'
 
-def export():
+def export(out=None):
+ OUT=Path(out) if out is not None else ROOT/'docs/avatar-check/pip/holding'
  OUT.mkdir(exist_ok=True);ref=reference();base=ET.parse(ASSETS/'base.svg').getroot()[0]
  racket=ET.parse(ASSETS/'racket.svg').getroot()[0]
  blade=next(g for g in racket if g.get('data-pip-part')=='blade');hand=next(g for g in racket if g.get('data-pip-part')=='flipper')

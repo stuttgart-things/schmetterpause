@@ -1,9 +1,17 @@
-"""Final-canvas equipment targets; converted back to native space before framing."""
+"""Rigid racket targets, in final canvas space before the shared frame is baked."""
+import math
+from racket_axis import reference_axis
 BLADE_SCALE=.91
 BLADE_CENTRE=(346.1,269.8)
 BLADE_RIM=6.5
-GRIP_START=(334.,332.)
-GRIP_END=(286.,390.)
-GRIP_WIDTH=24.
+REF_AXIS=reference_axis()
+AXIS_DEGREES=REF_AXIS['blade_axis_degrees']
+BLADE_MASS_CENTRE=(BLADE_CENTRE[0]+BLADE_SCALE*(REF_AXIS['blade_centre'][0]-348),BLADE_CENTRE[1]+BLADE_SCALE*(REF_AXIS['blade_centre'][1]-228.5))
+def axis_at_y(y):
+ return (BLADE_MASS_CENTRE[0]-math.tan(math.radians(AXIS_DEGREES))*(y-BLADE_MASS_CENTRE[1]),y)
+GRIP_START=axis_at_y(316.)
+GRIP_END=axis_at_y(392.)
+GRIP_WIDTH=26.
 GRIP_RIM=5.
-HAND_OFFSET=(17.954545454545457,-20.)
+HAND_BODY='M304 370 C304 362 315 357 327 357 C343 357 354 367 354 380 L352 394 Q347 402 337 401 L326 399 L329 389 Q319 392 311 386 L291 389 Q282 387 277 378 L285 369 Q296 372 304 370Z'
+HAND_THUMB='M337 369 C330 363 318 365 314 371 C310 378 316 384 325 381 L339 377Z'

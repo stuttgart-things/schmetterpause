@@ -54,7 +54,7 @@ def measurements():
 
 if __name__=='__main__':
     data=measurements()
-    for target in (ROOT/'docs/avatar-check/pip/holding/pose-measurements.json',ROOT/'docs/avatar-check/pip/racket-measurements.json'):
+    for target in (ROOT/'docs/avatar-check/pip/straight/pose-measurements.json',ROOT/'docs/avatar-check/pip/racket-measurements.json'):
         target.parent.mkdir(parents=True,exist_ok=True)
         target.write_text(json.dumps(data,indent=2,ensure_ascii=False)+'\n')
     emblem=shape(ET.parse(ASSETS/'bling-initial.svg').getroot()[0][0].get('d'))

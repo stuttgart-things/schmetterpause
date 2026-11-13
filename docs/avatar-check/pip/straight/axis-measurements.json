@@ -1,0 +1,144 @@
+{
+  "sthings": {
+    "blade_centre": [
+      349.2850935336574,
+      228.14030048608043
+    ],
+    "upper_grip_centre": [
+      332.231884057971,
+      299.5507246376812
+    ],
+    "lower_grip_centre": [
+      309.30817610062894,
+      389.22641509433964
+    ],
+    "blade_axis_degrees": 13.431009026950848,
+    "grip_axis_degrees": 14.339385960834091,
+    "whole_axis_degrees": 13.937576593808874,
+    "blade_rim_normal_degrees": 15.592810939266347,
+    "paw_bounds": [
+      294.0,
+      313.0,
+      376.0,
+      418.0
+    ],
+    "paw_bbox_centre_offset": [
+      -14.285093533657403,
+      137.35969951391957
+    ],
+    "visible_grip_intervals": [
+      [
+        66.7,
+        80.1
+      ],
+      [
+        163.8,
+        169.5
+      ]
+    ],
+    "upper_visible_grip_length": 13.399999999999991,
+    "lower_visible_grip_length": 5.699999999999989,
+    "outline_neck_length": 14.599999999999994,
+    "method": "Blade centre = area centroid; functional axis goes toward the upper dominant grip field. Handle axis uses the two dominant visible grip-field centroids. A lower-rim normal gives an independent geometric blade direction. Paw outline is reconstructed with the original 7-unit rim."
+  },
+  "hank_before": {
+    "grip_axis_degrees": 39.619559470784225,
+    "head_centre_to_grip_axis": 29.657057813670917,
+    "blade_rim_normal_degrees": 15.593748036914238,
+    "axis_difference_degrees": 24.025811433869986,
+    "blade_functional_axis_degrees": 13.431009026950848,
+    "functional_axis_difference_degrees": 26.18855044383338,
+    "hand_bounds": [
+      291.1678466796875,
+      332.43804931640625,
+      358.84307861328125,
+      410.97320556640625
+    ],
+    "blade_bounds": [
+      286.9503173828125,
+      208.3751220703125,
+      405.2497863769531,
+      331.2253112792969
+    ],
+    "visible_grip_area": 861.9165446553359,
+    "neck_length": 5.5,
+    "lower_grip_end_length": 29.200000000000003,
+    "blade_axis_interval": [
+      0.0,
+      52.2
+    ],
+    "hand_axis_interval": [
+      57.7,
+      114.8
+    ],
+    "grip_axis_interval": [
+      44.7,
+      144.0
+    ],
+    "visible_colour_intervals": [
+      [
+        52.2,
+        57.7
+      ],
+      [
+        114.8,
+        119.7
+      ],
+      [
+        123.2,
+        144.0
+      ]
+    ]
+  },
+  "hank_after": {
+    "grip_axis_degrees": 13.42057203398011,
+    "head_centre_to_grip_axis": 0.020049914850108763,
+    "blade_rim_normal_degrees": 15.593748036914238,
+    "axis_difference_degrees": 2.173176002934129,
+    "blade_functional_axis_degrees": 13.431009026950848,
+    "functional_axis_difference_degrees": 0.010436992970738856,
+    "hand_bounds": [
+      271.99969482421875,
+      351.99993896484375,
+      359.00030517578125,
+      406.118408203125
+    ],
+    "blade_bounds": [
+      286.9503173828125,
+      208.3751220703125,
+      405.2497863769531,
+      331.2253112792969
+    ],
+    "visible_grip_area": 751.3451502509397,
+    "neck_length": 25.10000000000001,
+    "lower_grip_end_length": 10.400000000000006,
+    "blade_axis_interval": [
+      0.0,
+      59.8
+    ],
+    "hand_axis_interval": [
+      84.9,
+      128.6
+    ],
+    "grip_axis_interval": [
+      34.9,
+      139.0
+    ],
+    "visible_colour_intervals": [
+      [
+        59.8,
+        69.6
+      ],
+      [
+        73.1,
+        84.9
+      ],
+      [
+        128.6,
+        139.0
+      ]
+    ]
+  },
+  "shaft_measurement": "Principal axis of points sampled inside the actual complete filled capsule, 0.5-unit grid; no intended endpoint constants are used for its angle.",
+  "interval_measurement": "Lengths along the handle centreline, between the blade outline, hand outline and colour end; stripes interrupt colour but not the neck span."
+}
