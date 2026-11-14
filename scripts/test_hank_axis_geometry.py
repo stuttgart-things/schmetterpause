@@ -33,7 +33,8 @@ class HankAxisGeometry(unittest.TestCase):
  def test_visible_neck_and_short_lower_end(self):
   origin=BLADE_MASS_CENTRE;unit=self.axis['unit']
   head=intervals(union(paths(self.blade)),origin,unit)[0]
-  hand=intervals(union(paths(self.hand)),origin,unit)[0]
+  hand_sections=intervals(union(paths(self.hand)),origin,unit)
+  hand=(hand_sections[0][0],hand_sections[-1][1])
   grip=intervals(self.grip,origin,unit)[0]
   neck=hand[0]-head[1]
   self.assertGreaterEqual(neck,20);self.assertLessEqual(neck,30)
@@ -49,18 +50,29 @@ class HankAxisGeometry(unittest.TestCase):
   import pathops
   self.assertGreater(op(union(arms),union(paths(self.hand)),pathops.PathOp.INTERSECTION).area,15)
 
- def test_axis_runs_through_flipper_tip_and_covers_full_grip_width(self):
+ def test_flipper_wraps_behind_and_in_front_of_the_shaft(self):
+  import pathops
+  from import_creator_avatars import op
+  parts={g.get('data-grip-part'):union(paths(g)) for g in self.hand}
+  rear=parts['palm-back'];curl=parts['curl-front'];thumb=parts['thumb-front']
+  # The palm is behind the grip, with visible material on BOTH sides.
+  self.assertLess(op(rear,self.grip,pathops.PathOp.INTERSECTION).area,.01)
+  cx,cy=self.axis['centre'];ux,uy=self.axis['unit']
+  sides=[(x-cx)*uy-(y-cy)*ux for x,y in rear.points]
+  self.assertLess(min(sides),-20);self.assertGreater(max(sides),15)
+  # Opposing front folds cross the shaft, and are visibly separate shapes.
+  for pad in (curl,thumb):
+   self.assertGreater(op(pad,self.grip,pathops.PathOp.INTERSECTION).area,150)
+  self.assertLess(thumb.bounds[0],curl.bounds[0]-15)
+  self.assertGreater(curl.bounds[2],thumb.bounds[2]+8)
+  # An actual piece of grip must be visible BETWEEN the two front folds.
+  # A solid oval painted over the shaft cannot satisfy this threading check.
   hand=union(paths(self.hand))
-  cx,cy=self.axis['centre'];ux,uy=self.axis['unit'];nx,ny=uy,-ux
-  # Sample the real generated cross-sections in the distal (right) flipper.
-  covered=[]
-  for j in range(-400,401):
-   t=j*.1;x,y=cx+ux*t,cy+uy*t
-   cross=[(x+nx*k*.1,y+ny*k*.1) for k in range(-300,301)
-          if self.grip.contains((x+nx*k*.1,y+ny*k*.1))]
-   if cross and hand.contains((x,y)) and all(hand.contains(q) for q in cross):covered.append((x,y))
-  self.assertGreater(len(covered),80, 'flipper must hide the entire grip width over at least 8 units')
-  self.assertGreater(max(x for x,y in covered),hand.bounds[2]-22, 'axis must cross distal flipper, not wrist')
+  visible=[]
+  for j in range(100,350):
+   t=j*.1;q=(cx+ux*t,cy+uy*t)
+   if self.grip.contains(q) and not hand.contains(q):visible.append(t)
+  self.assertGreater(len(visible),15,'grip must remain visible between thumb and curled tip')
 
  def test_visible_grip_sections_are_collinear(self):
   import pathops

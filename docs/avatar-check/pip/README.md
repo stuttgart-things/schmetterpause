@@ -1,8 +1,8 @@
 # hank – Flosse und pinguinhafte Schnäbel
 
-Vorher: `f3d0f10`. Nachher: Artwork aus `e282df4`, mit geometrischen Umgreif-Prüfungen und erneuerten Prüfbildern.
+Vorher: `f3d0f10`. Nachher: korrigierte Greifkontur mit hinterer Flossenpartie, eingerollter Spitze und gegenüberliegendem Daumen.
 
-Die Griffachse durchläuft den distalen Bereich der Flosse. Die Flosse verdeckt die volle Griffbreite; oberer und unterer sichtbarer Griffabschnitt liegen auf derselben Achse. Die sechs Schnäbel besitzen einen spitzen Ober- und dunkleren Unterschnabel, Überrascht eine offene Mundhöhle.
+Die hintere Flossenpartie liegt beidseits hinter dem Griff. Eingerollte Spitze und gegenüberliegender Daumen greifen davor um den Schaft; dazwischen bleibt ein Abschnitt des Griffs sichtbar. Oberer und unterer Griffabschnitt liegen auf derselben Achse. Die sechs Schnäbel besitzen einen spitzen Ober- und dunkleren Unterschnabel, Überrascht eine offene Mundhöhle.
 
 Unterscheidbarkeit im quantisierten 64-px-GIF: **186**, Mindestwert **157**. Auch ohne Namen sowie mit Anna und Ümit: 186.
 

@@ -20,7 +20,7 @@ def summary(root):
  t=(hx-cx)*unit[0]+(hy-cy)*unit[1]
  origin=(cx+t*unit[0],cy+t*unit[1])
  offset=abs((hx-cx)*unit[1]-(hy-cy)*unit[0])
- head=intervals(union(paths(blade)),origin,unit)[0];fist=intervals(union(paths(hand)),origin,unit)[0];shaft=intervals(grip,origin,unit)[0]
+ head=intervals(union(paths(blade)),origin,unit)[0];hand_sections=intervals(union(paths(hand)),origin,unit);fist=(hand_sections[0][0],hand_sections[-1][1]);shaft=intervals(grip,origin,unit)[0]
  stripes=union([shape(p.get('d')) for p in list(root)[2:4]])
  visible=op(grip,union(paths(hand)+paths(blade)+[stripes]),pathops.PathOp.DIFFERENCE)
  visible_intervals=intervals(visible,origin,unit)

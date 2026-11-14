@@ -26,23 +26,23 @@
       365
     ],
     "height": 80,
-    "pixels": 752,
+    "pixels": 994,
     "width": 41
   },
   "hank-paw": {
     "bounds": [
       277,
-      357,
-      354,
-      401
+      352,
+      345,
+      395
     ],
     "centre": [
-      315.5,
-      379
+      311,
+      373.5
     ],
-    "height": 44,
-    "pixels": 1743,
-    "width": 77
+    "height": 43,
+    "pixels": 1257,
+    "width": 68
   },
   "sthings-blade": {
     "bounds": [

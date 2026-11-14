@@ -524,11 +524,12 @@ ersetzen den vorherigen holding-Zwischenstand. Echter LED-Test bleibt offen.
 
 ## hank – abgeschlossene Flosse und pinguinhafte Schnäbel
 
-Aktueller Bildstand: e282df4; Vergleichsbasis f3d0f10. Die vorigen Abschnitte
+Aktueller Bildstand: korrigierte Greifkontur; Vergleichsbasis f3d0f10. Die vorigen Abschnitte
 beschreiben historische Schritte. Die [aktuelle Prüfansicht](avatar-check/pip/index.html)
 zeigt die Hand und alle sechs Schnäbel jeweils vorher/nachher bei 420 px.
-Die Flosse verdeckt den Griff über seine volle Breite, seine Achse durchläuft die
-Flossenspitze, und die sichtbaren Abschnitte bleiben kollinear. 23 Python-Geometrietests
+Die hintere Flossenpartie liegt beidseits hinter dem Griff. Daumen und eingerollte
+Spitze greifen von vorn darum; dazwischen bleibt der Griff sichtbar. Die
+sichtbaren Abschnitte bleiben kollinear. 23 Python-Geometrietests
 prüfen die erzeugten Pfade. Quantisierte 64-px-GIFs erreichen eine minimale
 Unterscheidbarkeit von **186** (Grenzwert 157), auch mit Initialen.
 

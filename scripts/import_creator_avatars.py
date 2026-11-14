@@ -544,7 +544,7 @@ def pip_beak(state):
 
 def convert_pip(source, target):
     from hank_frame import SCALE, MATRIX
-    from hank_pose import BLADE_SCALE,BLADE_CENTRE,BLADE_RIM,GRIP_START,GRIP_END,GRIP_WIDTH,GRIP_RIM,HAND_BODY,HAND_THUMB
+    from hank_pose import BLADE_SCALE,BLADE_CENTRE,BLADE_RIM,GRIP_START,GRIP_END,GRIP_WIDTH,GRIP_RIM,HAND_BODY,HAND_THUMB,HAND_FINGERS
     from sthings_racket_reference import reference
     original = creator_svg.paths(source, "pip")
     headband = original[47][2]
@@ -651,15 +651,18 @@ def convert_pip(source, target):
         assert (
             min(x1, y1) >= 8 - 0.001 and max(x2, y2) <= 412 + 0.001
         ), "Hank racket path outside 8-unit canvas inset"
-    # A front-facing fist and lower wrist hold the straight shaft from below.
+    # Rear palm sits behind the shaft. Cut its silhouette around the shaft's
+    # outer ink before painting the curled tip and opposing thumb in front.
     paw=transformed(shape(HAND_BODY),MATRIX.inverse())
-    blank.append(("ink",INK,outlined(paw,10/SCALE)))
-    blank.append(("body",PIP_FUR,paw))
+    shaft_ink=outlined(shaft,2*GRIP_RIM/SCALE)
+    rear_ink=op(outlined(paw,10/SCALE),shaft_ink,pathops.PathOp.DIFFERENCE)
+    rear_fur=op(paw,shaft_ink,pathops.PathOp.DIFFERENCE)
+    blank.extend([("ink",INK,rear_ink),("body",PIP_FUR,rear_fur)])
+    fingers=transformed(shape(HAND_FINGERS),MATRIX.inverse())
     thumb=transformed(shape(HAND_THUMB),MATRIX.inverse())
-    thumb_ink = outlined(thumb, 8/SCALE)
-    # The whole gripping hand is raised with the grip; the thumb still wraps it.
-    blank.append(("ink", INK, thumb_ink))
-    blank.append(("body", PIP_FUR, thumb))
+    thumb_ink=outlined(thumb,5/SCALE)
+    blank.extend([("ink",INK,outlined(fingers,5/SCALE)),("body",PIP_FUR,fingers),
+                  ("ink",INK,thumb_ink),("body",PIP_FUR,thumb)])
     target.mkdir(parents=True, exist_ok=True)
 
     def save(name, body):
@@ -682,15 +685,10 @@ def convert_pip(source, target):
         assert op(outlined(ellipse(*PIP_EMBLEM_RESERVE),24/SCALE),p,pathops.PathOp.INTERSECTION).area<.001, "hank equipment/emblem gap below 12"
     # Stripes belong to the visible handle area; the blade/flipper must not
     # hide the chosen material down to a sliver.
-    visible_grip = op(
-        shaft,
-        op(
-            outlined(blade, blade_outline),
-            op(outlined(paw, 11), thumb_ink, pathops.PathOp.UNION),
-            pathops.PathOp.UNION,
-        ),
-        pathops.PathOp.DIFFERENCE,
-    )
+    hand_mask=pathops.Path()
+    for _,_,part in blank[6:]:
+        hand_mask=op(hand_mask,part,pathops.PathOp.UNION)
+    visible_grip=op(shaft,op(outlined(blade,blade_outline),hand_mask,pathops.PathOp.UNION),pathops.PathOp.DIFFERENCE)
     assert (
         visible_grip.area >= 30 * 18 / SCALE**2
     ), f"hank visible handle area {visible_grip.area*SCALE**2:.2f} below 30x18 equivalent"
@@ -700,7 +698,7 @@ def convert_pip(source, target):
 
     # Named groups make the raster clearance test independent of path ordering.
     save("base", '<g data-pip-part="body">'+paths(body_parts)+'</g>')
-    save("racket", '<g data-pip-part="racket">'+paths(blank[:4])+'<g data-pip-part="flipper">'+paths(blank[6:])+'</g><g data-pip-part="blade">'+paths(blade_parts)+'</g></g>')
+    save("racket", '<g data-pip-part="racket">'+paths(blank[:4])+'<g data-pip-part="flipper">'+'<g data-grip-part="palm-back">'+paths(blank[6:8])+'</g><g data-grip-part="curl-front">'+paths(blank[8:10])+'</g><g data-grip-part="thumb-front">'+paths(blank[10:12])+'</g></g><g data-pip-part="blade">'+paths(blade_parts)+'</g></g>')
     # Pip deliberately has no blush cheeks in any expression.
     for face in FACES:
         body = (

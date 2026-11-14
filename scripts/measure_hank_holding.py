@@ -19,7 +19,7 @@ def export(out=None):
  surface=shape(list(blade)[-1].get('d'));rim=union(paths(blade));paw=union(paths(hand))
  visible_paw=op(paw,rim,pathops.PathOp.DIFFERENCE)
  colour=pathops.Path()
- for p in hand:
+ for p in hand.iter("{http://www.w3.org/2000/svg}path"):
   q=shape(p.get('d'));colour=op(colour,q,pathops.PathOp.DIFFERENCE)
   if p.get('fill')!='#080808':colour=op(colour,q,pathops.PathOp.UNION)
  colour=op(colour,rim,pathops.PathOp.DIFFERENCE)

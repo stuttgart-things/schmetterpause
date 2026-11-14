@@ -322,18 +322,17 @@ func TestPipHasNoCheeks(t *testing.T) {
 	}
 }
 
-func TestHankRacketPathsStayInsideCanvasMargin(t *testing.T) {
+func TestHankRacketAndGrippingFlipperPathsStayInsideCanvasMargin(t *testing.T) {
 	data, err := fs.ReadFile(web.Static, "static/img/pip/racket.svg")
 	if err != nil {
 		t.Fatal(err)
 	}
-	data = regexp.MustCompile(`(?s)<g data-pip-part="flipper">.*?</g>`).ReplaceAll(data, nil)
 	group := regexp.MustCompile(`(?s)<g data-pip-part="racket">(.*?)</g></svg>`).FindSubmatch(data)
 	if group == nil {
 		t.Fatal("missing separate racket/flipper groups")
 	}
 	paths := regexp.MustCompile(`<path\b[^>]*/>`).FindAllString(string(group[1]), -1)
-	if len(paths) != 6 {
+	if len(paths) != 12 {
 		t.Fatalf("unexpected racket path count: %d", len(paths))
 	}
 	for index, path := range paths {

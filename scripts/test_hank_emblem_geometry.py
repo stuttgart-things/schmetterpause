@@ -109,8 +109,9 @@ class HankEmblemGeometry(unittest.TestCase):
         self.assertLess(shape(fallback[-1].get("d")).area, self.emblem.area * .6)
 
     def test_raised_thumb_still_wraps_grip_and_flipper(self):
-        thumb = shape(list(self.g["flipper"])[-1].get("d"))
-        paw = shape(list(self.g["flipper"])[1].get("d"))
+        parts={g.get("data-grip-part"):g for g in self.g["flipper"]}
+        thumb = shape(list(parts["thumb-front"])[-1].get("d"))
+        paw = shape(list(parts["palm-back"])[1].get("d"))
         grip = next(shape(el.get("d")) for el in self.g["racket"] if el.get("fill", "").startswith("var(--handle,"))
         self.assertGreater(op(thumb,grip,pathops.PathOp.INTERSECTION).area,10)
         self.assertGreater(op(thumb,paw,pathops.PathOp.INTERSECTION).area,10)
