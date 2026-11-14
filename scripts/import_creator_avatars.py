@@ -543,8 +543,8 @@ def pip_beak(state):
 
 
 def convert_pip(source, target):
-    from hank_frame import SCALE, MATRIX
-    from hank_pose import BLADE_SCALE,BLADE_CENTRE,BLADE_RIM,GRIP_START,GRIP_END,GRIP_WIDTH,GRIP_RIM,HAND_BODY,HAND_THUMB,HAND_FINGERS
+    from hank_frame import SCALE, MATRIX, EMBLEM
+    from hank_pose import BLADE_SCALE,BLADE_CENTRE,BLADE_RIM,GRIP_START,GRIP_END,GRIP_WIDTH,GRIP_RIM,FLIPPER_BODY,FLIPPER_FOLD,FLIPPER_RIM
     from sthings_racket_reference import reference
     original = creator_svg.paths(source, "pip")
     headband = original[47][2]
@@ -598,14 +598,14 @@ def convert_pip(source, target):
         if i in {8, 46, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61}:
             continue
         if role == "shadow" and p.bounds[0] > 245 and p.bounds[1] > 320:
-            # The old hand/arm shading does not belong to the new front fist.
+            # The old hand/arm shading does not belong to the broad flipper.
             continue
         if i == 0:
             p = op(p, cut, pathops.PathOp.DIFFERENCE)
         if i == 6:
             # Raised racket-side arm; the torso and opposite flipper stay native.
-            p = shape("M235 312 Q255 304 278 315 L312 340 Q296 357 276 365 Q265 371 258 355 L248 338Z")
-            blank.append(("ink", INK, outlined(p, 11)))
+            p = transformed(shape(FLIPPER_BODY),MATRIX.inverse())
+            blank.append(("ink", INK, outlined(p, 2*FLIPPER_RIM/SCALE)))
         if i == 43:
             clean = pathops.Path()
             clean.addPath(list(p.contours)[0])
@@ -651,18 +651,12 @@ def convert_pip(source, target):
         assert (
             min(x1, y1) >= 8 - 0.001 and max(x2, y2) <= 412 + 0.001
         ), "Hank racket path outside 8-unit canvas inset"
-    # Rear palm sits behind the shaft. Cut its silhouette around the shaft's
-    # outer ink before painting the curled tip and opposing thumb in front.
-    paw=transformed(shape(HAND_BODY),MATRIX.inverse())
-    shaft_ink=outlined(shaft,2*GRIP_RIM/SCALE)
-    rear_ink=op(outlined(paw,10/SCALE),shaft_ink,pathops.PathOp.DIFFERENCE)
-    rear_fur=op(paw,shaft_ink,pathops.PathOp.DIFFERENCE)
-    blank.extend([("ink",INK,rear_ink),("body",PIP_FUR,rear_fur)])
-    fingers=transformed(shape(HAND_FINGERS),MATRIX.inverse())
-    thumb=transformed(shape(HAND_THUMB),MATRIX.inverse())
-    thumb_ink=outlined(thumb,5/SCALE)
-    blank.extend([("ink",INK,outlined(fingers,5/SCALE)),("body",PIP_FUR,fingers),
-                  ("ink",INK,thumb_ink),("body",PIP_FUR,thumb)])
+    # One rounded penguin flipper crosses the entire shaft. The only internal
+    # mark is a single fold, matching the opposite native flipper.
+    paw=transformed(shape(FLIPPER_BODY),MATRIX.inverse())
+    fold=transformed(shape(FLIPPER_FOLD),MATRIX.inverse())
+    blank.extend([("ink",INK,outlined(paw,2*FLIPPER_RIM/SCALE)),
+                  ("body",PIP_FUR,paw),("ink",INK,fold)])
     target.mkdir(parents=True, exist_ok=True)
 
     def save(name, body):
@@ -682,10 +676,12 @@ def convert_pip(source, target):
         for el in ET.fromstring("<svg>"+pip_beak(face)+"</svg>"):
             assert op(outlined(transformed(shape(el.get('d')),MATRIX),16),outlined(final_blade,2*BLADE_RIM),pathops.PathOp.INTERSECTION).area<.001, f"hank {face}: beak clearance"
     for role,fill,p in racket_parts+blank[6:]:
-        assert op(outlined(ellipse(*PIP_EMBLEM_RESERVE),24/SCALE),p,pathops.PathOp.INTERSECTION).area<.001, "hank equipment/emblem gap below 12"
+        assert op(outlined(ellipse(EMBLEM[0],EMBLEM[1],EMBLEM[2],EMBLEM[2]),24/SCALE),p,pathops.PathOp.INTERSECTION).area<.001, "hank equipment/emblem gap below 12"
     # Stripes belong to the visible handle area; the blade/flipper must not
     # hide the chosen material down to a sliver.
     hand_mask=pathops.Path()
+    for _,_,stripe in blank[2:4]:
+        hand_mask=op(hand_mask,stripe,pathops.PathOp.UNION)
     for _,_,part in blank[6:]:
         hand_mask=op(hand_mask,part,pathops.PathOp.UNION)
     visible_grip=op(shaft,op(outlined(blade,blade_outline),hand_mask,pathops.PathOp.UNION),pathops.PathOp.DIFFERENCE)
@@ -698,7 +694,7 @@ def convert_pip(source, target):
 
     # Named groups make the raster clearance test independent of path ordering.
     save("base", '<g data-pip-part="body">'+paths(body_parts)+'</g>')
-    save("racket", '<g data-pip-part="racket">'+paths(blank[:4])+'<g data-pip-part="flipper">'+'<g data-grip-part="palm-back">'+paths(blank[6:8])+'</g><g data-grip-part="curl-front">'+paths(blank[8:10])+'</g><g data-grip-part="thumb-front">'+paths(blank[10:12])+'</g></g><g data-pip-part="blade">'+paths(blade_parts)+'</g></g>')
+    save("racket", '<g data-pip-part="racket">'+paths(blank[:4])+'<g data-pip-part="flipper">'+paths(blank[6:])+'</g><g data-pip-part="blade">'+paths(blade_parts)+'</g></g>')
     # Pip deliberately has no blush cheeks in any expression.
     for face in FACES:
         body = (

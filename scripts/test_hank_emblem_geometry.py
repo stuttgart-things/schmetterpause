@@ -1,4 +1,4 @@
-"""Exact filled-path checks for the final emblem and the isolated thumb change."""
+"""Exact filled-path checks for the emblem and rounded gripping flipper."""
 
 import json
 import re
@@ -53,7 +53,7 @@ class HankEmblemGeometry(unittest.TestCase):
                 x1, y1, x2, y2 = p.bounds
                 x1=(x1-OFFSET_X)/SCALE; y1=(y1-OFFSET_Y)/SCALE
                 if (60 < x1 < 80 and 315 < y1 < 320) or (
-                    230 < x1 < 240 and 280 < y1 < 320
+                    230 < x1 < 250 and 280 < y1 < 330
                 ):
                     arms.append(p)
         self.assertEqual(len(arms), 2)
@@ -108,13 +108,14 @@ class HankEmblemGeometry(unittest.TestCase):
             self.assertLess(op(shape(d), interior, pathops.PathOp.DIFFERENCE).area, .001)
         self.assertLess(shape(fallback[-1].get("d")).area, self.emblem.area * .6)
 
-    def test_raised_thumb_still_wraps_grip_and_flipper(self):
-        parts={g.get("data-grip-part"):g for g in self.g["flipper"]}
-        thumb = shape(list(parts["thumb-front"])[-1].get("d"))
-        paw = shape(list(parts["palm-back"])[1].get("d"))
-        grip = next(shape(el.get("d")) for el in self.g["racket"] if el.get("fill", "").startswith("var(--handle,"))
-        self.assertGreater(op(thumb,grip,pathops.PathOp.INTERSECTION).area,10)
-        self.assertGreater(op(thumb,paw,pathops.PathOp.INTERSECTION).area,10)
+    def test_fold_is_a_single_mark_within_the_flipper(self):
+        hand=list(self.g['flipper'])
+        self.assertEqual(len(hand),3)
+        paw=shape(hand[1].get('d'));fold=shape(hand[2].get('d'))
+        self.assertEqual(len(list(fold.contours)),1)
+        self.assertLess(op(fold,paw,pathops.PathOp.DIFFERENCE).area,.001)
+        grip=next(shape(el.get('d')) for el in self.g['racket'] if el.get('fill','').startswith('var(--handle,'))
+        self.assertGreater(op(paw,grip,pathops.PathOp.INTERSECTION).area,300)
 
 
 if __name__ == "__main__":

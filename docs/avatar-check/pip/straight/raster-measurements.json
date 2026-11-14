@@ -16,33 +16,33 @@
   },
   "hank-grip": {
     "bounds": [
-      305,
+      310,
       325,
       346,
       405
     ],
     "centre": [
-      325.5,
+      328,
       365
     ],
     "height": 80,
-    "pixels": 994,
-    "width": 41
+    "pixels": 623,
+    "width": 36
   },
   "hank-paw": {
     "bounds": [
-      277,
-      352,
+      246,
+      314,
       345,
-      395
+      404
     ],
     "centre": [
-      311,
-      373.5
+      295.5,
+      359
     ],
-    "height": 43,
-    "pixels": 1257,
-    "width": 68
+    "height": 90,
+    "pixels": 5017,
+    "width": 99
   },
   "sthings-blade": {
     "bounds": [

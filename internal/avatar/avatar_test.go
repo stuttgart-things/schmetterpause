@@ -378,8 +378,8 @@ func TestCharacterDeliveries(t *testing.T) {
 									faceDepth = depth
 								}
 								validInitial := ch.Key == "pip" && name == "bling-initial" && depth == 3 && attrs["data-initial"] == "fallback"
-								validGrip := ch.Key == "pip" && name == "racket" && depth == 4 && (attrs["data-grip-part"] == "palm-back" || attrs["data-grip-part"] == "curl-front" || attrs["data-grip-part"] == "thumb-front")
-								if !validFace && !validBling && !validPipPart && !validInitial && !validGrip {
+
+								if !validFace && !validBling && !validPipPart && !validInitial {
 									t.Error("invalid face group")
 								}
 							case "path", "circle", "ellipse":
@@ -396,7 +396,7 @@ func TestCharacterDeliveries(t *testing.T) {
 							for k := range attrs {
 								allowed := k == "fill" || k == "fill-rule" ||
 									(el.Name.Local == "svg" && (k == "viewBox" || k == "xmlns")) ||
-									(el.Name.Local == "g" && (k == "class" || k == "data-face" || k == "data-bling" || (ch.Key == "pip" && (k == "data-pip-part" || k == "data-initial" || k == "data-grip-part")))) ||
+									(el.Name.Local == "g" && (k == "class" || k == "data-face" || k == "data-bling" || (ch.Key == "pip" && (k == "data-pip-part" || k == "data-initial")))) ||
 									(el.Name.Local == "path" && k == "d") ||
 									(el.Name.Local == "circle" && (k == "cx" || k == "cy" || k == "r")) ||
 									(el.Name.Local == "ellipse" && (k == "cx" || k == "cy" || k == "rx" || k == "ry"))
@@ -419,7 +419,7 @@ func TestCharacterDeliveries(t *testing.T) {
 						if name == "base" {
 							wantGroups = 1
 						} else if name == "racket" {
-							wantGroups = 6
+							wantGroups = 3
 						} else if strings.HasPrefix(name, "face-") {
 							wantGroups = 4
 						} else if name == "bling-initial" {

@@ -15,7 +15,7 @@ class HankContourGeometry(unittest.TestCase):
         after=ET.parse(ROOT/"web/static/img/pip/base.svg").getroot()
         expected=union([framed(p,crest=True,crop=True) for p in paths(before[0])])
         changed=op(expected,union(paths(after[0])),pathops.PathOp.XOR)
-        self.assertLess(op(changed,framed(rect(225,280,330,380)),pathops.PathOp.DIFFERENCE).area,.1)
+        self.assertLess(op(changed,rect(224,290,355,413),pathops.PathOp.DIFFERENCE).area,.1)
         self.assertLess(op(expected,framed(rect(341,212,361,240)),pathops.PathOp.INTERSECTION).area,.001)
 
     def test_white_cheek_has_no_seam_between_native_and_rebuilt_surfaces(self):

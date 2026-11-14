@@ -41,7 +41,7 @@ type sample struct {
 }
 
 func main() {
-	completion := flag.Bool("completion-only", false, "export f3d0f10/current hand and six beak details")
+	completion := flag.Bool("completion-only", false, "export 1298bfe/current flipper details and 18-variant expression sheets")
 	straight := flag.Bool("straight-only", false, "export straight hank racket axis comparison and details")
 	holding := flag.Bool("holding-only", false, "export sthings racket reference and hank holding sheets")
 	framing := flag.Bool("framing-only", false, "export framing metrics, selection and emblem checks")
@@ -1147,7 +1147,7 @@ func straightReview(out string) error {
 	return png.Encode(f, canvas)
 }
 
-// completionReview renders both revisions through the same collection and rasterizer.
+// completionReview renders both flippers against 1298bfe with identical crops.
 func completionReview(out string) error {
 	if err := os.MkdirAll(out, 0755); err != nil {
 		return err
@@ -1165,7 +1165,7 @@ func completionReview(out string) error {
 			return err
 		}
 		if strings.HasPrefix(name, "static/img/pip/") {
-			data, err = exec.Command("git", "show", "f3d0f10:web/"+name).Output()
+			data, err = exec.Command("git", "show", "1298bfe:web/"+name).Output()
 			if err != nil {
 				return err
 			}
@@ -1188,14 +1188,13 @@ func completionReview(out string) error {
 		name string
 		c    *avatar.Collection
 	}{{"before", before}, {"after", after}} {
-		for _, part := range []string{"hand", "neutral", "happy", "surprised", "skeptical", "angry", "sad"} {
+		for _, part := range []string{"left-flipper", "right-flipper"} {
 			a := avatar.DefaultForCharacter("pip", "")
 			a.Handle = "red"
-			face := part
-			x, y, span := 155., 245., 110.
-			if part == "hand" {
-				face = "neutral"
-				x, y, span = 250, 315, 130
+			face := "neutral"
+			x, y, span := 35., 305., 135.
+			if part == "right-flipper" {
+				x = 235
 			}
 			icon, err := oksvg.ReadIconStream(strings.NewReader(stage.c.RenderFlat(a, face)), oksvg.StrictErrorMode)
 			if err != nil {
@@ -1217,5 +1216,55 @@ func completionReview(out string) error {
 			}
 		}
 	}
+	for _, bling := range []string{"", "initial"} {
+		reviewNames = map[string]string{}
+		var samples []sample
+		for _, coat := range []string{"", "grey", "blue-grey"} {
+			for _, face := range avatar.Faces {
+				a := avatar.DefaultForCharacter("pip", "")
+				a.Fur = coat
+				a.Bling = bling
+				label := coat + " / " + face.Name
+				reviewNames[label] = "Anna"
+				samples = append(samples, sample{label, a, face.Key})
+			}
+		}
+		name := "expressions-192-app.png"
+		if bling != "" {
+			name = "expressions-initial-192-app.png"
+		}
+		if err := sheet(after, samples, 6, 192, color.RGBA{10, 10, 18, 255}, "hank | sechs Ausdruecke / drei Grundfarben | "+bling, filepath.Join(out, name)); err != nil {
+			return err
+		}
+	}
+	reviewNames = nil
+	for _, stage := range []string{"before", "after"} {
+		combined := image.NewRGBA(image.Rect(0, 0, 840, 448))
+		draw.Draw(combined, combined.Bounds(), image.NewUniform(color.RGBA{10, 10, 18, 255}), image.Point{}, draw.Src)
+		for i, part := range []string{"left-flipper", "right-flipper"} {
+			f, err := os.Open(filepath.Join(out, part+"-"+stage+"-420.png"))
+			if err != nil {
+				return err
+			}
+			img, err := png.Decode(f)
+			f.Close()
+			if err != nil {
+				return err
+			}
+			draw.Draw(combined, image.Rect(i*420, 28, i*420+420, 448), img, image.Point{}, draw.Src)
+			d := font.Drawer{Dst: combined, Src: image.White, Face: reviewFont, Dot: fixed.P(i*420+8, 18)}
+			d.DrawString(part + " / " + stage)
+		}
+		f, err := os.Create(filepath.Join(out, "both-flippers-"+stage+"-420.png"))
+		if err != nil {
+			return err
+		}
+		err = png.Encode(f, combined)
+		f.Close()
+		if err != nil {
+			return err
+		}
+	}
+
 	return nil
 }

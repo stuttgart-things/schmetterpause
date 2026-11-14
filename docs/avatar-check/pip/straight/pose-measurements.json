@@ -50,45 +50,45 @@
     ]
   ],
   "canvas_margin": 8.25,
-  "cheek_overlap_area": 4717.892,
+  "cheek_overlap_area": 4717.891,
   "cheek_overlap_width_at_native_y285": 34.662,
   "feature_clearances": {
     "neutral": {
-      "eye-0": 111.92,
+      "eye-0": 93.548,
       "eye-1": 6.238,
-      "beak": 33.838
+      "beak": 17.756
     },
     "happy": {
-      "eye-0": 128.23,
+      "eye-0": 116.548,
       "eye-1": 14.709,
-      "beak": 33.329
+      "beak": 14.853
     },
     "surprised": {
-      "eye-0": 117.325,
+      "eye-0": 99.348,
       "eye-1": 7.728,
-      "beak": 33.159
+      "beak": 14.537
     },
     "skeptical": {
-      "eye-0": 122.931,
+      "eye-0": 104.095,
       "eye-1": 9.944,
-      "beak": 33.838
+      "beak": 16.602
     },
     "angry": {
-      "eye-0": 115.553,
+      "eye-0": 101.735,
       "eye-1": 9.79,
-      "beak": 34.262
+      "beak": 15.418
     },
     "sad": {
-      "eye-0": 114.997,
+      "eye-0": 96.13,
       "eye-1": 6.232,
-      "beak": 34.006
+      "beak": 13.532
     }
   },
-  "emblem_racket_clearance": 40.482,
-  "emblem_flipper_clearance": 40.482,
-  "visible_grip_colour_area": 990.885,
+  "emblem_racket_clearance": 14.004,
+  "emblem_flipper_clearance": 14.004,
+  "visible_grip_colour_area": 621.69,
   "visible_grip_colour_bounds": [
-    305.0095520019531,
+    309.3164367675781,
     324.9836120605469,
     345.9259033203125,
     404.9997253417969

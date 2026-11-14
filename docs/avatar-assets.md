@@ -522,7 +522,7 @@ Grifffarbe: 751,35 Einheiten². Unterscheidbarkeit weiterhin 193
 Der aktuelle [Messbericht und die Prüfbilder](avatar-check/pip/straight/README.md)
 ersetzen den vorherigen holding-Zwischenstand. Echter LED-Test bleibt offen.
 
-## hank – abgeschlossene Flosse und pinguinhafte Schnäbel
+## hank – vorheriger Stand mit separater Hand und pinguinhaften Schnäbeln
 
 Aktueller Bildstand: korrigierte Greifkontur; Vergleichsbasis f3d0f10. Die vorigen Abschnitte
 beschreiben historische Schritte. Die [aktuelle Prüfansicht](avatar-check/pip/index.html)
@@ -536,3 +536,20 @@ Unterscheidbarkeit von **186** (Grenzwert 157), auch mit Initialen.
 Reproduktion und cachefreie Auslieferung auf Port 8091:
 `python scripts/hank_completion_review.py --serve 8091`.
 Bild-URLs enthalten den Quellcommit und einen Hash aller hank-SVGs.
+
+## hank – beide Flossen in derselben Formensprache (aktuell)
+
+Die rechte Flosse ersetzt seit dem Vergleichsstand 1298bfe die separate Hand:
+eine breite, nahtlos von der Schulter kommende Fläche, abgerundete Spitze und
+eine einzelne Falz. Keine Daumen- oder Fingerformen. Die quer umgebogene Spitze
+liegt in der zuletzt gezeichneten `racket`-Gruppe vor dem vollständigen Griff.
+
+[Bericht, Messwerte und geänderte Dateien](avatar-check/pip/flippers/README.md),
+[420-px-Vergleich vorher](avatar-check/pip/flippers/both-flippers-before-420.png),
+[420-px-Vergleich nachher](avatar-check/pip/flippers/both-flippers-after-420.png).
+Die aktuelle [Prüfansicht](avatar-check/pip/index.html) enthält außerdem beide
+18er-Matrizen auf Navy (sechs Ausdrücke × drei Grundfarben, ohne/mit Initiale A).
+
+Reproduktion mit der Vector-Tools-Python-Umgebung:
+`python scripts/hank_completion_review.py --serve 8091`.
+Alle Messquerschnitte sind in `flippers/measurements.json` dokumentiert.

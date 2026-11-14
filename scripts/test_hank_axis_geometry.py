@@ -45,34 +45,36 @@ class HankAxisGeometry(unittest.TestCase):
   for p in body:
    if p.get('fill','').startswith('var(--fur,'):
     q=shape(p.get('d'));x,y,_,_=q.bounds;x=(x-OFFSET_X)/SCALE;y=(y-OFFSET_Y)/SCALE
-    if 230<x<240 and 280<y<320:arms.append(q)
+    if 230<x<250 and 280<y<330:arms.append(q)
   from import_creator_avatars import op
   import pathops
-  self.assertGreater(op(union(arms),union(paths(self.hand)),pathops.PathOp.INTERSECTION).area,15)
+  self.assertEqual(len(arms),1)
+  self.assertLess(op(arms[0],shape(list(self.hand)[1].get('d')),pathops.PathOp.XOR).area,.01, 'shoulder and front flipper must share one continuous surface')
 
- def test_flipper_wraps_behind_and_in_front_of_the_shaft(self):
-  import pathops
-  from import_creator_avatars import op
-  parts={g.get('data-grip-part'):union(paths(g)) for g in self.hand}
-  rear=parts['palm-back'];curl=parts['curl-front'];thumb=parts['thumb-front']
-  # The palm is behind the grip, with visible material on BOTH sides.
-  self.assertLess(op(rear,self.grip,pathops.PathOp.INTERSECTION).area,.01)
-  cx,cy=self.axis['centre'];ux,uy=self.axis['unit']
-  sides=[(x-cx)*uy-(y-cy)*ux for x,y in rear.points]
-  self.assertLess(min(sides),-20);self.assertGreater(max(sides),15)
-  # Opposing front folds cross the shaft, and are visibly separate shapes.
-  for pad in (curl,thumb):
-   self.assertGreater(op(pad,self.grip,pathops.PathOp.INTERSECTION).area,150)
-  self.assertLess(thumb.bounds[0],curl.bounds[0]-15)
-  self.assertGreater(curl.bounds[2],thumb.bounds[2]+8)
-  # An actual piece of grip must be visible BETWEEN the two front folds.
-  # A solid oval painted over the shaft cannot satisfy this threading check.
+ def test_rounded_flipper_tip_wraps_the_full_grip_width(self):
   hand=union(paths(self.hand))
-  visible=[]
-  for j in range(100,350):
-   t=j*.1;q=(cx+ux*t,cy+uy*t)
-   if self.grip.contains(q) and not hand.contains(q):visible.append(t)
-  self.assertGreater(len(visible),15,'grip must remain visible between thumb and curled tip')
+  cx,cy=self.axis['centre'];ux,uy=self.axis['unit'];nx,ny=uy,-ux
+  covered=[]
+  for j in range(0,500):
+   t=j*.1;x,y=cx+ux*t,cy+uy*t
+   cross=[(x+nx*k*.1,y+ny*k*.1) for k in range(-200,201)
+          if self.grip.contains((x+nx*k*.1,y+ny*k*.1))]
+   if cross and all(hand.contains(q) for q in cross):covered.append(t)
+  self.assertGreater(len(covered),80)
+  # One silhouette, one colour surface and only one filled fold: no finger pads.
+  self.assertEqual(len(self.hand),3)
+  self.assertTrue(all(g.tag.endswith('path') for g in self.hand))
+  self.assertEqual(len(list(shape(list(self.hand)[1].get('d')).contours)),1)
+  self.assertGreater(max(cx+ux*t for t in covered),hand.bounds[2]-30, 'axis must cross the rounded distal tip')
+
+ def test_both_flipper_stems_have_comparable_width(self):
+  from hank_flipper_geometry import measurements
+  m=measurements()
+  self.assertGreaterEqual(m['minimum_width_ratio'],.85)
+  self.assertLessEqual(m['minimum_width_ratio'],1.15)
+  self.assertGreaterEqual(m['emblem_clearance'],12)
+  self.assertGreaterEqual(m['canvas_margin'],8-.001)
+  self.assertGreaterEqual(m['visible_grip_area'],540)
 
  def test_visible_grip_sections_are_collinear(self):
   import pathops
@@ -93,12 +95,21 @@ class HankAxisGeometry(unittest.TestCase):
   self.assertTrue(any(t>20 for t in sections))
 
  def test_excluded_assets_and_blade_are_unchanged(self):
-  baseline=json.loads((ROOT/'docs/avatar-check/pip/straight/invariants-8822413.json').read_text())
+  baseline=json.loads((ROOT/'docs/avatar-check/pip/flippers/invariants-1298bfe.json').read_text())
   for file,expected in baseline.items():
-   if "face-" in file: continue # Beaks intentionally redesigned; eyes checked separately.
    self.assertEqual(hashlib.sha256((ROOT/file).read_bytes()).hexdigest(),expected,file)
-  old=ET.parse(ROOT/'docs/avatar-check/pip/straight/before-racket.svg').getroot()[0]
+  old=ET.parse(ROOT/'docs/avatar-check/pip/flippers/before-racket.svg').getroot()[0]
   before=next(g for g in old if g.get('data-pip-part')=='blade')
   self.assertEqual([p.attrib for p in before],[p.attrib for p in self.blade])
+  old_paths=list(ET.parse(ROOT/'docs/avatar-check/pip/flippers/before-base.svg').getroot()[0])
+  new_paths=list(ET.parse(ROOT/'web/static/img/pip/base.svg').getroot()[0])
+  self.assertEqual(len(old_paths),len(new_paths))
+  changed=[i for i,(a,b) in enumerate(zip(old_paths,new_paths)) if a.attrib!=b.attrib]
+  self.assertEqual(len(changed),2,'only right-flipper outline and fill may change')
+  for i in changed:
+   self.assertGreater(shape(old_paths[i].get('d')).bounds[0],225)
+   self.assertGreater(shape(old_paths[i].get('d')).bounds[1],300)
+  old_root=ET.parse(ROOT/'docs/avatar-check/pip/flippers/before-racket.svg').getroot()[0]
+  self.assertEqual([p.attrib for p in list(old_root)[:4]],[p.attrib for p in list(self.root)[:4]])
 
 if __name__=='__main__':unittest.main()
