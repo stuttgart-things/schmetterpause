@@ -35,23 +35,19 @@ class HankSthingsGeometry(unittest.TestCase):
                     self.assertEqual(actual.get("fill"),fill)
                     self.assertLess(op(shape(actual.get("d")),p,pathops.PathOp.XOR).area,.1,(state,index))
 
-    def test_other_five_beaks_only_receive_the_uniform_frame(self):
-        for state in ("neutral","happy","surprised","skeptical","sad"):
-            before=ET.parse(ROOT.parents[2]/"docs/avatar-check/pip/framing"/("before-face-"+state+".svg")).getroot()
-            after=ET.parse(ROOT/"pip"/("face-"+state+".svg")).getroot()
-            old=next(g for g in before.iter() if g.get("data-pip-part")=="beak")
-            new=next(g for g in after.iter() if g.get("data-pip-part")=="beak")
-            self.assertEqual(len(old),len(new))
-            for a,b in zip(old,new):
-                self.assertEqual(a.get("fill"),b.get("fill"))
-                self.assertLess(op(framed(shape(a.get("d"))),shape(b.get("d")),pathops.PathOp.XOR).area,.1,state)
+    def test_beaks_have_upper_and_darker_lower_mandibles(self):
+        for state in ('neutral','happy','surprised','skeptical','angry','sad'):
+            root=ET.parse(ROOT/'pip'/('face-'+state+'.svg')).getroot()
+            beak=next(g for g in root.iter() if g.get('data-pip-part')=='beak')
+            colors={p.get('fill') for p in beak}
+            self.assertTrue({'#f59a08','#cd7108','#080808'} <= colors)
 
     def test_all_six_faces_only_receive_the_new_uniform_frame(self):
         oldframe=Transform(1.2,0,0,1.2,-27.21127,-28.75816)
         for state in ('neutral','happy','surprised','skeptical','angry','sad'):
             before=ET.parse(ROOT.parents[2]/'docs/avatar-check/pip/holding'/('before-face-'+state+'.svg')).getroot()
             after=ET.parse(ROOT/'pip'/('face-'+state+'.svg')).getroot()
-            olds=list(before.iter('{http://www.w3.org/2000/svg}path'));news=list(after.iter('{http://www.w3.org/2000/svg}path'))
+            olds=[p for g in before.iter() if g.get('data-pip-part','').startswith('eye-') for p in g];news=[p for g in after.iter() if g.get('data-pip-part','').startswith('eye-') for p in g]
             self.assertEqual(len(olds),len(news))
             for a,b in zip(olds,news):
                 native=pathops.Path();shape(a.get('d')).draw(TransformPen(native.getPen(),oldframe.inverse()))

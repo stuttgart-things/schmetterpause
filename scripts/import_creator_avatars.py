@@ -522,32 +522,24 @@ def pip_eye(cx, cy, rx, ry, state, index):
 
 
 def pip_beak(state):
-    """Orange penguin beaks with the expressive mouth vocabulary of sthings."""
-    if state == "happy":
-        return (paint("M177 274 Q194 253 215 254 Q237 253 252 270 Q248 302 215 313 Q186 307 177 274Z")
-            + paint("M182 274 Q199 259 215 259 Q233 258 247 271 Q243 298 215 307 Q191 302 182 274Z", "#f59a08")
-            + paint("M185 277 Q215 281 244 274 Q239 298 215 305 Q193 300 185 277Z", "#94364e")
-            + oval(215, 297, 17, 7, "#fa7894"))
-    if state == "surprised":
-        return (oval(215, 282, 27, 30, INK) + oval(215, 282, 22, 25, "#f59a08")
-            + oval(215, 282, 14, 19, "#60283d"))
-    if state == "skeptical":
-        outer="M182 281 Q201 260 218 260 Q235 269 246 279 Q232 301 212 302 Q195 294 182 281Z"
-        top="M187 280 Q203 265 218 265 Q232 273 241 278 Q228 295 212 297 Q199 290 187 280Z"
-        seam="M188 283 Q212 290 239 275 L240 281 Q213 296 188 287Z"
-    elif state == "angry":
-        outer="M188 282 Q211 267 239 282 L236 302 Q215 291 191 303Z"
-        top="M193 282 Q213 273 234 282 L232 294 Q214 286 196 295Z"
-        seam="M192 296 Q214 276 235 296 L234 300 Q214 285 193 300Z"
-    elif state == "sad":
-        outer="M184 276 Q199 263 214 264 Q233 269 246 280 Q234 301 214 309 Q194 299 184 276Z"
-        top="M190 277 Q202 269 214 269 Q231 274 240 281 Q230 296 214 303 Q199 295 190 277Z"
-        seam="M190 291 Q214 270 239 292 L237 297 Q214 280 192 296Z"
-    else:
-        outer="M183 279 Q199 263 214 258 Q233 263 247 276 Q238 299 215 304 Q195 300 183 279Z"
-        top="M189 278 Q203 267 214 263 Q230 268 241 276 Q234 294 215 299 Q199 294 189 278Z"
-        seam="M189 282 Q215 295 240 274 L238 282 Q216 302 190 287Z"
-    return paint(outer) + paint(top,"#f59a08") + paint(seam,INK)
+    """Pointed upper and darker lower mandibles; expression through opening and tip."""
+    cx=215 + (5 if state=="skeptical" else 0)
+    top=263
+    split=281
+    tip=307
+    if state=="happy": top,split,tip=258,275,313
+    if state=="surprised": top,split,tip=254,273,314
+    if state=="angry": top,split,tip=270,286,309
+    if state=="sad": top,split,tip=267,283,313
+    left,right=184,246
+    outer=f"M{left} {split} Q196 {top} {cx} {top-2} Q234 {top} {right} {split} Q235 {tip-8} {cx} {tip} Q196 {tip-8} {left} {split}Z"
+    upper=f"M{left+6} {split-1} Q201 {top+3} {cx} {top+3} Q231 {top+3} {right-6} {split-1} L{cx} {split+7}Z"
+    lower=f"M{left+8} {split+4} Q{cx} {split+11} {right-8} {split+4} Q232 {tip-9} {cx} {tip-5} Q199 {tip-9} {left+8} {split+4}Z"
+    result=paint(outer)+paint(lower,"#cd7108")+paint(upper,"#f59a08")
+    if state in ("happy","surprised"):
+        result+=paint(f"M191 {split+3} L{cx} {split+10} L239 {split+3} Q231 {tip-10} {cx} {tip-8} Q200 {tip-10} 191 {split+3}Z","#60283d")
+        if state=="happy": result+=oval(cx,tip-12,11,4,"#fa7894")
+    return result
 
 
 def convert_pip(source, target):
