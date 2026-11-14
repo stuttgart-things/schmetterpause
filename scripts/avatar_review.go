@@ -16,6 +16,7 @@ import (
 	"io/fs"
 	"math"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"regexp"
 	"strconv"
@@ -40,6 +41,7 @@ type sample struct {
 }
 
 func main() {
+	completion := flag.Bool("completion-only", false, "export f3d0f10/current hand and six beak details")
 	straight := flag.Bool("straight-only", false, "export straight hank racket axis comparison and details")
 	holding := flag.Bool("holding-only", false, "export sthings racket reference and hank holding sheets")
 	framing := flag.Bool("framing-only", false, "export framing metrics, selection and emblem checks")
@@ -50,6 +52,13 @@ func main() {
 	emblems := flag.Bool("emblems-only", false, "export hank emblem acceptance matrix")
 	accessories := flag.Bool("accessories-only", false, "export only the blecki accessory acceptance matrix")
 	flag.Parse()
+	if *completion {
+		if err := completionReview(*out); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+		return
+	}
 	if *straight {
 		if err := straightReview(*out); err != nil {
 			fmt.Fprintln(os.Stderr, err)
@@ -1136,4 +1145,77 @@ func straightReview(out string) error {
 	}
 	defer f.Close()
 	return png.Encode(f, canvas)
+}
+
+// completionReview renders both revisions through the same collection and rasterizer.
+func completionReview(out string) error {
+	if err := os.MkdirAll(out, 0755); err != nil {
+		return err
+	}
+	files := fstest.MapFS{}
+	err := fs.WalkDir(web.Static, "static/img", func(name string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if d.IsDir() {
+			return nil
+		}
+		data, err := fs.ReadFile(web.Static, name)
+		if err != nil {
+			return err
+		}
+		if strings.HasPrefix(name, "static/img/pip/") {
+			data, err = exec.Command("git", "show", "f3d0f10:web/"+name).Output()
+			if err != nil {
+				return err
+			}
+		}
+		files[name] = &fstest.MapFile{Data: data}
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+	before, err := avatar.LoadCollection(files, "static/img")
+	if err != nil {
+		return err
+	}
+	after, err := avatar.LoadCollection(web.Static, "static/img")
+	if err != nil {
+		return err
+	}
+	for _, stage := range []struct {
+		name string
+		c    *avatar.Collection
+	}{{"before", before}, {"after", after}} {
+		for _, part := range []string{"hand", "neutral", "happy", "surprised", "skeptical", "angry", "sad"} {
+			a := avatar.DefaultForCharacter("pip", "")
+			a.Handle = "red"
+			face := part
+			x, y, span := 155., 245., 110.
+			if part == "hand" {
+				face = "neutral"
+				x, y, span = 250, 315, 130
+			}
+			icon, err := oksvg.ReadIconStream(strings.NewReader(stage.c.RenderFlat(a, face)), oksvg.StrictErrorMode)
+			if err != nil {
+				return err
+			}
+			scale := 420 / span
+			icon.SetTarget(-x*scale, -y*scale, 420*scale, 420*scale)
+			img := image.NewRGBA(image.Rect(0, 0, 420, 420))
+			draw.Draw(img, img.Bounds(), image.NewUniform(color.RGBA{10, 10, 18, 255}), image.Point{}, draw.Src)
+			icon.Draw(rasterx.NewDasher(420, 420, rasterx.NewScannerGV(420, 420, img, img.Bounds())), 1)
+			f, err := os.Create(filepath.Join(out, part+"-"+stage.name+"-420.png"))
+			if err != nil {
+				return err
+			}
+			err = png.Encode(f, img)
+			f.Close()
+			if err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }

@@ -56,39 +56,39 @@
     "neutral": {
       "eye-0": 111.92,
       "eye-1": 6.238,
-      "beak": 32.319
+      "beak": 33.838
     },
     "happy": {
       "eye-0": 128.23,
       "eye-1": 14.709,
-      "beak": 26.326
+      "beak": 33.329
     },
     "surprised": {
       "eye-0": 117.325,
       "eye-1": 7.728,
-      "beak": 38.147
+      "beak": 33.159
     },
     "skeptical": {
       "eye-0": 122.931,
       "eye-1": 9.944,
-      "beak": 33.673
+      "beak": 33.838
     },
     "angry": {
       "eye-0": 115.553,
       "eye-1": 9.79,
-      "beak": 41.594
+      "beak": 34.262
     },
     "sad": {
       "eye-0": 114.997,
       "eye-1": 6.232,
-      "beak": 33.757
+      "beak": 34.006
     }
   },
   "emblem_racket_clearance": 40.482,
   "emblem_flipper_clearance": 40.482,
-  "visible_grip_colour_area": 751.345,
+  "visible_grip_colour_area": 687.746,
   "visible_grip_colour_bounds": [
-    305.00958251953125,
+    305.0096130371094,
     324.9836120605469,
     345.9259033203125,
     404.9997253417969

@@ -521,3 +521,17 @@ Grifffarbe: 751,35 Einheiten². Unterscheidbarkeit weiterhin 193
 (Skeptisch/Wütend). Alle anderen Avatare, Gesichter und Paletten unverändert.
 Der aktuelle [Messbericht und die Prüfbilder](avatar-check/pip/straight/README.md)
 ersetzen den vorherigen holding-Zwischenstand. Echter LED-Test bleibt offen.
+
+## hank – abgeschlossene Flosse und pinguinhafte Schnäbel
+
+Aktueller Bildstand: e282df4; Vergleichsbasis f3d0f10. Die vorigen Abschnitte
+beschreiben historische Schritte. Die [aktuelle Prüfansicht](avatar-check/pip/index.html)
+zeigt die Hand und alle sechs Schnäbel jeweils vorher/nachher bei 420 px.
+Die Flosse verdeckt den Griff über seine volle Breite, seine Achse durchläuft die
+Flossenspitze, und die sichtbaren Abschnitte bleiben kollinear. 23 Python-Geometrietests
+prüfen die erzeugten Pfade. Quantisierte 64-px-GIFs erreichen eine minimale
+Unterscheidbarkeit von **186** (Grenzwert 157), auch mit Initialen.
+
+Reproduktion und cachefreie Auslieferung auf Port 8091:
+`python scripts/hank_completion_review.py --serve 8091`.
+Bild-URLs enthalten den Quellcommit und einen Hash aller hank-SVGs.

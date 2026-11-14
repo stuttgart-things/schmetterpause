@@ -49,6 +49,37 @@ class HankAxisGeometry(unittest.TestCase):
   import pathops
   self.assertGreater(op(union(arms),union(paths(self.hand)),pathops.PathOp.INTERSECTION).area,15)
 
+ def test_axis_runs_through_flipper_tip_and_covers_full_grip_width(self):
+  hand=union(paths(self.hand))
+  cx,cy=self.axis['centre'];ux,uy=self.axis['unit'];nx,ny=uy,-ux
+  # Sample the real generated cross-sections in the distal (right) flipper.
+  covered=[]
+  for j in range(-400,401):
+   t=j*.1;x,y=cx+ux*t,cy+uy*t
+   cross=[(x+nx*k*.1,y+ny*k*.1) for k in range(-300,301)
+          if self.grip.contains((x+nx*k*.1,y+ny*k*.1))]
+   if cross and hand.contains((x,y)) and all(hand.contains(q) for q in cross):covered.append((x,y))
+  self.assertGreater(len(covered),80, 'flipper must hide the entire grip width over at least 8 units')
+  self.assertGreater(max(x for x,y in covered),hand.bounds[2]-22, 'axis must cross distal flipper, not wrist')
+
+ def test_visible_grip_sections_are_collinear(self):
+  import pathops
+  from import_creator_avatars import op
+  occluders=union(paths(self.hand)+paths(self.blade)+[shape(p.get('d')) for p in list(self.root)[2:4]])
+  visible=op(self.grip,occluders,pathops.PathOp.DIFFERENCE)
+  origin=self.axis['centre'];ux,uy=self.axis['unit']
+  sections=[]
+  for t in range(-65,66):
+   x,y=origin[0]+ux*t,origin[1]+uy*t
+   samples=[k*.1 for k in range(-200,201) if visible.contains((x+uy*k*.1,y-ux*k*.1))]
+   grip_samples=[k*.1 for k in range(-200,201) if self.grip.contains((x+uy*k*.1,y-ux*k*.1))]
+   # Exclude cross-sections partly clipped by the blade, stripes or hand edge.
+   if samples and samples==grip_samples and visible.contains((x,y)):
+    self.assertAlmostEqual((min(samples)+max(samples))/2,0,delta=.2)
+    sections.append(t)
+  self.assertTrue(any(t< -20 for t in sections))
+  self.assertTrue(any(t>20 for t in sections))
+
  def test_excluded_assets_and_blade_are_unchanged(self):
   baseline=json.loads((ROOT/'docs/avatar-check/pip/straight/invariants-8822413.json').read_text())
   for file,expected in baseline.items():

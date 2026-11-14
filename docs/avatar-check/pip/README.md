@@ -1,5 +1,13 @@
-# hank acceptance review
+# hank – Flosse und pinguinhafte Schnäbel
 
-Regenerate: `go run ./scripts/avatar_review.go -character pip -out docs/avatar-check/pip`
+Vorher: `f3d0f10`. Nachher: Artwork aus `e282df4`, mit geometrischen Umgreif-Prüfungen und erneuerten Prüfbildern.
 
-Open index.html for expressions, materials and GIFs. The expressions-row PNGs show the six faces in original colours at 64 and 28 pixels on black. Full sheets include Original, Grau and Blaugrau on navy and black. hank has no cheeks; Schmuck choices are Kein Schmuck and Initiale. Grey excludes Silver; native Pink is labelled Original. The eyes-before-after-64-black.png sheet compares archived 7969bdf GIFs against hank without cheeks, each Alt/Neu pair adjacent. The eyes-detail-192.png sheet shows eyes and brows. Eyes and brows use the actual scaled sthings artwork, with white eyeballs, attached pupils and their original glints. The raised racket deliberately overlaps the cheek. Physical LED-panel contrast remains to be checked.
+Die Griffachse durchläuft den distalen Bereich der Flosse. Die Flosse verdeckt die volle Griffbreite; oberer und unterer sichtbarer Griffabschnitt liegen auf derselben Achse. Die sechs Schnäbel besitzen einen spitzen Ober- und dunkleren Unterschnabel, Überrascht eine offene Mundhöhle.
+
+Unterscheidbarkeit im quantisierten 64-px-GIF: **186**, Mindestwert **157**. Auch ohne Namen sowie mit Anna und Ümit: 186.
+
+Alle Detailbilder sind jeweils 420 × 420 px, mit identischen Ausschnitten vorher/nachher. Rot hebt den Griff im Handdetail hervor.
+
+Reproduktion: `python scripts/hank_completion_review.py`; HTTP-Prüfansicht: `python scripts/hank_completion_review.py --serve 8091`.
+
+Historische Zwischenstände bleiben in den Unterordnern dokumentiert. Die aktuelle Prüfansicht ist diese Seite. Ein physischer LED-Test wurde nicht durchgeführt.
