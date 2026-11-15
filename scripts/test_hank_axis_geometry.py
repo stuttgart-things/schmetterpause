@@ -39,6 +39,8 @@ class HankAxisGeometry(unittest.TestCase):
   self.assertGreaterEqual(m['canvas_margin'],8-.001)
   self.assertLess(m['face_overlap_area'],.001)
   self.assertLess(m['blade_overlap_area'],.001)
+  self.assertGreaterEqual(m['full_width_covered_fraction'],.30)
+  self.assertLessEqual(m['axis_offset_from_overlap_centroid'],5)
 
  def test_pressing_flipper_is_at_least_75_percent_of_left(self):
   from hank_flipper_geometry import measurements

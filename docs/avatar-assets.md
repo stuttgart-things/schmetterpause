@@ -573,3 +573,20 @@ Spiegelung und den hinter der Flosse versteckten Griffabschluss. Die Handtests
 prüfen Andrücken und mindestens 75 % Breite; ein sichtbares unteres Griffende
 ist nicht mehr vorgesehen. Die App revalidiert pip-Assets und lädt Live-Avatare
 mit einem Cache-Buster. Prüfbilder verwenden Commit- und Inhaltshash.
+
+## hank – HTTP-verifizierter Griffkontakt (aktuell)
+
+Der Stand bddb539 wurde bereits korrekt ausgeliefert (Asset- und Geometriehash
+identisch). Sein Griff war jedoch zu früh abgeschnitten: nur 6,3 % waren über
+die volle Breite verdeckt. Der unsichtbare Griff ist nun tiefer in der Flosse,
+die 80-%-Flosse minimal um (+0,50; −0,05) versetzt. Vollbreitenüberdeckung rund
+32,7 %, Achsabweichung vom Überdeckungszentrum 1,60, Griffhals 20,2; Emblemabstand
+13,043 und Canvas-Abstand 8,120. Alle übrigen Geometrien bleiben unverändert.
+
+[HTTP-Befund, vollständige Hashes, Laufverzeichnis und Screenshots](avatar-check/pip/grip-contact/README.md).
+Der neue `TestHankContactThroughHTTP` prüft die tatsächlich per HTTP gelieferte
+Geometrie samt Zeichenreihenfolge, verdecktem Ende und einem 420-px-Farbpixel.
+Mit `SP_HANK_CONTACT_URL` prüft er zusätzlich die echte App auf 8080.
+Profilfigur und Referenz wurden bei 420 × 420 pixelgleich gerendert (0 Abweichungen).
+App und Prüfansicht laufen aus dem normalen Repo, nicht mehr aus einem Worktree
+unter /tmp. `zz_shot_test.go` war bereits entfernt und wird nicht committet.

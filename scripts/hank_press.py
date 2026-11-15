@@ -10,7 +10,7 @@ from racket_axis import capsule_axis
 
 SCALE=.8
 ANGLE=-180
-POSITION=(251.,332.)
+POSITION=(251.5,331.95)
 RIM=7.
 
 def polygon(points):
@@ -34,12 +34,15 @@ def bury_grip(shaft,hand):
     """Return a clipping plane and hidden binding inside the complete flipper."""
     a=capsule_axis(shaft);ux,uy=a['unit'];cx,cy=a['centre']
     # The end must fit the outer 36-unit grip, not merely cross its centre.
-    buried=None
-    for j in range(-50,101):
-        t=j*.5;x,y=cx+ux*t,cy+uy*t
+    safe=[]
+    for j in range(-160,401):
+        t=j*.25;x,y=cx+ux*t,cy+uy*t
         if all(hand.contains((x+uy*k,y-ux*k)) for k in range(-19,20)):
-            buried=t+3;break
-    assert buried is not None,'cannot bury full grip width in flipper'
+            safe.append(t)
+    assert safe,'cannot bury full grip width in flipper'
+    # Keep almost the entire buried length, not only the first safe section.
+    # The previous +3 cut left only ~6% fully covered, making the support weak.
+    buried=max(safe)-1
     for t in (buried-2,buried-1,buried):
         assert all(hand.contains((cx+ux*t+uy*k,cy+uy*t-ux*k)) for k in range(-18,19))
     plane=polygon([(cx+ux*t+uy*n,cy+uy*t-ux*n) for t,n in [(-200,-180),(-200,180),(buried,180),(buried,-180)]])

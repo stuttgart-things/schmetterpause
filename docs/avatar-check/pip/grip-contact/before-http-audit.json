@@ -1,0 +1,19 @@
+{
+  "commit": "bddb539",
+  "initial_process": {
+    "pid": 4030381,
+    "executable": "/tmp/schmetterpause-hank",
+    "cwd": "/home/sthings/projects/schmetterpause"
+  },
+  "http_neutral_url": "http://127.0.0.1:8080/avatars/random.svg?face=neutral&audit=bddb539&sample=0",
+  "http_neutral_sha256": "e9930b393ccb41f13a4d2dd7a5425f42d716446d043c247cc207b4e7722664b8",
+  "commit_example_byte_sha256": "d3027bc16f19c68742da473a8c14bb8372d076375251d70a1fe92eb728d48222",
+  "http_neutral_geometry_sha256": "c6217e37a2e71d5f0ddc3126c1d6ba80643360880004892ffcbb57d50a4a6282",
+  "commit_neutral_geometry_sha256": "c6217e37a2e71d5f0ddc3126c1d6ba80643360880004892ffcbb57d50a4a6282",
+  "http_asset_sha256": "68232cbea217efdf2051e5bc2a1f06610983af1dfe7e8e1387806bf440234bbb",
+  "commit_asset_sha256": "68232cbea217efdf2051e5bc2a1f06610983af1dfe7e8e1387806bf440234bbb",
+  "asset_bytes_match": true,
+  "neutral_geometry_matches": true,
+  "note": "Full SVG bytes include live face groups and randomized palette; canonical body/racket/neutral paths are compared separately.",
+  "saved_http_svg": "initial-audited-http-neutral.svg"
+}

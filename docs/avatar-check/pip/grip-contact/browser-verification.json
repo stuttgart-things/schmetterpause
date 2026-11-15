@@ -1,0 +1,7 @@
+{
+  "profile_url": "http://127.0.0.1:8080/players/07898f8e-07dd-4942-8546-600be7594252",
+  "svg_url": "http://127.0.0.1:8080/avatars/07898f8e-07dd-4942-8546-600be7594252.svg?face=neutral",
+  "source": "real profile DOM and HTTP response from port 8080",
+  "reference": "reference-neutral.svg rendered from current embedded assets",
+  "stage": "after"
+}

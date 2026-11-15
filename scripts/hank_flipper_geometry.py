@@ -44,7 +44,9 @@ def measurements():
     head=intervals(union(paths(blade)),origin,(ux,uy))[0]
     contact=intervals(outline,origin,(ux,uy))[0]
     face=union([shape(p.get('d')) for p in body if p.get('fill')=='#fff6f3' and shape(p.get('d')).bounds[1]<200])
-    return {'reference':'1298bfe','principle':'B: grip behind flipper, blade in foreground','method':__doc__,
+    from hank_contact_geometry import contact_metrics
+    contact_details=contact_metrics((ROOT/'web/static/img/pip/racket.svg').read_text(),axis=axis)
+    return {**contact_details,'reference':'1298bfe','principle':'B: grip behind flipper, blade in foreground','method':__doc__,
         'selected_scale':SCALE,'angle_degrees':ANGLE,'maximum_requested_scale':.8,
         'left_width':width(left),'right_width':width(right),'flipper_width_ratio':width(right)/width(left),
         'area_scale':(right.area/left.area)**.5,

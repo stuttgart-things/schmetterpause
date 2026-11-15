@@ -48,6 +48,8 @@ Die gleichmäßige Skalierung wird sowohl über die Fläche als auch unabhängig
 | Emblemabstand einschließlich Schulter | {m['emblem_clearance']:.3f} ≥ 12 |
 | Canvas-Abstand | {m['canvas_margin']:.3f} ≥ 8 |
 | Freier Griffhals über der Flosse | {m['free_neck_length']:.2f} ≥ 20 |
+| Vollständig überdeckte Grifflänge | {m['full_width_covered_fraction']*100:.3f} % ≥ 30 % |
+| Abstand Überdeckungsmittelpunkt / Griffachse | {m['axis_offset_from_overlap_centroid']:.3f} ≤ 5 |
 | Sichtbare Grifffarbe ohne Streifen/Überdeckung | {m['visible_grip_area']:.3f} Einheiten² |
 | Überdeckung von Gesicht / Schlägerfläche | {m['face_overlap_area']:.3f} / {m['blade_overlap_area']:.3f} |
 | Unterscheidbarkeit im quantisierten 64-px-GIF | {m['minimum_separation']} ≥ 157 |
@@ -58,6 +60,9 @@ Kontur, Drehung {m['angle_degrees']}°, ohne Änderungen an Gesicht, Schlägerfl
 Schlägerachse, Rahmung oder Emblem. Die gesamte Basis einschließlich Schulter
 ist bytegleich mit 1298bfe. Der engste Abstand ist unten am Canvas (8,07);
 mit 80 % wird der angefragte Größenbereich vollständig ausgeschöpft.
+Seit der Kontaktprüfung läuft der versteckte Griff tiefer in die Flosse;
+mindestens 30 % seiner Länge sind über die volle Breite verdeckt. Der
+Kontaktmittelpunkt liegt höchstens 5 Einheiten neben der Achse.
 Die alte Umgreif-Prüfung mit unterem Griffende entfällt: B hält durch Andrücken.
 Die Prüfung verlangt stattdessen mindestens 20 Einheiten Griffhals, Griff hinter
 der Flosse, einen vollständig versteckten Griffabschluss, mindestens 75 %

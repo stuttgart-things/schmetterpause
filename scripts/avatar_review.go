@@ -41,6 +41,7 @@ type sample struct {
 }
 
 func main() {
+	contact := flag.Bool("contact-only", false, "export bddb539/current grip contact details")
 	completion := flag.Bool("completion-only", false, "export 1298bfe/current flipper details and 18-variant expression sheets")
 	straight := flag.Bool("straight-only", false, "export straight hank racket axis comparison and details")
 	holding := flag.Bool("holding-only", false, "export sthings racket reference and hank holding sheets")
@@ -52,6 +53,13 @@ func main() {
 	emblems := flag.Bool("emblems-only", false, "export hank emblem acceptance matrix")
 	accessories := flag.Bool("accessories-only", false, "export only the blecki accessory acceptance matrix")
 	flag.Parse()
+	if *contact {
+		if err := contactReview(*out); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+		return
+	}
 	if *completion {
 		if err := completionReview(*out); err != nil {
 			fmt.Fprintln(os.Stderr, err)
@@ -1267,4 +1275,73 @@ func completionReview(out string) error {
 	}
 
 	return nil
+}
+
+// contactReview uses the archived B80 assets and the current product with the
+// exact same crop/palette. reference-neutral.svg matches the preview profile.
+func contactReview(out string) error {
+	if err := os.MkdirAll(out, 0755); err != nil {
+		return err
+	}
+	for _, part := range []string{"base", "racket"} {
+		data, err := exec.Command("git", "show", "bddb539:web/static/img/pip/"+part+".svg").Output()
+		if err != nil {
+			return err
+		}
+		if err = os.WriteFile(filepath.Join(out, "before-"+part+".svg"), data, 0644); err != nil {
+			return err
+		}
+	}
+	before, err := handBeforeCollection(filepath.Join(out, "before-base.svg"), filepath.Join(out, "before-racket.svg"))
+	if err != nil {
+		return err
+	}
+	current, err := avatar.LoadCollection(web.Static, "static/img")
+	if err != nil {
+		return err
+	}
+	combined := image.NewRGBA(image.Rect(0, 0, 840, 448))
+	draw.Draw(combined, combined.Bounds(), image.NewUniform(color.RGBA{10, 10, 18, 255}), image.Point{}, draw.Src)
+	for i, e := range []struct {
+		name string
+		c    *avatar.Collection
+	}{{"before", before}, {"after", current}} {
+		a := avatar.DefaultForCharacter("pip", "")
+		a.Blade = "light-blue"
+		a.Handle = "red"
+		svg := e.c.RenderFlat(a, "neutral")
+		icon, err := oksvg.ReadIconStream(strings.NewReader(svg), oksvg.StrictErrorMode)
+		if err != nil {
+			return err
+		}
+		scale := 420. / 135
+		icon.SetTarget(-235*scale, -300*scale, 420*scale, 420*scale)
+		img := image.NewRGBA(image.Rect(0, 0, 420, 420))
+		draw.Draw(img, img.Bounds(), image.NewUniform(color.RGBA{10, 10, 18, 255}), image.Point{}, draw.Src)
+		icon.Draw(rasterx.NewDasher(420, 420, rasterx.NewScannerGV(420, 420, img, img.Bounds())), 1)
+		f, err := os.Create(filepath.Join(out, "hand-"+e.name+"-420.png"))
+		if err != nil {
+			return err
+		}
+		err = png.Encode(f, img)
+		f.Close()
+		if err != nil {
+			return err
+		}
+		draw.Draw(combined, image.Rect(i*420, 28, i*420+420, 448), img, image.Point{}, draw.Src)
+		d := font.Drawer{Dst: combined, Src: image.White, Face: reviewFont, Dot: fixed.P(i*420+8, 18)}
+		d.DrawString(e.name + " | " + []string{"bddb539", "current"}[i])
+	}
+	f, err := os.Create(filepath.Join(out, "hand-before-after-420.png"))
+	if err != nil {
+		return err
+	}
+	err = png.Encode(f, combined)
+	f.Close()
+	if err != nil {
+		return err
+	}
+	a := avatar.DefaultForCharacter("pip", "")
+	a.Blade = "light-blue"
+	return os.WriteFile(filepath.Join(out, "reference-neutral.svg"), []byte(current.RenderFlat(a, "neutral")), 0644)
 }
