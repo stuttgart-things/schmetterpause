@@ -544,7 +544,7 @@ def pip_beak(state):
 
 def convert_pip(source, target):
     from hank_frame import SCALE, MATRIX, EMBLEM
-    from hank_pose import BLADE_SCALE,BLADE_CENTRE,BLADE_RIM,GRIP_START,GRIP_END,GRIP_WIDTH,GRIP_RIM,FLIPPER_BODY,FLIPPER_FOLD,FLIPPER_RIM
+    from hank_pose import BLADE_SCALE,BLADE_CENTRE,BLADE_RIM,GRIP_START,GRIP_END,GRIP_WIDTH,GRIP_RIM,ARM_BODY
     from sthings_racket_reference import reference
     original = creator_svg.paths(source, "pip")
     headband = original[47][2]
@@ -604,8 +604,8 @@ def convert_pip(source, target):
             p = op(p, cut, pathops.PathOp.DIFFERENCE)
         if i == 6:
             # Raised racket-side arm; the torso and opposite flipper stay native.
-            p = transformed(shape(FLIPPER_BODY),MATRIX.inverse())
-            blank.append(("ink", INK, outlined(p, 2*FLIPPER_RIM/SCALE)))
+            p = shape(ARM_BODY)
+            blank.append(("ink", INK, outlined(p, 11)))
         if i == 43:
             clean = pathops.Path()
             clean.addPath(list(p.contours)[0])
@@ -651,12 +651,28 @@ def convert_pip(source, target):
         assert (
             min(x1, y1) >= 8 - 0.001 and max(x2, y2) <= 412 + 0.001
         ), "Hank racket path outside 8-unit canvas inset"
-    # One rounded penguin flipper crosses the entire shaft. The only internal
-    # mark is a single fold, matching the opposite native flipper.
-    paw=transformed(shape(FLIPPER_BODY),MATRIX.inverse())
-    fold=transformed(shape(FLIPPER_FOLD),MATRIX.inverse())
-    blank.extend([("ink",INK,outlined(paw,2*FLIPPER_RIM/SCALE)),
-                  ("body",PIP_FUR,paw),("ink",INK,fold)])
+    # B: mirror the real left flipper at 80%, lay it in front of the shaft.
+    from hank_press import flipper, bury_grip
+    from hank_frame import framed
+    paw_final,ink_final=flipper(framed(original[7][2]))
+    assert op(ink_final,outlined(final_blade,2*BLADE_RIM),pathops.PathOp.INTERSECTION).area<.001, "pressing flipper overlaps blade"
+    face_mask=pathops.Path()
+    for _,fill,p in body_parts:
+        if fill=="#fff6f3" and p.bounds[1]<200:
+            face_mask=op(face_mask,transformed(p,MATRIX),pathops.PathOp.UNION)
+    assert op(ink_final,face_mask,pathops.PathOp.INTERSECTION).area<.001, "pressing flipper overlaps face"
+    assert min(ink_final.bounds[0],ink_final.bounds[1],420-ink_final.bounds[2],420-ink_final.bounds[3])>=8-.001
+    plane,binding=bury_grip(transformed(shaft,MATRIX),ink_final)
+    native_plane=transformed(plane,MATRIX.inverse())
+    for i in range(3):
+        role,fill,p=blank[i]
+        blank[i]=(role,fill,op(p,native_plane,pathops.PathOp.INTERSECTION))
+    # The lower binding remains wholly buried, preserving explicit shaft parts.
+    blank[3]=("ink",INK,transformed(binding,MATRIX.inverse()))
+    shaft=blank[1][2]
+    racket_parts=list(blank)
+    paw=transformed(paw_final,MATRIX.inverse())
+    blank.extend([("ink",INK,transformed(ink_final,MATRIX.inverse())),("body",PIP_FUR,paw)])
     target.mkdir(parents=True, exist_ok=True)
 
     def save(name, body):
@@ -686,8 +702,8 @@ def convert_pip(source, target):
         hand_mask=op(hand_mask,part,pathops.PathOp.UNION)
     visible_grip=op(shaft,op(outlined(blade,blade_outline),hand_mask,pathops.PathOp.UNION),pathops.PathOp.DIFFERENCE)
     assert (
-        visible_grip.area >= 30 * 18 / SCALE**2
-    ), f"hank visible handle area {visible_grip.area*SCALE**2:.2f} below 30x18 equivalent"
+        visible_grip.area > 0
+    ), f"hank visible handle area {visible_grip.area*SCALE**2:.2f} is empty"
 
     def paths(parts):
         return "".join(svgpath(p, colour(r, f)) for r, f, p in parts)

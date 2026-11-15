@@ -29,7 +29,7 @@ def summary(root):
   'blade_functional_axis_degrees':reference_axis()['blade_axis_degrees'],
   'functional_axis_difference_degrees':abs(axis['degrees']-reference_axis()['blade_axis_degrees']),
   'hand_bounds':union(paths(hand)).bounds,'blade_bounds':surface.bounds,'visible_grip_area':visible.area,
-  'neck_length':fist[0]-head[1],'lower_grip_end_length':shaft[1]-fist[1],
+  'neck_length':fist[0]-head[1],'lower_grip_end_length':max(0,shaft[1]-fist[1]),
   'blade_axis_interval':head,'hand_axis_interval':fist,'grip_axis_interval':shaft,'visible_colour_intervals':visible_intervals}
 
 def main():

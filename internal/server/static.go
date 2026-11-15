@@ -43,6 +43,10 @@ func staticHandler() http.Handler {
 // The proper fix is a content hash in the filename. This is the smaller one,
 // and it is the one that is right on a laptop somebody redeploys mid-evening.
 func cacheControl(path string) string {
+	// hank artwork is refined independently of its stable image filenames.
+	if strings.HasPrefix(strings.TrimPrefix(path, "/"), "img/pip/") {
+		return "no-cache"
+	}
 	switch strings.ToLower(filepath.Ext(path)) {
 	case ".css", ".js":
 		// Not "no-store": the browser may keep it, it just has to ask.

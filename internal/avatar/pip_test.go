@@ -332,7 +332,7 @@ func TestHankRacketAndGrippingFlipperPathsStayInsideCanvasMargin(t *testing.T) {
 		t.Fatal("missing separate racket/flipper groups")
 	}
 	paths := regexp.MustCompile(`<path\b[^>]*/>`).FindAllString(string(group[1]), -1)
-	if len(paths) != 9 {
+	if len(paths) != 8 {
 		t.Fatalf("unexpected racket path count: %d", len(paths))
 	}
 	for index, path := range paths {

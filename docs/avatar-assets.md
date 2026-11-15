@@ -537,7 +537,7 @@ Reproduktion und cachefreie Auslieferung auf Port 8091:
 `python scripts/hank_completion_review.py --serve 8091`.
 Bild-URLs enthalten den Quellcommit und einen Hash aller hank-SVGs.
 
-## hank – beide Flossen in derselben Formensprache (aktuell)
+## hank – vorheriger Stand mit quer greifender Flosse (4fce460)
 
 Die rechte Flosse ersetzt seit dem Vergleichsstand 1298bfe die separate Hand:
 eine breite, nahtlos von der Schulter kommende Fläche, abgerundete Spitze und
@@ -553,3 +553,23 @@ Die aktuelle [Prüfansicht](avatar-check/pip/index.html) enthält außerdem beid
 Reproduktion mit der Vector-Tools-Python-Umgebung:
 `python scripts/hank_completion_review.py --serve 8091`.
 Alle Messquerschnitte sind in `flippers/measurements.json` dokumentiert.
+
+## hank – Produktvariante B: Andrücken mit 80-%-Flosse (aktuell)
+
+Die ausgewählte B-Flosse drückt den Griff an die Seite. 80 % sind der größte
+Wert im angefragten Bereich 75–80 %, der alle Bedingungen erfüllt. Die natürliche
+linke Kontur ist gespiegelt, gleichmäßig skaliert und für diese Größe neu angelegt.
+Griff → Flosse → unveränderte Schlägerfläche bleibt die Zeichenreihenfolge.
+Die Basis einschließlich Schulter ist wieder bytegleich mit 1298bfe.
+
+Messung aus den erzeugten SVGs: Breitenverhältnis 80,000 %, Emblemabstand 12,541,
+Canvas-Abstand 8,070, freier Griffhals 20,70, sichtbare Grifffarbe 477,046 Einheiten².
+Keine Überdeckung von Gesicht oder Fläche. Quantisierte 64-px-GIFs: mindestens
+186 verschiedene Graustufen-Pixel (Grenzwert 157).
+
+[Produktbericht und geänderte Dateien](avatar-check/pip/hand-variants/README.md),
+[Prüfansicht](avatar-check/pip/index.html). `scripts/hank_press.py` erzeugt die
+Spiegelung und den hinter der Flosse versteckten Griffabschluss. Die Handtests
+prüfen Andrücken und mindestens 75 % Breite; ein sichtbares unteres Griffende
+ist nicht mehr vorgesehen. Die App revalidiert pip-Assets und lädt Live-Avatare
+mit einem Cache-Buster. Prüfbilder verwenden Commit- und Inhaltshash.
