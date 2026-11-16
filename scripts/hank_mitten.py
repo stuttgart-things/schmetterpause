@@ -21,8 +21,13 @@ def grow(p,distance):
 def parts():
     cx,cy=AXIS_CENTRE;ux,uy=AXIS_UNIT
     frame=Transform(uy,-ux,ux,uy,cx,cy)
-    fist=transformed(ellipse(0,15.7,22,15),frame)
-    fist_ink=grow(fist,RIM);arm=shape(ARM_BODY);arm_ink=grow(arm,RIM)
+    fist=transformed(ellipse(0,15.7,22,18),frame)
+    pad=transformed(shape('M-18 1 Q-21 7 -19 17 Q-17 28 -8 31 Q0 34 9 30 Q18 26 19 16 Q20 7 16 2 Q8 7 0 7 Q-9 7 -18 1Z'),frame)
+    arm=shape(ARM_BODY)
+    joined=op(arm,fist,pathops.PathOp.UNION)
+    fist_ink=grow(fist,RIM)
+    joined_ink=grow(joined,RIM)
+    arm_ink=grow(arm,RIM)
     # Outline half-length is 22. The final colour extends another 11.1 units.
     from racket_axis import intervals
     bottom=intervals(fist_ink,(cx-ux*100,cy-uy*100),(ux,uy))[0][1]-100
@@ -34,23 +39,23 @@ def parts():
     shaft_ink=grow(shaft,5)
     cap=op(shaft,transformed(rect(-30,bottom+8,30,bottom+30),frame),pathops.PathOp.INTERSECTION)
     seam=op(shaft,transformed(rect(-16,bottom+7.5,16,bottom+8.7),frame),pathops.PathOp.INTERSECTION)
-    front_ink=op(fist_ink,arm,pathops.PathOp.DIFFERENCE)
-    fold=transformed(shape('M-16 13 Q-1 6 15 13 Q-1 9 -16 13Z'),frame)
-    return dict(arm=arm,arm_ink=arm_ink,fist=fist,fist_ink=fist_ink,front_ink=front_ink,fold=fold,
+    fold=transformed(shape('M-15 15 Q0 7 15 15 Q0 11 -15 15Z'),frame)
+    return dict(arm=arm,arm_ink=arm_ink,fist=fist,fist_ink=fist_ink,joined=joined,joined_ink=joined_ink,pad=pad,fold=fold,
                 shaft=shaft,shaft_ink=shaft_ink,cap=cap,seam=seam)
 
 def build_assets(base_svg,racket_svg):
     """Replace only the right-arm paths and grip assembly; preserve the blade."""
     p=parts();base=ET.fromstring(base_svg);body=base[0];racket=ET.fromstring(racket_svg)[0]
-    i=next(i for i,e in enumerate(body) if e.get('fill','').startswith('var(--fur,')
-           and 234<shape(e.get('d')).bounds[0]<237 and 310<shape(e.get('d')).bounds[1]<320)
-    for element,geometry,fill in ((body[i-1],p['arm_ink'],'#080808'),(body[i],p['arm'],'var(--fur, #2f4ea8)')):
-        attrs=ET.fromstring('<svg>'+svgpath(geometry,fill)+'</svg>')[0].attrib
-        element.attrib.clear();element.attrib.update(attrs)
-    upper=shape(list(racket)[2].get('d'))
+    # The base retains its original arm. The racket group paints the union of
+    # arm and fist over it, so the visible construction has one shared contour.
+    direct=[e for e in racket if e.tag.endswith('path')]
+    shaft_index=next(i for i,e in enumerate(direct) if e.get('fill','').startswith('var(--handle,'))
+    upper=shape(direct[shaft_index+1].get('d'))
     blade=next(g for g in racket if g.get('data-pip-part')=='blade')
-    assembly=(svgpath(p['shaft_ink'],'#080808')+svgpath(p['shaft'],'var(--handle, #efa31b)')+
+    assembly=('<g data-pip-part="joined-arm-fist">'+svgpath(p['joined_ink'],'#080808')+svgpath(p['joined'],'var(--fur, #2f4ea8)')+
+              '<g data-pip-part="fist-body">'+svgpath(p['fist'],'var(--fur, #2f4ea8)')+'</g></g>'+
+              svgpath(p['shaft_ink'],'#080808')+svgpath(p['shaft'],'var(--handle, #efa31b)')+
               svgpath(upper,'#080808')+svgpath(p['cap'],'var(--handle-dark, #985c10)')+svgpath(p['seam'],'#080808'))
-    front=(svgpath(p['front_ink'],'#080808')+svgpath(p['fist'],'var(--fur, #2f4ea8)')+svgpath(p['fold'],'#080808'))
+    front=(svgpath(grow(p['pad'],3),'#080808')+svgpath(p['pad'],'var(--fur, #2f4ea8)')+svgpath(p['fold'],'#080808'))
     svg='<svg viewBox="0 0 420 420" xmlns="http://www.w3.org/2000/svg"><g data-pip-part="racket">'+assembly+'<g data-pip-part="flipper">'+front+'</g>'+ET.tostring(blade,encoding='unicode')+'</g></svg>'
     return ET.tostring(base,encoding='unicode'),svg

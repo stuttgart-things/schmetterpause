@@ -1,0 +1,54 @@
+{
+  "principle": "mitten grips a continuous capped shaft",
+  "reference": "approved mitten preview; a99eac2 blade and face geometry",
+  "grip_axis": {
+    "centre": [
+      327.1131783720793,
+      353.83823379070895
+    ],
+    "unit": [
+      -0.2320598634409234,
+      0.9727015060026277
+    ],
+    "degrees": 13.418374912315791
+  },
+  "fist_colour_width": 44.00046920776367,
+  "shaft_colour_width": 26.003156661987305,
+  "colour_width_ratio": 1.6921202983053871,
+  "fist_outline_width": 58.0004768371582,
+  "shaft_outline_width": 36.00303268432617,
+  "width_ratio": 1.6109886449206976,
+  "free_neck_length": 31.2,
+  "lower_visible_colour_length": 16.4,
+  "collinear_deviation_degrees": -0.05199252612192887,
+  "full_width_covered_length": 22.75,
+  "arm_fist_overlap_area": 3741.835225741065,
+  "emblem_clearance": 17.027,
+  "canvas_margin": 10.347320556640625,
+  "equipment_canvas_margin": 8.25030517578125,
+  "visible_grip_area": 1118.0335849039259,
+  "cap_area": 77.00271606445312,
+  "hand_axis_interval": [
+    154.2,
+    185.5
+  ],
+  "shaft_axis_interval": [
+    98.2,
+    201.9
+  ],
+  "neck_and_lower_centres": [
+    [
+      138.6,
+      0.09999999999999432
+    ],
+    [
+      193.7,
+      0.04999999999999716
+    ]
+  ],
+  "minimum_separation_64": 184,
+  "closest_expression_pair": "neutral/skeptical",
+  "shared_arm_fist_contours": 1,
+  "inner_seam_between_arm_and_fist": false,
+  "pixel_match_checked_after_restart": false
+}

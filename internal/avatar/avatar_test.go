@@ -371,7 +371,7 @@ func TestCharacterDeliveries(t *testing.T) {
 								groups++
 								validFace := strings.HasPrefix(name, "face-") && attrs["class"] == "sthings-face" && attrs["data-face"] == strings.TrimPrefix(name, "face-")
 								validBling := strings.HasPrefix(name, "bling-") && attrs["class"] == "sthings-bling" && attrs["data-bling"] == strings.TrimPrefix(name, "bling-")
-								validPipPart := ch.Key == "pip" && ((name == "base" && depth == 2 && attrs["data-pip-part"] == "body") || (name == "racket" && ((depth == 2 && attrs["data-pip-part"] == "racket") || (depth == 3 && (attrs["data-pip-part"] == "blade" || attrs["data-pip-part"] == "flipper")))) ||
+								validPipPart := ch.Key == "pip" && ((name == "base" && depth == 2 && attrs["data-pip-part"] == "body") || (name == "racket" && ((depth == 2 && attrs["data-pip-part"] == "racket") || (depth == 3 && (attrs["data-pip-part"] == "blade" || attrs["data-pip-part"] == "flipper" || attrs["data-pip-part"] == "joined-arm-fist")) || (depth == 4 && attrs["data-pip-part"] == "fist-body"))) ||
 									(name == "base" && depth == 3 && attrs["data-pip-part"] == "blade") ||
 									(strings.HasPrefix(name, "face-") && depth == 3 && faceDepth == 2 && (attrs["data-pip-part"] == "beak" || attrs["data-pip-part"] == "eye-0" || attrs["data-pip-part"] == "eye-1")))
 								if validFace || validBling {
@@ -419,8 +419,8 @@ func TestCharacterDeliveries(t *testing.T) {
 					if ch.Key == "pip" {
 						if name == "base" {
 							wantGroups = 1
-						} else if name == "racket" {
-							wantGroups = 3
+										} else if name == "racket" {
+											wantGroups = 5
 						} else if strings.HasPrefix(name, "face-") {
 							wantGroups = 4
 						} else if name == "bling-initial" {

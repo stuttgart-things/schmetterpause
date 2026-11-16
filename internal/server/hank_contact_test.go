@@ -121,12 +121,20 @@ func validateHankContact(t *testing.T, raw []byte) {
 	if !ok || len(hand.Paths) != 3 {
 		t.Fatal("HTTP SVG needs one closed mitten and one fold")
 	}
+	joined, ok := contactFind(racket, "joined-arm-fist")
+	if !ok || len(joined.Paths) != 2 {
+		t.Fatal("HTTP SVG needs one shared arm/fist silhouette with a single outside contour")
+	}
 	text := string(raw)
 	gripIndex := strings.Index(text, `d="`+racket.Paths[1].D+`"`)
 	handIndex := strings.Index(text, `data-pip-part="flipper"`)
 	bladeIndex := strings.Index(text, `data-pip-part="blade"`)
 	if gripIndex < 0 || !(gripIndex < handIndex && handIndex < bladeIndex) {
 		t.Fatal("paint order must be shaft -> mitten -> blade")
+	}
+	joinedIndex := strings.Index(text, `data-pip-part="joined-arm-fist"`)
+	if joinedIndex < 0 || !(joinedIndex < gripIndex && gripIndex < handIndex) {
+		t.Fatal("joined arm and fist must share one contour behind shaft and finger side")
 	}
 	grip := contactMask(t, racket.Paths)
 	colour := contactMask(t, racket.Paths[1:2])
@@ -213,7 +221,21 @@ func validateHankContact(t *testing.T, raw []byte) {
 		}
 		return hi - lo
 	}
-	ratio := normalWidth(fur) / normalWidth(colour)
+	// Compare the full palm cross-section to the shaft. The front finger pad is
+	// intentionally narrower than the whole fist and has its own contour.
+	fistBody, ok := contactFind(joined, "fist-body")
+	if !ok || len(fistBody.Paths) != 1 {
+		t.Fatal("HTTP SVG needs a separately measurable full fist body")
+	}
+	palm := contactMask(t, fistBody.Paths)
+	palmWidth := 0.
+	palmT := (handStart + handEnd) / 2
+	for n := -80.; n <= 80; n += .25 {
+		if contactInside(palm, cx+ux*palmT+uy*n, cy+uy*palmT-ux*n) {
+			palmWidth += .25
+		}
+	}
+	ratio := palmWidth / normalWidth(colour)
 	if ratio < 1.5 || ratio > 1.8 {
 		t.Fatalf("HTTP fist/shaft colour width ratio %.3f", ratio)
 	}
@@ -238,28 +260,9 @@ func validateHankContact(t *testing.T, raw []byte) {
 	if last-first < 8 {
 		t.Fatalf("mitten never covers complete shaft width: %.2f", last-first)
 	}
-	body, _ := contactFind(root, "body")
-	connected := false
-	for _, p := range body.Paths {
-		if p.Fill != hand.Paths[1].Fill {
-			continue
-		}
-		arm := contactMask(t, []contactPath{p})
-		if !contactInside(arm, 285, 350) {
-			continue
-		}
-		overlap := 0
-		for y := 0; y < 420; y++ {
-			for x := 0; x < 420; x++ {
-				if contactInside(arm, float64(x)+.5, float64(y)+.5) && contactInside(fur, float64(x)+.5, float64(y)+.5) {
-					overlap++
-				}
-			}
-		}
-		connected = overlap > 100
-	}
-	if !connected {
-		t.Fatal("HTTP shoulder/arm does not join mitten")
+	shared := contactMask(t, joined.Paths[1:2])
+	if !contactInside(shared, 285, 350) || !contactInside(shared, cx+ux*15, cy+uy*15) {
+		t.Fatal("HTTP arm and fist are not a continuous filled silhouette")
 	}
 	// Render the HTTP-delivered racket with its actual resolved palette at 420px.
 	palette := map[string]string{}

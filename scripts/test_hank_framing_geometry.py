@@ -22,7 +22,7 @@ class HankFramingGeometry(unittest.TestCase):
     def test_complete_round_blade_follows_the_gripping_flipper(self):
         root=ET.parse(ROOT/"web/static/img/pip/racket.svg").getroot()[0]
         names=[g.get("data-pip-part") for g in root if g.tag.endswith("g")]
-        self.assertEqual(names,["flipper","blade"])
+        self.assertEqual(names,["joined-arm-fist","flipper","blade"])
         blade=list(root)[-1]
         colour=shape(list(blade)[-1].get("d"))
         ref=reference()['blade']
