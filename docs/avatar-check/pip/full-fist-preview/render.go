@@ -14,6 +14,7 @@ import (
 
 	"github.com/srwiley/oksvg"
 	"github.com/srwiley/rasterx"
+
 	"github.com/stuttgart-things/schmetterpause/internal/avatar"
 	"github.com/stuttgart-things/schmetterpause/web"
 )
@@ -69,8 +70,11 @@ func render(c *avatar.Collection, key string, size int) *image.RGBA {
 func save(name string, im image.Image) {
 	f, e := os.Create(filepath.Join(out, name))
 	must(e)
-	defer f.Close()
-	must(png.Encode(f, im))
+	if err := png.Encode(f, im); err != nil {
+		must(f.Close())
+		must(err)
+	}
+	must(f.Close())
 }
 func main() {
 	base := collection(false)

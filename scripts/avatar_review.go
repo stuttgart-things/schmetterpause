@@ -1143,7 +1143,9 @@ func straightReview(out string) error {
 			return err
 		}
 		err = png.Encode(f, img)
-		f.Close()
+		if closeErr := f.Close(); closeErr != nil {
+			return closeErr
+		}
 		if err != nil {
 			return err
 		}

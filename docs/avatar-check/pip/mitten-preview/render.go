@@ -19,6 +19,7 @@ import (
 
 	"github.com/srwiley/oksvg"
 	"github.com/srwiley/rasterx"
+
 	"github.com/stuttgart-things/schmetterpause/internal/avatar"
 	"github.com/stuttgart-things/schmetterpause/web"
 	"golang.org/x/image/font"
@@ -143,8 +144,8 @@ func main() {
 			changed := 0
 			for y := 0; y < 64; y++ {
 				for x := 0; x < 64; x++ {
-					l := color.GrayModel.Convert(images[one.Key].At(x, y)).(color.Gray).Y / 32
-					r := color.GrayModel.Convert(images[two.Key].At(x, y)).(color.Gray).Y / 32
+					l := grayLevel(images[one.Key].At(x, y))
+					r := grayLevel(images[two.Key].At(x, y))
 					if l != r {
 						changed++
 					}
@@ -160,4 +161,12 @@ func main() {
 	must(err)
 	must(os.WriteFile(filepath.Join(out, "renderer-verification.json"), append(data, '\n'), 0644))
 	fmt.Println(string(data))
+}
+
+func grayLevel(c color.Color) uint8 {
+	gray, ok := color.GrayModel.Convert(c).(color.Gray)
+	if !ok {
+		panic("gray conversion returned a non-gray color")
+	}
+	return gray.Y / 32
 }

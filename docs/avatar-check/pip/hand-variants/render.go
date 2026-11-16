@@ -19,6 +19,7 @@ import (
 
 	"github.com/srwiley/oksvg"
 	"github.com/srwiley/rasterx"
+
 	"github.com/stuttgart-things/schmetterpause/internal/avatar"
 	"github.com/stuttgart-things/schmetterpause/web"
 	"golang.org/x/image/font"
@@ -83,8 +84,11 @@ func label(img *image.RGBA, x, y int, s string) {
 func save(name string, img image.Image) {
 	f, e := os.Create(filepath.Join(out, name))
 	must(e)
-	defer f.Close()
-	must(png.Encode(f, img))
+	if err := png.Encode(f, img); err != nil {
+		must(f.Close())
+		must(err)
+	}
+	must(f.Close())
 }
 func main() {
 	before, b := collection(false), collection(true)
@@ -150,8 +154,8 @@ func main() {
 			changed := 0
 			for y := 0; y < 64; y++ {
 				for x := 0; x < 64; x++ {
-					l := color.GrayModel.Convert(images[one.Key].At(x, y)).(color.Gray).Y / 32
-					r := color.GrayModel.Convert(images[two.Key].At(x, y)).(color.Gray).Y / 32
+					l := grayLevel(images[one.Key].At(x, y))
+					r := grayLevel(images[two.Key].At(x, y))
 					if l != r {
 						changed++
 					}
@@ -167,4 +171,12 @@ func main() {
 	must(err)
 	must(os.WriteFile(filepath.Join(out, "separation.json"), append(data, '\n'), 0644))
 	fmt.Printf("B: minimum separation %d, pair %s\n", minsep, pair)
+}
+
+func grayLevel(c color.Color) uint8 {
+	gray, ok := color.GrayModel.Convert(c).(color.Gray)
+	if !ok {
+		panic("gray conversion returned a non-gray color")
+	}
+	return gray.Y / 32
 }

@@ -118,22 +118,22 @@ func validateHankContact(t *testing.T, raw []byte) {
 		t.Fatal("HTTP SVG needs the single shaft, upper binding and capped lower end")
 	}
 	hand, ok := contactFind(racket, "flipper")
-	if !(ok && len(hand.Paths) == 3) {
+	if !ok || len(hand.Paths) != 3 {
 		t.Fatal("HTTP SVG needs one closed mitten and one fold")
 	}
 	joined, ok := contactFind(racket, "joined-arm-fist")
-	if !(ok && len(joined.Paths) == 2) {
+	if !ok || len(joined.Paths) != 2 {
 		t.Fatal("HTTP SVG needs one shared arm/fist silhouette with a single outside contour")
 	}
 	text := string(raw)
 	gripIndex := strings.Index(text, `d="`+racket.Paths[1].D+`"`)
 	handIndex := strings.Index(text, `data-pip-part="flipper"`)
 	bladeIndex := strings.Index(text, `data-pip-part="blade"`)
-	if gripIndex < 0 || !(gripIndex < handIndex && handIndex < bladeIndex) {
+	if gripIndex < 0 || gripIndex >= handIndex || handIndex >= bladeIndex {
 		t.Fatal("paint order must be shaft -> mitten -> blade")
 	}
 	joinedIndex := strings.Index(text, `data-pip-part="joined-arm-fist"`)
-	if joinedIndex < 0 || !(joinedIndex < gripIndex && gripIndex < handIndex) {
+	if joinedIndex < 0 || joinedIndex >= gripIndex || gripIndex >= handIndex {
 		t.Fatal("joined arm and fist must share one contour behind shaft and finger side")
 	}
 	grip := contactMask(t, racket.Paths)
