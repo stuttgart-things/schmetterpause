@@ -2,7 +2,6 @@ package avatar
 
 import (
 	"bytes"
-	"github.com/stuttgart-things/schmetterpause/web"
 	"image"
 	"image/color"
 	"image/gif"
@@ -11,6 +10,8 @@ import (
 	"regexp"
 	"strings"
 	"testing"
+
+	"github.com/stuttgart-things/schmetterpause/web"
 )
 
 func TestHankInitialDerivation(t *testing.T) {

@@ -1283,9 +1283,12 @@ func completionReview(out string) error {
 			return err
 		}
 		err = png.Encode(f, combined)
-		f.Close()
+		closeErr := f.Close()
 		if err != nil {
 			return err
+		}
+		if closeErr != nil {
+			return closeErr
 		}
 	}
 
@@ -1339,9 +1342,12 @@ func contactReview(out string) error {
 			return err
 		}
 		err = png.Encode(f, img)
-		f.Close()
+		closeErr := f.Close()
 		if err != nil {
 			return err
+		}
+		if closeErr != nil {
+			return closeErr
 		}
 		draw.Draw(combined, image.Rect(i*420, 28, i*420+420, 448), img, image.Point{}, draw.Src)
 		d := font.Drawer{Dst: combined, Src: image.White, Face: reviewFont, Dot: fixed.P(i*420+8, 18)}
@@ -1352,9 +1358,12 @@ func contactReview(out string) error {
 		return err
 	}
 	err = png.Encode(f, combined)
-	f.Close()
+	closeErr := f.Close()
 	if err != nil {
 		return err
+	}
+	if closeErr != nil {
+		return closeErr
 	}
 	a := avatar.DefaultForCharacter("pip", "")
 	a.Blade = "light-blue"

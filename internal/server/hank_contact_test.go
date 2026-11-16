@@ -19,6 +19,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/srwiley/oksvg"
 	"github.com/srwiley/rasterx"
+
 	"github.com/stuttgart-things/schmetterpause/internal/avatar"
 )
 
