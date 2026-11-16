@@ -118,11 +118,11 @@ func validateHankContact(t *testing.T, raw []byte) {
 		t.Fatal("HTTP SVG needs the single shaft, upper binding and capped lower end")
 	}
 	hand, ok := contactFind(racket, "flipper")
-	if !ok || len(hand.Paths) != 3 {
+	if !(ok && len(hand.Paths) == 3) {
 		t.Fatal("HTTP SVG needs one closed mitten and one fold")
 	}
 	joined, ok := contactFind(racket, "joined-arm-fist")
-	if !ok || len(joined.Paths) != 2 {
+	if !(ok && len(joined.Paths) == 2) {
 		t.Fatal("HTTP SVG needs one shared arm/fist silhouette with a single outside contour")
 	}
 	text := string(raw)

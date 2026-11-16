@@ -2,10 +2,6 @@ package main
 
 import (
 	"fmt"
-	"github.com/srwiley/oksvg"
-	"github.com/srwiley/rasterx"
-	"github.com/stuttgart-things/schmetterpause/internal/avatar"
-	"github.com/stuttgart-things/schmetterpause/web"
 	"image"
 	"image/color"
 	"image/draw"
@@ -15,6 +11,11 @@ import (
 	"path/filepath"
 	"strings"
 	"testing/fstest"
+
+	"github.com/srwiley/oksvg"
+	"github.com/srwiley/rasterx"
+	"github.com/stuttgart-things/schmetterpause/internal/avatar"
+	"github.com/stuttgart-things/schmetterpause/web"
 )
 
 const out = "docs/avatar-check/pip/full-fist-preview"

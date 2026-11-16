@@ -30,9 +30,10 @@ var BleckiBlings = []Option{
 	{"ball", "Tischtennisball"},
 }
 
-// BlingPalette returns the jewellery drawn for this character’s single slot.
+// HankBlings contains the jewellery options drawn for Hank's single slot.
 var HankBlings = []Option{{NoBling, "Kein Schmuck"}, {"initial", "Initiale"}}
 
+// BlingPalette returns the jewellery drawn for a character's single slot.
 func BlingPalette(characterKey string) []Option {
 	if characterKey == "pip" {
 		return HankBlings
@@ -63,7 +64,7 @@ func HeaddressPalette(characterKey string, fur ...string) []Colour {
 		if c.Key == SameAsFur {
 			c.Name = "Original"
 		}
-		if c.Key != "lapis" && !(len(fur) > 0 && fur[0] == "grey" && c.Key == "silver") {
+		if c.Key != "lapis" && (len(fur) == 0 || fur[0] != "grey" || c.Key != "silver") {
 			palette = append(palette, c)
 		}
 	}

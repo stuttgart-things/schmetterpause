@@ -3,6 +3,7 @@ package avatar
 import (
 	"strings"
 	"unicode"
+	"unicode/utf8"
 )
 
 // RenderContext is transient identity information, never an avatar choice or
@@ -11,16 +12,19 @@ type RenderContext struct{ DisplayName string }
 
 // InitialForName accepts only the supported first character, not a later letter.
 func InitialForName(name string) string {
-	for _, r := range strings.TrimSpace(name) {
-		r = unicode.ToUpper(r)
-		if r >= 'A' && r <= 'Z' || r == 'Ä' || r == 'Ö' || r == 'Ü' {
-			return string(r)
-		}
-		break
+	name = strings.TrimSpace(name)
+	if name == "" {
+		return ""
+	}
+	r, _ := utf8.DecodeRuneInString(name)
+	r = unicode.ToUpper(r)
+	if r >= 'A' && r <= 'Z' || r == 'Ä' || r == 'Ö' || r == 'Ü' {
+		return string(r)
 	}
 	return ""
 }
 
+// HankEmblemColor chooses a visible emblem colour for Hank's current palette.
 func HankEmblemColor(a Avatar) string {
 	a = Fill(a, "")
 	ch, _ := character("pip")

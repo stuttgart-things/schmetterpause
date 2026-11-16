@@ -206,14 +206,15 @@ func (k *Kit) render(a Avatar, face, faces string, ctx ...RenderContext) string 
 			bling = hankFallbackGlyph.ReplaceAllString(bling, `<g data-initial="`+initial+`">`+hankInitialGlyphs[initial]+`</g>`)
 		}
 	}
-	if k.character.Key == "pip" {
+	switch k.character.Key {
+	case "pip":
 		b.WriteString(faces)
 		b.WriteString(bling)
 		b.WriteString(k.racket)
-	} else if k.character.Key == "vex" {
+	case "vex":
 		b.WriteString(bling)
 		b.WriteString(faces)
-	} else {
+	default:
 		b.WriteString(faces)
 		b.WriteString(bling)
 	}

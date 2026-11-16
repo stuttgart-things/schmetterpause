@@ -419,8 +419,8 @@ func TestCharacterDeliveries(t *testing.T) {
 					if ch.Key == "pip" {
 						if name == "base" {
 							wantGroups = 1
-										} else if name == "racket" {
-											wantGroups = 5
+						} else if name == "racket" {
+							wantGroups = 5
 						} else if strings.HasPrefix(name, "face-") {
 							wantGroups = 4
 						} else if name == "bling-initial" {

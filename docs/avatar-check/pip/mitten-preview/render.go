@@ -84,8 +84,11 @@ func label(img *image.RGBA, x, y int, s string) {
 func save(name string, img image.Image) {
 	f, e := os.Create(filepath.Join(out, name))
 	must(e)
-	defer f.Close()
-	must(png.Encode(f, img))
+	if err := png.Encode(f, img); err != nil {
+		must(f.Close())
+		must(err)
+	}
+	must(f.Close())
 }
 func main() {
 	baseline, candidate := collection(false), collection(true)
