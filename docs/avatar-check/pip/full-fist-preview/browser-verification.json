@@ -1,0 +1,10 @@
+{
+  "renderer": "real profile SVG from port 8080 and HTTP-rendered 420px reference",
+  "app_commit": "687d305",
+  "pixel_width": 420,
+  "pixel_height": 420,
+  "different_pixels": 0,
+  "app_png_sha256": "244a673727b5fb09af043d49fec4aeb634af38347cc0f1774ef2c6232a2a24f8",
+  "reference_png_sha256": "244a673727b5fb09af043d49fec4aeb634af38347cc0f1774ef2c6232a2a24f8",
+  "http_geometry": "PASS: neck 32.00, lower 16.50, axis 13.505 degrees, collinearity 0.261 degrees, fist/shaft ratio 1.662"
+}

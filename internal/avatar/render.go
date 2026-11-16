@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io/fs"
 	"path"
+	"regexp"
 	"strings"
 )
 
@@ -15,6 +16,7 @@ import (
 type Kit struct {
 	character Character
 	base      string
+	racket    string
 	faces     map[string]string
 	blings    map[string]string
 }
@@ -38,6 +40,11 @@ func load(fsys fs.FS, dir string, jewellery []Option) (*Kit, error) {
 	var err error
 	if k.base, err = read("base"); err != nil {
 		return nil, err
+	}
+	if path.Base(dir) == "pip" {
+		if k.racket, err = read("racket"); err != nil {
+			return nil, err
+		}
 	}
 	for _, f := range Faces {
 		if k.faces[f.Key], err = read("face-" + f.Key); err != nil {
@@ -93,17 +100,17 @@ func inner(doc string) (string, error) {
 //
 // Parts a does not name, or names with an unknown key, fall back as in Fill
 // for nobody: the drawing, with its red blade.
-func (k *Kit) Render(a Avatar) string {
-	return k.render(a, "", k.faces[Faces[0].Key])
+func (k *Kit) Render(a Avatar, ctx ...RenderContext) string {
+	return k.render(a, "", k.faces[Faces[0].Key], ctx...)
 }
 
 // RenderFace renders a single expression for the editor's comparison gallery.
 // It does not change the neutral face used by Render or the live face state.
-func (k *Kit) RenderFace(a Avatar, face string) string {
+func (k *Kit) RenderFace(a Avatar, face string, ctx ...RenderContext) string {
 	if !hasOption(Faces, face) {
 		face = Faces[0].Key
 	}
-	return k.render(a, face, k.faces[face])
+	return k.render(a, face, k.faces[face], ctx...)
 }
 
 // RenderLive is the figure with every face, for standing next to a running
@@ -118,7 +125,7 @@ func (k *Kit) RenderFace(a Avatar, face string) string {
 // twice on one page is harmless.
 //
 // An unknown face shows the neutral one.
-func (k *Kit) RenderLive(a Avatar, face string) string {
+func (k *Kit) RenderLive(a Avatar, face string, ctx ...RenderContext) string {
 	if !hasOption(Faces, face) {
 		face = Faces[0].Key
 	}
@@ -131,14 +138,14 @@ func (k *Kit) RenderLive(a Avatar, face string) string {
 	for _, f := range Faces {
 		b.WriteString(k.faces[f.Key])
 	}
-	return k.render(a, face, b.String())
+	return k.render(a, face, b.String(), ctx...)
 }
 
-func (k *Kit) render(a Avatar, face, faces string) string {
+func (k *Kit) render(a Avatar, face, faces string, ctx ...RenderContext) string {
 	a.Character = k.character.Key
 	a = Fill(a, "")
-	fur, _ := findColour(Furs, a.Fur)
-	head, _ := findColour(Headdresses, a.Headdress)
+	fur, _ := findColour(FurPalette(a.Character), a.Fur)
+	head, _ := findColour(HeaddressPalette(a.Character, a.Fur), a.Headdress)
 	handle, _ := findColour(Handles, a.Handle)
 
 	var style strings.Builder
@@ -178,6 +185,9 @@ func (k *Kit) render(a Avatar, face, faces string) string {
 		prop("ball", ball.Hex)
 		prop("ball-shadow", ball.Shade)
 	}
+	if k.character.Key == "pip" && a.Bling == "initial" {
+		prop("emblem", HankEmblemColor(a))
+	}
 	var b strings.Builder
 	b.WriteString(`<svg viewBox="0 0 420 420" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" class="sthings"`)
 	if k.character.Key != "" {
@@ -190,12 +200,23 @@ func (k *Kit) render(a Avatar, face, faces string) string {
 	b.WriteString(strings.TrimSuffix(style.String(), ";"))
 	b.WriteString(`">`)
 	b.WriteString(k.base)
-	if k.character.Key == "vex" {
-		b.WriteString(k.blings[a.Bling])
+	bling := k.blings[a.Bling]
+	if k.character.Key == "pip" && a.Bling == "initial" && len(ctx) > 0 {
+		if initial := InitialForName(ctx[0].DisplayName); initial != "" {
+			bling = hankFallbackGlyph.ReplaceAllString(bling, `<g data-initial="`+initial+`">`+hankInitialGlyphs[initial]+`</g>`)
+		}
+	}
+	switch k.character.Key {
+	case "pip":
 		b.WriteString(faces)
-	} else {
+		b.WriteString(bling)
+		b.WriteString(k.racket)
+	case "vex":
+		b.WriteString(bling)
 		b.WriteString(faces)
-		b.WriteString(k.blings[a.Bling])
+	default:
+		b.WriteString(faces)
+		b.WriteString(bling)
 	}
 	b.WriteString(`</svg>`)
 	return b.String()
@@ -207,3 +228,5 @@ func orFur(hex, fur string) string {
 	}
 	return hex
 }
+
+var hankFallbackGlyph = regexp.MustCompile(`(?s)<g data-initial="fallback">.*?</g>`)

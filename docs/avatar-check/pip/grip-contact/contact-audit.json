@@ -1,0 +1,139 @@
+{
+  "before_commit": "bddb539",
+  "before_contact": {
+    "shaft_length": 75.57546043395996,
+    "full_width_covered_length": 4.75,
+    "full_width_covered_fraction": 0.06285108913296913,
+    "overlap_centroid": [
+      322.30985758789495,
+      358.32999554962174
+    ],
+    "axis_offset_from_overlap_centroid": 3.6344141934773115,
+    "axis": {
+      "centre": [
+        327.07724611041976,
+        354.00943704010496
+      ],
+      "unit": [
+        -0.2320971634618589,
+        0.9726926064862214
+      ],
+      "degrees": 13.42057203398011
+    },
+    "full_width_interval": [
+      13.5,
+      18.25
+    ]
+  },
+  "after_contact": {
+    "shaft_length": 103.82563781738281,
+    "full_width_covered_length": 34.0,
+    "full_width_covered_fraction": 0.32747210337202104,
+    "overlap_centroid": [
+      320.9024887255721,
+      372.9745949557374
+    ],
+    "axis_offset_from_overlap_centroid": 1.6043814982630202,
+    "axis": {
+      "centre": [
+        327.07724611041976,
+        354.00943704010496
+      ],
+      "unit": [
+        -0.2320971634618589,
+        0.9726926064862214
+      ],
+      "degrees": 13.42057203398011
+    },
+    "full_width_interval": [
+      12.5,
+      46.5
+    ]
+  },
+  "constraints": {
+    "shaft_length": 103.82563781738281,
+    "full_width_covered_length": 34.0,
+    "full_width_covered_fraction": 0.32747210337202104,
+    "overlap_centroid": [
+      320.9024887255721,
+      372.9745949557374
+    ],
+    "axis_offset_from_overlap_centroid": 1.6043814982630202,
+    "axis": {
+      "centre": [
+        327.07724611041976,
+        354.00943704010496
+      ],
+      "unit": [
+        -0.2320971634618589,
+        0.9726926064862214
+      ],
+      "degrees": 13.42057203398011
+    },
+    "full_width_interval": [
+      12.5,
+      46.5
+    ],
+    "reference": "1298bfe",
+    "principle": "B: grip behind flipper, blade in foreground",
+    "method": "Measurements of B pressing the shortened shaft behind a reflected flipper.\nWidths are exact curve extents perpendicular to the measured principal axes.\nThe baseline capsule supplies the shaft axis, avoiding bias from its hidden cut.\n",
+    "selected_scale": 0.8,
+    "angle_degrees": -180,
+    "maximum_requested_scale": 0.8,
+    "left_width": 94.2911376953125,
+    "right_width": 75.43301391601562,
+    "flipper_width_ratio": 0.8000011004190655,
+    "area_scale": 0.8000005476268927,
+    "emblem_clearance": 13.043,
+    "canvas_margin": 8.120391845703125,
+    "visible_grip_area": 463.2062899271641,
+    "free_neck_length": 20.2,
+    "face_overlap_area": 0.0,
+    "blade_overlap_area": 0.0,
+    "right_outline_bounds": [
+      244.47219848632812,
+      324.944580078125,
+      344.30755615234375,
+      411.8796081542969
+    ],
+    "grip_axis": {
+      "centre": [
+        327.07724611041976,
+        354.00943704010496
+      ],
+      "unit": [
+        -0.2320971634618589,
+        0.9726926064862214
+      ],
+      "degrees": 13.42057203398011
+    }
+  },
+  "pixels": {
+    "size": [
+      420,
+      420
+    ],
+    "different_pixels": 0,
+    "pixels_identical": true,
+    "app_image_sha256": "4be9768b82257913054ea0c3574108711c5347a4d3350e913a2cfe7a8437695c",
+    "sheet_image_sha256": "4be9768b82257913054ea0c3574108711c5347a4d3350e913a2cfe7a8437695c"
+  },
+  "runtime": {
+    "app_pid": 4162004,
+    "app_cwd": "/home/sthings/projects/schmetterpause",
+    "app_executable": "/home/sthings/projects/schmetterpause/.task/hank-preview/schmetterpause",
+    "review_pid": 4172373,
+    "review_cwd": "/home/sthings/projects/schmetterpause",
+    "review_executable": "/usr/bin/python3.14",
+    "profile_url": "http://127.0.0.1:8080/players/07898f8e-07dd-4942-8546-600be7594252",
+    "svg_url": "http://127.0.0.1:8080/avatars/07898f8e-07dd-4942-8546-600be7594252.svg?face=neutral",
+    "asset_sha256": "048d6f8460c8c35ac6600203e728c58fd6097a57269ea00d1b479b8e1620386c",
+    "http_svg_sha256": "3ac054407cbd9bcf2a78ac408d2cf16af18151228ca34bc736aec8a7c79766e9",
+    "normal_repo": true,
+    "branch": "feat/pip-avatar"
+  },
+  "after_http_neutral_sha256": "3ac054407cbd9bcf2a78ac408d2cf16af18151228ca34bc736aec8a7c79766e9",
+  "after_http_neutral_geometry_sha256": "f9cd8b23852f71b0e05d4b4bc29fa8df42ae60137c22c604cec730f9f9bf9abf",
+  "reference_neutral_geometry_sha256": "f9cd8b23852f71b0e05d4b4bc29fa8df42ae60137c22c604cec730f9f9bf9abf",
+  "asset_sha256": "048d6f8460c8c35ac6600203e728c58fd6097a57269ea00d1b479b8e1620386c"
+}

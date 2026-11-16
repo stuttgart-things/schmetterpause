@@ -1,0 +1,5 @@
+{
+  "endpoint": "/avatars/random.svg?face=neutral",
+  "cache_control": "no-store",
+  "base_paths_match_working_tree": true
+}

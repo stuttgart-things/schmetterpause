@@ -12,7 +12,7 @@
 ## Entscheidung
 
 Für den Release stehen sthings und blecki zur Auswahl. blecki behält den
-bestehenden gespeicherten Schlüssel `vex`. Pogo, Pip und Kiki werden auf den
+bestehenden gespeicherten Schlüssel `vex`. pogo, hank (interner Schlüssel `pip`) und kiki werden auf den
 Branches `feat/pogo-fine-tuning`, `feat/pip-fine-tuning` und
 `feat/kiki-fine-tuning` weiterbearbeitet und sind im Release nicht enthalten. Die
 Auswahl wird mit den Farben in `player_avatars` gespeichert. Die additive
@@ -51,7 +51,7 @@ Gesichter. Das Gesicht bleibt vom Spiel bestimmt. SVG und GIF, Profile,
 Kopfzeile, Live-Spielstand und Zufallsfiguren verwenden denselben Katalog.
 Die öffentlichen Avatar-Adressen ändern sich nicht. Zufall wählt auch die
 Figur; unbekannte gespeicherte Schlüssel fallen pro Teil zurück. Auch die
-entfernten Figuren Fynn und Chomp werden wie unbekannte Schlüssel behandelt:
+entfernten Figuren fynn und chomp werden wie unbekannte Schlüssel behandelt:
 Sie sind nicht mehr wählbar, vorhandene Auswahlen zeigen sthings. Dasselbe
 gilt im Release für die drei Figuren in Bearbeitung. Die gespeicherten Werte
 werden dabei nicht überschrieben, damit ihre spätere Rückkehr möglich bleibt.
@@ -79,3 +79,26 @@ ins Anwendungs-Binary oder Container-Image.
 - Kein zusätzliches JavaScript: Auswahl und Vorschau bleiben HTMX-Formulare.
 - Die Anwendung prüft Figuren-, Farb- und Schmuckschlüssel. Die Datenbank
   speichert auch unbekannte Schlüssel für einen weiterhin möglichen Rückfall.
+
+
+## Ergänzung: hanks Initialen-Emblem
+
+hank behält den gespeicherten Schlüssel `pip`. Auf dem Arbeitsbranch
+`feat/pip-avatar` verwendet hank den bestehenden einzelnen Schmuck-Slot mit
+„Kein Schmuck“ und „Initiale“. Unbekannte bzw. verworfene Werte wie Fisch und
+Schneeflocke fallen beim Lesen auf „Kein Schmuck“ zurück. Es gibt kein neues
+Datenbankfeld. Die Initiale wird aus dem Spielernamen in einem ausschließlich
+für das Rendern übergebenen Kontext abgeleitet; ohne Namen erscheint ein Schläger.
+Die Glyphe besteht aus vorab erzeugten gefüllten Barlow-Bold-Pfaden (SIL OFL 1.1).
+Das Emblem liegt nach der Basis und vor dem Gesicht. Die kleinere, tiefer sitzende
+Platzierung wurde wegen der bestehenden Pose ausdrücklich gewählt.
+
+## Ergänzung: hank – Vordergrund und Rahmung
+
+hank behält den Schlüssel `pip`. Sein eigener Schläger wird aus `racket.svg`
+geladen und nach Gesicht und Schmuck gerendert: Basis → Gesicht → Schmuck →
+Schlägergruppe. Nur hank verwendet diese zusätzliche Asset-Datei. Die Flosse
+liegt darin über dem Griff; die runde Schlägerfläche wird danach gezeichnet.
+Die zentrale, vorab in Pfade eingerechnete Rahmung umfasst auch das Emblem und
+seine Buchstaben. SVG und GIF verwenden dadurch dieselbe Geometrie und Reihenfolge.
+Datenmodell, Namenskontext und die anderen Figuren bleiben unverändert.

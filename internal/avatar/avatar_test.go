@@ -134,8 +134,8 @@ func TestRandomIsRepeatableAndReachesEverything(t *testing.T) {
 			seen[k] = true
 		}
 	}
-	want := len(avatar.Furs) + len(avatar.Headdresses) + len(avatar.Handles) +
-		len(avatar.Blades) + len(avatar.Blings) + len(avatar.BleckiBlings) - 1 + len(avatar.Characters) + 1
+	want := len(avatar.Furs) + len(avatar.PipFurs) + len(avatar.Headdresses) + len(avatar.Handles) +
+		len(avatar.Blades) + len(avatar.Blings) + len(avatar.BleckiBlings) - 1 + len(avatar.HankBlings) - 1 + len(avatar.Characters) + 1
 	if len(seen) != want {
 		t.Errorf("3000 rolls reached %d choices, want all %d", len(seen), want)
 	}
@@ -318,10 +318,17 @@ func TestCharacterDeliveries(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if len(entries) != 7+len(avatar.BlingPalette(ch.Key))-1 {
+			extra := 0
+			if ch.Key == "pip" {
+				extra = 1
+			}
+			if len(entries) != 7+len(avatar.BlingPalette(ch.Key))-1+extra {
 				t.Fatalf("%s has %d files, want base, six faces and jewellery", ch.Name, len(entries))
 			}
 			names := []string{"base"}
+			if ch.Key == "pip" {
+				names = append(names, "racket")
+			}
 			for _, f := range avatar.Faces {
 				names = append(names, "face-"+f.Key)
 			}
@@ -362,27 +369,35 @@ func TestCharacterDeliveries(t *testing.T) {
 								}
 							case "g":
 								groups++
-								faceDepth = depth
 								validFace := strings.HasPrefix(name, "face-") && attrs["class"] == "sthings-face" && attrs["data-face"] == strings.TrimPrefix(name, "face-")
 								validBling := strings.HasPrefix(name, "bling-") && attrs["class"] == "sthings-bling" && attrs["data-bling"] == strings.TrimPrefix(name, "bling-")
-								if !validFace && !validBling {
+								validPipPart := ch.Key == "pip" && ((name == "base" && depth == 2 && attrs["data-pip-part"] == "body") || (name == "racket" && ((depth == 2 && attrs["data-pip-part"] == "racket") || (depth == 3 && (attrs["data-pip-part"] == "blade" || attrs["data-pip-part"] == "flipper" || attrs["data-pip-part"] == "joined-arm-fist")) || (depth == 4 && attrs["data-pip-part"] == "fist-body"))) ||
+									(name == "base" && depth == 3 && attrs["data-pip-part"] == "blade") ||
+									(strings.HasPrefix(name, "face-") && depth == 3 && faceDepth == 2 && (attrs["data-pip-part"] == "beak" || attrs["data-pip-part"] == "eye-0" || attrs["data-pip-part"] == "eye-1")))
+								if validFace || validBling {
+									faceDepth = depth
+								}
+								validInitial := ch.Key == "pip" && name == "bling-initial" && depth == 3 && attrs["data-initial"] == "fallback"
+
+								if !validFace && !validBling && !validPipPart && !validInitial {
 									t.Error("invalid face group")
 								}
 							case "path", "circle", "ellipse":
 								shapes++
-								if name != "base" && faceDepth == 0 {
+								if name != "base" && name != "racket" && faceDepth == 0 {
 									t.Error("shape outside face group")
 								}
 							default:
 								t.Errorf("unexpected element %s", el.Name.Local)
 							}
-							if fill, ok := attrs["fill"]; ok && !regexp.MustCompile(`^(#[0-9a-fA-F]{6}|var\(--(?:fur|fur-dark|headdress|headdress-dark|handle|handle-dark|paddle|ball|ball-shadow), #[0-9a-fA-F]{6}\))$`).MatchString(fill) {
+							if fill, ok := attrs["fill"]; ok && !regexp.MustCompile(`^(#[0-9a-fA-F]{6}|var\(--(?:fur|fur-dark|headdress|headdress-dark|handle|handle-dark|paddle|ball|ball-shadow|emblem), #[0-9a-fA-F]{6}\))$`).MatchString(fill) {
 								t.Errorf("invalid material fill %q", fill)
 							}
 							for k := range attrs {
 								allowed := k == "fill" || k == "fill-rule" ||
 									(el.Name.Local == "svg" && (k == "viewBox" || k == "xmlns")) ||
-									(el.Name.Local == "g" && (k == "class" || k == "data-face" || k == "data-bling")) ||
+									(el.Name.Local == "g" && ch.Key == "pip" && k == "xmlns" && attrs[k] == "http://www.w3.org/2000/svg") ||
+									(el.Name.Local == "g" && (k == "class" || k == "data-face" || k == "data-bling" || (ch.Key == "pip" && (k == "data-pip-part" || k == "data-initial")))) ||
 									(el.Name.Local == "path" && k == "d") ||
 									(el.Name.Local == "circle" && (k == "cx" || k == "cy" || k == "r")) ||
 									(el.Name.Local == "ellipse" && (k == "cx" || k == "cy" || k == "rx" || k == "ry"))
@@ -391,7 +406,7 @@ func TestCharacterDeliveries(t *testing.T) {
 								}
 							}
 						case xml.EndElement:
-							if el.Name.Local == "g" {
+							if el.Name.Local == "g" && depth == faceDepth {
 								faceDepth = 0
 							}
 							depth--
@@ -400,6 +415,17 @@ func TestCharacterDeliveries(t *testing.T) {
 					wantGroups := 1
 					if name == "base" {
 						wantGroups = 0
+					}
+					if ch.Key == "pip" {
+						if name == "base" {
+							wantGroups = 1
+						} else if name == "racket" {
+							wantGroups = 5
+						} else if strings.HasPrefix(name, "face-") {
+							wantGroups = 4
+						} else if name == "bling-initial" {
+							wantGroups = 2
+						}
 					}
 					if roots != 1 || groups != wantGroups || shapes == 0 {
 						t.Errorf("roots=%d groups=%d shapes=%d", roots, groups, shapes)

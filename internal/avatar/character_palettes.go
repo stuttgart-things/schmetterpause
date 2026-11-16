@@ -4,6 +4,9 @@ package avatar
 // material of new characters is the separate empty key. blecki keeps cool or
 // muted wolf tones; the remaining alternatives are subject to visual review.
 func FurPalette(characterKey string) []Colour {
+	if characterKey == "pip" {
+		return PipFurs
+	}
 	if characterKey != "vex" {
 		return Furs
 	}
@@ -27,8 +30,14 @@ var BleckiBlings = []Option{
 	{"ball", "Tischtennisball"},
 }
 
-// BlingPalette returns the jewellery drawn for this character’s single slot.
+// HankBlings contains the jewellery options drawn for Hank's single slot.
+var HankBlings = []Option{{NoBling, "Kein Schmuck"}, {"initial", "Initiale"}}
+
+// BlingPalette returns the jewellery drawn for a character's single slot.
 func BlingPalette(characterKey string) []Option {
+	if characterKey == "pip" {
+		return HankBlings
+	}
 	if characterKey == "vex" {
 		return BleckiBlings
 	}
@@ -36,4 +45,28 @@ func BlingPalette(characterKey string) []Option {
 		return Blings
 	}
 	return []Option{{NoBling, "Kein Schmuck"}}
+}
+
+// PipFurs keep the face/bib distinct and the coat visible on a black panel.
+var PipFurs = []Colour{
+	{"grey", "Grau", "#8793a5", "#5a6678"},
+	{"blue-grey", "Blaugrau", "#587e9b", "#38556e"},
+}
+
+// HeaddressPalette retains shared colours except Pip's navy-adjacent Lapis.
+// With a coat supplied, grey also excludes Silver. Pip's native pink is Original.
+func HeaddressPalette(characterKey string, fur ...string) []Colour {
+	if characterKey != "pip" {
+		return Headdresses
+	}
+	var palette []Colour
+	for _, c := range Headdresses {
+		if c.Key == SameAsFur {
+			c.Name = "Original"
+		}
+		if c.Key != "lapis" && (len(fur) == 0 || fur[0] != "grey" || c.Key != "silver") {
+			palette = append(palette, c)
+		}
+	}
+	return palette
 }

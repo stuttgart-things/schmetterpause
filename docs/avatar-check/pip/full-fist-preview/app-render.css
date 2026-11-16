@@ -1,0 +1,2112 @@
+/* Hand-written CSS, no framework — in line with invariant 7.
+ *
+ * Dark only. A second palette would have to be kept in step with this one at
+ * every change, and neither would end up as distinct as one of them can be.
+ * The QR sheet is the exception: it prints black on white, see the print
+ * block at the end.
+ */
+
+@font-face {
+	font-family: "Space Grotesk";
+	font-style: normal;
+	font-weight: 400 700;
+	font-display: swap;
+	src: url("/static/fonts/space-grotesk-latin.woff2") format("woff2");
+	unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6,
+		U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122,
+		U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+/* Names travel: latin-ext costs 19 kB and covers most of the spellings a
+   European office produces. */
+@font-face {
+	font-family: "Space Grotesk";
+	font-style: normal;
+	font-weight: 400 700;
+	font-display: swap;
+	src: url("/static/fonts/space-grotesk-latin-ext.woff2") format("woff2");
+	unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7,
+		U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F,
+		U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F,
+		U+A720-A7FF;
+}
+
+@font-face {
+	font-family: "JetBrains Mono";
+	font-style: normal;
+	font-weight: 400 700;
+	font-display: swap;
+	src: url("/static/fonts/jetbrains-mono-latin.woff2") format("woff2");
+	unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6,
+		U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+2074, U+20AC,
+		U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+	font-family: "JetBrains Mono";
+	font-style: normal;
+	font-weight: 400 700;
+	font-display: swap;
+	src: url("/static/fonts/jetbrains-mono-latin-ext.woff2") format("woff2");
+	unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7,
+		U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F,
+		U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F,
+		U+A720-A7FF;
+}
+
+:root {
+	color-scheme: dark;
+
+	--bg: #0a0a12;
+	/* Cards sit on the background, panels sit inside cards. The step between
+	   them has to be big enough that a card reads as an object — too close
+	   together and the whole page looks like fog. Two steps are enough; a
+	   third makes every surface look like a separate component. */
+	--card: #15152a;
+	--panel: #1e1e3d;
+	--line: #2e2e55;
+	/* The border of something you type into, which WCAG 1.4.11 wants at 3:1
+	   against what is on either side of it. --line is a hairline between
+	   areas and stays quiet; this one is a boundary of a control and has to
+	   be findable. Measured: 3.62:1 against --card, 3.24:1 against --panel.
+	   A value that cleared one and not the other would be half compliant. */
+	--field-line: #6a6aa8;
+
+	--fg: #ececff;
+	--muted: #8f8fb8;
+
+	/* Between the two: text that is secondary but still meant to be read at
+	   length, rather than a label somebody glances at. --muted is right for
+	   a caption and too quiet for a sentence explaining a rule on a sheet
+	   somebody reads from a step back. 9.1:1 against --bg. */
+	--fg-soft: #c6c6e4;
+
+	/* One action colour. Everything clickable and consequential is this
+	   violet, everything else stays out of the way.
+
+	   Two tokens rather than one, because a single violet cannot do both
+	   jobs: as a fill it has to be dark enough for white text (4.78:1 here),
+	   as text it has to be light enough against a card (5.01:1). The old
+	   #7c5cff sat between the two and missed AA in both directions — 4.35
+	   under white, 4.12 on a card. */
+	--accent: #7452ff;
+	--accent-text: #8c70ff;
+	--accent-ink: #ffffff;
+
+	--ok: #3ddc97;
+	/* Failure has a colour of its own. Reusing the accent for it would mean
+	   the same colour says "press me" and "this went wrong". */
+	--bad: #ff5d73;
+
+	/* The podium: only first place carries a colour. */
+	/* The mascot's own orange, on purpose: it is the only place the logo
+	   colour appears in the interface, and it marks the one thing worth
+	   marking. Dark ink on it measures 8.9:1. */
+	/* Amber for "this has been sitting too long". Not --bad: a result nobody
+	   has confirmed yet is not an error, and colouring it like one would put
+	   an alarm on the ordinary end of a slow day. 8.9:1 against --bg. */
+	--warn: #f8b45a;
+
+	--rank-1: #f89828;
+	--rank-ink: #0a0a12;
+
+	--font-ui: "Space Grotesk", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+	--font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+
+	--radius: 0.875rem;
+	--radius-sm: 0.5rem;
+
+	/* One timing for every state change, so the second person to add a hover
+	   does not invent a second one. Short enough to read as the control
+	   answering rather than as an animation playing: at 120ms a pointer crossing
+	   three navigation links leaves no trail behind it. */
+	--dur: 120ms;
+	--ease: ease-out;
+}
+
+* { box-sizing: border-box; }
+
+/* Column layout so a short page still fills the height and the content does
+   not float halfway up it. */
+body {
+	margin: 0;
+	min-height: 100vh;
+	display: flex;
+	flex-direction: column;
+	background: var(--bg);
+	color: var(--fg);
+	font: 400 16px/1.55 var(--font-ui);
+	-webkit-font-smoothing: antialiased;
+}
+
+/* Present for anything that navigates by structure, absent for anything that
+   navigates by looking. */
+.sr-only {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	margin: -1px;
+	padding: 0;
+	overflow: hidden;
+	clip-path: inset(50%);
+	white-space: nowrap;
+}
+
+/* --- Kopf und Navigation ------------------------------------------------ */
+
+.topbar {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 0.75rem;
+	width: 100%;
+	max-width: 46rem;
+	margin: 0 auto;
+	padding: 1.25rem 1.25rem 0;
+}
+
+/* The wordmark splits so the second half carries the accent: the app says its
+   own name in the colour everything actionable uses. */
+.brand {
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+	font-weight: 700;
+	font-size: 1.35rem;
+	letter-spacing: -0.02em;
+	color: var(--fg);
+	text-decoration: none;
+}
+
+/* 28 px is what the wordmark is tall. The file is 180 px so a phone with a
+   dense screen has pixels to spare; width and height sit on the element as
+   well, so the bar does not jump while the image loads. */
+.brand-logo {
+	display: block;
+	width: 28px;
+	height: 28px;
+}
+
+.brand-mark { color: var(--accent-text); }
+
+.tagline {
+	font-family: var(--font-mono);
+	font-size: 0.7rem;
+	letter-spacing: 0.12em;
+	text-transform: uppercase;
+	color: var(--muted);
+	margin-right: auto;
+}
+
+/* On a phone the top bar has a job to do and the subtitle has not. */
+@media (max-width: 34rem) {
+	.tagline { display: none; }
+}
+
+/* --- Wer bin ich ------------------------------------------------------- */
+
+/* State belongs in the bar, actions belong in cards. Two full-width cards
+   saying "you are signed in" and "nothing to do" were most of the first
+   screen and carried almost nothing. */
+.whoami {
+	display: flex;
+	align-items: center;
+	gap: 0.4rem;
+	flex: none;
+}
+
+.whoami-name {
+	font-family: var(--font-mono);
+	font-size: 0.78rem;
+	letter-spacing: 0.04em;
+	color: var(--fg);
+	text-decoration: none;
+	padding: 0.3rem 0.7rem;
+	border: 1px solid var(--line);
+	border-radius: 999px;
+	background: var(--card);
+	max-width: 11rem;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.whoami-name:hover { border-color: var(--accent); }
+
+/* Absent rather than greyed out at zero: a badge showing nothing is still a
+   thing to read past. */
+.whoami-badge {
+	display: inline-grid;
+	place-items: center;
+	min-width: 1.5rem;
+	height: 1.5rem;
+	padding: 0 0.4rem;
+	border-radius: 999px;
+	background: var(--accent);
+	color: var(--accent-ink);
+	font-family: var(--font-mono);
+	font-weight: 700;
+	font-size: 0.72rem;
+	text-decoration: none;
+}
+
+main {
+	flex: 1;
+	width: 100%;
+	max-width: 46rem;
+	margin: 0 auto;
+	padding: 1.5rem 1.25rem 3rem;
+}
+
+/* The heading of a card, set once. It had never been set at all: every h2 in
+   the application was the browser's — 24px bold, with the UA's own margins —
+   and h1 at 390px measures 25.6px. A card heading 1.6px below the page
+   heading is not a hierarchy, it is two headings, and three rules in this file
+   had already been written to patch the UA margin in three different places.
+
+   1.25rem is a step down and not a demotion, and the difference matters:
+   /statistics and /tournaments carry no h1 at all, so their h2 is the page
+   title and has to still read as one. That missing h1 is a structural problem
+   of its own, and not one a font-size can fix. */
+h2 {
+	margin: 0 0 0.7rem;
+	font-size: 1.25rem;
+	font-weight: 700;
+	letter-spacing: -0.01em;
+}
+
+/* The one level below it, which only the tournament schedule uses ("Runde 1").
+   Defining h2 without it would have moved the collision down a level rather
+   than removed it: the browser's h3 is 18.7px, which is 1.3px under the h2
+   above. */
+h3 {
+	margin: 1.1rem 0 0.5rem;
+	font-size: 1rem;
+	font-weight: 700;
+}
+
+h1 {
+	font-size: clamp(2rem, 7vw, 2.75rem);
+	font-weight: 700;
+	letter-spacing: -0.03em;
+	line-height: 1.1;
+	margin: 0.5rem 0 1.5rem;
+}
+
+/* The navigation, above the content. It used to sit under a ranking that
+   grows with every player, so on a phone the way to the other pages moved
+   further away the more the app was used. */
+.mainnav {
+	width: 100%;
+	max-width: 46rem;
+	margin: 0.9rem auto 0;
+	padding: 0 1.25rem 0.9rem;
+	display: flex;
+	flex-wrap: wrap;
+	gap: 1.25rem;
+	font-family: var(--font-mono);
+	font-size: 0.72rem;
+	letter-spacing: 0.06em;
+	text-transform: uppercase;
+	border-bottom: 1px solid var(--line);
+}
+
+.mainnav a {
+	color: var(--muted);
+	text-decoration: none;
+}
+
+/* Pushed to the far end of the row rather than pinned to a corner of the
+   screen: a fixed element would sit over the entry form, which on a phone is
+   exactly where the thumb goes. Wraps onto its own line when the row runs
+   out, still right-aligned. */
+.mainnav-tools {
+	display: flex;
+	gap: 1.25rem;
+	margin-left: auto;
+}
+
+.mainnav a:hover { color: var(--fg); }
+
+.mainnav a:focus-visible {
+	outline: 2px solid var(--accent);
+	outline-offset: 2px;
+	border-radius: 2px;
+}
+
+/* --- Karten ------------------------------------------------------------ */
+
+/* .card is in the list because fourteen sections across /statistics,
+   /tournaments and /info have been asking for it and getting nothing: the
+   look lives in a hand-kept list of names, and that one was never added. Those
+   two pages have been running without surfaces — flat text where every other
+   page has objects. */
+.card, .session, .match, .pending, .running, .live, .standings, .stat {
+	margin: 0 0 1rem;
+	padding: 1.1rem 1.25rem;
+	background: var(--card);
+	border: 1px solid var(--line);
+	border-radius: var(--radius);
+}
+
+/* --- Zweiter Weg herein -------------------------------------------------- */
+
+/* The other way in, under whichever card is showing. Quiet either way: it is
+   the second choice by construction, and a second full-width button would
+   present two equal ones. Usually it carries joining, under the sign-in form;
+   on an empty roster the two swap places. */
+.session-alt {
+	margin: 0.9rem 0 0;
+	padding-top: 0.9rem;
+	border-top: 1px solid var(--line);
+	color: var(--muted);
+	font-size: 0.9rem;
+}
+
+/* The way in for somebody new, at the top of the sign-in card rather than
+   under it (docs/adr/0018): it is what a stranger needs to read before a list
+   of names they are not on. A sentence and a link, not a second filled
+   button — the card is still the sign-in card. */
+.session-new {
+	margin: 0 0 0.9rem;
+	color: var(--muted);
+}
+
+.session-new .linklike { font-weight: 600; }
+
+/* Everything under the name waits for the name. The placeholder leaves the
+   required select :invalid until somebody is chosen; a browser without :has
+   ignores the rule and shows the whole form, which is how it looked before. */
+.signin:has(select:invalid) .signin-secret { display: none; }
+
+/* A button, because it does something rather than going somewhere — but it
+   reads as a link, because a second full-width button beside "Anmelden" would
+   present two equal choices where one is the common case. */
+.linklike {
+	display: inline;
+	width: auto;
+	margin: 0;
+	padding: 0;
+	background: none;
+	border: none;
+	color: var(--accent-text);
+	font: inherit;
+	text-decoration: underline;
+	cursor: pointer;
+}
+
+.linklike:hover { color: var(--fg); }
+
+.linklike:focus-visible {
+	outline: 2px solid var(--accent);
+	outline-offset: 2px;
+	border-radius: 2px;
+}
+
+/* The secret and its reveal button share a row. The field takes the space; the
+   button takes what it needs. */
+.secret-field {
+	display: flex;
+	gap: 0.5rem;
+	align-items: stretch;
+}
+
+.secret-field input { flex: 1; min-width: 0; }
+
+.secret-reveal {
+	flex: none;
+	width: auto;
+	margin: 0;
+	padding: 0 0.85rem;
+	font-size: 0.8rem;
+}
+
+/* --- Wiederherstellungscode -------------------------------------------- */
+
+/* The one card on the page that breaks the house pattern, on purpose.
+   ADR-0006 asks for a display that cannot be read past, and a heading the size
+   of every other heading on the page is a fair description of what gets read
+   past. So this one is larger than the house card heading, and the card
+   carries the accent along its left edge instead of the usual even outline.
+
+   It used to spell out font-family, weight, letter-spacing, text-transform and
+   colour to reach that, because there was no house card heading to differ
+   from — the comment described one the stylesheet never had, and the size it
+   landed on, 1.15rem, was in fact *smaller* than the 24px every other card
+   heading got from the browser. Now there is a house heading, this one is
+   larger than it, and the difference is a single line. */
+.recovery { border-left: 3px solid var(--accent); }
+
+.recovery h2 {
+	font-size: 1.5rem;
+	margin-bottom: 0.75rem;
+}
+
+.recovery-code {
+	margin: 0 0 0.85rem;
+	padding: 0.8rem 0.9rem;
+	background: var(--panel);
+	border: 1px solid var(--line);
+	border-radius: var(--radius-sm);
+	text-align: center;
+	overflow-wrap: anywhere;
+}
+
+/* clamp rather than a fixed size: nineteen monospaced characters with letter
+   spacing do not fit a 390px phone at the size this deserves on a laptop, and
+   a code that wraps mid-group is a code somebody mistypes.
+
+   The spacing is not decoration. The alphabet exists so that no two
+   characters are confused when the code is read aloud (see internal/credential),
+   and setting it tight would hand that back.
+
+   user-select: all so one tap takes the whole thing. Dragging a selection
+   across sixteen characters on a phone is the step at which people give up
+   and decide not to save it after all. */
+.recovery-code code {
+	font-family: var(--font-mono);
+	font-size: clamp(1rem, 4.6vw, 1.4rem);
+	font-weight: 700;
+	letter-spacing: 0.08em;
+	color: var(--fg);
+	user-select: all;
+	-webkit-user-select: all;
+}
+
+.recovery-lead { margin: 0 0 0.75rem; }
+.recovery-lead strong { color: var(--fg); }
+.recovery p:last-child { margin-bottom: 0; }
+
+.recovery-download { margin: 0 0 0.85rem; }
+
+/* A link that saves a file, dressed as the outlined button. A real button
+   cannot carry the download attribute, and a filled one would compete with
+   the code above it for being the thing on the card. */
+.button-link {
+	display: inline-block;
+	padding: 0.6rem 1.1rem;
+	font-family: var(--font-ui);
+	font-size: 1rem;
+	font-weight: 600;
+	color: var(--fg);
+	text-decoration: none;
+	border: 1px solid var(--line);
+	border-radius: var(--radius-sm);
+}
+
+.button-link:hover { background: var(--panel); }
+
+/* --- Rechte -------------------------------------------------------------- */
+
+/* A list, not a table: it has one column, and a table would promise more. */
+.admin-list {
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.admin-list li {
+	padding: 0.4rem 0;
+	border-bottom: 1px solid var(--line);
+}
+
+.admin-list li:last-child { border-bottom: none; }
+
+.admin-list a { color: var(--fg); }
+
+/* A user agent is long and is not prose. It wraps rather than pushing the
+   revoke button off the edge of a phone. */
+/* The settings table on /admin. The variable sits small under its label, and
+   a long base URL wraps rather than widening the table past a phone. */
+.instance-var { font-size: 0.75rem; }
+.instance-value { overflow-wrap: anywhere; }
+
+.kiosk-agent {
+	max-width: 22rem;
+	font-size: 0.8rem;
+	overflow-wrap: anywhere;
+}
+
+/* --- Status eines Matches ----------------------------------------------- */
+
+/* The badge that says a result is not settled yet, beside the set score.
+   Issue #76: the state used to sit in the TTR column in place of the number,
+   so a row waiting for your confirmation looked like a row whose rating had
+   simply not moved — and the explanation lived in a title attribute, which a
+   phone never shows because a phone has no hover. */
+.matches td.score { white-space: nowrap; }
+
+/* Won or lost, from the side of whoever the list is about — the player it is
+   filtered to, or the reader on the unfiltered one. A stripe down the edge of
+   the row rather than a tinted row: the TTR cell in the same row is already
+   green or red, and two coloured surfaces argue with each other.
+
+   Only on settled rows. A pending result has a winner on the table and has
+   counted for nothing, and a green edge would say otherwise.
+
+   Nothing depends on seeing it: the row names the winner and the loser in the
+   two columns it opens with. */
+.matches tbody tr.match-won td:first-child { box-shadow: inset 3px 0 0 var(--ok); }
+.matches tbody tr.match-lost td:first-child { box-shadow: inset 3px 0 0 var(--bad); }
+
+.state {
+	display: inline-block;
+	margin-left: 0.4rem;
+	padding: 0.05rem 0.42rem;
+	border-radius: 999px;
+	font-family: var(--font-mono);
+	font-size: 0.62rem;
+	font-weight: 700;
+	letter-spacing: 0.06em;
+	text-transform: uppercase;
+	vertical-align: middle;
+}
+
+/* Waiting is not failure, so it does not get the failure colour: a result
+   nobody has confirmed yet is the ordinary state of a match somebody entered
+   a minute ago. */
+.state-pending {
+	color: var(--fg);
+	background: color-mix(in srgb, var(--accent) 30%, transparent);
+}
+
+/* Contested is louder, because it stays that way until somebody does
+   something about it. */
+.state-disputed {
+	color: var(--bad);
+	background: color-mix(in srgb, var(--bad) 18%, transparent);
+}
+
+/* --- PIN ---------------------------------------------------------------- */
+
+/* The rule between the code and the PIN offer on the join card. They are two
+   different things about the same subject, and without a line the second one
+   reads as a footnote to the first — which issue #88 asks it not to be. */
+.hairline {
+	height: 0;
+	margin: 1.1rem 0;
+	border: 0;
+	border-top: 1px solid var(--line);
+}
+
+.pin-offer label,
+.pin-field label {
+	display: block;
+	margin-bottom: 0.15rem;
+}
+
+/* The explanation sits between the label and the field rather than under the
+   whole form, because it answers the question somebody has while looking at
+   the empty box: how long, and does this replace my code. */
+.pin-offer .muted,
+.pin-field .muted {
+	margin: 0 0 0.6rem;
+	font-size: 0.85rem;
+}
+
+/* The example PIN is something to read, not something to copy — so it is set
+   in the numbers' own face, and not in the accent a link would have. */
+.pin-example {
+	font-family: var(--font-mono);
+	color: var(--fg);
+}
+
+.pin-card, .recovery-card, .fob-card, .figure-card { margin-top: 1.5rem; }
+
+/* One row per linked fob: what it is on the left, the way to remove it on the
+   right, wrapping under each other on a phone. */
+.fob-list {
+	list-style: none;
+	margin: 0 0 1rem;
+	padding: 0;
+}
+
+.fob-list li {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.5rem 1rem;
+	align-items: center;
+	justify-content: space-between;
+	padding: 0.5rem 0;
+	border-bottom: 1px solid var(--line);
+}
+
+.fob-list .muted {
+	display: block;
+	font-size: 0.85rem;
+}
+
+/* The way out, under your own name. One row where it fits: the button and the
+   sentence naming its price belong together, and on a phone the sentence
+   wraps under the button rather than squeezing it. */
+.signout {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 0.4rem 0.8rem;
+	margin: 0 0 1rem;
+	font-size: 0.85rem;
+}
+
+.signout button {
+	margin-top: 0;
+	padding: 0.4rem 0.9rem;
+	font-size: 0.9rem;
+}
+
+/* The sentence that tells the code and the PIN apart, above both cards. It
+   sits outside them on purpose: it is about the pair, and inside either one it
+   would read as that card's own small print. */
+.access-head {
+	margin: 2rem 0 0.9rem;
+}
+
+.access-head h2 { margin: 0 0 0.4rem; }
+
+.access-head p {
+	margin: 0;
+	max-width: 48ch;
+}
+
+.access-head strong { color: var(--fg); }
+
+/* Heading and the refresh button on one line. The button sits at the end of
+   the row rather than under the heading, so the card does not grow taller for
+   a control most readers never press. */
+/* Only the refresh button lives here now, at the right end of the row where
+   it sat when a heading held the left one. */
+.standings-head {
+	display: flex;
+	justify-content: flex-end;
+}
+
+/* Quiet on purpose: pressing it is never the point of the visit, and a button
+   the size of "Eintragen" would say otherwise. */
+.refresh {
+	flex: none;
+	padding: 0.3rem 0.7rem;
+	font-size: 0.8rem;
+}
+
+/* --- Statuskästchen ---------------------------------------------------- */
+
+/* Not a card, though it was one until .card started working: the <dl> sits
+   inside the section on /info, and once that section became the surface the
+   list was painting a second one inside the first. */
+.status {
+	margin: 0;
+	display: grid;
+	grid-template-columns: auto 1fr;
+	gap: 0.4rem 1.25rem;
+	font-family: var(--font-mono);
+	font-size: 0.8rem;
+}
+
+.status dt {
+	color: var(--muted);
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+}
+
+.status dd {
+	margin: 0;
+	font-variant-numeric: tabular-nums;
+}
+
+/* --- Zustände ----------------------------------------------------------- */
+
+/* Two readings in a status list and the sentence a refused form comes back
+   with, wearing the same two names. Until now neither name had a rule, so
+   "Das passt nicht. Prüf die PIN oder den Wiederherstellungscode." arrived in
+   the body colour — the same colour as the sentence explaining the field above
+   it. role="alert" is already on those paragraphs, so a screen reader was
+   served all along; this is the half of the message the eye gets.
+
+   Colour is not the only carrier either way: every one of these messages says
+   in words what happened, which is what somebody who cannot tell the two
+   colours apart reads. */
+.ok { color: var(--ok); }
+.fail { color: var(--bad); }
+
+/* A caution is not a failure. "Du hast keine PIN" describes what would happen
+   on a new phone; nothing has gone wrong, and --bad is reserved for the thing
+   that has. That is the distinction .state-pending already makes for a result
+   nobody has confirmed yet, and --warn is the colour .age.stale already makes
+   it in. */
+.warn { color: var(--warn); }
+
+/* A whole sentence rather than a word in a list: it needs the room to be found
+   under a form and the weight to be read before the form is tried again. The
+   <dd> readings in the status list keep the tighter setting of the list around
+   them. */
+p.ok, p.fail, p.warn {
+	margin: 0.9rem 0 0;
+	font-weight: 600;
+}
+
+/* --- Bewegung ----------------------------------------------------------- */
+
+/* Every state change in the interface runs on one timing. Written as a single
+   rule rather than a property on each control, so a new control joins a list
+   instead of inventing a duration, and so switching it off has one place to
+   happen.
+
+   Only properties that paint. No layout property is in the list, so nothing
+   here can animate a reflow, and outline is deliberately absent: a focus ring
+   that fades in is a focus ring that arrives after the key was pressed. */
+a, button, input, select, summary, .whoami-name {
+	transition:
+		color var(--dur) var(--ease),
+		background-color var(--dur) var(--ease),
+		border-color var(--dur) var(--ease),
+		filter var(--dur) var(--ease);
+}
+
+/* Somebody who asked their system for less motion gets none. These transitions
+   are the only motion in the stylesheet — there is no @keyframes in the
+   file — so switching them off here is the whole answer. Anything added later
+   that moves rather than fades has to be added here as well. */
+@media (prefers-reduced-motion: reduce) {
+	a, button, input, select, summary, .whoami-name {
+		transition: none;
+	}
+}
+
+/* --- Formulare --------------------------------------------------------- */
+
+form { margin: 0; }
+
+label {
+	display: inline-block;
+	min-width: 5.5rem;
+	font-family: var(--font-mono);
+	font-size: 0.72rem;
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+	color: var(--muted);
+}
+
+input, select {
+	font: inherit;
+	padding: 0.5rem 0.6rem;
+	background: var(--panel);
+	color: var(--fg);
+	border: 1px solid var(--field-line);
+	border-radius: var(--radius-sm);
+}
+
+/* The native control chrome was the one thing on the card that belonged to
+   the browser rather than to this stylesheet — a grey double arrow on a panel
+   that is trying to look built. The arrow is drawn here instead, in the muted
+   colour every other quiet mark on the page uses.
+
+   The colour is written out rather than taken from var(--muted): a data URI is
+   not a stylesheet and cannot see a custom property. If --muted moves, this
+   moves with it by hand — which is why it is the only place in the file that
+   repeats a palette value. */
+select {
+	-webkit-appearance: none;
+	appearance: none;
+	padding-right: 2.1rem;
+	background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'%3E%3Cpath fill='none' stroke='%238f8fb8' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round' d='M1 1.75 6 6.25 11 1.75'/%3E%3C/svg%3E");
+	background-repeat: no-repeat;
+	background-position: right 0.75rem center;
+	background-size: 0.7rem;
+}
+
+input:focus-visible, select:focus-visible, button:focus-visible {
+	outline: 2px solid var(--accent);
+	outline-offset: 2px;
+}
+
+button {
+	font-family: var(--font-ui);
+	font-size: 1rem;
+	font-weight: 600;
+	margin-top: 0.9rem;
+	padding: 0.6rem 1.1rem;
+	background: var(--accent);
+	color: var(--accent-ink);
+	border: 1px solid var(--accent);
+	border-radius: var(--radius-sm);
+	cursor: pointer;
+}
+
+button:hover { filter: brightness(1.1); }
+
+/* A button that will not do anything has to look like it. Not the accent at
+   reduced opacity — that reads as the page still loading; a flat outline
+   reads as "not yet". The cursor says the same thing on the way in. */
+button:disabled {
+	background: transparent;
+	color: var(--muted);
+	border-color: var(--line);
+	cursor: not-allowed;
+}
+
+button:disabled:hover { filter: none; }
+
+/* .secret-reveal is in the list rather than carrying the class in the markup:
+   it is a reveal button everywhere it appears and there is no call site where
+   it should be the filled one. Without this it inherited the accent fill from
+   `button` and stood beside "Anmelden" in the same violet at the same weight,
+   which presented a way of looking at the field as an equal to signing in. */
+button.secondary, .secret-reveal {
+	background: transparent;
+	color: var(--fg);
+	border-color: var(--line);
+}
+
+button.secondary:hover, .secret-reveal:hover {
+	background: var(--panel);
+	filter: none;
+}
+
+/* Label over the field, not beside it.
+
+   Beside it, the label column was 5.5rem of a 340px phone and the control got
+   what was left: "Namen wählen …" sat truncated in a picker that could not
+   grow, on the one card every arrival meets. The field below it now has the
+   width of the card, and the form reads the way the secret field two rules
+   down already did — that inconsistency is what gave this away.
+
+   The label claims the line by flex-basis rather than by a break, so the
+   controls under it stay a row: "Best of 3" and "bis 11" are one setting and
+   still sit side by side. .pick is out of it — those labels are checkboxes
+   with their own text, not the name of the row. */
+.row {
+	display: flex;
+	align-items: center;
+	gap: 0.3rem 0.5rem;
+	margin-bottom: 0.85rem;
+	flex-wrap: wrap;
+}
+
+.row > label:not(.pick) { flex: 0 0 100%; }
+
+/* The bottom of the card is not the next field. Without this the sign-in card
+   carried a row's worth of empty space under its only control, which is most
+   of what made it look unfinished. */
+.row:last-child { margin-bottom: 0; }
+
+/* Grow to the line, but from a basis small enough that two of them still fit
+   one: at 8rem the mode pair stays on a single row at 390px, where a basis
+   the width of a comfortable field would have stacked them. min-width: 0
+   because a select refuses to go below its longest option without it, and the
+   longest option is a name nobody has typed yet. */
+.row > select,
+.row > input,
+.row > .row-group {
+	flex: 1 1 8rem;
+	min-width: 0;
+}
+
+.sets {
+	border: none;
+	padding: 0;
+	margin: 0.75rem 0 0;
+
+	/* One width for the box, the two steps under it and the heading over it,
+	   so a column is a column all the way down. It gives way on a narrow
+	   phone rather than pushing the row off the side: an indented pairing
+	   form on a 320-pixel screen is the tightest this gets, and the lower
+	   bound is what still fits there. */
+	--score-w: clamp(4.75rem, 25vw, 6rem);
+}
+
+.sets legend {
+	font-family: var(--font-mono);
+	font-size: 0.72rem;
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+	color: var(--muted);
+	padding: 0;
+}
+
+/* Aligned at the top, not centred: a score is a box with two steps under it,
+   and centring would put the colon between the steps rather than between the
+   numbers it separates. */
+.set {
+	display: flex;
+	align-items: flex-start;
+	gap: 0.4rem;
+	margin-bottom: 0.75rem;
+}
+
+/* Big enough to hit with a thumb without looking, which is the whole job:
+   this is filled in standing at a table, one-handed, holding a bat. Forty-
+   eight pixels tall, digits at 1.5rem, tabular so the column does not jitter
+   while typing. */
+.set input[type="number"] {
+	width: var(--score-w);
+	min-height: 3rem;
+	padding: 0.3rem 0.4rem;
+	text-align: center;
+	font-family: var(--font-mono);
+	font-size: 1.5rem;
+	font-variant-numeric: tabular-nums;
+
+	/* The native spinner is a pair of four-pixel arrows stacked inside the
+	   box — exactly the kind of target this form is getting rid of, and on a
+	   phone it is not drawn at all. The steps below are the replacement, at
+	   a size that can be hit. */
+	-moz-appearance: textfield;
+	appearance: textfield;
+}
+
+.set input[type="number"]::-webkit-outer-spin-button,
+.set input[type="number"]::-webkit-inner-spin-button {
+	-webkit-appearance: none;
+	margin: 0;
+}
+
+/* Lined up with the middle of the box rather than the top of the row. */
+.set:not(.set-head) .set-no,
+.set:not(.set-head) .colon {
+	line-height: 3rem;
+}
+
+.set-no {
+	width: 1.5rem;
+	font-family: var(--font-mono);
+	color: var(--muted);
+	text-align: right;
+}
+
+.colon { color: var(--muted); }
+
+/* The heading row lines up with the boxes below it by having the same shape:
+   same flex row, same widths, so each name sits over the box it belongs to
+   rather than near it. */
+.set-head {
+	margin-bottom: 0.5rem;
+}
+
+/* Box on top, its two steps directly under it and exactly as wide: they have
+   to look like they belong to that box and to no other. Stacked rather than
+   side by side, because two boxes and four buttons in one row do not fit a
+   phone.
+
+   Named score-field, not score. The match list heads its set-count cell
+   <td class="num score">, so a bare .score reached it too and turned a table
+   cell into an inline-flex column: the cell then stopped filling its row, its
+   bottom border sat halfway up, and the badge beside the score dropped under
+   it. A class that sets display has no business being named after the thing
+   two templates happen to call the same. */
+.score-field {
+	display: inline-flex;
+	flex-direction: column;
+	gap: 0.3rem;
+}
+
+.stepper {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	gap: 0.25rem;
+	width: var(--score-w);
+}
+
+/* Forty-four pixels tall and half a box wide. This replaced a sixteen-pixel
+   slider rail that had to be aimed at, so the size is the point of it —
+   below this it would be the same mistake in a different shape.
+
+   Quiet by default and loud only while pressed: there are twelve of these on
+   an entry form and one button that submits it, and the accent belongs to
+   the one. */
+.step {
+	margin: 0;
+	padding: 0;
+	min-height: 2.75rem;
+	background: var(--panel);
+	color: var(--fg);
+	border: 1px solid var(--field-line);
+	font-family: var(--font-mono);
+	font-size: 1.25rem;
+	line-height: 1;
+	/* A thumb sliding off a step must not take the page's selection with it,
+	   and a double tap on + must not zoom. */
+	touch-action: manipulation;
+	-webkit-user-select: none;
+	user-select: none;
+}
+
+.step:hover {
+	background: var(--card);
+	filter: none;
+}
+
+.step:active {
+	background: var(--accent);
+	color: var(--accent-ink);
+	border-color: var(--accent);
+}
+
+/* Every box comes up with a zero in it, so a row that still reads 0:0 was not
+   played — and it says so by keeping its digits quiet. Per row rather than
+   per box: 11:0 is a real set, and dimming the zero in it would call a result
+   an absence.
+
+   Quiet is the default rather than the exception: a freshly swapped row
+   starts at 0:0, and this way it starts right without anything having to
+   run. */
+.set input[type="number"] { color: var(--muted); }
+.set.has-score input[type="number"] { color: var(--fg); }
+
+.set-side {
+	width: var(--score-w);
+	text-align: center;
+	font-family: var(--font-mono);
+	font-size: 0.68rem;
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+	color: var(--muted);
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.set-head .colon {
+	/* Holds the colon's width so the columns stay aligned, shows nothing. */
+	visibility: hidden;
+}
+
+@media (max-width: 30rem) {
+	.set-side { font-size: 0.62rem; }
+}
+
+/* --- Zu bestätigen ----------------------------------------------------- */
+
+.pending-list { list-style: none; margin: 0; padding: 0; }
+
+.pending-list > li {
+	padding: 0.85rem 0;
+	border-top: 1px solid var(--line);
+}
+
+.pending-list > li:first-child { border-top: none; padding-top: 0; }
+
+.pending-match p { margin: 0.15rem 0; }
+
+.sets-line {
+	font-family: var(--font-mono);
+	font-variant-numeric: tabular-nums;
+	font-size: 0.85rem;
+}
+
+.actions { display: flex; gap: 0.5rem; margin-top: 0.6rem; }
+.actions button { margin-top: 0; }
+
+.gain { color: var(--ok); font-weight: 700; }
+.loss { color: var(--bad); font-weight: 700; }
+
+.settled, .disputed { padding: 0.85rem 0; }
+
+/* The rating change is what everybody scrolls to after a confirmation, so it
+   gets the size that says so. */
+.settled .gain, .settled .loss { font-size: 1.6rem; }
+
+/* --- Wartet auf den Gegner ---------------------------------------------- */
+
+/* The second list is read, not acted on, so it recedes: no buttons and a
+   lighter weight than the one above it. It must still be findable, because
+   the whole point is that the reporter had no way to see this at all. */
+.waiting-list > li { color: var(--fg-soft); }
+
+/* How long something has waited, inline with the score. Below an hour the
+   server sends nothing and this never renders — a number on the ordinary
+   case is how a field teaches its reader to skip it. */
+.age {
+	font-family: var(--font-mono);
+	font-variant-numeric: tabular-nums;
+	font-size: 0.85rem;
+	color: var(--muted);
+	/* Set apart from the score it follows. A space in the template would do
+	   it too, but the sets line is built from a loop and a stray text node
+	   there is one edit away from landing in the wrong place. */
+	margin-left: 0.6rem;
+}
+
+/* Past a day it stops being an aside. Colour on the label rather than the
+   whole entry: the reader is looking for which one is old, not for a wall
+   that is uniformly alarming. */
+.age.stale { color: var(--warn); font-weight: 700; }
+
+/* A rule down the left edge, so a stale entry is findable while scrolling
+   past without reading. Padding keeps the text where it was, so entries do
+   not shift sideways as they age. */
+.pending-list > li.stale {
+	border-left: 3px solid var(--warn);
+	padding-left: 0.7rem;
+}
+
+/* --- Rangliste und Profil ---------------------------------------------- */
+
+/* A table refuses to shrink below the width its content needs, so a name
+   nobody anticipated would take the whole page sideways with it. The table
+   scrolls inside its own box instead, and the page never does. */
+.table-scroll {
+	/* Positioned so the box is the containing block for what is inside it.
+	   Without this the absolutely positioned screen-reader labels in the
+	   cells belong to the document instead, which cannot clip them — and a
+	   dozen players' worth of them dragged the whole page sideways on a
+	   phone while the table itself scrolled perfectly inside its box. */
+	position: relative;
+	overflow-x: auto;
+	overscroll-behavior-x: contain;
+}
+
+.table-scroll:focus-visible {
+	outline: 2px solid var(--accent);
+	outline-offset: 2px;
+}
+
+table {
+	width: 100%;
+	border-collapse: collapse;
+}
+
+th, td {
+	padding: 0.5rem;
+	text-align: left;
+	border-bottom: 1px solid var(--line);
+}
+
+th {
+	font-family: var(--font-mono);
+	font-weight: 700;
+	font-size: 0.68rem;
+	letter-spacing: 0.1em;
+	text-transform: uppercase;
+	color: var(--muted);
+}
+
+tbody tr:last-child td { border-bottom: none; }
+
+/* Names are the one column with content of unpredictable width, so they are
+   the one column allowed to break mid-word. Everything else stays whole —
+   a set line broken between "11:" and "9" reads as two results.
+
+   break-word rather than anywhere: anywhere lets the column claim a
+   min-content width of one letter, and the layout then hands it that,
+   breaking every ordinary name. break-word leaves the column its natural
+   width and breaks only what would otherwise not fit at all. */
+td.name { overflow-wrap: break-word; }
+
+/* Tabular figures keep the columns aligned while ratings move. The big
+   number on a profile deliberately does not use them. */
+.num {
+	text-align: right;
+	font-family: var(--font-mono);
+	font-variant-numeric: tabular-nums;
+}
+
+td a {
+	color: var(--fg);
+	font-weight: 600;
+	text-decoration: none;
+	border-bottom: 1px solid transparent;
+}
+
+td a:hover { border-bottom-color: var(--accent); }
+
+tr.self td { background: color-mix(in srgb, var(--accent) 8%, transparent); }
+
+/* The chip is the one playful thing in the ranking, and it is playful on
+   purpose: a column of plain numbers gives nobody a place to look. Only the
+   first five carry a colour — five is a ladder, twelve is a fruit bowl. */
+.rank {
+	display: inline-grid;
+	place-items: center;
+	min-width: 1.9rem;
+	height: 1.9rem;
+	padding: 0 0.35rem;
+	border-radius: var(--radius-sm);
+	/* Bare by default. Everything from fourth place down is a number, and a
+	   number does not need a box around it to be read. */
+	background: transparent;
+	color: var(--fg);
+	font-family: var(--font-mono);
+	font-weight: 700;
+	font-size: 0.85rem;
+	font-variant-numeric: tabular-nums;
+}
+
+/* Filled for first place, outlined for the other two on the podium, bare
+   below that. Five colours made the rank column shout louder than the ratings
+   it stands next to, and the loudest thing on a ranking should be the
+   ranking. */
+.rank-1 {
+	background: var(--rank-1);
+	color: var(--rank-ink);
+}
+
+.rank-2, .rank-3 {
+	background: transparent;
+	box-shadow: inset 0 0 0 1px var(--line);
+}
+
+/* Nobody has played yet, so nobody holds a position. A dash rather than a
+   number: four ones under each other read as a defect, not as a tie. */
+.rank-none {
+	background: transparent;
+	color: var(--muted);
+}
+
+/* A shared rank gets a ring, so two identical numbers do not have to explain
+   themselves. */
+.rank.shared { box-shadow: 0 0 0 2px var(--card), 0 0 0 3px var(--muted); }
+
+/* The chip column is as wide as the chip and no wider. */
+.rank-cell { width: 1px; white-space: nowrap; }
+
+.matches .when {
+	font-family: var(--font-mono);
+	font-size: 0.8rem;
+	color: var(--muted);
+	white-space: nowrap;
+}
+
+/* A phone is the case these tables have to survive, and on a phone the
+   padding and the letter-spacing in the headings are a third of the width
+   between them. Both give way before the numbers do, and the numbers are
+   what a ranking is for. Measured at 360 px with a hyphenated double name:
+   with these it fits, without them it scrolls.
+
+   This block sits after the rules it overrides on purpose — a media query
+   carries no extra specificity, so source order is what decides. */
+@media (max-width: 30rem) {
+	th, td { padding: 0.5rem 0.25rem; }
+
+	th {
+		font-size: 0.62rem;
+		letter-spacing: 0.04em;
+	}
+
+	.rank {
+		min-width: 1.6rem;
+		height: 1.6rem;
+	}
+
+	.matches .when { font-size: 0.72rem; }
+}
+
+.back {
+	margin: 0 0 0.5rem;
+	font-family: var(--font-mono);
+	font-size: 0.75rem;
+	letter-spacing: 0.06em;
+	text-transform: uppercase;
+}
+
+.back a { color: var(--muted); text-decoration: none; }
+.back a:hover { color: var(--accent-text); }
+
+/* Metadata as chips rather than a sentence: three facts people compare at a
+   glance, not prose they read. */
+.chips {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.4rem;
+	list-style: none;
+	margin: 0 0 1.75rem;
+	padding: 0;
+}
+
+.chip {
+	display: inline-flex;
+	align-items: baseline;
+	gap: 0.35rem;
+	padding: 0.25rem 0.7rem;
+	background: var(--panel);
+	border: 1px solid var(--line);
+	border-radius: 999px;
+	font-family: var(--font-mono);
+	font-size: 0.75rem;
+	letter-spacing: 0.04em;
+	font-variant-numeric: tabular-nums;
+}
+
+/* The empty state carries the reason, not just the absence: "nobody has a
+   position" is confusing, "nobody has played" is not. */
+.standings-empty {
+	margin: 1rem 0 0;
+}
+
+/* --- Maskottchen auf der Seite ----------------------------------------- */
+
+/* Heading on the left, drawing on the right, one row. Above the content the
+   mascot cost a full row of scrolling on a phone; beside the heading it costs
+   the difference between the two, which on the kiosk is nothing at all. */
+.page-head {
+	display: flex;
+	align-items: center;
+	gap: 1rem;
+	margin-bottom: 0.5rem;
+}
+
+/* Smaller than a heading standing on its own: this one shares its row, and a
+   name can be much longer than the word it replaces. */
+.page-head h1 {
+	font-size: clamp(1.6rem, 5.5vw, 2.4rem);
+	margin: 0 0 0.25rem;
+	overflow-wrap: break-word;
+}
+
+/* min-width lets the text shrink instead of pushing the drawing off the row —
+   a flex item refuses to go below its content width without it. */
+.page-greeting { min-width: 0; }
+.page-greeting p { margin: 0; }
+
+/* The one decorative element. Pushed right by its own margin rather than by
+   space-between on the row: on the start page the heading beside it can be
+   screen-reader-only and out of flow, and then space-between has one item to
+   distribute and leaves it on the left. */
+.page-mascot {
+	display: block;
+	width: min(28vw, 6.5rem);
+	flex: 0 0 auto;
+	margin: 0 0 0 auto;
+}
+
+/* The drawing is inlined rather than linked, so the box around it carries the
+   size and the SVG fills it. Its viewBox keeps the proportions. */
+.page-mascot svg,
+.sheet-mascot svg {
+	display: block;
+	width: 100%;
+	height: auto;
+}
+
+/* --- Schlägerfarbe pro Spieler ----------------------------------------- */
+
+/* Seven blades, picked by measurement rather than by taste: at least dE 23.8
+   from each other, at least dE 76 from the fur so the paddle does not sink
+   into the cat, and at least dE 37 from every colour that already means
+   something here — violet is "clickable", green and red are gain and loss,
+   orange is first place and also the fur.
+   The count lives in templates.paddleColours; the two have to agree. */
+.paddle-0 { --paddle: #3aa6ff; }   /* Hellblau */
+.paddle-1 { --paddle: #2f6fd0; }   /* Blau */
+.paddle-2 { --paddle: #159c8c; }   /* Petrol */
+.paddle-3 { --paddle: #4d7c4a; }   /* Moosgrün */
+.paddle-4 { --paddle: #d64f9c; }   /* Pink */
+.paddle-5 { --paddle: #c05fd0; }   /* Orchidee */
+.paddle-6 { --paddle: #8c8f9c; }   /* Stahl */
+
+/* --- Stat-Kachel mit Verlauf ------------------------------------------- */
+
+.stat-label {
+	margin: 0;
+	font-family: var(--font-mono);
+	font-size: 0.7rem;
+	letter-spacing: 0.14em;
+	text-transform: uppercase;
+	color: var(--muted);
+}
+
+/* Proportional figures: tabular ones give every digit the width of a zero,
+   which reads loose at this size. */
+.stat-value {
+	margin: 0.15rem 0 0;
+	font-size: clamp(3rem, 12vw, 4rem);
+	font-weight: 700;
+	letter-spacing: -0.04em;
+	line-height: 1;
+}
+
+.stat-delta {
+	margin: 0.4rem 0 0;
+	font-family: var(--font-mono);
+	font-size: 0.85rem;
+}
+
+.spark { margin: 1rem 0 0; }
+.spark svg { display: block; max-width: 100%; height: auto; }
+
+/* The line is context; only the current rating carries the accent. */
+.spark-line { stroke: var(--muted); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.spark-now { fill: var(--accent-text); }
+
+.spark figcaption {
+	margin-top: 0.35rem;
+	font-family: var(--font-mono);
+	font-size: 0.7rem;
+	letter-spacing: 0.06em;
+}
+
+/* --- QR-Aushang -------------------------------------------------------- */
+
+.sheet { text-align: center; }
+
+/* The printed sheets are the one place the mascot gets to be a drawing
+   rather than an icon, so it is worth the width. */
+.sheet-mascot {
+	width: min(40vw, 9rem);
+	margin: 0 auto -0.5rem;
+	display: block;
+}
+
+.sheet h1 { margin-top: 1rem; }
+
+.sheet-lead {
+	font-size: 1.05rem;
+	color: var(--muted);
+	margin: -0.75rem 0 1.75rem;
+}
+
+.qr { margin: 0 0 1.75rem; }
+
+/* The code stays black on white whatever surrounds it: a scanner wants the
+   contrast the specification assumes, and the sheet is made to be printed. */
+.qr svg {
+	width: min(72vw, 18rem);
+	height: auto;
+	border-radius: var(--radius-sm);
+}
+
+.qr figcaption {
+	margin-top: 0.75rem;
+	font-family: var(--font-mono);
+	font-size: 0.8rem;
+	color: var(--muted);
+	overflow-wrap: anywhere;
+}
+
+/* Left-aligned text in a centred column: the steps are read in order, and
+   centred list items make that harder than it needs to be. */
+.sheet-steps {
+	display: inline-block;
+	text-align: left;
+	margin: 0;
+	padding-left: 1.4rem;
+}
+
+.sheet-steps li { margin: 0.3rem 0; }
+
+.sheet-note { margin: 1.25rem 0 0; }
+
+.sheet-next { margin: 2.25rem 0 0; }
+
+.sheet-back {
+	display: flex;
+	justify-content: center;
+	gap: 1.5rem;
+	margin: 1rem 0 0;
+	font-family: var(--font-mono);
+	font-size: 0.75rem;
+	letter-spacing: 0.06em;
+	text-transform: uppercase;
+}
+
+.sheet-back a { color: var(--muted); }
+
+/* --- Regeln ------------------------------------------------------------ */
+
+/* Left-aligned in the centred column, like the steps above the same reason:
+   these are read line by line, and centred prose makes that harder. */
+.rules {
+	display: inline-block;
+	text-align: left;
+	max-width: 34rem;
+	margin: 0;
+}
+
+/* A rule is a block with the accent down its edge, which is what ties this
+   page to the rest of the app — it was the one page with no violet on it at
+   all. The rule below the print block drops both again for paper. */
+.rules > div {
+	padding-left: 0.9rem;
+	border-left: 2px solid var(--accent);
+	margin-top: 1.5rem;
+}
+
+.rules > div:first-child { margin-top: 0; }
+
+.rules dt {
+	font-weight: 700;
+	font-size: 1.1rem;
+}
+
+/* Not --muted: this is the sentence that says what the rule means, and at
+   arm's length on a wall it has to be readable rather than recessive. */
+.rules dd {
+	margin: 0.3rem 0 0;
+	color: var(--fg-soft);
+}
+
+/* The sheet exists to be printed, so print is the case that has to look
+   right. Everything that only works on screen goes away, the dark palette is
+   dropped rather than dumped onto paper, and the code gets a size that scans
+   from arm's length. */
+@media print {
+	.topbar, .mainnav, .no-print, .page-mascot { display: none; }
+
+	body { background: #fff; color: #000; }
+	main { max-width: none; padding: 0; }
+
+	.sheet h1 { font-size: 28pt; }
+	.sheet-lead, .sheet-note, .qr figcaption { color: #000; }
+	.sheet-lead { font-size: 14pt; }
+
+	/* Read from a step back, so the rules get the size the QR code gets on
+	   the other sheet. The muted grey goes with the dark palette: on paper
+	   the explanation under a rule still has to be readable.
+
+	   The measure stays bounded even though main no longer bounds it. A
+	   sheet is read from further away than a screen, and a line running the
+	   full width of A4 is one the eye loses its place in. */
+	.rules { max-width: 15cm; }
+	/* No accent bar on paper: a violet edge on every rule is toner spent on
+	   decoration, and the heading already separates them. */
+	.rules > div { border-left: 0; padding-left: 0; margin-top: 1.1cm; }
+	.rules dt { font-size: 16pt; }
+	.rules dd { font-size: 13pt; color: #000; }
+
+	.qr svg { width: 12cm; border: none; }
+
+	/* Smaller on paper than on screen: the code is what has to be big, and
+	   flat orange over a whole page costs more toner than it earns. */
+	.sheet-mascot { width: 4cm; }
+}
+
+/* --- Kiosk ------------------------------------------------------------- */
+
+
+/* The answer to "did that go in?", in the words somebody at the table would
+   use. Loud on purpose: at a tournament the laptop is read from two metres
+   away, between matches. */
+.kiosk-note {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 1rem;
+	flex-wrap: wrap;
+	margin: 0 0 1rem;
+	padding: 0.8rem 1.1rem;
+	background: color-mix(in srgb, var(--ok) 14%, var(--card));
+	border: 1px solid color-mix(in srgb, var(--ok) 45%, transparent);
+	border-radius: var(--radius);
+	font-size: 1.05rem;
+	font-weight: 600;
+}
+
+/* The note carries the way back with it: the button belongs to this one
+   result, so it lives in the box that names it and nowhere else. */
+.kiosk-note p,
+.kiosk-note form { margin: 0; }
+
+/* Labels that exist for a screen reader and would be noise on screen: the
+   set boxes in a tournament pairing already say what they are through the two
+   names beside them. */
+.sr-only {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	padding: 0;
+	margin: -1px;
+	overflow: hidden;
+	clip-path: inset(50%);
+	white-space: nowrap;
+	border: 0;
+}
+
+.pairings { list-style: none; padding: 0; }
+.pairings li {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.5rem;
+	align-items: center;
+	padding: 0.35rem 0;
+}
+.pairing-names { min-width: 14rem; }
+.pairing-result { font-variant-numeric: tabular-nums; font-weight: 600; }
+.pairing-entry { display: flex; flex-wrap: wrap; gap: 0.35rem; align-items: center; }
+.pairing-set { display: inline-flex; gap: 0.2rem; align-items: center; }
+.tournament-field { display: flex; flex-wrap: wrap; gap: 0.5rem; border: 0; padding: 0; }
+
+/* The question above the names, in the same mono as the labels down the left
+   of the form. It was the one heading in sentence case and bold, which read
+   as a different kind of thing than "NAME" and "MODUS" above it. */
+.tournament-field legend {
+	display: flex;
+	align-items: baseline;
+	gap: 0.6rem;
+	width: 100%;
+	padding: 0 0 0.5rem;
+	font-family: var(--font-mono);
+	font-size: 0.72rem;
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+	color: var(--muted);
+}
+
+/* How many are ticked, beside the question rather than under the answer. */
+.field-count { color: var(--accent-text); letter-spacing: 0.04em; }
+
+/* A name to tap, not a checkbox to hit.
+   Called .pick and not .chip: .chip is the profile page's metadata pill, and
+   sharing the name meant sharing its padding, background and border — the
+   label drew one pill and the span inside it drew a second, offset one.
+   This form is filled in on a phone standing next to the table, where a 13px
+   box with 30px of air around it is a miss waiting to happen. The box is
+   still there — hidden the way .sr-only hides things, so it keeps the click
+   through the label, its place in the tab order and its meaning to a screen
+   reader — and the pill beside it is what the thumb lands on.
+   Painted from the sibling selector rather than :has(), which needs no
+   fallback anywhere, and from CSS rather than a line of JavaScript
+   (invariant 7). */
+.pick {
+	display: inline-flex;
+	align-items: center;
+	min-width: 0;
+	cursor: pointer;
+}
+
+.pick input {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	margin: -1px;
+	overflow: hidden;
+	clip-path: inset(50%);
+}
+
+.pick > span {
+	display: inline-block;
+	padding: 0.5rem 0.9rem;
+	border: 1px solid var(--line);
+	border-radius: 999px;
+	font-family: var(--font-ui);
+	font-size: 0.9rem;
+	letter-spacing: normal;
+	text-transform: none;
+	color: var(--fg);
+	line-height: 1.2;
+}
+
+.pick input:checked + span {
+	background: var(--accent);
+	border-color: var(--accent);
+	color: var(--accent-ink);
+}
+
+/* A keyboard has to see what a thumb sees. */
+.pick input:focus-visible + span { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* Two pickers and the words between them are one setting, so they wrap as
+   one. Loose in the row, the second picker lands at the left margin under
+   the label column on a phone and reads as a setting of its own. */
+.row-group {
+	display: inline-flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 0.5rem;
+}
+
+/* The words that hold the two mode pickers together into one sentence. */
+.row-word {
+	font-size: 0.9rem;
+	color: var(--muted);
+}
+/* The order a level table is decided in. Quiet while it is background, and
+   the summary carries the same weight as the muted lines around it — the
+   table is what somebody came to read. */
+.tiebreak { margin-top: 0.9rem; }
+
+.tiebreak summary {
+	font-family: var(--font-mono);
+	font-size: 0.72rem;
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+	color: var(--muted);
+	cursor: pointer;
+}
+
+.tiebreak ol {
+	margin: 0.7rem 0 0;
+	padding-left: 1.3rem;
+	color: var(--muted);
+	font-size: 0.9rem;
+}
+
+.tiebreak li { margin: 0.15rem 0; }
+.tiebreak p { font-size: 0.9rem; margin: 0.7rem 0 0; }
+
+/* A tournament that does not count says so wherever it is named. Not the
+   accent — this is not something to click — and not red either: it is a
+   property of the evening, not a warning about it. */
+.unrated {
+	font-family: var(--font-mono);
+	font-size: 0.72rem;
+	letter-spacing: 0.06em;
+	text-transform: uppercase;
+	color: var(--muted);
+}
+
+/* Which end of the table somebody starts on, behind their name in the
+   schedule. Mono and quiet: it is a label on a name, not a second name. */
+.side {
+	font-family: var(--font-mono);
+	font-size: 0.72rem;
+	letter-spacing: 0.06em;
+	color: var(--muted);
+}
+
+/* Two ends, two short words. Wide enough for "Fenster" and no wider — the
+   row is a setting, not a sentence. */
+.side-name { width: 7rem; }
+
+/* --- Was gerade läuft ---------------------------------------------------- */
+
+/* The start page's notice that something is on. A card like the others, with
+   one difference: when the reader is in the draw it takes the accent edge the
+   recovery code has, because both are things the page is telling somebody
+   rather than things somebody came to read. */
+.running h2 {
+	margin: 0 0 0.6rem;
+}
+
+.running-mine { border-left: 3px solid var(--accent); }
+
+/* Inside a card the list has nothing above it to keep its distance from. */
+.running .tournament-list { margin: 0; }
+
+/* --- Am Tisch ------------------------------------------------------------ */
+
+/* The match the Zählwerk is counting right now (#188), filled by live.js. No
+   display on .live itself: the section comes up with the hidden attribute and
+   a display rule here would override it. The two sides mirror each other
+   around the colon, points large because they are what somebody walking past
+   looks for, sets and rating small underneath. */
+.live h2 {
+	margin: 0 0 0.6rem;
+}
+
+.live-board {
+	display: grid;
+	grid-template-columns: 1fr auto 1fr;
+	/* Start, not center: the colon belongs between the two scores, not
+	   halfway down the names and ratings under them. */
+	align-items: start;
+	gap: 0.75rem;
+}
+
+.live-side {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	min-width: 0;
+	text-align: center;
+}
+
+.live-name {
+	font-weight: 600;
+	overflow-wrap: anywhere;
+}
+
+/* Who serves next, as a dot after the name rather than a word: it changes
+   every two points, and a word would make the name jump. */
+.live-serving .live-name::after {
+	content: " \25CF";
+	color: var(--accent-text);
+}
+
+.live-ttr, .live-sets {
+	font-size: 0.85rem;
+	color: var(--muted);
+}
+
+/* The player's figure above the score (docs/adr/0029). Large enough that the
+   face, which the Zählwerk changes with the game, reads from across the room;
+   empty and taking no room until live.js has fetched it. */
+.live-figure {
+	order: -2;
+	width: min(28vw, 7rem);
+}
+
+.live-figure:empty { display: none; }
+
+/* With figures above the scores, the colon moves down to stay between the
+   numbers. A class live.js sets rather than :has(), as .pick reasons. */
+.live-figures .live-sep { margin-top: min(28vw, 7rem); }
+
+.live-figure svg { display: block; width: 100%; height: auto; }
+
+.live-points {
+	order: -1;
+	font-size: 2.6rem;
+	font-weight: 700;
+	line-height: 1.1;
+	font-variant-numeric: tabular-nums;
+}
+
+.live-sep {
+	font-size: 2.6rem;
+	line-height: 1.1;
+	color: var(--muted);
+}
+
+.live-set {
+	margin: 0.5rem 0 0;
+	text-align: center;
+}
+
+/* The mark on the reader's own row. Mono and small, like .side and .unrated:
+   it is a label on a name, not a second name. Coloured, unlike those two,
+   because it is the one word the section exists to show. */
+.you {
+	font-family: var(--font-mono);
+	font-size: 0.72rem;
+	letter-spacing: 0.06em;
+	text-transform: uppercase;
+	color: var(--accent-text);
+}
+
+.tournament-list { list-style: none; padding: 0; }
+.tournament-list li { display: flex; flex-wrap: wrap; gap: 0.6rem; align-items: baseline; padding: 0.3rem 0; }
+
+/* The office in numbers: labelled single values, so a definition list rather
+   than a table. Wraps into columns on anything wider than a phone. */
+.totals {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.75rem 2rem;
+	margin: 0;
+}
+.totals > div { min-width: 8rem; }
+.totals dt { font-size: 0.85em; opacity: 0.75; }
+.totals dd {
+	margin: 0;
+	font-size: 1.4em;
+	font-variant-numeric: tabular-nums;
+}
+
+/* The head-to-head matrix. Tabular numerals so the columns line up, and the
+   diagonal drawn as a blank rather than a zero nobody earned. */
+.matrix td { font-variant-numeric: tabular-nums; text-align: center; }
+.matrix-head { font-weight: 500; }
+
+.matrix-self { background: color-mix(in srgb, currentColor 8%, transparent); }
+
+/* Both label bands stay put while the grid moves under them. Without that the
+   matrix is unreadable the moment it is scrolled: sideways the names go off
+   the left edge and every cell becomes an anonymous 3:1, and on a phone the
+   header row leaves the top before the third player is reached.
+
+   The cap on the height is what makes the header row possible at all. A box
+   with overflow-x and no height of its own is a scrollport sideways and the
+   page vertically, and `top: 0` measured against a scrollport that never
+   scrolls does nothing — which is why the sideways half of this would have
+   worked on its own and the vertical half would not. Giving the region a
+   height makes it answer for both axes, so one set of rules covers both.
+
+   Smaller of a screenful and a comfortable reading height: sixteen players
+   are taller than any phone, and a matrix stretched down a tall desktop
+   window is not easier to read for it. dvh rather than vh because the mobile
+   address bar is exactly the thing that would otherwise cut the last row off,
+   with rem alone for anything that has not heard of dvh. */
+.matrix-scroll {
+	max-height: 30rem;
+	max-height: min(30rem, 70dvh);
+	overflow-y: auto;
+}
+
+/* The one table in the application that does not collapse its borders. A
+   collapsed border belongs to the table's grid rather than to the cell, so it
+   stays behind when the cell sticks — and worse, Chromium then declines to
+   honour the z-index that says which of two sticky cells is on top: the name
+   passing underneath was painted over the frozen corner, so the header read
+   "SSPIELER" while the matrix was scrolled sideways. Spacing of zero, so the
+   grid looks exactly as it did when it collapsed. */
+.matrix {
+	border-collapse: separate;
+	border-spacing: 0;
+}
+
+/* A sticky cell is painted over the cells passing beneath it, so it needs a
+   background of its own — transparent is how the rows show through the header.
+   --card is what the section behind the table is painted with, so the band
+   looks like it always did while nothing is scrolled. */
+.matrix thead th {
+	position: sticky;
+	top: 0;
+	z-index: 2;
+	background: var(--card);
+}
+
+.matrix tbody th {
+	position: sticky;
+	left: 0;
+	z-index: 1;
+	background: var(--card);
+	border-right: 1px solid var(--line);
+}
+
+/* The corner is in both bands at once, so it is painted over both and carries
+   the column's edge as well as the row's. */
+.matrix thead th:first-child {
+	left: 0;
+	z-index: 3;
+	border-right: 1px solid var(--line);
+}
+
+/* A link that starts something, so it carries a button's weight — but the
+   secondary one, because the primary action on a finished tournament is
+   reading the table, not immediately playing again. */
+.button-link {
+	display: inline-block;
+	margin-top: 0.9rem;
+	padding: 0.6rem 1.1rem;
+	background: transparent;
+	color: var(--fg);
+	border: 1px solid var(--line);
+	border-radius: var(--radius-sm);
+	font-family: var(--font-ui);
+	font-size: 1rem;
+	font-weight: 600;
+	text-decoration: none;
+}
+
+.button-link:hover { background: var(--panel); }
+
+.button-link:focus-visible {
+	outline: 2px solid var(--accent);
+	outline-offset: 2px;
+}
+
+/* One pairing's entry, folded away. A schedule is read far more often than it
+   is typed into, and eight players is twenty-eight of these — unfolded they
+   would bury the draw they belong to. */
+.pairing-entry summary {
+	display: inline-block;
+	padding: 0.35rem 0.7rem;
+	border: 1px solid var(--line);
+	border-radius: var(--radius-sm);
+	color: var(--fg);
+	font-family: var(--font-ui);
+	font-size: 0.9rem;
+	cursor: pointer;
+	list-style: none;
+}
+
+.pairing-entry summary::-webkit-details-marker { display: none; }
+
+.pairing-entry summary:hover { background: var(--panel); }
+
+.pairing-entry[open] summary {
+	margin-bottom: 0.6rem;
+	background: var(--panel);
+}
+
+/* Indented under the pairing it belongs to, so an open form cannot be read as
+   belonging to the round heading above it. */
+.pairing-entry .sets {
+	margin-left: 0.2rem;
+	border-left: 2px solid var(--line);
+	padding-left: 0.8rem;
+}
+
+
+/* The picker above the match list, on one line with its label and its button.
+   Wraps on a narrow screen rather than squeezing the select to nothing. */
+.match-filter {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 0.6rem;
+	margin-bottom: 1rem;
+}
+
+.match-filter button { margin-top: 0; }
+
+/* --- Figur-Editor ------------------------------------------------------- */
+
+/* The figure beside its choices on a wide screen, above them on a phone.
+   Not sticky there: pinned to the top it floated over the pills it was
+   meant to show the result of, and covered their names. */
+.figure-layout {
+	display: grid;
+	grid-template-columns: minmax(8rem, 12rem) minmax(0, 1fr);
+	gap: 1.25rem;
+	align-items: start;
+}
+
+@media (max-width: 34rem) {
+	.figure-layout { grid-template-columns: minmax(0, 1fr); }
+	.figure-preview { width: 9rem; margin: 0 auto; }
+}
+
+.figure-preview {
+	background: var(--panel);
+	border-radius: 8px;
+	padding: 0.5rem;
+}
+
+.figure-preview svg { display: block; width: 100%; height: auto; }
+
+.figure-parts { display: grid; gap: 1rem; min-width: 0; }
+
+/* Same shape as the tournament's field: the choices wrap as pills, the
+   question sits above them in the labels' mono. */
+.figure-part { display: flex; flex-wrap: wrap; gap: 0.4rem; border: 0; padding: 0; margin: 0; }
+
+.figure-part legend {
+	width: 100%;
+	padding: 0 0 0.4rem;
+	font-family: var(--font-mono);
+	font-size: 0.72rem;
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+	color: var(--muted);
+}
+
+/* The colour inside the pill, so the name and the colour are one target. */
+.swatch {
+	display: inline-block;
+	width: 0.9rem;
+	height: 0.9rem;
+	margin-right: 0.45rem;
+	vertical-align: -0.12rem;
+	border-radius: 50%;
+	border: 1px solid var(--line);
+}
+
+/* "Wie das Fell" follows whatever the fur is, so it shows a half of each:
+   not a colour of its own. */
+.swatch-fur { background: linear-gradient(135deg, var(--rank-1) 50%, transparent 50%); }
+
+.figure-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 1.25rem; }
+
+/* Complete figures are choices rather than colour swatches. */
+.character-picker { margin-bottom: 1.25rem; gap: 0.5rem; }
+.character-pick { flex: 0 1 5rem; }
+.character-pick > span {
+ display: flex;
+ flex-direction: column;
+ align-items: center;
+ gap: 0.4rem;
+ width: 100%;
+ padding: 0.5rem;
+ border-radius: 8px;
+ text-align: center;
+}
+.character-thumbnail { display: block; width: 3.75rem; height: 3.75rem; }
+.character-thumbnail svg { display: block; width: 100%; height: 100%; }
+
+/* Expressions are a comparison gallery, not another saved avatar choice. */
+.figure-expressions { margin: 0 0 1.5rem; }
+.figure-expressions h3 { margin: 0 0 0.5rem; font-size: 1.1rem; }
+.figure-expressions > p { margin: 0 0 0.75rem; }
+.face-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.75rem; }
+.face-preview {
+ margin: 0;
+ padding: 0.75rem;
+ background: var(--panel);
+ border: 1px solid var(--line);
+ border-radius: 8px;
+}
+.face-preview > svg { display: block; width: 100%; height: auto; }
+.face-preview figcaption { margin-top: 0.5rem; text-align: center; font-size: 0.9rem; }
+@media (max-width: 34rem) {
+ .face-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}

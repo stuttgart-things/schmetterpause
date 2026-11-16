@@ -1,0 +1,92 @@
+{
+  "hank-blade": {
+    "bounds": [
+      287,
+      208,
+      405,
+      331
+    ],
+    "centre": [
+      346,
+      269.5
+    ],
+    "height": 123,
+    "pixels": 11246,
+    "width": 118
+  },
+  "hank-grip": {
+    "bounds": [
+      318,
+      325,
+      346,
+      362
+    ],
+    "centre": [
+      332,
+      343.5
+    ],
+    "height": 37,
+    "pixels": 476,
+    "width": 28
+  },
+  "hank-paw": {
+    "bounds": [
+      251,
+      332,
+      337,
+      405
+    ],
+    "centre": [
+      294,
+      368.5
+    ],
+    "height": 73,
+    "pixels": 4466,
+    "width": 86
+  },
+  "sthings-blade": {
+    "bounds": [
+      283,
+      161,
+      413,
+      296
+    ],
+    "centre": [
+      348,
+      228.5
+    ],
+    "height": 135,
+    "pixels": 13572,
+    "width": 130
+  },
+  "sthings-grip": {
+    "bounds": [
+      300,
+      285,
+      364,
+      402
+    ],
+    "centre": [
+      332,
+      343.5
+    ],
+    "height": 117,
+    "pixels": 503,
+    "width": 64
+  },
+  "sthings-paw": {
+    "bounds": [
+      294,
+      313,
+      376,
+      418
+    ],
+    "centre": [
+      335,
+      365.5
+    ],
+    "height": 105,
+    "pixels": 6516,
+    "width": 82
+  }
+}

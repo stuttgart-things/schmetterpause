@@ -1,0 +1,64 @@
+{
+  "shaft_length": 103.83095169067383,
+  "full_width_covered_length": 34.0,
+  "full_width_covered_fraction": 0.3274553439642016,
+  "overlap_centroid": [
+    320.9024887255721,
+    372.9745949557374
+  ],
+  "axis_offset_from_overlap_centroid": 1.5938616401498669,
+  "axis": {
+    "centre": [
+      327.8761315279698,
+      350.66045534053836
+    ],
+    "unit": [
+      -0.232526719059072,
+      0.9725900086488773
+    ],
+    "degrees": 13.4458760409095
+  },
+  "full_width_interval": [
+    16.0,
+    50.0
+  ],
+  "reference": "1298bfe",
+  "principle": "B: grip behind flipper, blade in foreground",
+  "method": "64px quantized GIFs; gray/32 changed pixels, all 15 face pairs",
+  "selected_scale": 0.8,
+  "angle_degrees": -180,
+  "maximum_requested_scale": 0.8,
+  "left_width": 94.2911376953125,
+  "right_width": 75.43301391601562,
+  "flipper_width_ratio": 0.8000011004190655,
+  "area_scale": 0.8000005476268927,
+  "emblem_clearance": 13.043,
+  "canvas_margin": 8.120391845703125,
+  "visible_grip_area": 463.2062899271641,
+  "free_neck_length": 20.2,
+  "face_overlap_area": 0.0,
+  "blade_overlap_area": 0.0,
+  "right_outline_bounds": [
+    244.47219848632812,
+    324.944580078125,
+    344.30755615234375,
+    411.8796081542969
+  ],
+  "grip_axis": {
+    "centre": [
+      327.07724611041976,
+      354.00943704010496
+    ],
+    "unit": [
+      -0.2320971634618589,
+      0.9726926064862214
+    ],
+    "degrees": 13.42057203398011
+  },
+  "baseline": "1298bfe",
+  "closest_pair": "neutral/skeptical",
+  "minimum_separation": 186,
+  "status": "selected product B",
+  "variant": "B",
+  "version": "bddb53953c354083bb1e1cdc23954bc2cb22d3ba-048d6f8460c8c35a"
+}

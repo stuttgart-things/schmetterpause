@@ -3,7 +3,7 @@
 
 Usage: python scripts/import_creator_avatars.py /path/to/creator/assets/characters
 Development dependencies: fonttools and skia-pathops. No runtime dependency.
-Only the four accepted Creator characters are imported.
+The release importer emits blecki and Pip; other workshop converters stay available.
 """
 
 import argparse
@@ -28,15 +28,6 @@ SPECS = {
         remove={"eye-highlight", "tongue"},
         native="happy",
         background="#1e1d2e",
-    ),
-    "pip": dict(
-        eyes=[(146, 219, 21, 21), (260, 190, 19, 23)],
-        mouth=(213, 240),
-        regions=[(110, 186, 181, 247), (227, 156, 287, 225), (177, 205, 250, 267)],
-        holes={("muzzle", 0): {1, 2}},
-        remove={"eye-pupil", "eye-highlight", "beak", "beak-shadow"},
-        native="neutral",
-        background="#fff6f3",
     ),
     "vex": None,  # Native eye-frame repair and expression builder below.
     "kiki": dict(
@@ -177,14 +168,6 @@ def visible(scene):
 
 def mouth(name, spec, expression, original):
     x, y = spec["mouth"]
-    if name == "pip":
-        beak = [(r, f, p) for r, f, p in original if r in ["beak", "beak-shadow"]]
-        outline = pathops.Path()
-        outline.addPath(beak[0][2])
-        outline.stroke(6, pathops.LineCap.ROUND_CAP, pathops.LineJoin.ROUND_JOIN, 4)
-        return svgpath(outline, INK) + "".join(
-            svgpath(p, colour(r, f)) for r, f, p in beak
-        )
     if name == "kiki":
         nose = "".join(svgpath(p, colour(r, f)) for r, f, p in original if r == "nose")
     else:
@@ -500,7 +483,219 @@ def convert_vex(source, target):
         )
 
 
+# Fixed native anchors on the unchanged, slightly tilted head.
+PIP_EYES = ((145, 236, 32, 40), (255, 214, 32, 40))
+PIP_STHINGS_EYE_SCALE = 0.8
+PIP_FUR = "#2f4ea8"
+# Actual maximum-size round Hank emblem, including its black border.
+PIP_EMBLEM_RESERVE = (209.8, 366.1, 28.5, 28.5)
+
+
+def pip_eye(cx, cy, rx, ry, state, index):
+    """Transfer the actual sthings contours, pupils, glints and brows together.
+
+    Select entire eye contours, never crop through an eye or borrow its mouth.
+    EVEN_ODD is essential: the white/pupil construction is the original artwork.
+    """
+    import xml.etree.ElementTree as ET
+    root = ET.parse(Path(__file__).resolve().parents[1] /
+                    f"web/static/img/sthings/face-{state}.svg").getroot()
+    source_cx = (161, 246)[index]
+    scale = PIP_STHINGS_EYE_SCALE
+    t = Transform(scale, 0, 0, scale, cx - source_cx*scale, cy - 181*scale)
+    result = ""
+    for el in root.iter("{http://www.w3.org/2000/svg}path"):
+        source = shape(el.get("d"))
+        selected = pathops.Path()
+        selected.fillType = pathops.FillType.EVEN_ODD
+        for contour in source.contours:
+            x1,y1,x2,y2 = contour.bounds
+            if y2 <= 229 and ((index == 0 and x2 <= 203) or (index == 1 and x1 >= 205)):
+                selected.addPath(contour)
+        if not list(selected.contours):
+            continue
+        selected.simplify()
+        out = pathops.Path()
+        selected.draw(TransformPen(out.getPen(),t))
+        result += svgpath(out, el.get("fill"))
+    return result
+
+
+def pip_beak(state):
+    """Pointed upper and darker lower mandibles; expression through opening and tip."""
+    cx=215 + (5 if state=="skeptical" else 0)
+    top=263
+    split=281
+    tip=307
+    if state=="happy": top,split,tip=258,275,313
+    if state=="surprised": top,split,tip=254,273,314
+    if state=="angry": top,split,tip=270,286,309
+    if state=="sad": top,split,tip=267,283,313
+    left,right=184,246
+    outer=f"M{left} {split} Q196 {top} {cx} {top-2} Q234 {top} {right} {split} Q235 {tip-8} {cx} {tip} Q196 {tip-8} {left} {split}Z"
+    upper=f"M{left+6} {split-1} Q201 {top+3} {cx} {top+3} Q231 {top+3} {right-6} {split-1} L{cx} {split+7}Z"
+    lower=f"M{left+8} {split+4} Q{cx} {split+11} {right-8} {split+4} Q232 {tip-9} {cx} {tip-5} Q199 {tip-9} {left+8} {split+4}Z"
+    result=paint(outer)+paint(lower,"#cd7108")+paint(upper,"#f59a08")
+    if state in ("happy","surprised"):
+        result+=paint(f"M191 {split+3} L{cx} {split+10} L239 {split+3} Q231 {tip-10} {cx} {tip-8} Q200 {tip-10} 191 {split+3}Z","#60283d")
+        if state=="happy": result+=oval(cx,tip-12,11,4,"#fa7894")
+    return result
+
+
+def convert_pip(source, target):
+    from hank_frame import SCALE, MATRIX, EMBLEM
+    from hank_pose import BLADE_SCALE,BLADE_CENTRE,BLADE_RIM,GRIP_START,GRIP_END,GRIP_WIDTH,GRIP_RIM,ARM_BODY
+    from sthings_racket_reference import reference
+    original = creator_svg.paths(source, "pip")
+    headband = original[47][2]
+    import xml.etree.ElementTree as ET
+
+    for index, (cx, cy, rx, ry) in enumerate(PIP_EYES):
+        for state in FACES:
+            geometry = pathops.Path()
+            for el in ET.fromstring(
+                "<svg>" + pip_eye(cx, cy, rx, ry, state, index) + "</svg>"
+            ):
+                geometry = op(geometry, shape(el.get("d")), pathops.PathOp.UNION)
+            # Include the extended lid keel, not only the eye oval.
+            safety = pathops.Path(geometry)
+            safety.stroke(16, pathops.LineCap.ROUND_CAP, pathops.LineJoin.ROUND_JOIN, 4)
+            safety.convertConicsToQuads(0.01)
+            safety = op(geometry, safety, pathops.PathOp.UNION)
+            assert (
+                op(safety, headband, pathops.PathOp.INTERSECTION).area < 0.001
+            ), f"Pip {state} eye/headband gap below 8"
+
+    def transformed(p, t):
+        out = pathops.Path()
+        p.draw(TransformPen(out.getPen(), t))
+        return out
+
+    def outlined(p, w):
+        border = pathops.Path(p)
+        border.stroke(w, pathops.LineCap.ROUND_CAP, pathops.LineJoin.ROUND_JOIN, 4)
+        border.convertConicsToQuads(0.01)
+        return op(p, border, pathops.PathOp.UNION)
+
+    # A complete round paddle, rather than the notched traced native surface.
+    ref=reference()
+    final_blade=transformed(ref['blade'],Transform(BLADE_SCALE,0,0,BLADE_SCALE,BLADE_CENTRE[0]-348*BLADE_SCALE,BLADE_CENTRE[1]-228.5*BLADE_SCALE))
+    blade=transformed(final_blade,MATRIX.inverse())
+    blade_outline=2*BLADE_RIM/SCALE
+    # The native fused racket starts at y=212. Cutting at y=220 left
+    # its upper shoulder as a black spur on the right cheek (body path 0).
+    cut = rect(268, 212, 420, 420)
+    # Equipment was fused into the silhouette. Restore the right cheek first,
+    # without changing the upper head, torso or headband contours.
+    cheek = shape(
+        "M318 198 L340.3075 212 Q339.9 225 339 240 Q337 268 307 286 Q281 307 250 314 L247 301 Q285 291 301 270 Q322 247 318 223Z"
+    )
+    cheek_white = shape(
+        "M245 205 L328.73 205 Q331 235 310 270 Q281 299 251 306 L245 290 Q264 265 267 241Z"
+    )
+    blank = []
+    for i, (role, fill, p) in enumerate(original):
+        if i in {8, 46, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61}:
+            continue
+        if role == "shadow" and p.bounds[0] > 245 and p.bounds[1] > 320:
+            # The old hand/arm shading does not belong to the broad flipper.
+            continue
+        if i == 0:
+            p = op(p, cut, pathops.PathOp.DIFFERENCE)
+        if i == 6:
+            # Raised racket-side arm; the torso and opposite flipper stay native.
+            p = shape(ARM_BODY)
+            blank.append(("ink", INK, outlined(p, 11)))
+        if i == 43:
+            clean = pathops.Path()
+            clean.addPath(list(p.contours)[0])
+            p = clean
+            # Close the native beak cut-out with the same facial surface.
+            p = op(p, ellipse(213, 236, 39, 33), pathops.PathOp.UNION)
+            # Match a single smooth inner cheek curve to the outer head curve.
+            # The former native/rebuilt white surfaces had a dent at y=215.
+            p = op(p, rect(268, 205, 420, 420), pathops.PathOp.DIFFERENCE)
+            # Union the full white face surface: touching separately painted
+            # patches can leave a dark seam in the actual browser SVG.
+            p = op(p, cheek_white, pathops.PathOp.UNION)
+        if role == "body":
+            fill = PIP_FUR
+        if role == "shadow":
+            # Preserve each source shadow path, with the selected coat shade.
+            role, fill = "pip-shadow", "var(--fur-dark, #213777)"
+        blank.append((role, fill, p))
+        if i == 0:
+            blank.append(("ink", INK, cheek))
+    body_parts = list(blank)
+    blank = []
+    # Racket, grip and gripping flipper are rebuilt as one separate assembly.
+    start=MATRIX.inverse().transformPoint(GRIP_START);end=MATRIX.inverse().transformPoint(GRIP_END)
+    shaft = shape(f"M{start[0]} {start[1]} L{end[0]} {end[1]}")
+    shaft.stroke(GRIP_WIDTH/SCALE, pathops.LineCap.ROUND_CAP, pathops.LineJoin.ROUND_JOIN, 4)
+    shaft.convertConicsToQuads(0.01)
+
+    blank.append(("ink", INK, outlined(shaft, 2*GRIP_RIM/SCALE)))
+    blank.append(("paddle-handle", "#efa31b", shaft))
+    dx,dy=GRIP_END[0]-GRIP_START[0],GRIP_END[1]-GRIP_START[1]
+    length=math.hypot(dx,dy);ux,uy=dx/length,dy/length;nx,ny=-uy,ux
+    for fraction in (.30,.96):
+        cx,cy=GRIP_START[0]+fraction*dx,GRIP_START[1]+fraction*dy
+        points=[(cx+nx*a+ux*b,cy+ny*a+uy*b) for a,b in [(-11,-1.75),(11,-1.75),(11,1.75),(-11,1.75)]]
+        stripe=shape("M"+" L".join(f"{x} {y}" for x,y in points)+"Z")
+        blank.append(("ink",INK,transformed(stripe,MATRIX.inverse())))
+    blade_parts = [("ink", INK, outlined(blade, blade_outline)), ("paddle-face", "#df3b9a", blade)]
+    blank.extend(blade_parts)
+    racket_parts = list(blank)
+    for role, fill, p in racket_parts:
+        x1, y1, x2, y2 = p.bounds
+        assert (
+            min(x1, y1) >= 8 - 0.001 and max(x2, y2) <= 412 + 0.001
+        ), "Hank racket path outside 8-unit canvas inset"
+    target.mkdir(parents=True, exist_ok=True)
+
+    def save(name, body):
+        from hank_frame import bake
+        body = bake(body, crest=name=="base", crop=name=="base")
+        (target / (name + ".svg")).write_text(
+            '<svg viewBox="0 0 420 420" xmlns="http://www.w3.org/2000/svg">\n'
+            + body
+            + "</svg>\n"
+        )
+
+    # Reference-relative distances in the final frame, before writing any asset.
+    for face in FACES:
+        for index,anchor in enumerate(PIP_EYES):
+            for el in ET.fromstring("<svg>"+pip_eye(*anchor,face,index)+"</svg>"):
+                assert op(outlined(transformed(shape(el.get('d')),MATRIX),2*ref['measurements']['eye_gap_required']),outlined(final_blade,2*BLADE_RIM),pathops.PathOp.INTERSECTION).area<.001, f"hank {face}: reference eye clearance"
+        for el in ET.fromstring("<svg>"+pip_beak(face)+"</svg>"):
+            assert op(outlined(transformed(shape(el.get('d')),MATRIX),16),outlined(final_blade,2*BLADE_RIM),pathops.PathOp.INTERSECTION).area<.001, f"hank {face}: beak clearance"
+    def paths(parts):
+        return "".join(svgpath(p, colour(r, f)) for r, f, p in parts)
+
+    # Named groups make the raster clearance test independent of path ordering.
+    save("base", '<g data-pip-part="body">'+paths(body_parts)+'</g>')
+    save("racket", '<g data-pip-part="racket">'+paths(blank[:4])+'<g data-pip-part="blade">'+paths(blade_parts)+'</g></g>')
+    from hank_mitten import build_assets
+    base_svg,racket_svg=build_assets((target/'base.svg').read_text(),(target/'racket.svg').read_text())
+    (target/'base.svg').write_text(base_svg)
+    (target/'racket.svg').write_text(racket_svg)
+    # Pip deliberately has no blush cheeks in any expression.
+    for face in FACES:
+        body = (
+            "".join(f'<g data-pip-part="eye-{i}">' + pip_eye(*anchor, face, i) + '</g>' for i, anchor in enumerate(PIP_EYES))
+            + '<g data-pip-part="beak">'
+            + pip_beak(face)
+            + "</g>"
+        )
+        save(
+            "face-" + face,
+            f'<g class="sthings-face" data-face="{face}">\n' + body + "</g>\n",
+        )
+
+
 def convert(source, name, target):
+    if name == "pip":
+        return convert_pip(source, target)
     if name == "vex":
         return convert_vex(source, target)
     spec = SPECS[name]
@@ -523,8 +718,6 @@ def convert(source, name, target):
                     clean.addPath(c)
             p = clean
         blank.append((role, fill, p))
-    if name == "pip":
-        blank.append(("muzzle", "#fff6f3", ellipse(213, 236, 34, 30)))
     region = rect(*spec["regions"][0])
     for b in spec["regions"][1:]:
         region = op(region, rect(*b), pathops.PathOp.UNION)
@@ -583,5 +776,5 @@ if __name__ == "__main__":
     parser.add_argument("source", type=Path)
     parser.add_argument("--target", type=Path, default=Path("web/static/img"))
     args = parser.parse_args()
-    for name in ("vex",):
+    for name in ("vex", "pip"):
         convert(args.source, name, args.target / name)

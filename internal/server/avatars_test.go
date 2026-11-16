@@ -1,6 +1,7 @@
 package server_test
 
 import (
+	"bytes"
 	"context"
 	"image/gif"
 	"net/http"
@@ -14,6 +15,7 @@ import (
 
 	"github.com/stuttgart-things/schmetterpause/internal/avatar"
 	"github.com/stuttgart-things/schmetterpause/internal/templates"
+	"github.com/stuttgart-things/schmetterpause/web"
 )
 
 // cream and pink, so the figure is told apart from the default by its fur and
@@ -487,9 +489,10 @@ func TestExpressionGalleryFollowsUnsavedCharacterAndColours(t *testing.T) {
 			}
 			check(t, switched.Body.String(), ch.Key)
 			a := avatar.DefaultForCharacter(ch.Key, id.String())
-			a.Fur = "white"
+			coat := avatar.FurPalette(ch.Key)[0]
+			a.Fur = coat.Key
 			a.Handle = "blue"
-			a.Headdress = "lapis"
+			a.Headdress = "emerald"
 			a.Blade = "pink"
 			q = figureForm(a)
 			q.Set("character", ch.Key)
@@ -503,7 +506,7 @@ func TestExpressionGalleryFollowsUnsavedCharacterAndColours(t *testing.T) {
 			if !strings.Contains(body, `hx-swap-oob="true"`) {
 				t.Error("colour preview does not refresh the gallery")
 			}
-			for _, colour := range []string{"--fur:#f7f5f0", "--handle:#2f6fd0", "--paddle:#d64f9c"} {
+			for _, colour := range []string{"--fur:" + coat.Hex, "--handle:#2f6fd0", "--paddle:#d64f9c"} {
 				if strings.Count(body, colour) != 8 {
 					t.Errorf("%s was not applied to main preview, selected thumbnail and six expressions", colour)
 				}
@@ -566,7 +569,7 @@ func TestVexPaletteOptionsAndRequestsAreRestricted(t *testing.T) {
 		t.Error("read mutated persisted choices")
 	}
 	for _, ch := range avatar.Characters {
-		if ch.Key == "vex" {
+		if ch.Key != "" {
 			continue
 		}
 		other := fragment(t, h, "/fragments/figure-character?character="+ch.Key+"&blade=pink", anna).Body.String()
@@ -630,7 +633,7 @@ func TestBleckiJewelleryPersistsPreviewsAndResets(t *testing.T) {
 	if !strings.Contains(profile, `name="fur" value="" checked`) || strings.Contains(profile, `name="fur" value="cinnamon"`) {
 		t.Error("stored cinnamon does not show Original")
 	}
-	if !strings.Contains(profile, "blecki") || strings.Contains(profile, ">Vex<") || strings.Contains(profile, `value="pip"`) || strings.Contains(profile, `value="pogo"`) || strings.Contains(profile, `value="kiki"`) {
+	if !strings.Contains(profile, "blecki") || strings.Contains(profile, ">Vex<") || !strings.Contains(profile, `value="pip"`) || strings.Contains(profile, `value="pogo"`) || strings.Contains(profile, `value="kiki"`) {
 		t.Error("release character selection is wrong")
 	}
 }
@@ -735,5 +738,114 @@ func TestBleckiBallColourControlPersistenceAndFallback(t *testing.T) {
 	body = fragment(t, h, "/players/"+id.String(), anna).Body.String()
 	if strings.Contains(body, "<legend>Ballfarbe</legend>") {
 		t.Error("reset must hide ball colours")
+	}
+}
+
+func TestHankEditorHasHeadbandAndInitial(t *testing.T) {
+	h, _, anna, _ := twoBrowsers(t)
+	rec := fragment(t, h, "/fragments/figure-character?character=pip&blade=pink", anna)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("Pip editor: %d", rec.Code)
+	}
+	body := rec.Body.String()
+	for _, want := range []string{`data-character="pip"`, `Gesichtsausdrücke: hank`, `>hank<`, `name="bling" value="initial"`, `name="headdress"`, `name="fur" value="grey"`, `name="fur" value="blue-grey"`, `name="blade" value="pink" checked`} {
+		if !strings.Contains(body, want) {
+			t.Errorf("missing %s", want)
+		}
+	}
+	for _, unwanted := range []string{`type="radio" name="ballColor"`, `name="fur" value="cream"`, `name="fur" value="sand"`, `name="fur" value="chocolate"`, `name="headdress" value="lapis"`} {
+		if strings.Contains(body, unwanted) {
+			t.Errorf("unexpected %s", unwanted)
+		}
+	}
+	if strings.Count(body, `class="sthings-face"`) < 7 {
+		t.Error("missing expression gallery")
+	}
+}
+
+func TestPipGreyRefreshesHeadbandOptionsAndFallsBackToPink(t *testing.T) {
+	h, _, anna, _ := twoBrowsers(t)
+	a := avatar.DefaultForCharacter("pip", "")
+	a.Fur = "grey"
+	a.Headdress = "silver"
+	a.Blade = "pink"
+	q := figureForm(a)
+	q.Set("character", "pip")
+	rec := fragment(t, h, "/fragments/figure-preview?"+q.Encode(), anna)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("coat switch: %d", rec.Code)
+	}
+	body := rec.Body.String()
+	if strings.Contains(body, `name="headdress" value="silver"`) {
+		t.Fatal("silver still offered on grey")
+	}
+	for _, want := range []string{`id="figure-headdress"`, `hx-swap-oob="true"`, `name="headdress" value="fur" checked`, `--headdress:#d742c5`, `Original`} {
+		if !strings.Contains(body, want) {
+			t.Errorf("missing %s", want)
+		}
+	}
+	if strings.Contains(body, "Wie das Fell") {
+		t.Fatal("Pip has misleading Original label")
+	}
+	a.Fur = "blue-grey"
+	a.Headdress = avatar.SameAsFur
+	q = figureForm(a)
+	q.Set("character", "pip")
+	rec = fragment(t, h, "/fragments/figure-preview?"+q.Encode(), anna)
+	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), `name="headdress" value="silver"`) {
+		t.Fatal("silver did not return on blue-grey")
+	}
+}
+
+func TestHankInitialUsesTrustedPlayerNameAcrossEditorHeaderSVGAndGIF(t *testing.T) {
+	h, store, anna, _ := twoBrowsers(t)
+	id := uuid.MustParse(opponentID(t, store, "Anna"))
+	a := avatar.DefaultForCharacter("pip", id.String())
+	a.Bling = "initial"
+	a.Blade = "pink"
+	form := figureForm(a)
+	form.Set("character", "pip")
+	form.Set("displayName", "Zelda")
+	preview := fragment(t, h, "/fragments/figure-preview?"+form.Encode(), anna)
+	if preview.Code != http.StatusOK || !strings.Contains(preview.Body.String(), `data-initial="A"`) {
+		t.Fatal("editor lost trusted name", preview.Code)
+	}
+	if strings.Contains(preview.Body.String(), `data-initial="Z"`) {
+		t.Fatal("client replaced trusted name")
+	}
+	if r := postAs(t, h, "/figure", anna, form); r.Code != http.StatusOK {
+		t.Fatal(r.Code, r.Body.String())
+	}
+	stored, err := store.Avatars().Get(t.Context(), id)
+	if err != nil || stored != a {
+		t.Fatal("stored choices changed", stored, err)
+	}
+	profile := fragment(t, h, "/players/"+id.String(), anna).Body.String()
+	if !strings.Contains(profile, `data-initial="A"`) {
+		t.Fatal("profile/header has no initial")
+	}
+	svg := get(t, h, "/avatars/"+id.String()+".svg?face=angry").Body.String()
+	if !strings.Contains(svg, `data-initial="A"`) || strings.Contains(svg, `data-initial="fallback"`) {
+		t.Fatal("live SVG lost name")
+	}
+	actual := get(t, h, "/avatars/"+id.String()+".gif?face=angry").Body.Bytes()
+	collection := avatar.MustLoadCollection(web.Static, "static/img")
+	expected, err := collection.GIF(a, []avatar.Frame{{Face: "angry"}}, 64, avatar.RenderContext{DisplayName: "Anna"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(actual, expected) {
+		t.Fatal("LED GIF lost render context")
+	}
+	for _, key := range []string{"snowflake", "fish"} {
+		stale := a
+		stale.Bling = key
+		if err := store.Avatars().Put(t.Context(), id, stale); err != nil {
+			t.Fatal(err)
+		}
+		page := fragment(t, h, "/players/"+id.String(), anna).Body.String()
+		if !strings.Contains(page, `name="bling" value="" checked`) || strings.Contains(page, `data-bling="initial"`) {
+			t.Fatal("retired choice did not fall back", key)
+		}
 	}
 }

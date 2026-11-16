@@ -81,6 +81,8 @@
 			figureKeys[i] = key;
 			box.textContent = '';
 			var url = id ? '/avatars/' + encodeURIComponent(id) + '.svg' : '/avatars/random.svg';
+			// A fresh match/player fetch must not reuse pre-deployment artwork.
+			url += '?v=' + Date.now();
 			fetch(url).then(function (response) {
 				return response.ok ? response.text() : '';
 			}).then(function (svg) {
