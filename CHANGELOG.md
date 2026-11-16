@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.24.0](https://github.com/stuttgart-things/schmetterpause/compare/v0.23.0...v0.24.0) (2026-11-16)
+
+
+### Features
+
+* **avatar:** add Hank avatar with sthings-style racket grip ([#388](https://github.com/stuttgart-things/schmetterpause/issues/388)) ([73594b0](https://github.com/stuttgart-things/schmetterpause/commit/73594b0b5612a4e23aa282bae6866eb957d59143))
+
 ## [0.23.0](https://github.com/stuttgart-things/schmetterpause/compare/v0.22.0...v0.23.0) (2026-11-11)
 
 
