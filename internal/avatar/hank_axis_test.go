@@ -3,12 +3,13 @@ package avatar
 import (
 	"bytes"
 	"fmt"
-	"github.com/stuttgart-things/schmetterpause/web"
 	"image"
 	"image/gif"
 	"io/fs"
 	"regexp"
 	"testing"
+
+	"github.com/stuttgart-things/schmetterpause/web"
 )
 
 // Inspect actual quantised LED pixels, with separate vector masks identifying

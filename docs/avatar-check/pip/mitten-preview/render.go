@@ -19,12 +19,12 @@ import (
 
 	"github.com/srwiley/oksvg"
 	"github.com/srwiley/rasterx"
-
-	"github.com/stuttgart-things/schmetterpause/internal/avatar"
-	"github.com/stuttgart-things/schmetterpause/web"
 	"golang.org/x/image/font"
 	"golang.org/x/image/font/basicfont"
 	"golang.org/x/image/math/fixed"
+
+	"github.com/stuttgart-things/schmetterpause/internal/avatar"
+	"github.com/stuttgart-things/schmetterpause/web"
 )
 
 const out = "docs/avatar-check/pip/mitten-preview"

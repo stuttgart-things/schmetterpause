@@ -1157,8 +1157,13 @@ func straightReview(out string) error {
 	if err != nil {
 		return err
 	}
-	defer f.Close()
-	return png.Encode(f, canvas)
+	if err := png.Encode(f, canvas); err != nil {
+		if closeErr := f.Close(); closeErr != nil {
+			return closeErr
+		}
+		return err
+	}
+	return f.Close()
 }
 
 // completionReview renders both flippers against 1298bfe with identical crops.
@@ -1224,7 +1229,9 @@ func completionReview(out string) error {
 				return err
 			}
 			err = png.Encode(f, img)
-			f.Close()
+			if closeErr := f.Close(); closeErr != nil {
+				return closeErr
+			}
 			if err != nil {
 				return err
 			}
@@ -1261,7 +1268,9 @@ func completionReview(out string) error {
 				return err
 			}
 			img, err := png.Decode(f)
-			f.Close()
+			if closeErr := f.Close(); closeErr != nil {
+				return closeErr
+			}
 			if err != nil {
 				return err
 			}
