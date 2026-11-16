@@ -50,5 +50,7 @@
   "closest_expression_pair": "neutral/skeptical",
   "shared_arm_fist_contours": 1,
   "inner_seam_between_arm_and_fist": false,
-  "pixel_match_checked_after_restart": false
+  "pixel_match_checked_after_restart": true,
+  "different_pixels_420": 0,
+  "app_commit": "687d305"
 }
