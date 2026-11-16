@@ -1,64 +1,53 @@
 {
-  "shaft_length": 103.83095169067383,
-  "full_width_covered_length": 34.0,
-  "full_width_covered_fraction": 0.3274553439642016,
-  "overlap_centroid": [
-    320.9024887255721,
-    372.9745949557374
-  ],
-  "axis_offset_from_overlap_centroid": 1.5938616401498669,
-  "axis": {
-    "centre": [
-      327.8761315279698,
-      350.66045534053836
-    ],
-    "unit": [
-      -0.232526719059072,
-      0.9725900086488773
-    ],
-    "degrees": 13.4458760409095
-  },
-  "full_width_interval": [
-    16.0,
-    50.0
-  ],
-  "reference": "1298bfe",
-  "principle": "B: grip behind flipper, blade in foreground",
-  "method": "64px quantized GIFs; gray/32 changed pixels, all 15 face pairs",
-  "selected_scale": 0.8,
-  "angle_degrees": -180,
-  "maximum_requested_scale": 0.8,
-  "left_width": 94.2911376953125,
-  "right_width": 75.43301391601562,
-  "flipper_width_ratio": 0.8000011004190655,
-  "area_scale": 0.8000005476268927,
-  "emblem_clearance": 13.043,
-  "canvas_margin": 8.120391845703125,
-  "visible_grip_area": 463.2062899271641,
-  "free_neck_length": 20.2,
-  "face_overlap_area": 0.0,
-  "blade_overlap_area": 0.0,
-  "right_outline_bounds": [
-    244.47219848632812,
-    324.944580078125,
-    344.30755615234375,
-    411.8796081542969
-  ],
+  "principle": "mitten grips a continuous capped shaft",
+  "reference": "approved mitten preview; a99eac2 blade and face geometry",
   "grip_axis": {
     "centre": [
-      327.07724611041976,
-      354.00943704010496
+      327.46230049615195,
+      352.3937317912298
     ],
     "unit": [
-      -0.2320971634618589,
-      0.9726926064862214
+      -0.23224405083097668,
+      0.9726575455182666
     ],
-    "degrees": 13.42057203398011
+    "degrees": 13.429224487924778
   },
-  "baseline": "1298bfe",
+  "fist_colour_width": 44.000457763671875,
+  "shaft_colour_width": 26.01101779937744,
+  "colour_width_ratio": 1.6916084600397683,
+  "fist_outline_width": 58.00045585632324,
+  "shaft_outline_width": 36.0108528137207,
+  "width_ratio": 1.6106382194376734,
+  "free_neck_length": 20.9,
+  "lower_visible_colour_length": 11.0,
+  "collinear_deviation_degrees": 0.04778629376817361,
+  "full_width_covered_length": 18.25,
+  "arm_fist_overlap_area": 628.6519687245909,
+  "emblem_clearance": 17.027,
+  "canvas_margin": 13.265350341796875,
+  "equipment_canvas_margin": 8.25030517578125,
+  "visible_grip_area": 801.1331916400868,
+  "cap_area": 34.078261429755,
+  "hand_axis_interval": [
+    145.4,
+    189.4
+  ],
+  "shaft_axis_interval": [
+    99.7,
+    200.4
+  ],
+  "neck_and_lower_centres": [
+    [
+      134.95,
+      0.0
+    ],
+    [
+      194.9,
+      0.04999999999999716
+    ]
+  ],
+  "minimum_separation": 184,
   "closest_pair": "neutral/skeptical",
-  "minimum_separation": 186,
-  "status": "selected product B",
-  "variant": "B",
-  "version": "bddb53953c354083bb1e1cdc23954bc2cb22d3ba-048d6f8460c8c35a"
+  "asset_version": "90991129e78f99c7",
+  "approved_preview_bytes_identical": true
 }

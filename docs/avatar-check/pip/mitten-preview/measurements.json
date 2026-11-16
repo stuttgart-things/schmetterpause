@@ -1,0 +1,47 @@
+{
+  "arm_colour_width_samples": [
+    {
+      "fraction": 0.25,
+      "colour_width": 43.2
+    },
+    {
+      "fraction": 0.4,
+      "colour_width": 45.5
+    },
+    {
+      "fraction": 0.55,
+      "colour_width": 46.60000000000001
+    },
+    {
+      "fraction": 0.7,
+      "colour_width": 47.0
+    }
+  ],
+  "shaft_is_single_path": true,
+  "axis_deviation_above_below": 0.0,
+  "baseline": "a99eac2",
+  "status": "proposal only, awaiting approval",
+  "axis_degrees": 13.42057203398011,
+  "fist_outline_width": 58,
+  "shaft_outline_width": 36,
+  "width_ratio": 1.6111111111111112,
+  "fist_colour_width": 44,
+  "shaft_colour_width": 26,
+  "colour_width_ratio": 1.6923076923076923,
+  "free_neck": 20.89999999999999,
+  "lower_visible_colour_length": 11.100000000000023,
+  "emblem_clearance": 17.027,
+  "canvas_margin": 13.26544189453125,
+  "sthings": {
+    "frontal_fist_width": 96.80000000000001,
+    "upper_grip_envelope_width": 61.102752685546875,
+    "ratio": 1.5842166800268704,
+    "upper_visible_colour_length": 13.399999999999991,
+    "lower_visible_colour_length": 5.699999999999989,
+    "paw_axis_interval": [
+      80.1,
+      163.4
+    ]
+  },
+  "product_assets_unchanged": true
+}

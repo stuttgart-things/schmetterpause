@@ -114,41 +114,44 @@ func validateHankContact(t *testing.T, raw []byte) {
 		t.Fatal(err)
 	}
 	racket, ok := contactFind(root, "racket")
-	if !ok || len(racket.Paths) != 4 {
-		t.Fatal("HTTP SVG has no explicit shaft paths")
+	if !ok || len(racket.Paths) != 5 {
+		t.Fatal("HTTP SVG needs the single shaft, upper binding and capped lower end")
 	}
 	hand, ok := contactFind(racket, "flipper")
-	if !ok || len(hand.Paths) != 2 {
-		t.Fatal("HTTP SVG has no pressing flipper")
+	if !ok || len(hand.Paths) != 3 {
+		t.Fatal("HTTP SVG needs one closed mitten and one fold")
 	}
-	// Token-level order is independent of the structs used to rasterize masks.
 	text := string(raw)
 	gripIndex := strings.Index(text, `d="`+racket.Paths[1].D+`"`)
 	handIndex := strings.Index(text, `data-pip-part="flipper"`)
 	bladeIndex := strings.Index(text, `data-pip-part="blade"`)
 	if gripIndex < 0 || !(gripIndex < handIndex && handIndex < bladeIndex) {
-		t.Fatal("paint order must be grip -> flipper -> blade")
+		t.Fatal("paint order must be shaft -> mitten -> blade")
 	}
 	grip := contactMask(t, racket.Paths)
+	colour := contactMask(t, racket.Paths[1:2])
 	flipper := contactMask(t, hand.Paths)
-	fur := contactMask(t, hand.Paths[1:])
+	fur := contactMask(t, hand.Paths[1:2])
+	fold := contactMask(t, hand.Paths[2:])
+	blade, _ := contactFind(racket, "blade")
+	bladeMask := contactMask(t, blade.Paths)
 	var points [][2]float64
 	cx, cy := 0., 0.
 	for y := 0; y < 420; y++ {
 		for x := 0; x < 420; x++ {
 			if contactInside(grip, float64(x)+.5, float64(y)+.5) {
-				p := [2]float64{float64(x) + .5, float64(y) + .5}
-				points = append(points, p)
-				cx += p[0]
-				cy += p[1]
+				q := [2]float64{float64(x) + .5, float64(y) + .5}
+				points = append(points, q)
+				cx += q[0]
+				cy += q[1]
 			}
 		}
 	}
 	cx /= float64(len(points))
 	cy /= float64(len(points))
 	xx, yy, xy := 0., 0., 0.
-	for _, p := range points {
-		dx, dy := p[0]-cx, p[1]-cy
+	for _, q := range points {
+		dx, dy := q[0]-cx, q[1]-cy
 		xx += dx * dx
 		yy += dy * dy
 		xy += dx * dy
@@ -158,27 +161,64 @@ func validateHankContact(t *testing.T, raw []byte) {
 	if uy < 0 {
 		ux, uy = -ux, -uy
 	}
-	lo, hi := math.Inf(1), math.Inf(-1)
-	sx, sy, count := 0., 0., 0.
-	for _, p := range points {
-		tt := (p[0]-cx)*ux + (p[1]-cy)*uy
-		lo = math.Min(lo, tt)
-		hi = math.Max(hi, tt)
-		if contactInside(flipper, p[0], p[1]) {
-			sx += p[0]
-			sy += p[1]
-			count++
+	angle := math.Atan2(-ux, uy) * 180 / math.Pi
+	if math.Abs(angle-13.42) > 2 {
+		t.Fatalf("shaft axis %.3f", angle)
+	}
+	interval := func(mask *image.RGBA) (float64, float64) {
+		lo, hi := math.Inf(1), math.Inf(-1)
+		for tt := -160.; tt <= 160; tt += .1 {
+			if contactInside(mask, cx+ux*tt, cy+uy*tt) {
+				lo = math.Min(lo, tt)
+				hi = math.Max(hi, tt)
+			}
 		}
+		return lo, hi
 	}
-	if count == 0 {
-		t.Fatal("shaft does not intersect flipper")
+	_, headEnd := interval(bladeMask)
+	handStart, handEnd := interval(flipper)
+	_, shaftEnd := interval(colour)
+	neck, lower := handStart-headEnd, shaftEnd-handEnd
+	if neck < 20 {
+		t.Fatalf("HTTP neck %.2f < 20", neck)
 	}
-	offset := math.Abs((sx/count-cx)*uy - (sy/count-cy)*ux)
-	if offset > 5 {
-		t.Fatalf("axis misses overlap centroid: %.3f", offset)
+	if lower < 10 {
+		t.Fatalf("HTTP lower shaft %.2f < 10", lower)
+	}
+	crossCentre := func(tt float64) float64 {
+		lo, hi := math.Inf(1), math.Inf(-1)
+		for n := -30.; n <= 30; n += .25 {
+			if contactInside(colour, cx+ux*tt+uy*n, cy+uy*tt-ux*n) {
+				lo = math.Min(lo, n)
+				hi = math.Max(hi, n)
+			}
+		}
+		return (lo + hi) / 2
+	}
+	upperT, lowerT := (headEnd+handStart)/2, (handEnd+shaftEnd)/2
+	delta := math.Atan2(crossCentre(lowerT)-crossCentre(upperT), lowerT-upperT) * 180 / math.Pi
+	if math.Abs(delta) > 2 {
+		t.Fatalf("upper and lower shaft diverge %.3f degrees", delta)
+	}
+	normalWidth := func(mask *image.RGBA) float64 {
+		lo, hi := math.Inf(1), math.Inf(-1)
+		for y := 0; y < 420; y++ {
+			for x := 0; x < 420; x++ {
+				if contactInside(mask, float64(x)+.5, float64(y)+.5) {
+					n := (float64(x)+.5-cx)*uy - (float64(y)+.5-cy)*ux
+					lo = math.Min(lo, n)
+					hi = math.Max(hi, n)
+				}
+			}
+		}
+		return hi - lo
+	}
+	ratio := normalWidth(fur) / normalWidth(colour)
+	if ratio < 1.5 || ratio > 1.8 {
+		t.Fatalf("HTTP fist/shaft colour width ratio %.3f", ratio)
 	}
 	first, last := math.Inf(1), math.Inf(-1)
-	for tt := lo; tt <= hi; tt += .25 {
+	for tt := handStart; tt <= handEnd; tt += .25 {
 		x, y := cx+ux*tt, cy+uy*tt
 		all, any := true, false
 		for n := -24.; n <= 24; n += .25 {
@@ -195,15 +235,31 @@ func validateHankContact(t *testing.T, raw []byte) {
 			last = math.Max(last, tt)
 		}
 	}
-	ratio := (last - first) / (hi - lo)
-	if ratio < .30 {
-		t.Fatalf("only %.2f%% of shaft length fully hidden; need 30%%", 100*ratio)
+	if last-first < 8 {
+		t.Fatalf("mitten never covers complete shaft width: %.2f", last-first)
 	}
-	for _, p := range points {
-		tt := (p[0]-cx)*ux + (p[1]-cy)*uy
-		if tt > first+3 && !contactInside(flipper, p[0], p[1]) {
-			t.Fatal("shaft protrudes below flipper")
+	body, _ := contactFind(root, "body")
+	connected := false
+	for _, p := range body.Paths {
+		if p.Fill != hand.Paths[1].Fill {
+			continue
 		}
+		arm := contactMask(t, []contactPath{p})
+		if !contactInside(arm, 285, 350) {
+			continue
+		}
+		overlap := 0
+		for y := 0; y < 420; y++ {
+			for x := 0; x < 420; x++ {
+				if contactInside(arm, float64(x)+.5, float64(y)+.5) && contactInside(fur, float64(x)+.5, float64(y)+.5) {
+					overlap++
+				}
+			}
+		}
+		connected = overlap > 100
+	}
+	if !connected {
+		t.Fatal("HTTP shoulder/arm does not join mitten")
 	}
 	// Render the HTTP-delivered racket with its actual resolved palette at 420px.
 	palette := map[string]string{}
@@ -241,26 +297,28 @@ func validateHankContact(t *testing.T, raw []byte) {
 		t.Fatal(err)
 	}
 	want := color.RGBA{uint8(n >> 16), uint8(n >> 8), uint8(n), 255}
+
 	hit := false
-	for tt := first + 2; tt < last-2; tt += .5 {
+	for tt := first + 1; tt < last-1; tt += .5 {
 		x, y := cx+ux*tt, cy+uy*tt
 		safe := true
 		for dx := -2; dx <= 2; dx++ {
 			for dy := -2; dy <= 2; dy++ {
-				safe = safe && contactInside(fur, x+float64(dx), y+float64(dy))
+				px, py := x+float64(dx), y+float64(dy)
+				safe = safe && contactInside(fur, px, py) && !contactInside(fold, px, py)
 			}
 		}
 		if safe {
 			got := rendered.RGBAAt(int(x), int(y))
 			if !bytes.Equal([]byte{got.R, got.G, got.B, got.A}, []byte{want.R, want.G, want.B, want.A}) {
-				t.Fatalf("entry pixel %.1f,%.1f = %v; want flipper %v", x, y, got, want)
+				t.Fatalf("front mitten pixel %.1f,%.1f = %v, want %v", x, y, got, want)
 			}
 			hit = true
 			break
 		}
 	}
 	if !hit {
-		t.Fatal("no flipper-colour pixel at shaft entry")
+		t.Fatal("no mitten-colour pixel in front of shaft")
 	}
-	t.Logf("HTTP overlap %.2f%%, centroid offset %.3f; 420px entry is flipper colour", ratio*100, offset)
+	t.Logf("HTTP neck %.2f, lower %.2f, axis %.3f°, collinear deviation %.3f°, ratio %.3f, full-width overlap %.2f; 420px pixel is mitten colour", neck, lower, angle, delta, ratio, last-first)
 }

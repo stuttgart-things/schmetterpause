@@ -25,7 +25,7 @@ func TestHankEyeAndRacketStaySeparatedAt64Pixels(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		p := regexp.MustCompile(`(?s)<g data-pip-part="` + group + `">(.*?)</g>`).FindSubmatch(data)
+		p := regexp.MustCompile(`(?s)<g\b[^>]*\bdata-pip-part="` + group + `"[^>]*>(.*?)</g>`).FindSubmatch(data)
 		if p == nil {
 			t.Fatal("missing group", group)
 		}

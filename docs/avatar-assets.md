@@ -554,7 +554,7 @@ Reproduktion mit der Vector-Tools-Python-Umgebung:
 `python scripts/hank_completion_review.py --serve 8091`.
 Alle Messquerschnitte sind in `flippers/measurements.json` dokumentiert.
 
-## hank – Produktvariante B: Andrücken mit 80-%-Flosse (aktuell)
+## hank – vorherige Produktvariante B: Andrücken mit 80-%-Flosse
 
 Die ausgewählte B-Flosse drückt den Griff an die Seite. 80 % sind der größte
 Wert im angefragten Bereich 75–80 %, der alle Bedingungen erfüllt. Die natürliche
@@ -574,7 +574,7 @@ prüfen Andrücken und mindestens 75 % Breite; ein sichtbares unteres Griffende
 ist nicht mehr vorgesehen. Die App revalidiert pip-Assets und lädt Live-Avatare
 mit einem Cache-Buster. Prüfbilder verwenden Commit- und Inhaltshash.
 
-## hank – HTTP-verifizierter Griffkontakt (aktuell)
+## hank – vorheriger HTTP-verifizierter Andrückkontakt (a99eac2)
 
 Der Stand bddb539 wurde bereits korrekt ausgeliefert (Asset- und Geometriehash
 identisch). Sein Griff war jedoch zu früh abgeschnitten: nur 6,3 % waren über
@@ -590,3 +590,23 @@ Mit `SP_HANK_CONTACT_URL` prüft er zusätzlich die echte App auf 8080.
 Profilfigur und Referenz wurden bei 420 × 420 pixelgleich gerendert (0 Abweichungen).
 App und Prüfansicht laufen aus dem normalen Repo, nicht mehr aus einem Worktree
 unter /tmp. `zz_shot_test.go` war bereits entfernt und wird nicht committet.
+
+## hank – freigegebener Fäustling (aktueller Produktstand)
+
+Die angedrückte Flosse ist vollständig durch den freigegebenen Fäustling ersetzt.
+Produktbasis und Schlägerasset sind bytegleich zum freigegebenen Entwurf.
+`scripts/hank_mitten.py` erzeugt die runde Faust, den breiten verbundenen Arm und
+einen durchgehenden Stiel, der oberhalb und unterhalb der Faust sichtbar bleibt.
+Der alte Andrück-Generator `scripts/hank_press.py` ist entfernt.
+
+Messung aus den Produktpfaden: Faust-/Stiel-Verhältnis 1,611 (Farbflächen 1,692),
+Hals 20,9 Einheiten, unteres Stielstück 11,0 Einheiten, Kollinearitätsabweichung
+0,048°, Hand-/Arm-Emblemabstand 17,027 und Hand-/Arm-Canvas-Abstand 13,265.
+Die unveränderte Schlägerfläche hält weiterhin mindestens 8 Einheiten Canvas-Rand.
+
+[Produktbericht mit App-Pixelvergleich](avatar-check/pip/mitten-product/README.md),
+[Prüfansicht](avatar-check/pip/index.html). Die Greiftests prüfen oben/unten
+sichtbaren Stiel, Kollinearität, Querüberdeckung, Faustverhältnis und Armanschluss
+sowie die echte HTTP-Ausgabe. Andrück-Tests ohne unteres Stielende entfallen.
+Alle Gesichter, linke Flosse, Stirnband, Emblem, Rahmung und anderen Avatare
+bleiben unverändert. Der Produktimport erzeugt ausschließlich gefüllte SVG-Pfade.

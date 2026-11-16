@@ -108,13 +108,13 @@ class HankEmblemGeometry(unittest.TestCase):
             self.assertLess(op(shape(d), interior, pathops.PathOp.DIFFERENCE).area, .001)
         self.assertLess(shape(fallback[-1].get("d")).area, self.emblem.area * .6)
 
-    def test_pressing_flipper_retains_native_single_fold(self):
-        from hank_flipper_geometry import flippers
-        from hank_press import flipper
-        left,right,hand,_=flippers();expected,_=flipper(left)
-        self.assertEqual(len(hand),2)
-        self.assertEqual(len(list(right.contours)),1)
-        self.assertLess(op(right,expected,pathops.PathOp.XOR).area,.2)
+    def test_mitten_has_one_closed_surface_and_one_internal_fold(self):
+        hand=list(self.g['flipper'])
+        self.assertEqual(len(hand),3)
+        fist=shape(hand[1].get('d'));fold=shape(hand[2].get('d'))
+        self.assertEqual(len(list(fist.contours)),1)
+        self.assertEqual(len(list(fold.contours)),1)
+        self.assertLess(op(fold,fist,pathops.PathOp.DIFFERENCE).area,.001)
 
 
 if __name__ == "__main__":

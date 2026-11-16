@@ -79,7 +79,7 @@ class HankRacketGeometry(unittest.TestCase):
         visible=op(hand,union(paths(blade)),pathops.PathOp.DIFFERENCE)
         self.assertGreaterEqual(visible.area/hand.area,.95)
 
-    def test_pressing_grip_keeps_visible_colour_and_twenty_unit_neck(
+    def test_grasp_keeps_neck_and_capped_lower_end_visible(
         self,
     ):
         grip = next(
@@ -88,13 +88,14 @@ class HankRacketGeometry(unittest.TestCase):
             if el.get("fill", "").startswith("var(--handle,")
         )
         blade = next(g for g in self.racket if g.get("data-pip-part") == "blade")
-        stripes = [shape(el.get("d")) for el in list(self.racket)[2:4]]
+        stripes = [shape(el.get("d")) for el in list(self.racket)[2:5]]
         cover = union(paths(blade) + paths(self.parts["flipper"]) + stripes)
         visible = op(grip, cover, pathops.PathOp.DIFFERENCE)
         x1, y1, x2, y2 = visible.bounds
         self.assertGreater(visible.area, 0)
         from hank_flipper_geometry import measurements
         self.assertGreaterEqual(measurements()["free_neck_length"],20)
+        self.assertGreaterEqual(measurements()["lower_visible_colour_length"],10)
         self.assertGreaterEqual(x2 - x1, 20)
         self.assertGreaterEqual(y2 - y1, 18)
 

@@ -1,3 +1,5 @@
+> Historischer Andrück-Stand. Aktuell: [freigegebener Produkt-Fäustling](../mitten-product/README.md).
+
 # hank – überprüfter Griffkontakt in App und Prüfbild
 
 ## Welcher Stand war ausgeliefert?

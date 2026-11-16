@@ -1,3 +1,5 @@
+> Historischer Andrück-Stand. Aktuell: [freigegebener Produkt-Fäustling](../mitten-product/README.md).
+
 # hank – ausgewählte Produktvariante B, 80 %
 
 B drückt den Schläger mit der angelegten Flosse an. Die Griffteile werden zuerst

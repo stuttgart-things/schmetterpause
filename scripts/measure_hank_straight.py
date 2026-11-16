@@ -21,7 +21,7 @@ def summary(root):
  origin=(cx+t*unit[0],cy+t*unit[1])
  offset=abs((hx-cx)*unit[1]-(hy-cy)*unit[0])
  head=intervals(union(paths(blade)),origin,unit)[0];hand_sections=intervals(union(paths(hand)),origin,unit);fist=(hand_sections[0][0],hand_sections[-1][1]);shaft=intervals(grip,origin,unit)[0]
- stripes=union([shape(p.get('d')) for p in list(root)[2:4]])
+ stripes=union([shape(p.get('d')) for p in list(root)[2:] if p.tag.endswith('path')])
  visible=op(grip,union(paths(hand)+paths(blade)+[stripes]),pathops.PathOp.DIFFERENCE)
  visible_intervals=intervals(visible,origin,unit)
  return {'grip_axis_degrees':axis['degrees'],'head_centre_to_grip_axis':offset,'blade_rim_normal_degrees':bottom_normal(surface),

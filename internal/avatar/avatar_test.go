@@ -396,6 +396,7 @@ func TestCharacterDeliveries(t *testing.T) {
 							for k := range attrs {
 								allowed := k == "fill" || k == "fill-rule" ||
 									(el.Name.Local == "svg" && (k == "viewBox" || k == "xmlns")) ||
+									(el.Name.Local == "g" && ch.Key == "pip" && k == "xmlns" && attrs[k] == "http://www.w3.org/2000/svg") ||
 									(el.Name.Local == "g" && (k == "class" || k == "data-face" || k == "data-bling" || (ch.Key == "pip" && (k == "data-pip-part" || k == "data-initial")))) ||
 									(el.Name.Local == "path" && k == "d") ||
 									(el.Name.Local == "circle" && (k == "cx" || k == "cy" || k == "r")) ||

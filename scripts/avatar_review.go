@@ -41,7 +41,7 @@ type sample struct {
 }
 
 func main() {
-	contact := flag.Bool("contact-only", false, "export bddb539/current grip contact details")
+	contact := flag.Bool("contact-only", false, "export a99eac2/current mitten contact details")
 	completion := flag.Bool("completion-only", false, "export 1298bfe/current flipper details and 18-variant expression sheets")
 	straight := flag.Bool("straight-only", false, "export straight hank racket axis comparison and details")
 	holding := flag.Bool("holding-only", false, "export sthings racket reference and hank holding sheets")
@@ -1284,7 +1284,7 @@ func contactReview(out string) error {
 		return err
 	}
 	for _, part := range []string{"base", "racket"} {
-		data, err := exec.Command("git", "show", "bddb539:web/static/img/pip/"+part+".svg").Output()
+		data, err := exec.Command("git", "show", "a99eac2:web/static/img/pip/"+part+".svg").Output()
 		if err != nil {
 			return err
 		}
@@ -1330,7 +1330,7 @@ func contactReview(out string) error {
 		}
 		draw.Draw(combined, image.Rect(i*420, 28, i*420+420, 448), img, image.Point{}, draw.Src)
 		d := font.Drawer{Dst: combined, Src: image.White, Face: reviewFont, Dot: fixed.P(i*420+8, 18)}
-		d.DrawString(e.name + " | " + []string{"bddb539", "current"}[i])
+		d.DrawString(e.name + " | " + []string{"a99eac2", "current"}[i])
 	}
 	f, err := os.Create(filepath.Join(out, "hand-before-after-420.png"))
 	if err != nil {

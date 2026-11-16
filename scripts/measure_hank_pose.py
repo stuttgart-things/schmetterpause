@@ -29,7 +29,7 @@ def measurements():
     flipper=union(paths(parts['flipper']))
     blade=next(g for g in parts['racket'] if g.get('data-pip-part')=='blade')
     grip=next(shape(p.get('d')) for p in parts['racket'] if p.get('fill','').startswith('var(--handle,'))
-    stripes=[shape(p.get('d')) for p in list(parts['racket'])[2:4]]
+    stripes=[shape(p.get('d')) for p in list(parts['racket'])[2:] if p.tag.endswith('path')]
     visible=op(grip,union(paths(blade)+paths(parts['flipper'])+stripes),pathops.PathOp.DIFFERENCE)
     head=op(union(paths(parts['body'])),rect(0,0,420,315*SCALE+OFFSET_Y),pathops.PathOp.INTERSECTION)
     overlap=op(head,union(paths(blade)),pathops.PathOp.INTERSECTION)

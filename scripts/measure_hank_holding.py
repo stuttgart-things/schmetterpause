@@ -35,7 +35,7 @@ def export(out=None):
   beak=next(g for g in ET.parse(ASSETS/('face-'+state+'.svg')).getroot().iter() if g.get('data-pip-part')=='beak')
   beak_gaps[state]=clearance(emblem,union(paths(beak)))
  shaft=next(shape(e.get('d')) for e in racket if e.get('fill','').startswith('var(--handle,'))
- stripes=[shape(e.get('d')) for e in list(racket)[2:4]]
+ stripes=[shape(e.get('d')) for e in list(racket)[2:] if e.tag.endswith('path')]
  grip=op(shaft,union(paths(hand)+paths(blade)+stripes),pathops.PathOp.DIFFERENCE)
  data={'sthings':ref['measurements'],'hank':{
   'frame_scale':SCALE,'frame_offset':[OFFSET_X,OFFSET_Y],'width':x2-x1,'height':y2-y1,'width_percent':(x2-x1)/4.2,'height_percent':(y2-y1)/4.2,

@@ -651,28 +651,6 @@ def convert_pip(source, target):
         assert (
             min(x1, y1) >= 8 - 0.001 and max(x2, y2) <= 412 + 0.001
         ), "Hank racket path outside 8-unit canvas inset"
-    # B: mirror the real left flipper at 80%, lay it in front of the shaft.
-    from hank_press import flipper, bury_grip
-    from hank_frame import framed
-    paw_final,ink_final=flipper(framed(original[7][2]))
-    assert op(ink_final,outlined(final_blade,2*BLADE_RIM),pathops.PathOp.INTERSECTION).area<.001, "pressing flipper overlaps blade"
-    face_mask=pathops.Path()
-    for _,fill,p in body_parts:
-        if fill=="#fff6f3" and p.bounds[1]<200:
-            face_mask=op(face_mask,transformed(p,MATRIX),pathops.PathOp.UNION)
-    assert op(ink_final,face_mask,pathops.PathOp.INTERSECTION).area<.001, "pressing flipper overlaps face"
-    assert min(ink_final.bounds[0],ink_final.bounds[1],420-ink_final.bounds[2],420-ink_final.bounds[3])>=8-.001
-    plane,binding=bury_grip(transformed(shaft,MATRIX),ink_final)
-    native_plane=transformed(plane,MATRIX.inverse())
-    for i in range(3):
-        role,fill,p=blank[i]
-        blank[i]=(role,fill,op(p,native_plane,pathops.PathOp.INTERSECTION))
-    # The lower binding remains wholly buried, preserving explicit shaft parts.
-    blank[3]=("ink",INK,transformed(binding,MATRIX.inverse()))
-    shaft=blank[1][2]
-    racket_parts=list(blank)
-    paw=transformed(paw_final,MATRIX.inverse())
-    blank.extend([("ink",INK,transformed(ink_final,MATRIX.inverse())),("body",PIP_FUR,paw)])
     target.mkdir(parents=True, exist_ok=True)
 
     def save(name, body):
@@ -691,26 +669,16 @@ def convert_pip(source, target):
                 assert op(outlined(transformed(shape(el.get('d')),MATRIX),2*ref['measurements']['eye_gap_required']),outlined(final_blade,2*BLADE_RIM),pathops.PathOp.INTERSECTION).area<.001, f"hank {face}: reference eye clearance"
         for el in ET.fromstring("<svg>"+pip_beak(face)+"</svg>"):
             assert op(outlined(transformed(shape(el.get('d')),MATRIX),16),outlined(final_blade,2*BLADE_RIM),pathops.PathOp.INTERSECTION).area<.001, f"hank {face}: beak clearance"
-    for role,fill,p in racket_parts+blank[6:]:
-        assert op(outlined(ellipse(EMBLEM[0],EMBLEM[1],EMBLEM[2],EMBLEM[2]),24/SCALE),p,pathops.PathOp.INTERSECTION).area<.001, "hank equipment/emblem gap below 12"
-    # Stripes belong to the visible handle area; the blade/flipper must not
-    # hide the chosen material down to a sliver.
-    hand_mask=pathops.Path()
-    for _,_,stripe in blank[2:4]:
-        hand_mask=op(hand_mask,stripe,pathops.PathOp.UNION)
-    for _,_,part in blank[6:]:
-        hand_mask=op(hand_mask,part,pathops.PathOp.UNION)
-    visible_grip=op(shaft,op(outlined(blade,blade_outline),hand_mask,pathops.PathOp.UNION),pathops.PathOp.DIFFERENCE)
-    assert (
-        visible_grip.area > 0
-    ), f"hank visible handle area {visible_grip.area*SCALE**2:.2f} is empty"
-
     def paths(parts):
         return "".join(svgpath(p, colour(r, f)) for r, f, p in parts)
 
     # Named groups make the raster clearance test independent of path ordering.
     save("base", '<g data-pip-part="body">'+paths(body_parts)+'</g>')
-    save("racket", '<g data-pip-part="racket">'+paths(blank[:4])+'<g data-pip-part="flipper">'+paths(blank[6:])+'</g><g data-pip-part="blade">'+paths(blade_parts)+'</g></g>')
+    save("racket", '<g data-pip-part="racket">'+paths(blank[:4])+'<g data-pip-part="blade">'+paths(blade_parts)+'</g></g>')
+    from hank_mitten import build_assets
+    base_svg,racket_svg=build_assets((target/'base.svg').read_text(),(target/'racket.svg').read_text())
+    (target/'base.svg').write_text(base_svg)
+    (target/'racket.svg').write_text(racket_svg)
     # Pip deliberately has no blush cheeks in any expression.
     for face in FACES:
         body = (
