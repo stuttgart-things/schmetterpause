@@ -3,6 +3,7 @@ package stats_test
 import (
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 
@@ -233,5 +234,50 @@ func TestComputeIgnoresUnconfirmed(t *testing.T) {
 
 	if got := stats.Compute([]domain.Match{pending}); got != (stats.Totals{}) {
 		t.Errorf("a pending match was counted: %+v", got)
+	}
+}
+
+func TestSinceKeepsTheWindowByPlayedAt(t *testing.T) {
+	p := ids(2)
+	now := time.Date(2026, 11, 18, 12, 0, 0, 0, time.UTC)
+	from := now.Add(-7 * 24 * time.Hour)
+
+	old := confirmed(p[0], p[1], [2]int{11, 3})
+	old.PlayedAt = from.Add(-time.Second)
+	edge := confirmed(p[0], p[1], [2]int{11, 4})
+	edge.PlayedAt = from
+	recent := confirmed(p[1], p[0], [2]int{11, 5})
+	recent.PlayedAt = now
+
+	got := stats.Since([]domain.Match{recent, edge, old}, from)
+	if len(got) != 2 || got[0].PlayedAt != now || got[1].PlayedAt != from {
+		t.Fatalf("Since: got %d matches %+v, want recent and edge in order", len(got), got)
+	}
+	if all := stats.Since([]domain.Match{recent, old}, time.Time{}); len(all) != 2 {
+		t.Errorf("Since with a zero time: got %d, want every match", len(all))
+	}
+}
+
+func TestMostWinsOrdersByWinsThenLosses(t *testing.T) {
+	p := ids(4)
+	rows := []stats.Row{
+		{PlayerID: p[0], Won: 2, Lost: 3},
+		{PlayerID: p[1], Won: 3, Lost: 1},
+		{PlayerID: p[2], Won: 2, Lost: 1},
+		{PlayerID: p[3], Won: 0, Lost: 5},
+	}
+
+	got := stats.MostWins(rows, 5)
+	want := []uuid.UUID{p[1], p[2], p[0]}
+	if len(got) != len(want) {
+		t.Fatalf("MostWins: got %d rows, want %d (nobody without a win)", len(got), len(want))
+	}
+	for i, id := range want {
+		if got[i].PlayerID != id {
+			t.Errorf("MostWins[%d]: got %v, want %v", i, got[i].PlayerID, id)
+		}
+	}
+	if top := stats.MostWins(rows, 1); len(top) != 1 || top[0].PlayerID != p[1] {
+		t.Errorf("MostWins(1): got %+v, want only the leader", top)
 	}
 }

@@ -40,3 +40,4 @@ festlegt, steht hier mit den Alternativen, die dabei verworfen wurden. Eine
 | 0029 | [Spieler gestalten ihre Figur selbst](0029-spieler-gestalten-ihren-avatar.md) | accepted | 2026-10-27 |
 | 0030 | [Die Figuren gibt es auch als GIF, für das LED-Panel](0030-figuren-als-gif-fuer-das-led-panel.md) | accepted | 2026-10-28 |
 | 0031 | [Spieler wählen ihre Spielfigur](0031-mehrere-spielfiguren.md) | accepted | 2026-11-11 |
+| 0032 | [Die Statistik gibt es als JSON, für das Radio](0032-statistik-als-json-fuer-das-radio.md) | proposed — Entwurf, nicht entschieden | 2026-11-18 |

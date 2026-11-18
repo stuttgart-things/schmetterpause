@@ -39,6 +39,7 @@ _publicBaseURL = option("config.publicBaseURL")
 _logLevel = option("config.logLevel")
 _kioskEnabled = option("config.kioskEnabled")
 _scoreboardEnabled = option("config.scoreboardEnabled")
+_statisticsEnabled = option("config.statisticsEnabled")
 _fobsEnabled = option("config.fobsEnabled")
 _bootstrapAdmin = option("config.bootstrapAdmin")
 _zaehlwerkURL = option("config.zaehlwerkURL")
@@ -64,6 +65,7 @@ _vaultPath = option("config.vaultPath")
 _vaultKeySessionKey = option("config.vaultKeySessionKey")
 _vaultKeyKioskToken = option("config.vaultKeyKioskToken")
 _vaultKeyScoreboardToken = option("config.vaultKeyScoreboardToken")
+_vaultKeyStatisticsToken = option("config.vaultKeyStatisticsToken")
 _vaultKeyRFIDUIDKey = option("config.vaultKeyRFIDUIDKey")
 _vaultKeyDBUsername = option("config.vaultKeyDBUsername")
 _vaultKeyDBPassword = option("config.vaultKeyDBPassword")
@@ -129,6 +131,8 @@ config: schema.Schmetterpause = schema.Schmetterpause {
         kioskEnabled = _bool(_kioskEnabled)
     if _scoreboardEnabled != Undefined and _scoreboardEnabled != None:
         scoreboardEnabled = _bool(_scoreboardEnabled)
+    if _statisticsEnabled != Undefined and _statisticsEnabled != None:
+        statisticsEnabled = _bool(_statisticsEnabled)
     if _fobsEnabled != Undefined and _fobsEnabled != None:
         fobsEnabled = _bool(_fobsEnabled)
     if _bootstrapAdmin:
@@ -179,6 +183,8 @@ config: schema.Schmetterpause = schema.Schmetterpause {
         vaultKeyKioskToken = _vaultKeyKioskToken
     if _vaultKeyScoreboardToken:
         vaultKeyScoreboardToken = _vaultKeyScoreboardToken
+    if _vaultKeyStatisticsToken:
+        vaultKeyStatisticsToken = _vaultKeyStatisticsToken
     if _vaultKeyRFIDUIDKey:
         vaultKeyRFIDUIDKey = _vaultKeyRFIDUIDKey
     if _vaultKeyDBUsername:

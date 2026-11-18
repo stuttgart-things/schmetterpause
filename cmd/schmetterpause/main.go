@@ -79,6 +79,9 @@ Configuration comes exclusively from environment variables:
   SP_SCOREBOARD_SETTLE  "pending" (default): a result from the Zählwerk waits
                         for a player; "immediate" counts it at once, for the
                         Pong sandbox (docs/adr/0027); anything else is refused
+  SP_STATISTICS_TOKEN   unlocks GET /api/statistics, the counts as JSON for a
+                        reader such as the homerun2 radio (docs/adr/0032);
+                        unset means no such route
   SP_RFID_UID_KEY       keys the hash fobs are stored under (docs/adr/0025),
                         at least 32 characters; unset means no fobs
   SP_METRICS_ADDR       serves /metrics on a port of its own, e.g. ":9090";

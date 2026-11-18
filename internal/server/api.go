@@ -36,7 +36,9 @@ import (
 // Players and operators out, one finished result in (with an operator or with
 // two check-ins, docs/adr/0024), and one question about a fob
 // (docs/adr/0025). Open tournaments and their open places out, so a result
-// can fill a place in a draw (docs/adr/0028). No updates, no deletes, no
+// can fill a place in a draw (docs/adr/0028). The office's counts out, behind
+// a reader's token of their own (docs/adr/0032, api_statistics.go). No
+// updates, no deletes, no
 // listing of matches, and nothing that lets the caller change a rating.
 
 // maxAPIBody bounds what a handler will read. The largest legitimate body is a

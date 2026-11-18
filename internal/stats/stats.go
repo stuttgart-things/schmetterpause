@@ -19,6 +19,10 @@
 package stats
 
 import (
+	"cmp"
+	"slices"
+	"time"
+
 	"github.com/google/uuid"
 
 	"github.com/stuttgart-things/schmetterpause/internal/domain"
@@ -183,4 +187,48 @@ func homeWon(m domain.Match) bool {
 		}
 	}
 	return homeSets > awaySets
+}
+
+// Since keeps the matches played at or after from, in the order given.
+//
+// By played_at rather than confirmed_at: "this week" means the matches played
+// this week, and a result confirmed on Monday for a Friday match belongs to
+// the week it was played in. A zero from keeps everything.
+func Since(matches []domain.Match, from time.Time) []domain.Match {
+	if from.IsZero() {
+		return matches
+	}
+	out := make([]domain.Match, 0, len(matches))
+	for _, m := range matches {
+		if !m.PlayedAt.Before(from) {
+			out = append(out, m)
+		}
+	}
+	return out
+}
+
+// MostWins returns up to n rows of the matrix with at least one win, most
+// wins first.
+//
+// Ties stay ties: equal wins are ordered by fewer losses and then by the
+// order the rows came in (the ranking, when the caller passed it), and the
+// caller decides whether two players on the same count are one headline or
+// none. Nobody without a win is listed — "most wins: 0" names nobody.
+func MostWins(rows []Row, n int) []Row {
+	out := make([]Row, 0, len(rows))
+	for _, r := range rows {
+		if r.Won > 0 {
+			out = append(out, r)
+		}
+	}
+	slices.SortStableFunc(out, func(a, b Row) int {
+		if c := cmp.Compare(b.Won, a.Won); c != 0 {
+			return c
+		}
+		return cmp.Compare(a.Lost, b.Lost)
+	})
+	if n >= 0 && len(out) > n {
+		out = out[:n]
+	}
+	return out
 }
