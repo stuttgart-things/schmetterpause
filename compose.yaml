@@ -59,6 +59,10 @@ services:
       # Set it to let a Zählwerk hand finished matches over (docs/adr/0015);
       # the same value goes into SCHMETTERPAUSE_TOKEN on its side.
       SP_SCOREBOARD_TOKEN: ${SP_SCOREBOARD_TOKEN:-}
+      # Empty by default, and then GET /api/statistics does not exist. A
+      # reader's token: it gets the counts, it cannot enter anything
+      # (docs/adr/0032).
+      SP_STATISTICS_TOKEN: ${SP_STATISTICS_TOKEN:-}
       # Empty by default, and then there are no key fobs. Set it, with the
       # token above, to let the Zählwerk check players in by fob
       # (docs/adr/0025); at least 32 characters.

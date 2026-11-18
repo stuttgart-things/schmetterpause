@@ -100,6 +100,14 @@ type Config struct {
 	// agrees, so holding this token buys the ability to propose a match, not
 	// to change the ranking — unless ScoreboardSettle says otherwise.
 	ScoreboardToken string
+	// StatisticsToken unlocks GET /api/statistics: the office's counts as
+	// JSON, for a reader such as homerun2-radio-pitcher (docs/adr/0032).
+	// Empty by default, and then the route does not exist at all.
+	//
+	// A token of its own rather than ScoreboardToken, because that one may
+	// enter results — and in the sandbox they count at once (docs/adr/0027).
+	// Something that only reads the counts should not be able to change them.
+	StatisticsToken string
 	// ScoreboardSettle is whether a result through POST /api/results waits
 	// for one of the two players or counts at once (docs/adr/0027).
 	// SettlePending by default, which is docs/adr/0015 unchanged; the Pong
@@ -250,6 +258,8 @@ func Load() (Config, error) {
 	cfg.KioskToken = env("KIOSK_TOKEN", "")
 
 	cfg.ScoreboardToken = env("SCOREBOARD_TOKEN", "")
+
+	cfg.StatisticsToken = env("STATISTICS_TOKEN", "")
 
 	// Refused rather than read as pending: a sandbox that meant immediate
 	// and got pending would collect results nobody ever confirms, and say

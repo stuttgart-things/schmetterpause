@@ -170,6 +170,10 @@ func (s *Server) routes() http.Handler {
 			mux.HandleFunc("POST /api/identities/rfid/resolve", s.handleAPIResolveFob)
 		}
 	}
+	// A reader's token of its own (docs/adr/0032): it can count, not enter.
+	if s.cfg.StatisticsToken != "" {
+		mux.HandleFunc("GET /api/statistics", s.handleAPIStatistics)
+	}
 
 	mux.Handle("GET /static/", staticHandler())
 
