@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.25.0](https://github.com/stuttgart-things/schmetterpause/compare/v0.24.0...v0.25.0) (2026-11-18)
+
+
+### Features
+
+* **api:** serve GET /api/statistics behind SP_STATISTICS_TOKEN ([100a29a](https://github.com/stuttgart-things/schmetterpause/commit/100a29a90cc60d950424ef309bc60b6ae4f0bc95))
+* **kcl:** add statisticsEnabled for SP_STATISTICS_TOKEN ([5449c14](https://github.com/stuttgart-things/schmetterpause/commit/5449c14b2ba9cbfc492aa390e86f566f569f0684))
+* **stats:** add Since and MostWins for a window of matches ([2fef228](https://github.com/stuttgart-things/schmetterpause/commit/2fef2288bd132cf80643d7ae79311d645e85ffda))
+
 ## [0.24.0](https://github.com/stuttgart-things/schmetterpause/compare/v0.23.0...v0.24.0) (2026-11-16)
 
 
