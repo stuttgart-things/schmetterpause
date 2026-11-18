@@ -107,6 +107,11 @@ schema Schmetterpause:
     # point during the test phase and a task afterwards.
     scoreboardEnabled: bool = False
 
+    # GET /api/statistics exists only when SP_STATISTICS_TOKEN is set
+    # (docs/adr/0032): the counts as JSON for a reader such as the homerun2
+    # radio. A token of its own, so the reader cannot enter results.
+    statisticsEnabled: bool = False
+
     # Key fobs at the Zählwerk's reader exist only when SP_RFID_UID_KEY is set:
     # without it there is no resolve route and no "Anhänger koppeln" on the
     # profile (docs/adr/0025). The key hashes every fob, so a new one unlinks
@@ -232,6 +237,7 @@ schema Schmetterpause:
     vaultKeySessionKey: str = "session-key"
     vaultKeyKioskToken: str = "kiosk-token"
     vaultKeyScoreboardToken: str = "scoreboard-token"
+    vaultKeyStatisticsToken: str = "statistics-token"
     vaultKeyRFIDUIDKey: str = "rfid-uid-key"
     vaultKeyDBUsername: str = "username"
     vaultKeyDBPassword: str = "password"

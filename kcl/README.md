@@ -139,7 +139,7 @@ initContainer gets only the database Secret and never sees the cookie secret.
 | Secret | Keys | Read by |
 |---|---|---|
 | `<name>-db` | `username`, `password`, `SP_DATABASE_URL` | initContainer **and** app |
-| `<name>-app` | `SP_SESSION_KEY`, optionally `SP_KIOSK_TOKEN`, `SP_SCOREBOARD_TOKEN` and `SP_RFID_UID_KEY` | the app only |
+| `<name>-app` | `SP_SESSION_KEY`, optionally `SP_KIOSK_TOKEN`, `SP_SCOREBOARD_TOKEN`, `SP_STATISTICS_TOKEN` and `SP_RFID_UID_KEY` | the app only |
 
 `<name>-db` is of type `kubernetes.io/basic-auth` so CloudNativePG can take it
 through `appSecretName` as the owner's credentials at bootstrap. The `username`
@@ -155,6 +155,7 @@ The Vault entry has three properties, and a fourth only with the kiosk:
 | `password` | DB password and DSN | alphanumeric, `openssl rand -hex 24` |
 | `kiosk-token` | `SP_KIOSK_TOKEN` | only with `kioskEnabled: true` |
 | `scoreboard-token` | `SP_SCOREBOARD_TOKEN` | only with `scoreboardEnabled: true` |
+| `statistics-token` | `SP_STATISTICS_TOKEN` | only with `statisticsEnabled: true` |
 | `rfid-uid-key` | `SP_RFID_UID_KEY` | only with `fobsEnabled: true`; at least 32 characters, `openssl rand -base64 32`. A new key unlinks every fob |
 
 The ESO template assembles `SP_DATABASE_URL` from these: the password comes
@@ -220,6 +221,7 @@ The full list, with reasoning, is in `schema.k`. What one actually sets:
 | `config.httpRedirectEnabled` | `true` | Route on port 80 redirecting to https |
 | `config.kioskEnabled` | `false` | Without `SP_KIOSK_TOKEN` there is no kiosk |
 | `config.scoreboardEnabled` | `false` | Without `SP_SCOREBOARD_TOKEN` there is no `/api` (ADR-0015) |
+| `config.statisticsEnabled` | `false` | Without `SP_STATISTICS_TOKEN` there is no `GET /api/statistics` (ADR-0032) |
 | `config.fobsEnabled` | `false` | Without `SP_RFID_UID_KEY` there are no key fobs (ADR-0025) |
 | `config.secretsMode` | `external` | `existing` = render no ExternalSecrets; something else creates the Secrets |
 | `config.secretStoreName` | *(empty)* | e.g. `vault-cicd-test2` |
