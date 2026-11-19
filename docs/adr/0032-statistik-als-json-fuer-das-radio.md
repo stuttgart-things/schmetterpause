@@ -1,6 +1,6 @@
 # ADR-0032: Die Statistik gibt es als JSON, für das Radio
 
-- **Status:** proposed — Entwurf, nicht entschieden
+- **Status:** accepted
 - **Datum:** 2026-11-18
 - **Betrifft:** Schnittstellen
 - **Bezug:** erweitert die JSON-Oberfläche aus ADR-0015, die in
