@@ -42,3 +42,4 @@ festlegt, steht hier mit den Alternativen, die dabei verworfen wurden. Eine
 | 0031 | [Spieler wählen ihre Spielfigur](0031-mehrere-spielfiguren.md) | accepted | 2026-11-11 |
 | 0032 | [Die Statistik gibt es als JSON, für das Radio](0032-statistik-als-json-fuer-das-radio.md) | accepted | 2026-11-18 |
 | 0033 | [Ein Turnier ohne Wertung darf bis sechzehn Spieler haben](0033-ohne-wertung-bis-sechzehn.md) | accepted | 2026-11-20 |
+| 0034 | [Der Kiosk zählt mit, wenn kein Zählwerk da ist](0034-zaehlen-am-kiosk.md) | proposed — Entwurf, nicht entschieden | 2026-11-20 |

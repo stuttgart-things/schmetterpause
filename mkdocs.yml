@@ -84,6 +84,7 @@ nav:
       - ADR-0031 Spieler wählen ihre Spielfigur: adr/0031-mehrere-spielfiguren.md
       - ADR-0032 Die Statistik gibt es als JSON, für das Radio: adr/0032-statistik-als-json-fuer-das-radio.md
       - ADR-0033 Ein Turnier ohne Wertung darf bis sechzehn Spieler haben: adr/0033-ohne-wertung-bis-sechzehn.md
+      - ADR-0034 Der Kiosk zählt mit, wenn kein Zählwerk da ist: adr/0034-zaehlen-am-kiosk.md
   - Betrieb:
       - Plattform-Voraussetzungen: platform.md
       - Deployment ohne GitOps: deployment.md
