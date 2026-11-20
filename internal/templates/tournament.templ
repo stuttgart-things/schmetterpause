@@ -41,7 +41,7 @@ templ TournamentList(v TournamentListView) {
 			</section>
 		}
 		<section class="card">
-			@tournamentForm(v.Form, v.MaxPlayers)
+			@tournamentForm(v.Form)
 		</section>
 	}
 }
@@ -162,14 +162,14 @@ templ runningBody(v RunningTournamentsView) {
 // Checkboxes rather than a multi-select, because this is read and operated on
 // a phone standing next to a table, and a multi-select needs a modifier key
 // nobody has there.
-templ tournamentForm(v TournamentFormView, maxPlayers int) {
+templ tournamentForm(v TournamentFormView) {
 	<h2>Schnelles Turnier</h2>
 	if len(v.Candidates) < 2 {
 		<p class="muted">
 			Dafür braucht es mindestens zwei Spieler in der Rangliste.
 		</p>
 	} else {
-		@tournamentFields(v, maxPlayers, "/tournaments", TournamentFormCreate)
+		@tournamentFields(v, "/tournaments", TournamentFormCreate)
 	}
 }
 
@@ -178,7 +178,7 @@ templ tournamentForm(v TournamentFormView, maxPlayers int) {
 // Starting a tournament and changing one that has not been played are the
 // same set of questions, so they are the same form. Only where it posts to
 // and what the button says differ.
-templ tournamentFields(v TournamentFormView, maxPlayers int, action, mode string) {
+templ tournamentFields(v TournamentFormView, action, mode string) {
 	if v.Error != "" {
 		<p class="fail" role="alert">{ v.Error }</p>
 	}
@@ -272,6 +272,9 @@ templ tournamentFields(v TournamentFormView, maxPlayers int, action, mode string
 		// nicer: an unticked checkbox sends nothing, so "nothing" has to
 		// mean the default, and the default is that a tournament counts
 		// (docs/adr/0012).
+		//
+		// It redraws the sentence under the names as well: it moves the cap
+		// from twelve to sixteen (docs/adr/0033).
 		<div class="row">
 			<label for="tournament-unrated">Wertung</label>
 			<label class="pick">
@@ -281,6 +284,10 @@ templ tournamentFields(v TournamentFormView, maxPlayers int, action, mode string
 					name="unrated"
 					value="1"
 					checked?={ !v.Rated }
+					hx-get="/fragments/tournament-size"
+					hx-target="#tournament-size"
+					hx-swap="outerHTML"
+					hx-include="closest form"
 				/>
 				<span>Zählt nicht für die Rangliste</span>
 			</label>
@@ -333,7 +340,7 @@ templ tournamentFields(v TournamentFormView, maxPlayers int, action, mode string
 				Wer spielt mit?
 				// Beside the question rather than under the answer: how many
 				// are ticked is what somebody wants to know while ticking.
-				@TournamentCount(v.Size(maxPlayers), nil)
+				@TournamentCount(v.Size(), nil)
 			</legend>
 			for _, c := range v.Candidates {
 				<label class="pick">
@@ -351,8 +358,8 @@ templ tournamentFields(v TournamentFormView, maxPlayers int, action, mode string
 				</label>
 			}
 		</fieldset>
-		@TournamentSize(v.Size(maxPlayers))
-		@TournamentSubmit(v.Size(maxPlayers), mode, nil)
+		@TournamentSize(v.Size())
+		@TournamentSubmit(v.Size(), mode, nil)
 	</form>
 }
 
@@ -445,7 +452,7 @@ templ TournamentPage(v TournamentView) {
 						verschiebt, würde eingetragene Ergebnisse in Runden
 						legen, in denen sie nicht gespielt wurden.
 					</p>
-					@tournamentFields(*v.Edit, v.MaxPlayers, "/tournaments/"+v.ID+"/edit", TournamentFormEdit)
+					@tournamentFields(*v.Edit, "/tournaments/"+v.ID+"/edit", TournamentFormEdit)
 					<form method="post" action={ templ.SafeURL("/tournaments/" + v.ID + "/delete") }>
 						<button class="linklike" type="submit">Turnier löschen</button>
 					</form>
@@ -726,7 +733,7 @@ func signed(n int) string {
 // rather than needing a second request.
 templ TournamentCount(v TournamentSizeView, oob templ.Attributes) {
 	<span id="tournament-count" class="field-count" { oob... }>
-		{ strconv.Itoa(v.Players) } von höchstens { strconv.Itoa(v.MaxPlayers) }
+		{ strconv.Itoa(v.Players) } von höchstens { strconv.Itoa(v.MaxPlayers()) }
 	</span>
 }
 
@@ -748,6 +755,11 @@ templ TournamentSize(v TournamentSizeView) {
 			// The count and the cap are beside the question now, so this
 			// says the one thing they do not: why the button is off.
 			Der Knopf wird frei, sobald zwei Namen angekreuzt sind.
+		} else if v.OnlyUnrated() {
+			// The one refusal with a way out a tick away (docs/adr/0033),
+			// so it says that rather than only "too many".
+			{ strconv.Itoa(v.Players) } Spieler gehen nur ohne Wertung.
+			<span>Mit Wertung sind höchstens { strconv.Itoa(tournament.MaxRatedPlayers) } erlaubt, ohne bis zu { strconv.Itoa(tournament.MaxUnratedPlayers) }.</span>
 		} else {
 			{ strconv.Itoa(v.Players) } Spieler,
 			<strong>{ strconv.Itoa(v.Matches) } Spiele</strong>.

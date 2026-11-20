@@ -28,15 +28,6 @@ import (
 // rather than because anybody will reach it.
 const tournamentListLimit = 50
 
-// maxTournamentPlayers caps the field.
-//
-// Not a technical limit — the circle method does not care — but a table-time
-// one. Twelve players is 66 matches, sixteen and a half hours at a quarter of
-// an hour each (#41). A form that lets somebody tick twenty names produces a
-// tournament nobody can finish, and the number is easier to argue with before
-// the draw than after.
-const maxTournamentPlayers = 12
-
 // tournamentIDFrom reads the bracket a result belongs to out of the form.
 //
 // Absent, empty or unparseable all mean "no tournament" rather than an error.
@@ -148,8 +139,8 @@ func (s *Server) handleEditTournament(w http.ResponseWriter, r *http.Request) {
 	case !mode.Known():
 		s.tournamentBack(w, r, id, false, "Diesen Modus gibt es nicht.")
 		return
-	case checkField(field) != "":
-		s.tournamentBack(w, r, id, false, checkField(field))
+	case checkField(field, ratedFrom(r)) != "":
+		s.tournamentBack(w, r, id, false, checkField(field, ratedFrom(r)))
 		return
 	}
 
@@ -271,9 +262,9 @@ func (s *Server) handleTournamentSize(w http.ResponseWriter, r *http.Request) {
 	withFinal := r.FormValue("with_final") != ""
 
 	size := templates.TournamentSizeView{
-		Players:    chosen,
-		Matches:    tournament.Matches(chosen, legs, withFinal),
-		MaxPlayers: maxTournamentPlayers,
+		Players: chosen,
+		Matches: tournament.Matches(chosen, legs, withFinal),
+		Rated:   ratedFrom(r),
 	}
 	// Three things move together while somebody ticks names: the sentence
 	// this request targets, the tally beside the question, and whether the
@@ -314,7 +305,7 @@ func (s *Server) handleCreateTournament(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	if msg := checkField(field); msg != "" {
+	if msg := checkField(field, rated); msg != "" {
 		s.rejectTournament(w, r, name, field, mode, msg)
 		return
 	}
@@ -362,13 +353,19 @@ func (s *Server) handleCreateTournament(w http.ResponseWriter, r *http.Request) 
 
 // checkField explains why a field cannot play, in words somebody can act on,
 // or returns "" when it can.
-func checkField(field []uuid.UUID) string {
+//
+// The cap depends on the rating (docs/adr/0033): past twelve, a rated field
+// is refused with the way out named, because the way out is one tick away.
+func checkField(field []uuid.UUID, rated bool) string {
 	switch {
 	case len(field) < 2:
 		return "Mindestens zwei Spieler, sonst gibt es nichts zu spielen."
-	case len(field) > maxTournamentPlayers:
-		return "Höchstens " + itoa(maxTournamentPlayers) + " Spieler. " +
+	case len(field) > tournament.MaxUnratedPlayers:
+		return "Höchstens " + itoa(tournament.MaxUnratedPlayers) + " Spieler. " +
 			"Mehr sind rechnerisch ein ganzer Tag an einer Platte."
+	case len(field) > tournament.MaxPlayers(rated):
+		return "Mit Wertung höchstens " + itoa(tournament.MaxRatedPlayers) + " Spieler. " +
+			"Ohne Wertung gehen bis zu " + itoa(tournament.MaxUnratedPlayers) + "."
 	default:
 		return ""
 	}
@@ -635,9 +632,8 @@ func (s *Server) tournamentListView(ctx context.Context, again *uuid.UUID) (temp
 	form.SideA, form.SideB = sideA, sideB
 
 	view := templates.TournamentListView{
-		Header:     s.headerView(ctx),
-		MaxPlayers: maxTournamentPlayers,
-		Form:       form,
+		Header: s.headerView(ctx),
+		Form:   form,
 	}
 	for _, t := range tours {
 		row, err := s.tournamentRowWithProgress(ctx, t)
@@ -1023,7 +1019,6 @@ func (s *Server) tournamentView(ctx context.Context, id uuid.UUID, kiosk bool) (
 		SideA:       tour.SideA,
 		SideB:       tour.SideB,
 		CanEnter:    tour.Open() && kiosk,
-		MaxPlayers:  maxTournamentPlayers,
 		Total:       tournament.Matches(len(tour.Players), legs, tour.WithFinal),
 	}
 

@@ -407,3 +407,15 @@ func TestAThreeWayCycleSharesOneRank(t *testing.T) {
 		}
 	}
 }
+
+// A rated field stops at twelve, where rating match by match stops being a
+// fair stand-in for rating the event (docs/adr/0009). An unrated one moves no
+// rating, so it may be as large as an evening allows (docs/adr/0033).
+func TestOnlyAnUnratedFieldMayGrowPastTwelve(t *testing.T) {
+	if got := tournament.MaxPlayers(true); got != 12 {
+		t.Errorf("MaxPlayers(rated) = %d, want 12", got)
+	}
+	if got := tournament.MaxPlayers(false); got != 16 {
+		t.Errorf("MaxPlayers(unrated) = %d, want 16", got)
+	}
+}

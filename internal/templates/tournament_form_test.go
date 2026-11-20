@@ -12,20 +12,47 @@ import (
 func TestTheFormOnlyOpensForAFieldThatCouldPlay(t *testing.T) {
 	cases := []struct {
 		players int
+		rated   bool
 		want    bool
 	}{
-		{0, false},
-		{1, false},
-		{2, true},
-		{12, true},
+		{0, true, false},
+		{1, true, false},
+		{2, true, true},
+		{12, true, true},
 		// Above the cap the picker should not have let them through, and the
 		// button agrees rather than trusting it.
-		{13, false},
+		{13, true, false},
+		// Without a rating the cap is sixteen (docs/adr/0033).
+		{13, false, true},
+		{16, false, true},
+		{17, false, false},
 	}
 	for _, c := range cases {
-		v := templates.TournamentSizeView{Players: c.players, MaxPlayers: 12}
+		v := templates.TournamentSizeView{Players: c.players, Rated: c.rated}
 		if got := v.Enough(); got != c.want {
-			t.Errorf("Enough() with %d players = %v, want %v", c.players, got, c.want)
+			t.Errorf("Enough() with %d players, rated=%v = %v, want %v", c.players, c.rated, got, c.want)
+		}
+	}
+}
+
+// Between the two caps a rated field is one tick from playable, and the
+// sentence says so instead of only that it is too many.
+func TestTheSizeNamesTheUnratedWayOut(t *testing.T) {
+	cases := []struct {
+		players int
+		rated   bool
+		want    bool
+	}{
+		{12, true, false},
+		{13, true, true},
+		{16, true, true},
+		{17, true, false},
+		{13, false, false},
+	}
+	for _, c := range cases {
+		v := templates.TournamentSizeView{Players: c.players, Rated: c.rated}
+		if got := v.OnlyUnrated(); got != c.want {
+			t.Errorf("OnlyUnrated() with %d players, rated=%v = %v, want %v", c.players, c.rated, got, c.want)
 		}
 	}
 }
