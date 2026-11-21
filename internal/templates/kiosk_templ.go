@@ -331,7 +331,11 @@ func Kiosk(v KioskView) templ.Component {
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = setRows("kiosk", v.Sets, v.BestOf, v.PointsToWin, SideHome, SideAway).Render(ctx, templ_7745c5c3_Buffer)
+				templ_7745c5c3_Err = CounterBox(NewCounterView("kiosk", false, SideHome, SideAway)).Render(ctx, templ_7745c5c3_Buffer)
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				templ_7745c5c3_Err = setRows("kiosk", v.Sets, v.BestOf, v.PointsToWin, SideHome, SideAway, nil).Render(ctx, templ_7745c5c3_Buffer)
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -357,7 +361,7 @@ func Kiosk(v KioskView) templ.Component {
 					var templ_7745c5c3_Var16 string
 					templ_7745c5c3_Var16, templ_7745c5c3_Err = templ.ResolveAttributeValue(p.ID)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `kiosk.templ`, Line: 146, Col: 27}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `kiosk.templ`, Line: 149, Col: 27}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var16)
 					if templ_7745c5c3_Err != nil {
@@ -370,7 +374,7 @@ func Kiosk(v KioskView) templ.Component {
 					var templ_7745c5c3_Var17 string
 					templ_7745c5c3_Var17, templ_7745c5c3_Err = templ.JoinStringErrs(p.DisplayName)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `kiosk.templ`, Line: 146, Col: 45}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `kiosk.templ`, Line: 149, Col: 45}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var17))
 					if templ_7745c5c3_Err != nil {
@@ -436,7 +440,7 @@ func playerPicker(id, name string, players []OpponentOption, extra templ.Attribu
 		var templ_7745c5c3_Var19 string
 		templ_7745c5c3_Var19, templ_7745c5c3_Err = templ.ResolveAttributeValue(id)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `kiosk.templ`, Line: 163, Col: 9}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `kiosk.templ`, Line: 166, Col: 9}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var19)
 		if templ_7745c5c3_Err != nil {
@@ -449,7 +453,7 @@ func playerPicker(id, name string, players []OpponentOption, extra templ.Attribu
 		var templ_7745c5c3_Var20 string
 		templ_7745c5c3_Var20, templ_7745c5c3_Err = templ.ResolveAttributeValue(name)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `kiosk.templ`, Line: 164, Col: 13}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `kiosk.templ`, Line: 167, Col: 13}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var20)
 		if templ_7745c5c3_Err != nil {
@@ -475,7 +479,7 @@ func playerPicker(id, name string, players []OpponentOption, extra templ.Attribu
 			var templ_7745c5c3_Var21 string
 			templ_7745c5c3_Var21, templ_7745c5c3_Err = templ.ResolveAttributeValue(p.ID)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `kiosk.templ`, Line: 175, Col: 23}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `kiosk.templ`, Line: 178, Col: 23}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var21)
 			if templ_7745c5c3_Err != nil {
@@ -498,7 +502,7 @@ func playerPicker(id, name string, players []OpponentOption, extra templ.Attribu
 			var templ_7745c5c3_Var22 string
 			templ_7745c5c3_Var22, templ_7745c5c3_Err = templ.JoinStringErrs(p.DisplayName)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `kiosk.templ`, Line: 175, Col: 66}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `kiosk.templ`, Line: 178, Col: 66}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var22))
 			if templ_7745c5c3_Err != nil {
@@ -612,7 +616,7 @@ func KioskUnlock(v KioskUnlockView) templ.Component {
 				var templ_7745c5c3_Var26 string
 				templ_7745c5c3_Var26, templ_7745c5c3_Err = templ.JoinStringErrs(v.Error)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `kiosk.templ`, Line: 213, Col: 42}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `kiosk.templ`, Line: 216, Col: 42}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var26))
 				if templ_7745c5c3_Err != nil {
@@ -702,7 +706,7 @@ func KioskOperator(v KioskOperatorView) templ.Component {
 				var templ_7745c5c3_Var29 string
 				templ_7745c5c3_Var29, templ_7745c5c3_Err = templ.JoinStringErrs(v.Current)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `kiosk.templ`, Line: 279, Col: 38}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `kiosk.templ`, Line: 282, Col: 38}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var29))
 				if templ_7745c5c3_Err != nil {
@@ -721,7 +725,7 @@ func KioskOperator(v KioskOperatorView) templ.Component {
 				var templ_7745c5c3_Var30 string
 				templ_7745c5c3_Var30, templ_7745c5c3_Err = templ.JoinStringErrs(v.Error)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `kiosk.templ`, Line: 284, Col: 42}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `kiosk.templ`, Line: 287, Col: 42}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var30))
 				if templ_7745c5c3_Err != nil {
@@ -744,7 +748,7 @@ func KioskOperator(v KioskOperatorView) templ.Component {
 				var templ_7745c5c3_Var31 string
 				templ_7745c5c3_Var31, templ_7745c5c3_Err = templ.ResolveAttributeValue(p.ID)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `kiosk.templ`, Line: 294, Col: 26}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `kiosk.templ`, Line: 297, Col: 26}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var31)
 				if templ_7745c5c3_Err != nil {
@@ -757,7 +761,7 @@ func KioskOperator(v KioskOperatorView) templ.Component {
 				var templ_7745c5c3_Var32 string
 				templ_7745c5c3_Var32, templ_7745c5c3_Err = templ.JoinStringErrs(p.DisplayName)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `kiosk.templ`, Line: 294, Col: 44}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `kiosk.templ`, Line: 297, Col: 44}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var32))
 				if templ_7745c5c3_Err != nil {

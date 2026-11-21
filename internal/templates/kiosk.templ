@@ -105,7 +105,10 @@ templ Kiosk(v KioskView) {
 						@playerPicker("kiosk-away", "away_id", v.Players, nil)
 					</div>
 					@modeRow("kiosk", v.BestOf, v.PointsToWin)
-					@setRows("kiosk", v.Sets, v.BestOf, v.PointsToWin, SideHome, SideAway)
+					// Between the mode and the boxes: it reads the one and
+					// fills the other (docs/adr/0034).
+					@CounterBox(NewCounterView("kiosk", false, SideHome, SideAway))
+					@setRows("kiosk", v.Sets, v.BestOf, v.PointsToWin, SideHome, SideAway, nil)
 					<button type="submit">Eintragen und werten</button>
 				</form>
 			}

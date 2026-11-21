@@ -303,6 +303,21 @@ den beiden Namen über den Spalten, den Tasten − und + unter jedem Feld und
 dem Regeltext. Eingeklappt, weil ein Spielplan viel öfter gelesen als
 beschrieben wird und acht Leute achtundzwanzig davon sind.
 
+**Zählen am Gerät** (`docs/adr/0034`): Unter „Ergebnis eintragen“ steht
+„Punkt für Punkt zählen“, für den Abend ohne Zählwerk mit einem Menschen als
+Schiedsrichter. Vorher fragt es, ob eingespielt und ob nach jedem Satz die
+Seite gewechselt wird. Wer zuerst aufschlägt, fragt es im Turnier nicht —
+das ist Seite A, wie im Spielplan. Danach ist der Bildschirm zwei große
+Flächen, eine pro Spieler, dort, wo er gerade steht: antippen ist ein Punkt.
+Darüber steht, wer Aufschlag hat und wie oft noch. Am Ende stehen die Sätze in
+den Kästchen darunter, und **Eintragen** trägt sie ein wie immer. Ein Reload
+mitten im Spiel vergisst den Stand.
+
+Außerhalb des Turniers gibt es denselben Zähler am Kiosk unter „Ergebnis
+eintragen“. Dort fragt er auch, wer zuerst aufschlägt: einer von beiden oder
+**Ausspielen** — dann zählt der erste Ballwechsel nicht, sondern entscheidet
+den Aufschlag.
+
 Der Grund ist kein Sicherheitsdetail, sondern eins über Cookies: die
 Kiosk-Freigabe gilt nur unter `/kiosk`, also kann eine Seite außerhalb davon
 gar nicht wissen, dass sie am Tisch steht. Statt die Freigabe zu verbreitern,
