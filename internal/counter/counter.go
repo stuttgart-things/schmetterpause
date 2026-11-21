@@ -23,7 +23,9 @@ type Player int
 const (
 	// Nobody is the zero value: no server named yet, no winner yet.
 	Nobody Player = iota
+	// A is home: side A in a tournament, the left column of the form.
 	A
+	// B is away.
 	B
 )
 
@@ -49,10 +51,12 @@ const (
 	// PhaseServeRally waits for the rally that decides the first serve
 	// ("umdi"). Its winner serves first and scores nothing.
 	PhaseServeRally Phase = "serve_rally"
-	PhasePlaying    Phase = "playing"
+	// PhasePlaying is the only phase in which a tap scores a point.
+	PhasePlaying Phase = "playing"
 	// PhaseChangeEnds waits for the umpire to say both are at their new end.
 	PhaseChangeEnds Phase = "change_ends"
-	PhaseComplete   Phase = "complete"
+	// PhaseComplete is the match over; nothing counts after it.
+	PhaseComplete Phase = "complete"
 )
 
 // Event is one thing that happened at the table. A byte, so a whole match
@@ -60,9 +64,10 @@ const (
 type Event byte
 
 const (
-	// PointA and PointB are a point to that player in PhasePlaying, and the
-	// serve rally won by that player in PhaseServeRally.
+	// PointA is a point to A in PhasePlaying, and the serve rally won by A
+	// in PhaseServeRally.
 	PointA Event = 'a'
+	// PointB is the same for B.
 	PointB Event = 'b'
 	// Go ends the warm-up and the change of ends alike: "play on".
 	Go Event = 'g'
