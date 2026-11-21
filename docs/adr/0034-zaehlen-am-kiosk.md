@@ -1,13 +1,12 @@
 # ADR-0034: Der Kiosk zählt mit, wenn kein Zählwerk da ist
 
-- **Status:** proposed — Entwurf, nicht entschieden
-- **Datum:** 2026-11-20
+- **Status:** accepted
+- **Datum:** 2026-11-21
 - **Betrifft:** Kiosk, Turniere, Oberfläche
 - **Bezug:** ergänzt `0015-zaehlwerk-traegt-ergebnisse-ein` und
   `0028-turniere-ueber-das-zaehlwerk`: Punkt für Punkt zählt bisher nur das
-  Zählwerk. Schränkt `0013-turnierseiten-und-erster-aufschlag` in einem Punkt
-  ein: Der erste Aufschlag im Turnier darf ausgespielt werden, wenn die beiden
-  das wollen. Die Vorgabe bleibt die aus 0013.
+  Zählwerk. `0013-turnierseiten-und-erster-aufschlag` gilt unverändert: Im
+  Turnier schlägt Seite A zuerst auf, ausgespielt wird dort nicht.
 
 ## Kontext
 
@@ -30,7 +29,8 @@ gibt (ADR-0028: „Der Kiosk bleibt für den Abend ohne Zählwerk“).
 
 ## Entscheidung
 
-**Die Kiosk-Turnierseite und die normale Kiosk-Eingabe bekommen einen Zähler.
+**Die Kiosk-Turnierseite und die normale Kiosk-Eingabe bekommen einen Zähler,
+und nur sie.
 Er hält keinen Zustand auf dem Server, rechnet in einem eigenen Paket und füllt
 am Ende die vorhandenen Satzfelder aus.**
 
@@ -38,9 +38,10 @@ am Ende die vorhandenen Satzfelder aus.**
 
 Drei Fragen, mit den Vorgaben, die heute gelten:
 
-- **Erster Aufschlag:** Seite A (Turnier, ADR-0013) bzw. links, Seite B bzw.
-  rechts, oder **ausspielen**. Beim Ausspielen tippt der Schiedsrichter auf die
-  Seite, die den Ballwechsel gewonnen hat. Das zählt keinen Punkt.
+- **Erster Aufschlag:** links, rechts oder **ausspielen** („umdi“). Beim
+  Ausspielen tippt der Schiedsrichter auf die Seite, die den Ballwechsel
+  gewonnen hat. Das zählt keinen Punkt. **Im Turnier wird nicht gefragt:**
+  Seite A schlägt zuerst auf (ADR-0013), wie es im Spielplan steht.
 - **Einspielen:** ja oder nein. Mit Einspielen steht „Einspielen“ groß da, bis
   der Schiedsrichter auf „Los“ tippt. Ein Spieltimer ist das nicht.
 - **Seitenwechsel:** ja oder nein. Mit Seitenwechsel tauscht die Anzeige die
@@ -55,8 +56,8 @@ Drei Fragen, mit den Vorgaben, die heute gelten:
   dem, der aufschlägt, und darunter, wie viele Aufschläge er noch hat
   („noch 1“). Die Regel kommt aus dem Regelblatt: Wechsel nach
   `ServeEvery(pointsToWin)` Punkten, ab `DeuceFrom` nach jedem Punkt, im
-  nächsten Satz beginnt der Verlierer des vorigen. Im Turnier gilt nach
-  ADR-0013 für den ersten Satz Seite A, außer es wurde ausgespielt.
+  nächsten Satz beginnt der Verlierer des vorigen. Im Turnier eröffnet
+  Seite A den ersten Satz (ADR-0013).
 - Satzstand und gewonnene Sätze stehen daneben. Ein Satz endet von selbst bei
   `pointsToWin` mit zwei Punkten Abstand. Das Spiel endet, wenn einer die
   Mehrheit der Sätze aus `best_of` hat.
@@ -114,15 +115,14 @@ zehn Minuten ein Ergebnis ist. Die Live-Anzeige hat das Zählwerk schon.
 - Das Regelblatt und der Zähler müssen dieselbe Aufschlagregel sagen. Beide
   lesen `ServeEvery` und `DeuceFrom`; die wandern dafür ins neue Paket.
 
-## Offene Fragen
+## Was ausdrücklich wartet
 
-1. **Den Aufschlag speichern?** Der Zähler weiß, wer jeden Satz eröffnet hat
-   und wer bei jedem Punkt aufschlug. Gespeichert wird heute nur das
-   Satzergebnis. Den Eröffner pro Satz am Match zu speichern wäre eine
-   additive Spalte und erlaubte später eine Statistik „Punkte bei eigenem
-   Aufschlag“. Vorschlag: nicht in diesem Schritt, erst wenn jemand die
-   Statistik will.
-2. **Ausspielen im Turnier** weicht von ADR-0013 ab. Vorschlag: als Option,
-   Vorgabe bleibt Seite A.
-3. **Auch auf dem Handy?** Wer ohne Kiosk spielt, könnte denselben Zähler auf
-   der normalen Eingabeseite nutzen. Vorschlag: erst Kiosk, dann sehen.
+- **Den Aufschlag speichern.** Der Zähler weiß, wer jeden Satz eröffnet hat
+  und wer bei jedem Punkt aufschlug. Er zeigt es während des Spiels an,
+  gespeichert wird weiter nur das Satzergebnis. Eine Spalte für den Eröffner
+  pro Satz wäre additiv und kommt, wenn jemand eine Statistik „Punkte bei
+  eigenem Aufschlag“ will.
+- **Ausspielen im Turnier.** ADR-0013 bleibt: Bei achtundzwanzig Paarungen
+  steht der Aufschlag im Spielplan.
+- **Der Zähler auf dem Handy.** Erst der Kiosk. Die normale Eingabeseite
+  bekommt ihn, wenn er sich dort bewährt hat.
