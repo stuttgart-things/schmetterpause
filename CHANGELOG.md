@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.26.0](https://github.com/stuttgart-things/schmetterpause/compare/v0.25.0...v0.26.0) (2026-11-21)
+
+
+### Features
+
+* **kiosk:** count a match point by point at the kiosk ([#396](https://github.com/stuttgart-things/schmetterpause/issues/396)) ([e51fe64](https://github.com/stuttgart-things/schmetterpause/commit/e51fe64babf98ebfbd774723b5532ea9c3ee8c21))
+* **tournament:** allow sixteen players in an unrated tournament ([#394](https://github.com/stuttgart-things/schmetterpause/issues/394)) ([fd779e6](https://github.com/stuttgart-things/schmetterpause/commit/fd779e6da66f08a78f990ea08456ef6b9d6b8e74))
+
 ## [0.25.0](https://github.com/stuttgart-things/schmetterpause/compare/v0.24.0...v0.25.0) (2026-11-18)
 
 
