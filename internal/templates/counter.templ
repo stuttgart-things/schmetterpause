@@ -1,0 +1,149 @@
+package templates
+
+import "strconv"
+
+// CounterBox is the counter folded into an entry form, at the kiosk only
+// (docs/adr/0034).
+//
+// Folded, like the tournament entry: most results are typed in after the
+// fact, and a counter that sat open in every form would push the boxes down
+// for everybody who just wants to type 11:7.
+templ CounterBox(v CounterView) {
+	<details class="counter-box">
+		<summary>Punkt für Punkt zählen</summary>
+		@Counter(v)
+	</details>
+}
+
+// Counter is the counter itself: the questions before the first point, or
+// the board once it runs. The swap target of every tap.
+templ Counter(v CounterView) {
+	<div id={ v.ID() } class="counter">
+		<input type="hidden" name="counter_prefix" value={ v.Prefix }/>
+		if v.Tournament {
+			<input type="hidden" name="counter_tournament" value="1"/>
+		}
+		if v.Started {
+			@counterBoard(v)
+		} else {
+			@counterSetup(v)
+		}
+	</div>
+}
+
+// CounterDone is the board with the set rows filled in behind it, out of
+// band: the match is over and the boxes it fills are the ones the form
+// submits. The counter enters nothing itself.
+templ CounterDone(v CounterView) {
+	@Counter(v)
+	@setRows(v.Prefix, v.FilledSets(), v.BestOf, v.PointsToWin, v.HomeName, v.AwayName, OutOfBand())
+}
+
+// counterSetup asks what is decided before the first point.
+templ counterSetup(v CounterView) {
+	if v.Tournament {
+		// ADR-0013: the draw says who serves, and it is not asked again.
+		<p class="muted">Aufschlag hat { v.HomeName }, wie im Spielplan.</p>
+	} else {
+		<div class="row">
+			<span class="counter-label">Aufschlag</span>
+			<label class="pick">
+				<input type="radio" name="counter_first" value={ CounterFirstRally } checked?={ v.First == "" || v.First == CounterFirstRally }/>
+				<span>Ausspielen</span>
+			</label>
+			<label class="pick">
+				<input type="radio" name="counter_first" value={ CounterFirstA } checked?={ v.First == CounterFirstA }/>
+				<span>{ v.HomeName }</span>
+			</label>
+			<label class="pick">
+				<input type="radio" name="counter_first" value={ CounterFirstB } checked?={ v.First == CounterFirstB }/>
+				<span>{ v.AwayName }</span>
+			</label>
+		</div>
+	}
+	<div class="row">
+		<span class="counter-label">Vorher</span>
+		<label class="pick">
+			<input type="checkbox" name="counter_warmup" value="1" checked?={ v.Warmup }/>
+			<span>Einspielen</span>
+		</label>
+		// On by default: the rules sheet changes ends after every set.
+		<label class="pick">
+			<input type="checkbox" name="counter_ends" value="1" checked?={ v.ChangeEnds }/>
+			<span>Seitenwechsel</span>
+		</label>
+	</div>
+	@counterButton(v, "start", "Zählen starten", "", false)
+}
+
+// counterBoard is the running match.
+templ counterBoard(v CounterView) {
+	<input type="hidden" name="counter_state" value="on"/>
+	<input type="hidden" name="counter_first" value={ v.First }/>
+	if v.Warmup {
+		<input type="hidden" name="counter_warmup" value="1"/>
+	}
+	if v.ChangeEnds {
+		<input type="hidden" name="counter_ends" value="1"/>
+	}
+	<input type="hidden" name="counter_best_of" value={ strconv.Itoa(v.BestOf) }/>
+	<input type="hidden" name="counter_points" value={ strconv.Itoa(v.PointsToWin) }/>
+	<input type="hidden" name="counter_log" value={ v.Log }/>
+	// The line the umpire reads between two rallies. aria-live here and not
+	// on the board, so a screen reader hears what changed rather than both
+	// names again with every point.
+	<p class="counter-banner" aria-live="polite">{ v.Banner() }</p>
+	<div class="counter-board">
+		for _, side := range v.Sides() {
+			<button
+				type="button"
+				class={ "counter-side", templ.KV("counter-serving", side.Serving) }
+				name="counter_action"
+				value={ side.Action }
+				disabled?={ !v.Playing() && !v.Rally() }
+				hx-post="/kiosk/counter"
+				hx-target={ "#" + v.ID() }
+				hx-swap="outerHTML"
+				hx-include="closest form"
+				hx-sync="closest form:drop"
+			>
+				<span class="counter-name">{ side.Name }</span>
+				<span class="counter-points">{ strconv.Itoa(side.Points) }</span>
+				<span class="counter-sets">Sätze { strconv.Itoa(side.Sets) }</span>
+				if side.Serving {
+					<span class="counter-serve">Aufschlag &middot; noch { strconv.Itoa(side.ServesLeft) }</span>
+				}
+			</button>
+		}
+	</div>
+	if len(v.History()) > 0 {
+		<p class="counter-history muted">
+			for i, set := range v.History() {
+				<span>{ strconv.Itoa(i+1) }. { set }</span>
+			}
+		</p>
+	}
+	<div class="counter-controls">
+		if v.Paused() {
+			@counterButton(v, "go", v.GoLabel(), "", false)
+		}
+		@counterButton(v, "undo", "Rückgängig", "secondary", !v.CanUndo())
+		@counterButton(v, "reset", "Neu zählen", "linklike", false)
+	</div>
+}
+
+// counterButton is one control that sends an action and redraws the counter.
+templ counterButton(v CounterView, action, label, class string, disabled bool) {
+	<button
+		type="button"
+		class={ class }
+		name="counter_action"
+		value={ action }
+		disabled?={ disabled }
+		hx-post="/kiosk/counter"
+		hx-target={ "#" + v.ID() }
+		hx-swap="outerHTML"
+		hx-include="closest form"
+		hx-sync="closest form:drop"
+	>{ label }</button>
+}

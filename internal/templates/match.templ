@@ -58,7 +58,7 @@ templ matchFormBody(v MatchFormView) {
 				</select>
 			</div>
 			@modeRow("entry", v.BestOf, v.PointsToWin)
-			@setRows("entry", v.Sets, v.BestOf, v.PointsToWin, SideYourself, v.AwayLabel())
+			@setRows("entry", v.Sets, v.BestOf, v.PointsToWin, SideYourself, v.AwayLabel(), nil)
 			<button type="submit">Eintragen</button>
 			if v.Error != "" {
 				<p class="fail" role="alert">{ v.Error }</p>
@@ -124,8 +124,11 @@ templ modeRow(prefix string, bestOf, pointsToWin int) {
 // The boxes have no maximum on purpose: at eleven, 12:10 and 13:11 are
 // ordinary results, so any cap that would reject 15:8 would reject those too.
 // The rule is written out instead, and the server has the last word.
-templ setRows(prefix string, sets []SetInput, bestOf, pointsToWin int, homeLabel, awayLabel string) {
-	<fieldset id={ "sets-" + prefix } class="sets">
+//
+// attrs is for the one response that carries the rows out of band: the kiosk
+// counter filling them when a match is over (docs/adr/0034).
+templ setRows(prefix string, sets []SetInput, bestOf, pointsToWin int, homeLabel, awayLabel string, attrs templ.Attributes) {
+	<fieldset id={ "sets-" + prefix } class="sets" { attrs... }>
 		<legend>Sätze</legend>
 		<input type="hidden" name="sets_prefix" value={ prefix }/>
 		<p id={ "sets-rule-" + prefix } class="muted">
@@ -225,7 +228,7 @@ templ scoreField(prefix, name, value string, pointsToWin int, label string) {
 // SetsFragment is the set rows on their own, for the swap that follows a
 // change of mode. Every form on the page has its own, told apart by prefix.
 templ SetsFragment(v SetsView) {
-	@setRows(v.Prefix, v.Sets, v.BestOf, v.PointsToWin, v.HomeLabel, v.AwayLabel)
+	@setRows(v.Prefix, v.Sets, v.BestOf, v.PointsToWin, v.HomeLabel, v.AwayLabel, nil)
 	if v.Picker != nil {
 		@PlayerPickerOOB(*v.Picker)
 	}

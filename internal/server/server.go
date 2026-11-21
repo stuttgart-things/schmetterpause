@@ -310,6 +310,10 @@ func (s *Server) routes() http.Handler {
 		// /kiosk is the boxes to type into.
 		page.HandleFunc("GET /kiosk/tournaments/{id}", s.handleTournament)
 		page.HandleFunc("POST /kiosk/tournaments/{id}/matches", s.handleTournamentRecord)
+		// One tap on the counter (docs/adr/0034). Under /kiosk for the
+		// cookie, like the entry beside it; it keeps nothing and writes
+		// nothing, so it is one route for the break and the tournament.
+		page.HandleFunc("POST /kiosk/counter", s.handleKioskCounter)
 	}
 
 	mux.Handle("/", auth.Middleware(s.auth, s.log)(page))

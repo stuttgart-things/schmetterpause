@@ -11,6 +11,7 @@ import (
 
 	"github.com/a-h/templ"
 
+	"github.com/stuttgart-things/schmetterpause/internal/counter"
 	"github.com/stuttgart-things/schmetterpause/internal/credential"
 	"github.com/stuttgart-things/schmetterpause/internal/domain"
 	"github.com/stuttgart-things/schmetterpause/internal/match"
@@ -399,24 +400,17 @@ func BestOfLabel(bestOf int) string {
 }
 
 // ServeEvery is how many points a player serves in a row before the service
-// changes: two in a set to eleven, five in a set to twenty-one.
-//
-// Not a constant, because the form offers both modes and the answer is
-// different in each. "Always two" is the rule most people know, and it is the
-// wrong one for the twenty-one mode the picker also offers.
-func ServeEvery(pointsToWin int) int {
-	if pointsToWin >= 21 {
-		return 5
-	}
-	return 2
-}
+// changes. The rule lives in the counter package, which plays it point by
+// point (docs/adr/0034); the rules sheet and the set rows say it in words, and
+// both read it from there so the two cannot disagree.
+func ServeEvery(pointsToWin int) int { return counter.ServeEvery(pointsToWin) }
 
 // DeuceFrom is the score from which a set no longer ends at the target.
 //
 // This is why the boxes carry no maximum: at eleven, 12:10 and 13:11 are
 // ordinary results, and a form that refused them would be wrong more often
 // than the one that accepts 15:8 and has the server explain itself.
-func DeuceFrom(pointsToWin int) int { return pointsToWin - 1 }
+func DeuceFrom(pointsToWin int) int { return counter.DeuceFrom(pointsToWin) }
 
 // SetsView is what /fragments/sets needs: which form asked, in which mode,
 // with what already typed into it, and whose points go in which box.

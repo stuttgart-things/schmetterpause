@@ -1742,7 +1742,7 @@ func tournamentRounds(v TournamentView) templ.Component {
 							}
 						}
 					} else if v.CanEnter {
-						templ_7745c5c3_Err = pairingEntry("/kiosk/tournaments/"+v.ID+"/matches", v.ID, v.BestOf, v.PointsToWin, p).Render(ctx, templ_7745c5c3_Buffer)
+						templ_7745c5c3_Err = pairingEntry("/kiosk/tournaments/"+v.ID+"/matches", v.ID, v.BestOf, v.PointsToWin, p, true).Render(ctx, templ_7745c5c3_Buffer)
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
@@ -1751,7 +1751,7 @@ func tournamentRounds(v TournamentView) templ.Component {
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
-						templ_7745c5c3_Err = pairingEntry("/matches", v.ID, v.BestOf, v.PointsToWin, p).Render(ctx, templ_7745c5c3_Buffer)
+						templ_7745c5c3_Err = pairingEntry("/matches", v.ID, v.BestOf, v.PointsToWin, p, false).Render(ctx, templ_7745c5c3_Buffer)
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
@@ -1817,7 +1817,7 @@ func tournamentRounds(v TournamentView) templ.Component {
 // A plain form post rather than HTMX: the answer is a redirect back to the
 // draw, so a reload cannot re-submit a result that already counted, and a
 // kiosk result counts immediately.
-func pairingEntry(action, tournamentID string, bestOf, pointsToWin int, p TournamentPairingView) templ.Component {
+func pairingEntry(action, tournamentID string, bestOf, pointsToWin int, p TournamentPairingView, counter bool) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -1933,8 +1933,14 @@ func pairingEntry(action, tournamentID string, bestOf, pointsToWin int, p Tourna
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = setRows("t"+strconv.Itoa(p.Round)+"-"+p.HomeID, EmptySets(),
-			bestOf, pointsToWin, p.HomeName, p.AwayName).Render(ctx, templ_7745c5c3_Buffer)
+		if counter {
+			templ_7745c5c3_Err = CounterBox(NewCounterView(pairingPrefix(p), true, p.HomeName, p.AwayName)).Render(ctx, templ_7745c5c3_Buffer)
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+		}
+		templ_7745c5c3_Err = setRows(pairingPrefix(p), EmptySets(),
+			bestOf, pointsToWin, p.HomeName, p.AwayName, nil).Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -2002,7 +2008,7 @@ func TournamentCount(v TournamentSizeView, oob templ.Attributes) templ.Component
 		var templ_7745c5c3_Var81 string
 		templ_7745c5c3_Var81, templ_7745c5c3_Err = templ.JoinStringErrs(strconv.Itoa(v.Players))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `tournament.templ`, Line: 736, Col: 27}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `tournament.templ`, Line: 738, Col: 27}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var81))
 		if templ_7745c5c3_Err != nil {
@@ -2015,7 +2021,7 @@ func TournamentCount(v TournamentSizeView, oob templ.Attributes) templ.Component
 		var templ_7745c5c3_Var82 string
 		templ_7745c5c3_Var82, templ_7745c5c3_Err = templ.JoinStringErrs(strconv.Itoa(v.MaxPlayers()))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `tournament.templ`, Line: 736, Col: 75}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `tournament.templ`, Line: 738, Col: 75}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var82))
 		if templ_7745c5c3_Err != nil {
@@ -2077,7 +2083,7 @@ func TournamentSubmit(v TournamentSizeView, mode string, oob templ.Attributes) t
 		var templ_7745c5c3_Var84 string
 		templ_7745c5c3_Var84, templ_7745c5c3_Err = templ.JoinStringErrs(TournamentSubmitLabel(mode))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `tournament.templ`, Line: 748, Col: 31}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `tournament.templ`, Line: 750, Col: 31}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var84))
 		if templ_7745c5c3_Err != nil {
@@ -2129,7 +2135,7 @@ func TournamentSize(v TournamentSizeView) templ.Component {
 			var templ_7745c5c3_Var86 string
 			templ_7745c5c3_Var86, templ_7745c5c3_Err = templ.JoinStringErrs(strconv.Itoa(v.Players))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `tournament.templ`, Line: 761, Col: 28}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `tournament.templ`, Line: 763, Col: 28}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var86))
 			if templ_7745c5c3_Err != nil {
@@ -2142,7 +2148,7 @@ func TournamentSize(v TournamentSizeView) templ.Component {
 			var templ_7745c5c3_Var87 string
 			templ_7745c5c3_Var87, templ_7745c5c3_Err = templ.JoinStringErrs(strconv.Itoa(tournament.MaxRatedPlayers))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `tournament.templ`, Line: 762, Col: 79}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `tournament.templ`, Line: 764, Col: 79}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var87))
 			if templ_7745c5c3_Err != nil {
@@ -2155,7 +2161,7 @@ func TournamentSize(v TournamentSizeView) templ.Component {
 			var templ_7745c5c3_Var88 string
 			templ_7745c5c3_Var88, templ_7745c5c3_Err = templ.JoinStringErrs(strconv.Itoa(tournament.MaxUnratedPlayers))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `tournament.templ`, Line: 762, Col: 147}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `tournament.templ`, Line: 764, Col: 147}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var88))
 			if templ_7745c5c3_Err != nil {
@@ -2169,7 +2175,7 @@ func TournamentSize(v TournamentSizeView) templ.Component {
 			var templ_7745c5c3_Var89 string
 			templ_7745c5c3_Var89, templ_7745c5c3_Err = templ.JoinStringErrs(strconv.Itoa(v.Players))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `tournament.templ`, Line: 764, Col: 28}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `tournament.templ`, Line: 766, Col: 28}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var89))
 			if templ_7745c5c3_Err != nil {
@@ -2182,7 +2188,7 @@ func TournamentSize(v TournamentSizeView) templ.Component {
 			var templ_7745c5c3_Var90 string
 			templ_7745c5c3_Var90, templ_7745c5c3_Err = templ.JoinStringErrs(strconv.Itoa(v.Matches))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `tournament.templ`, Line: 765, Col: 36}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `tournament.templ`, Line: 767, Col: 36}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var90))
 			if templ_7745c5c3_Err != nil {
@@ -2195,7 +2201,7 @@ func TournamentSize(v TournamentSizeView) templ.Component {
 			var templ_7745c5c3_Var91 string
 			templ_7745c5c3_Var91, templ_7745c5c3_Err = templ.JoinStringErrs(TournamentHours(v.Matches))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `tournament.templ`, Line: 769, Col: 80}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `tournament.templ`, Line: 771, Col: 80}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var91))
 			if templ_7745c5c3_Err != nil {
