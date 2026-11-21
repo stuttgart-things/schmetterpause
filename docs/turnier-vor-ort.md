@@ -261,7 +261,8 @@ einmal.
 den Namen steht mit, wie viele Spiele daraus werden und wie lange das dauert —
 die Zahl rechnet sich mit, während du ankreuzt, weil sie von drei Antworten
 gleichzeitig abhängt. Acht Leute mit Rückspiel sind 56 Spiele; die Grenze von
-zwölf Spielern war für den einfachen Fall gedacht.
+zwölf Spielern war für den einfachen Fall gedacht. Ohne Wertung sind es
+sechzehn (`docs/adr/0033`).
 
 Das Finale bekommt seinen Platz sofort und seine Namen erst, wenn alle
 Gruppenspiele gewertet sind. Stehen die besten zwei dann gleichauf, gibt es
@@ -282,7 +283,11 @@ dem sie gespielt wurden.
 Die Zahl, an der der Nachmittag hängt, steht unter dem Formular: vier Leute
 sind sechs Spiele, acht Leute schon 28. Bei einer Viertelstunde pro Spiel sind
 das sieben Stunden. Höchstens zwölf Spieler sind erlaubt, und diese Grenze
-existiert genau deshalb.
+existiert genau deshalb. **Ohne Wertung gehen bis zu sechzehn**: Ein
+Spaßturnier bewegt keine Rangliste, also bleibt nur die Frage, ob der Abend
+reicht, und die beantwortet die Stundenzahl. Wer mehr als zwölf Namen ankreuzt
+und die Wertung noch an hat, bekommt das gesagt — das Häkchen „Zählt nicht für
+die Rangliste“ macht den Knopf wieder frei.
 
 **Ergebnisse trägt das Gerät an der Platte ein.** Die Turnierseite gibt es
 zweimal:

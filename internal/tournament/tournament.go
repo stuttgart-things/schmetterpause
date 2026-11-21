@@ -184,6 +184,28 @@ func Matches(n, legs int, withFinal bool) int {
 	return total
 }
 
+// The caps on a field (docs/adr/0033).
+//
+// Neither is a technical limit — the circle method does not care. The rated
+// one is where per-match rating stops being a fair approximation of rating
+// the whole event at once (docs/adr/0009): past about twelve, the early
+// matches are reckoned with different expectations than the late ones. An
+// unrated tournament moves no rating, so that reason falls away and only the
+// table time is left. Sixteen is 120 matches, an evening only with several
+// tables or short sets, which the form says before anybody agrees to it.
+const (
+	MaxRatedPlayers   = 12
+	MaxUnratedPlayers = 16
+)
+
+// MaxPlayers is the cap on a field of a tournament that is rated or not.
+func MaxPlayers(rated bool) int {
+	if rated {
+		return MaxRatedPlayers
+	}
+	return MaxUnratedPlayers
+}
+
 // Final is the pairing that decides the tournament: the two best of the
 // group, once the table can name them without ambiguity.
 //

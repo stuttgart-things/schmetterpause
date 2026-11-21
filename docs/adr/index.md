@@ -41,3 +41,4 @@ festlegt, steht hier mit den Alternativen, die dabei verworfen wurden. Eine
 | 0030 | [Die Figuren gibt es auch als GIF, für das LED-Panel](0030-figuren-als-gif-fuer-das-led-panel.md) | accepted | 2026-10-28 |
 | 0031 | [Spieler wählen ihre Spielfigur](0031-mehrere-spielfiguren.md) | accepted | 2026-11-11 |
 | 0032 | [Die Statistik gibt es als JSON, für das Radio](0032-statistik-als-json-fuer-das-radio.md) | accepted | 2026-11-18 |
+| 0033 | [Ein Turnier ohne Wertung darf bis sechzehn Spieler haben](0033-ohne-wertung-bis-sechzehn.md) | accepted | 2026-11-20 |

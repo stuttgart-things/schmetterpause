@@ -1054,9 +1054,6 @@ type TournamentListView struct {
 	Running []TournamentListRow
 	Past    []TournamentListRow
 	Form    TournamentFormView
-	// MaxPlayers is the cap on a field, shown next to the picker rather than
-	// only in the message somebody gets after ticking too many names.
-	MaxPlayers int
 }
 
 // TournamentListRow is one tournament in the list.
@@ -1205,16 +1202,27 @@ func NewTournamentFormView(candidates []TournamentCandidate) TournamentFormView 
 type TournamentSizeView struct {
 	Players int
 	Matches int
-	// MaxPlayers is repeated here so the fragment can keep the whole
-	// sentence, rather than half of it living in the page and going stale.
-	MaxPlayers int
+	// Rated decides the cap (docs/adr/0033), so ticking "Zählt nicht für die
+	// Rangliste" redraws the fragment like a name does.
+	Rated bool
 }
+
+// MaxPlayers is the cap on this field, shown next to the picker rather than
+// only in the message somebody gets after ticking too many names.
+func (v TournamentSizeView) MaxPlayers() int { return tournament.MaxPlayers(v.Rated) }
 
 // Enough reports whether this many names make a tournament. The button is
 // disabled until they do — the server refuses either way, but a form that
 // only says no after being submitted is one somebody submits.
 func (v TournamentSizeView) Enough() bool {
-	return v.Players >= 2 && v.Players <= v.MaxPlayers
+	return v.Players >= 2 && v.Players <= v.MaxPlayers()
+}
+
+// OnlyUnrated reports a field too big to be rated and small enough to be
+// played without a rating: the one case where the way out is a tick away.
+func (v TournamentSizeView) OnlyUnrated() bool {
+	return v.Rated && v.Players > tournament.MaxRatedPlayers &&
+		v.Players <= tournament.MaxUnratedPlayers
 }
 
 // The two things the tournament form can be. A mode rather than a label
@@ -1245,12 +1253,12 @@ func TournamentSubmitLabel(mode string) string {
 }
 
 // Size is how big the evening this form describes would be.
-func (v TournamentFormView) Size(maxPlayers int) TournamentSizeView {
+func (v TournamentFormView) Size() TournamentSizeView {
 	legs := domain.TournamentFormat(v.Format).Legs()
 	return TournamentSizeView{
-		Players:    v.Chosen(),
-		Matches:    tournament.Matches(v.Chosen(), legs, v.WithFinal),
-		MaxPlayers: maxPlayers,
+		Players: v.Chosen(),
+		Matches: tournament.Matches(v.Chosen(), legs, v.WithFinal),
+		Rated:   v.Rated,
 	}
 }
 
@@ -1351,9 +1359,6 @@ type TournamentView struct {
 	// Error is what went wrong with the last entry, carried back through the
 	// redirect so a reload cannot re-submit a result that already counted.
 	Error string
-	// MaxPlayers is the cap, repeated here so the edit form can say the whole
-	// sentence rather than half of it.
-	MaxPlayers int
 	// Edit is the field and the mode as they stand, offered for changing
 	// while nothing has been played. Nil once a result exists: the draw is a
 	// function of the stored order, so moving the field then would put later

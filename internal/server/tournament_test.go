@@ -9,6 +9,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/stuttgart-things/schmetterpause/internal/server"
+	"github.com/stuttgart-things/schmetterpause/internal/tournament"
 )
 
 // A malformed bracket is "no tournament", not a rejection. The field rides
@@ -55,21 +56,32 @@ func TestCheckFieldRefusesWhatCannotBePlayed(t *testing.T) {
 		return out
 	}
 
-	if msg := server.CheckField(nil); msg == "" {
+	if msg := server.CheckField(nil, true); msg == "" {
 		t.Error("an empty field was accepted")
 	}
-	if msg := server.CheckField(ids(1)); msg == "" {
+	if msg := server.CheckField(ids(1), true); msg == "" {
 		t.Error("a field of one was accepted — there is nothing to play")
 	}
-	if msg := server.CheckField(ids(2)); msg != "" {
+	if msg := server.CheckField(ids(2), true); msg != "" {
 		t.Errorf("two players were refused: %q", msg)
 	}
-	if msg := server.CheckField(ids(server.MaxTournamentPlayers)); msg != "" {
+	if msg := server.CheckField(ids(tournament.MaxRatedPlayers), true); msg != "" {
 		t.Errorf("the cap itself was refused: %q", msg)
 	}
 	// One past the cap is a tournament nobody can finish, and the number is
 	// easier to argue with before the draw than after.
-	if msg := server.CheckField(ids(server.MaxTournamentPlayers + 1)); msg == "" {
-		t.Error("a field past the cap was accepted")
+	if msg := server.CheckField(ids(tournament.MaxRatedPlayers+1), true); msg == "" {
+		t.Error("a rated field past the rated cap was accepted")
+	}
+	// Without a rating the cap is table time alone (docs/adr/0033).
+	if msg := server.CheckField(ids(tournament.MaxUnratedPlayers), false); msg != "" {
+		t.Errorf("an unrated field of %d was refused: %q", tournament.MaxUnratedPlayers, msg)
+	}
+	if msg := server.CheckField(ids(tournament.MaxUnratedPlayers+1), false); msg == "" {
+		t.Error("an unrated field past the unrated cap was accepted")
+	}
+	// A rated field between the caps is told the way out.
+	if msg := server.CheckField(ids(tournament.MaxRatedPlayers+1), true); !strings.Contains(msg, "Ohne Wertung") {
+		t.Errorf("a rated field of %d was not pointed at the unrated cap: %q", tournament.MaxRatedPlayers+1, msg)
 	}
 }

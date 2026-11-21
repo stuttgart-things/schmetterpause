@@ -20,7 +20,7 @@ func WaitInWords(d time.Duration) string { return waitInWords(d) }
 // are pure enough that an HTTP round trip would only obscure the case.
 func TournamentIDFrom(r *http.Request) *uuid.UUID { return tournamentIDFrom(r) }
 
-func CheckField(field []uuid.UUID) string { return checkField(field) }
+func CheckField(field []uuid.UUID, rated bool) string { return checkField(field, rated) }
 
 // WaitedSince is exposed for the same reason as WaitInWords: it decides what
 // a reader is told about how long a result has been sitting, the buckets have
@@ -30,9 +30,6 @@ func WaitedSince(now, playedAt time.Time) (string, bool) { return waitedSince(no
 
 // StaleAfter is when a waiting result stops counting as normal.
 const StaleAfter = staleAfter
-
-// MaxTournamentPlayers is the cap the form and the check share.
-const MaxTournamentPlayers = maxTournamentPlayers
 
 // WaitingOn is exposed because its third case — a reporter who is neither
 // side — only arrives through the Zählwerk's token-gated API, and building
